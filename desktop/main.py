@@ -1,18 +1,27 @@
-"""Kütüphane Defteri masaüstü başlatıcısı — açılış sırası (tasarım §4.2).
+"""Kütüphane Defteri masaüstü başlatıcısı — açılış ve kapanış sırası (tasarım §4.2).
 
     1. Veri dizinleri (exe DIŞINDA) + günlük yapılandırması
-    2. Tek-instance kilidi ................. ikinci kopya pencere AÇMAZ
-    3. Oturum belirteci ..................... ayarlar okunmadan ÖNCE üretilir
-    4. Sürüm damgası ........................ eski program yeni veriyi AÇMAZ
-    5. Bütünlük denetimi .................... bozuk veriyle pencere AÇILMAZ
-    6. Günlük yedek + 14 gün rotasyonu ...... `Connection.backup()`; parolalıysa
+    2. Tek-instance kilidi ................. ikinci kopya pencere AÇMAZ; bayraksız
+       normal açılışsa çalışan kopyanın penceresini öne getirip 0 ile çıkar
+    3. Temiz kapanış işareti okunur ve silinir (T15) + tek kopya kanalı kurulur
+    4. Oturum belirteci ..................... ayarlar okunmadan ÖNCE üretilir
+    5. Sürüm damgası ........................ eski program yeni veriyi AÇMAZ
+    6. Bütünlük denetimi .................... bozuk veriyle pencere AÇILMAZ
+    7. Günlük yedek + 14 gün rotasyonu ...... `Connection.backup()`; parolalıysa
        şifreli, parolasızsa düz `.kdbak` — yedek her kipte ALINIR (KS K9)
-    7. Göç öncesi yedek + `migrate --no-input`
-    8. Gömülü sunucu (waitress, 127.0.0.1, boş port) + sağlık denetimi
-    9. Pencere (pywebview) — `--autotest` kipinde AÇILMAZ
+    8. Göç öncesi yedek + `migrate --no-input`
+    9. Gömülü sunucu (waitress, 127.0.0.1, boş port) + sağlık denetimi
+       → Ağ Kataloğu (ikinci waitress, 127.0.0.1:8765, öz sınamalı); hatası
+       ölümcül DEĞİL, çıkışta yönetim sunucusundan önce kapanır
+   10. Tepsi + pencere (pywebview) — `--autotest` kipinde AÇILMAZ
 
 Adım sırası bilinçlidir: bütünlük denetimi yedeklemeden ÖNCE koşar; veritabanı
 bozukken rotasyonun sağlam eski yedekleri silmesi istenmez.
+
+**Kapanış** (§4.2-4/5). Çarpı pencereyi gizler; program yalnız "Çık" ile
+(tepsi menüsü ya da kurucunun `KutuphaneDefteri.Kapat` olayı) kapanır. Sıra:
+pencere → kanal → tepsi (`icon.stop()`) → Ağ Kataloğu → yönetim sunucusu →
+temiz kapanış işareti → kilit. Mutex'ler süreç bitene dek kalır (lock.py).
 
 Herhangi bir adım başarısız olursa pencere açılmaz; kullanıcıya Türkçe ileti +
 "son yedekten dön" yolu gösterilir ve hataya özel bir çıkış kodu döner (CI ve
@@ -26,13 +35,21 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import sys
 from collections.abc import Sequence
+from pathlib import Path
 
 from desktop.backup import (
     daily_backup,
     encrypt_legacy_backups,
     pre_migrate_backup,
     rotate_backups,
+)
+from desktop.clean_shutdown import (
+    consume_marker,
+    publish,
+    restore_after_failed_startup,
+    write_marker_quietly,
 )
 from desktop.dialogs import show_error
 from desktop.django_bootstrap import (
@@ -42,9 +59,17 @@ from desktop.django_bootstrap import (
     prepare_django,
     run_migrations,
 )
-from desktop.errors import EXIT_OK, EXIT_UNEXPECTED, StartupError
+from desktop.errors import (
+    EXIT_OK,
+    EXIT_SERVER_FAILED,
+    EXIT_UNEXPECTED,
+    AlreadyRunningError,
+    StartupError,
+)
+from desktop.instance_channel import COMMAND_QUIT, COMMAND_SHOW, CommandChannel, open_channel
 from desktop.integrity import check_database_integrity
-from desktop.lock import SingleInstanceLock
+from desktop.katalog_server import KatalogServer, start_catalog, stop_catalog
+from desktop.lock import SingleInstanceLock, signal_running_instance
 from desktop.logging_setup import configure_logging, enable_crash_log
 from desktop.paths import (
     ENV_APP_HOME,
@@ -56,12 +81,13 @@ from desktop.paths import (
 from desktop.restore import run_restore
 from desktop.server import BackgroundServer, check_health
 from desktop.session_guard import ENV_TOKEN, generate_session_token, window_url
+from desktop.tray import TrayActions, start_tray
 from desktop.version import (
     ensure_stamp_compatible,
     get_app_version,
     write_version_stamp,
 )
-from desktop.window import open_window, require_window_runtime
+from desktop.window import WindowController, open_window, require_window_runtime
 
 logger = logging.getLogger("kutuphane_defteri")
 
@@ -124,6 +150,17 @@ def resolve_paths(args: argparse.Namespace) -> AppPaths:
     return resolve_app_paths()
 
 
+def is_plain_launch(args: argparse.Namespace) -> bool:
+    """Bayraksız normal açılış mı? (pencereli kip; §4.2-1)
+
+    `--autotest` ve `--geri-yukle` kiptir: çalışan kopya bulurlarsa 2 koduyla
+    çıkarlar, sinyal göndermezler. `--data-dir` kip değil konumdur; aynı veri
+    dizinini kullanan kopyaya sinyal gider. (`--pdf-duman` ve
+    `--bagimlilik-duman` bu işleve hiç gelmez: `packaging/pyinstaller/giris.py`.)
+    """
+    return not args.autotest and args.geri_yukle is None
+
+
 def prepare_data(paths: AppPaths, app_version: str) -> None:
     """Veriyi açılışa hazırlar: sürüm → bütünlük → yedek → göç → damga."""
     ensure_stamp_compatible(paths.version_stamp_path, app_version)
@@ -140,27 +177,105 @@ def prepare_data(paths: AppPaths, app_version: str) -> None:
     write_version_stamp(paths.version_stamp_path, app_version)
 
 
-def serve(paths: AppPaths, token: str, autotest: bool) -> int:
-    """Gömülü sunucuyu başlatır; `--autotest` değilse pencereyi açar."""
+def dispatch_command(command: str, controller: WindowController) -> None:
+    """Tek kopya kanalından gelen komut → pencere denetçisi."""
+    if command == COMMAND_SHOW:
+        controller.show()
+    elif command == COMMAND_QUIT:
+        controller.request_quit()
+
+
+def run_window_session(
+    url: str,
+    storage_path: Path,
+    channel: CommandChannel | None,
+    *,
+    platform: str = sys.platform,
+) -> None:
+    """Tepsi + kanal + pencere; "Çık" gelene dek bloklar (ANA iş parçacığında).
+
+    Tepsi pencereden ÖNCE kurulur: Linux'ta Qt tepsisi ana iş parçacığında ve
+    `webview.start`'tan önce kurulmak zorundadır (desktop/tray.py). Çıkışta
+    kanal ve tepsi her durumda kapatılır; `icon.stop()` atlanırsa süreç asılı
+    kalırdı.
+    """
+    controller = WindowController(platform=platform)
+    tray = start_tray(
+        TrayActions(show=controller.show, quit=controller.request_quit), platform=platform
+    )
+    controller.tray_available = tray.available
+    try:
+        if channel is not None:
+            channel.start(lambda command: dispatch_command(command, controller))
+        open_window(url, storage_path=storage_path, controller=controller)
+    finally:
+        if channel is not None:
+            channel.close()
+        tray.stop()
+    logger.info("Pencere kapandı; program düzenli kapanıyor.")
+
+
+def serve(
+    paths: AppPaths, token: str, autotest: bool, channel: CommandChannel | None = None
+) -> int:
+    """Gömülü sunucuyu başlatır; `--autotest` değilse tepsiyi ve pencereyi açar."""
     application = build_wsgi_application()
     assert_session_guard_installed()
 
     server = BackgroundServer(application)
     server.start()
+    katalog: KatalogServer | None = None
     try:
         server.wait_until_ready()
         check_health(server.base_url, token)
+        # Ağ Kataloğu (tasarım §4.2-2) yönetim sağlık denetiminden SONRA kalkar; hatası
+        # ölümcül değildir (günlüğe düşer, `None` döner). `--autotest` de kaldırır ki
+        # paket duman testinde soket yolu (Windows'ta SO_EXCLUSIVEADDRUSE) gerçekten koşsun.
+        katalog = start_catalog()
         if autotest:
+            # Duman testi kipinde katalog hatası ÖLÜMCÜLDÜR: paket koşusu (CI) soket
+            # yolunun gerçekten çalıştığını çıkış koduyla kanıtlamalı. Normal açılışta
+            # hata ölümcül değildir (yukarıdaki yorum).
+            if katalog is None:
+                logger.error("Açılış denetimi: Ağ Kataloğu kalkmadı.")
+                return EXIT_SERVER_FAILED
             logger.info("Açılış denetimi başarılı.")
             return EXIT_OK
         require_window_runtime()
-        open_window(
+        run_window_session(
             window_url(server.base_url, token),
-            storage_path=paths.webview_storage_path,
+            paths.webview_storage_path,
+            channel,
         )
         return EXIT_OK
     finally:
+        stop_catalog(katalog)
         server.stop()
+
+
+def _run_locked(paths: AppPaths, args: argparse.Namespace, app_version: str) -> int:
+    """Kilit alındıktan sonraki akış: işaret → kanal → veri → sunucu/pencere → işaret."""
+    previous = consume_marker(paths.data, paths.db_path)
+    publish(previous)
+    channel = open_channel(paths.root) if is_plain_launch(args) else None
+    try:
+        # Belirteç, ayarlar okunmadan ÖNCE üretilir: `config/settings.py`
+        # middleware'i bu değişkene bakarak ekler.
+        token = generate_session_token()
+        os.environ[ENV_TOKEN] = token
+        try:
+            prepare_data(paths, app_version)
+            code = serve(paths, token, args.autotest, channel)
+        except StartupError:
+            # Bu oturumda veriye işlem yazılmadı: önceki oturumun durumu korunur.
+            restore_after_failed_startup(previous, paths.data, app_version)
+            raise
+        if code == EXIT_OK:
+            write_marker_quietly(paths.data, app_version)
+        return code
+    finally:
+        if channel is not None:
+            channel.close()
 
 
 def run(argv: Sequence[str] | None = None) -> int:
@@ -193,14 +308,17 @@ def run(argv: Sequence[str] | None = None) -> int:
 
     lock = SingleInstanceLock(paths.lock_path)
     try:
-        lock.acquire()
         try:
-            # Belirteç, ayarlar okunmadan ÖNCE üretilir: `config/settings.py`
-            # middleware'i bu değişkene bakarak ekler.
-            token = generate_session_token()
-            os.environ[ENV_TOKEN] = token
-            prepare_data(paths, app_version)
-            return serve(paths, token, args.autotest)
+            lock.acquire()
+        except AlreadyRunningError:
+            # §4.2-1: YALNIZ bayraksız açılış çalışan kopyanın penceresini öne
+            # getirir; sinyal ulaşmazsa (kanal yok) "zaten çalışıyor" iletisi.
+            if is_plain_launch(args) and signal_running_instance(paths.root):
+                logger.info("Program zaten çalışıyor; penceresi öne getirildi.")
+                return EXIT_OK
+            raise
+        try:
+            return _run_locked(paths, args, app_version)
         finally:
             os.environ.pop(ENV_TOKEN, None)
             lock.release()

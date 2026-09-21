@@ -5,6 +5,12 @@ taramaz (spec docstring'i). Yeni bir üçüncü taraf bağımlılık spec'e elle
 eklenmek ZORUNDADIR — unutulursa paket geliştirmede çalışır, sahada çöker
 (hiddenimports tuzağı). Bu test unutmayı kapıya bağlar (KS'den devralındı).
 
+İkinci zincir masaüstüdür (tasarım §4.5, denetim UY-6): yalnız kabuğun
+gerektirdiği Windows paketleri `packaging/requirements-paketleme.txt`'te
+`sys_platform == "win32"` işaretiyle durur, spec'in `if WINDOWS:` bloğunda
+toplanır ve `giris.py::DESKTOP_RUNTIME_MODULES` ile paketli ikilide import
+edilir. Testler iki listeyi platform işaretine göre eşitler.
+
 Ayrıca `giris.py` teşhis kipinin sözleşmesi sabitlenir: bayrak adı, çıkış kodu
 (desktop/errors.py ile ikiz) ve hedef dosya ayrıştırması — üç paket betiği
 (build.ps1, build.sh, kap-ici-test.sh) bu sözleşmeye dışarıdan bağlıdır.
@@ -12,8 +18,10 @@ Ayrıca `giris.py` teşhis kipinin sözleşmesi sabitlenir: bayrak adı, çıkı
 
 from __future__ import annotations
 
+import ast
 import re
 import runpy
+import sys
 import tempfile
 from pathlib import Path
 
@@ -22,6 +30,7 @@ import pytest
 REPO = Path(__file__).resolve().parents[2]
 SPEC = REPO / "packaging" / "pyinstaller" / "kutuphane_defteri.spec"
 REQUIREMENTS = REPO / "backend" / "requirements.txt"
+PAKETLEME_REQUIREMENTS = REPO / "packaging" / "requirements-paketleme.txt"
 
 #: PyPI dağıtım adı → import (modül) adı. Yeni bağımlılıkta buraya satır eklenir;
 #: eşleme yoksa test bilinçli KIRILIR (sessiz kapsam kaybındansa gürültü iyidir).
@@ -37,6 +46,7 @@ DAGITIM_IMPORT_ESLEME = {
     "pypdf": "pypdf",
     "whitenoise": "whitenoise",
     "waitress": "waitress",
+    "segno": "segno",
 }
 
 _PIN = re.compile(r"^([A-Za-z0-9_.\-]+)==", re.MULTILINE)
@@ -158,6 +168,138 @@ def test_runtime_modules_requirements_ile_senkron() -> None:
         "giris.py RUNTIME_MODULES ile requirements.txt ayrıştı — "
         f"eksik: {sorted(beklenen - mevcut)}, fazla: {sorted(mevcut - beklenen)}"
     )
+
+
+def test_bagimlilik_duman_gercek_listeyle_gelistirme_kabinda_gecer() -> None:
+    """Gerçek `RUNTIME_MODULES` (segno dahil) bayrak yoluyla import edilir → 0.
+
+    Geliştirme kabı backend/requirements.txt'i kurar; burada düşen bir modül
+    paketli ikilide de düşerdi. Masaüstü modülleri yalnız Windows paket
+    ortamında kuruludur, bu yüzden test Windows'ta koşmaz (kapı Docker'dadır).
+    """
+    if sys.platform == _GIRIS["DESKTOP_PLATFORM"]:
+        pytest.skip("masaüstü modülleri yalnız paket ortamında kurulu")
+    assert "segno" in _GIRIS["RUNTIME_MODULES"]
+    assert _GIRIS["run"](["--bagimlilik-duman"]) == 0
+
+
+# ---------------------------------------------------------------------------
+# Masaüstü zinciri: requirements-paketleme.txt ↔ spec ↔ DESKTOP_RUNTIME_MODULES
+# ---------------------------------------------------------------------------
+
+#: Windows işaretli paketleme dağıtımı → paketli ikilide import edilecek modül.
+#: Yeni win32 satırında buraya eşleme eklenir; yoksa test bilinçli KIRILIR.
+PAKETLEME_IMPORT_ESLEME = {
+    "pystray": "pystray",
+    "six": "six",
+    # pywebview'ın WebView2 köprüsü `import clr` ile açılır (NOTLAR.md W9).
+    "pythonnet": "clr",
+}
+
+#: Linux işaretli paketler masaüstü duman listesine BİLEREK girmez: hızlı
+#: doğrulama derlemesi (`KD_WITH_QT=0`, packaging/linux/build.sh) Qt'yi hiç
+#: kurmaz ve paketten dışlar; listeye girselerdi o derlemenin dumanı düşerdi.
+#: Yeni bir Linux işaretli paket bu kümeyi bozar ve bilinçli karar ister.
+LINUX_DUMAN_DISI = {"pyqt5", "pyqtwebengine"}
+
+_PAKET_SATIRI = re.compile(
+    r'^([A-Za-z0-9_.\-]+)==(\S+?)\s*(?:;\s*sys_platform\s*==\s*"([^"]+)")?\s*$'
+)
+
+
+def _paketleme_gereksinimleri() -> dict[str, set[str]]:
+    """requirements-paketleme.txt → {platform işareti ("" = işaretsiz): {dağıtım}}."""
+    platformlar: dict[str, set[str]] = {}
+    for satir in PAKETLEME_REQUIREMENTS.read_text(encoding="utf-8").splitlines():
+        satir = satir.strip()
+        if not satir or satir.startswith("#"):
+            continue
+        eslesme = _PAKET_SATIRI.match(satir)
+        assert eslesme is not None, (
+            f"requirements-paketleme.txt satırı anlaşılamadı: {satir!r}. Her satır "
+            '`ad==sürüm` ya da `ad==sürüm ; sys_platform == "..."` olmalı.'
+        )
+        dagitim, _surum, platform = eslesme.groups()
+        platformlar.setdefault(platform or "", set()).add(dagitim.casefold())
+    return platformlar
+
+
+def _spec_windows_blogu_dizeleri() -> set[str]:
+    """spec'teki bütün `if WINDOWS:` bloklarında geçen dize sabitleri."""
+    agac = ast.parse(SPEC.read_text(encoding="utf-8"))
+    dizeler: set[str] = set()
+    for dugum in ast.walk(agac):
+        if not (
+            isinstance(dugum, ast.If)
+            and isinstance(dugum.test, ast.Name)
+            and dugum.test.id == "WINDOWS"
+        ):
+            continue
+        for ifade in dugum.body:
+            for alt in ast.walk(ifade):
+                if isinstance(alt, ast.Constant) and isinstance(alt.value, str):
+                    dizeler.add(alt.value)
+    return dizeler
+
+
+def test_masaustu_modulleri_win32_isaretli_paketlerle_senkron() -> None:
+    """UY-6: `DESKTOP_RUNTIME_MODULES` = win32 işaretli paketlerin modülleri."""
+    win32 = _paketleme_gereksinimleri().get(_GIRIS["DESKTOP_PLATFORM"], set())
+    assert {"pystray", "six"} <= win32, "tepsi zinciri requirements-paketleme.txt'te yok"
+    esleme_eksik = sorted(win32 - PAKETLEME_IMPORT_ESLEME.keys())
+    assert esleme_eksik == [], (
+        f"requirements-paketleme.txt'e yeni win32 paketi girmiş: {esleme_eksik}. "
+        "Önce PAKETLEME_IMPORT_ESLEME'ye, sonra spec `if WINDOWS:` bloğuna ve "
+        "giris.py DESKTOP_RUNTIME_MODULES'a ekleyin (masaüstü zinciri)."
+    )
+    beklenen = {PAKETLEME_IMPORT_ESLEME[d] for d in win32}
+    mevcut = set(_GIRIS["DESKTOP_RUNTIME_MODULES"])
+    assert mevcut == beklenen, (
+        "giris.py DESKTOP_RUNTIME_MODULES ile requirements-paketleme.txt (win32) ayrıştı — "
+        f"eksik: {sorted(beklenen - mevcut)}, fazla: {sorted(mevcut - beklenen)}"
+    )
+
+
+def test_paketleme_platform_isaretleri_bilinen_kumede() -> None:
+    """Yalnız win32 ve linux işareti; linux işaretliler bilinen Qt kümesi."""
+    platformlar = _paketleme_gereksinimleri()
+    assert set(platformlar) <= {"", "win32", "linux"}, sorted(platformlar)
+    assert platformlar.get("linux", set()) == LINUX_DUMAN_DISI
+    # Masaüstü modülleri backend listesine sızmaz (iki zincir ayrı kalır).
+    assert not set(_GIRIS["DESKTOP_RUNTIME_MODULES"]) & set(_GIRIS["RUNTIME_MODULES"])
+
+
+def test_masaustu_modulleri_spec_windows_blogunda_toplanir() -> None:
+    """Her masaüstü modülü spec'in `if WINDOWS:` bloğunda; pystray'in gizli yükleri de.
+
+    pystray arka ucunu import anında dinamik seçer ve `six.moves` çalışma
+    anında üretilen sanal modüldür; ikisi de statik çözümleyiciden kaçar
+    (okulzili `okul-zili.spec` emsali).
+    """
+    dizeler = _spec_windows_blogu_dizeleri()
+    eksik = sorted(set(_GIRIS["DESKTOP_RUNTIME_MODULES"]) - dizeler)
+    assert eksik == [], f"spec `if WINDOWS:` bloğu şu masaüstü modüllerini toplamıyor: {eksik}"
+    spec_metni = SPEC.read_text(encoding="utf-8")
+    assert 'collect_submodules("pystray")' in spec_metni
+    assert {"six.moves", "PIL.ImageDraw", "PIL.IcoImagePlugin"} <= dizeler
+
+
+def test_duman_modul_listesi_platforma_gore() -> None:
+    smoke_modules = _GIRIS["smoke_modules"]
+    runtime, masaustu = _GIRIS["RUNTIME_MODULES"], _GIRIS["DESKTOP_RUNTIME_MODULES"]
+    assert smoke_modules("win32") == runtime + masaustu
+    assert smoke_modules("linux") == runtime
+
+
+def test_bagimlilik_duman_masaustu_modullerini_yalniz_windowsta_acar(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Kapının Windows'ta GERÇEKTEN kapandığı: eksik masaüstü modülü → 10."""
+    fn = _GIRIS["run_import_smoke"]
+    monkeypatch.setitem(fn.__globals__, "RUNTIME_MODULES", ("json",))
+    monkeypatch.setitem(fn.__globals__, "DESKTOP_RUNTIME_MODULES", ("kd_olmayan_tepsi_modulu",))
+    assert fn(platform="win32") == 10
+    assert fn(platform="linux") == 0
 
 
 def test_pdf_duman_hedef_dosya_ayristirmasi() -> None:

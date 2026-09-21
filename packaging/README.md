@@ -9,7 +9,8 @@ koşusu yapılmadı.
 
 ```
 packaging/
-├── requirements-paketleme.txt   PyInstaller + pywebview + (Linux) PyQt5
+├── requirements-paketleme.txt   PyInstaller + pywebview + (Windows) pythonnet,
+│                                pystray, six + (Linux) PyQt5
 ├── pyinstaller/
 │   ├── kutuphane_defteri.spec   Windows + Linux ORTAK spec
 │   ├── giris.py                 paket giriş noktası + teşhis kipleri
@@ -65,15 +66,18 @@ Adımlar ve doğrulanmamış varsayımlar: `packaging/windows/NOTLAR.md`.
 
 Kurucu **yönetici kurulumudur** (tasarım §2.1 U4): Program Files'a kurulur,
 her kurulum ve güncelleme UAC'de yönetici kimliği ister. Güvenlik duvarı
-kuralı, otomatik başlatma görevi ve kurucunun kapatma olayı sonraki fazların
-işidir (tasarım §4.2-5, §4.5, §5.7); o zamana dek kurucu KS'deki `AppMutex`
-denetimini GEÇİCİ olarak kullanır.
+kuralı ve otomatik başlatma görevi sonraki fazların işidir (tasarım §4.5, §5.7).
+Kurucu ve kaldırıcı `AppMutex` KULLANMAZ: `[Code]` içindeki
+`InitializeSetup`/`InitializeUninstall` çalışan programa `KutuphaneDefteri.Kapat`
+olayını gönderir ve iki mutex serbest kalana dek en çok 30 sn bekler (tasarım
+§4.2-5; doğrulama çek-listesi `packaging/windows/NOTLAR.md`).
 
 ## Duman testleri
 
 Paketlenmiş ikili her derlemede iki teşhis kipiyle sınanır (`giris.py`):
 
-* `--bagimlilik-duman` — `RUNTIME_MODULES`'ın tamamını import eder.
+* `--bagimlilik-duman` — `RUNTIME_MODULES`'ın tamamını, Windows'ta ek olarak
+  `DESKTOP_RUNTIME_MODULES`'ı (pystray, six, `clr`) import eder.
 * `--pdf-duman [dosya.pdf]` — evrakın taban şablonundan
   (`backend/templates/documents/base.html`) küçük bir Türkçe örnek belge
   üretir; şablon ağacının pakette olduğunu, WeasyPrint zincirini, Türkçe
@@ -154,3 +158,42 @@ ediyorsa dört halka birlikte güncellenir:
 
 Testler halkalardan biri eksikse kırılır. Gerekçe ve ayrıntı spec dosyasının
 başındaki açıklamada.
+
+## Masaüstü zinciri (yalnız kabuğun bağımlılıkları)
+
+Backend'in değil **masaüstü kabuğunun** ihtiyaç duyduğu paketler (Windows
+tepsisi için pystray ve six, WebView2 köprüsü için pythonnet) backend
+zincirine girmez; ayrı zincirdedir (tasarım §4.5, denetim UY-6):
+
+1. `requirements-paketleme.txt` — pin + `; sys_platform == "win32"` işareti,
+2. `test_spec_kapsami.py::PAKETLEME_IMPORT_ESLEME` (dağıtım → modül),
+3. spec'in `if WINDOWS:` bloğu — `collect_submodules("pystray")`, `six`,
+   `six.moves`, `PIL.ImageDraw`, `PIL.IcoImagePlugin` (okulzili emsali),
+4. `giris.py::DESKTOP_RUNTIME_MODULES` — `--bagimlilik-duman` bu listeyi
+   yalnız Windows'ta import eder.
+
+Test win32 işaretli satırlarla `DESKTOP_RUNTIME_MODULES`'ı eşitler. Linux
+işaretli Qt paketleri listeye bilerek girmez: `KD_WITH_QT=0` doğrulama
+derlemesi Qt'yi kurmaz. Yeni bir platform işaretli paket testi kırar ve
+bilinçli karar ister.
+
+### Lisans: pystray LGPLv3
+
+pystray **LGPLv3**'tür (six MIT). Dağıtılan pakete pystray'in **lisans metni
+ve kaynağı** girer. **Uygulaması F12'dedir**; bugün pakete lisans dosyası
+gömülmez, indirilmez.
+
+İzlenecek yol okulzili'nin yaklaşımıdır:
+
+* Depo kökünde `THIRD_PARTY_LICENSES/` dizini bulunur. İçinde
+  `pystray-COPYING.txt` (GPLv3 metni; LGPLv3 onun üzerine kurulur),
+  `pystray-COPYING.LGPL.txt` ve `six-LICENSE.txt` yer alır. Dizin spec'te
+  `datas` ile olduğu gibi pakete kopyalanır.
+* Bir bağımlılık tablosu tutulur (okulzili'de `BAGIMLILIKLAR.md`): bileşen,
+  sürüm, kullanım ve lisans.
+* pystray'in kaynağı pakete girer. F12'de PyInstaller'ın PYZ arşivi yerine
+  pystray'i `.py` olarak toplaması (`module_collection_mode`) ya da kaynak
+  arşivinin pakete konması seçenekleri değerlendirilir.
+
+Önerilen F12 denetimi: `build.ps1` paketlenmiş dizinde lisans dosyalarını ve
+pystray kaynağını arar, bulamazsa derlemeyi durdurur.

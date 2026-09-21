@@ -17,6 +17,8 @@ içinde AYRI bir alt süreçte, gerçek bir yerel çöküşle sınanır.
 from __future__ import annotations
 
 import faulthandler
+import logging
+from collections.abc import Iterator
 
 import django
 import pytest
@@ -30,6 +32,31 @@ def pytest_configure(config: pytest.Config) -> None:
 @pytest.fixture(autouse=True)
 def _faulthandler_etkisiz(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(faulthandler, "enable", lambda *args, **kwargs: None)
+
+
+@pytest.fixture
+def kd_gunlugu() -> Iterator[list[logging.LogRecord]]:
+    """`kutuphane_defteri` ağacındaki günlük kayıtlarını toplar.
+
+    `caplog` yetmez: `configure_logging` üst günlükçüde `propagate=False` yapar
+    ve başka bir test onu çağırdıysa kayıtlar köke ulaşmaz.
+    """
+    kayitlar: list[logging.LogRecord] = []
+
+    class _Toplayici(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            kayitlar.append(record)
+
+    gunlukcu = logging.getLogger("kutuphane_defteri")
+    toplayici = _Toplayici(level=logging.DEBUG)
+    onceki_duzey = gunlukcu.level
+    gunlukcu.setLevel(logging.DEBUG)
+    gunlukcu.addHandler(toplayici)
+    try:
+        yield kayitlar
+    finally:
+        gunlukcu.removeHandler(toplayici)
+        gunlukcu.setLevel(onceki_duzey)
 
 
 if not settings.configured:

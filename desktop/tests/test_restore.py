@@ -108,8 +108,9 @@ def test_program_acikken_geri_yukleme_reddedilir(
     finally:
         ilk.release()
 
+    # Tepside yaşayan program "kapatılmaz", tepsiden Çık'la kapanır (§4.2-1, GA-11).
     assert kod == EXIT_ALREADY_RUNNING
-    assert "kapatın" in hatalar[0]
+    assert hatalar == ["Program tepside çalışıyor. Tepsideki simgeden Çık'ı seçip yeniden deneyin."]
 
 
 def test_yedekler_en_yeniden_eskiye_listelenir(tmp_path: Path) -> None:

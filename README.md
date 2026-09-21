@@ -54,8 +54,8 @@ toplamaz, arama terimlerini ve IP adreslerini kaydetmez.
 Tasarım ve faz planı: [docs/tasarim/2026-09-21-genel-tasarim.md](docs/tasarim/2026-09-21-genel-tasarim.md).
 Hedeflenen kurulum düzeni: [docs/kurulum.md](docs/kurulum.md).
 
-Masaüstü ve paketleme iskeleti kardeş proje Kelebek Sınav'dan, iş mantığı OYS
-(okulapp) kütüphane modülünden türetilmektedir.
+Masaüstü ve paketleme iskeleti aynı ailenin sınav programından (kardeş depo), iş
+mantığı OYS (okulapp) kütüphane modülünden türetilmektedir.
 
 ## Lisans
 

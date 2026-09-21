@@ -464,7 +464,8 @@ class TestInterruptedTransition:
 
 
 # ---------------------------------------------------------------------------
-# Eşleştirme / arama davranışı (KS: ad şifreli, okul no düz — TB3)
+# Eşleştirme / arama davranışı (ad şifreli, okul no düz — KS'deki TB3; okul no'nun
+# şifrelenip kör indeksle eşleşmesi F1 işi, tasarım T14)
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 class TestLookupBehaviour:

@@ -13,6 +13,18 @@
 > W8) ve `--pdf-duman` örnek belgeyi paketteki evrak şablonundan
 > (`documents/base.html`) üretir. İlk koşuda aşağıdaki çek-listesi baştan
 > yürütülür.
+>
+> **F0 spike'ı, kapatma olayı (21.09.2026, geliştirme makinesi, Windows 11 +
+> Inno Setup 6):** `kutuphane-defteri.iss` yerel ISCC ile derlendi. Aynı `[Code]`
+> işlevleriyle derlenen düşük yetkili bir deneme kurucusu, gerçek
+> `desktop/lock.py` + `desktop/instance_channel.py` modüllerini çalıştıran bir
+> taklit programa karşı koşturuldu: `KutuphaneDefteri.Kapat` gönderildi,
+> program düzenli kapandı, kurucu iki mutex'in kaybolmasını süreç bitene dek
+> bekledi (~1 sn). Kapanmayan programda 30 sn beklendi, ileti (bastırılmış)
+> İptal'e düştü, süreç zorla sonlandırılmadı. İkinci açılış kilidi reddetti ve
+> `Goster` olayını teslim etti. **Doğrulanmayanlar:** gerçek yönetici kurucu ve
+> kaldırıcı, UAC'ye başka hesabın (BTR) kimliği girilmesi (W12), gerçek paketli
+> exe (tepsi, pencere, oturum kapanışı) — W11-W14 ve çek-listesi 7-12.
 
 ## 1. Doğrulanması gereken varsayımlar
 
@@ -28,6 +40,10 @@
 | W8 | `PrivilegesRequired=admin` ile `{autopf}` = `Program Files`; paketlenmiş program kurulum dizinine hiçbir şey YAZMAZ (fontconfig önbelleği `%LOCALAPPDATA%` altında) | `kutuphane-defteri.iss`, `rthook_kd.py` | standart hesapta açılışta "erişim reddedildi" ya da PDF'te font hatası; `KD_RTHOOK_UYARI` günlüğe düşer |
 | W9 | pywebview `edgechromium` arka ucu `pythonnet` ile çalışıyor ve PyInstaller ile paketleniyor | `requirements-paketleme.txt`, spec | pencere açılmaz; `webview/lib/*.dll` elle `datas`'a eklenmesi gerekebilir |
 | W10 | Kurulum sonrası "programı çalıştır" adımı yükseltilmemiş (kurucuyu başlatan) hesapla koşar | `kutuphane-defteri.iss` `[Run]` (`runasoriginaluser`) | veri UAC'ye kimliği girilen hesabın (BTR) profilinde oluşur |
+| W11 | Kapatma olayı kurucu VE kaldırıcıda çalışır: `InitializeSetup`/`InitializeUninstall` → `OpenEventW`+`SetEvent` (kernel32 `external`) → `CheckForMutexes` döngüsü; `AppMutex` yok (tasarım §4.2-5). Derleme ve düşük yetkili spike geçti (yukarıdaki not) | `kutuphane-defteri.iss` `[Code]`, `desktop/instance_channel.py` | kurucu program açıkken dosyaların üzerine yazar ("dosya kullanımda") ya da her seferinde 30 sn bekleyip "tepsiden Çık'ı seçin" der; kurulum günlüğünde (`/LOG`) "Kapatma olayı açılamadı" satırı |
+| W12 | UAC'ye BAŞKA hesabın (BTR) kimliği girildiğinde yükseltilmiş kurucu masa hesabının olay ve mutex'lerini açabilir: nesneler SY/BA/IU/OW'ye açık güvenlik tanımlayıcısıyla kurulur | `desktop/win32_objects.py` (`MUTEX_SDDL`, `EVENT_SDDL`) | varsayılan tanımlayıcıda olduğu gibi erişim reddi: kurucu "program kapalı" sanıp kuruluma geçer (Inno `OpenMutex` reddini "yok" okur); günlükte "Kapatma olayı açılamadı" |
+| W13 | pystray 0.19.5 `run_detached` + `icon.stop()`: "Çık" sonrası süreç tamamen biter; tepsi simgesi (.ico → Pillow) görünür, sol tık pencereyi açar | `desktop/tray.py` | Çık'tan sonra süreç Görev Yöneticisi'nde kalır, mutex'ler bırakılmaz (kurucu 30 sn bekler); simge boş ya da hiç yok |
+| W14 | Windows oturum kapanışı/yeniden başlatma programca engellenmez: pywebview `closing` iptalinin ardından bağlanan .NET `FormClosing` işleyicisi `WindowsShutDown`/`TaskManagerClosing`'de iptali geri alır (pythonnet `+=` ve `str(CloseReason)` adı) | `desktop/window.py` (`install_session_end_passthrough`) | Windows kapanırken "Bu uygulama kapanmayı engelliyor" ekranı; sonraki açılışta günlükte "Önceki oturum beklenmedik biçimde kapandı" |
 
 ## 2. Bilinen Windows tuzakları (kodda karşılığı var)
 
@@ -61,11 +77,33 @@
 5. **WebView2 kurulu OLMAYAN** bir makinede/VM'de aç → Türkçe yönlendirme
    diyaloğu çıksın, program çıkış kodu 7 versin (beyaz pencere DEĞİL).
 6. Taşınabilir zip'i USB'den çalıştır → MotW olmadığından SmartScreen çıkmamalı.
-7. Program açıkken ikinci kez çalıştır → "zaten çalışıyor" (çıkış kodu 2).
-8. Program açıkken kurucuyu yeniden çalıştır → `AppMutex` "programı kapatın"
-   iletisini göstersin (geçici davranış; kapatma olayı gelince değişir).
-9. Defender/AV taraması: onedir olduğu için imzasız da olsa engellenmemeli;
-   engellenirse `docs/kurulum.md`'deki istisna adımları güncellenmeli.
+7. **Tepsi (F0 spike, W13):** çarpı pencereyi gizler, program kapanmaz; tepsi
+   simgesi görünür; sol tık ve "Pencereyi aç" pencereyi geri getirir (önce
+   küçültülmüşse eski boyutuyla); "Çık" sonrası `kutuphane-defteri.exe`
+   Görev Yöneticisi'nde KALMAZ.
+8. **İkinci açılış:** program tepsideyken kısayoldan yeniden aç → pencere öne
+   gelir, ikinci süreç 0 koduyla çıkar, ileti kutusu çıkmaz. "Yedekten Geri
+   Yükle" kısayolu → "Program tepside çalışıyor. Tepsideki simgeden Çık'ı seçip
+   yeniden deneyin." ve çıkış kodu 2.
+9. **F0 spike: kapatma olayı — CI Windows derlemesinde ve elle kurulum/kaldırmada
+   doğrulanacak (W11, W12).** Program tepsideyken (pencere gizli) kurucuyu
+   yeniden çalıştır → program ≤30 sn içinde kendiliğinden düzenli kapanır ve
+   kurulum sürer; aynısı Denetim Masası'ndan kaldırmada. Kurucuyu kütüphane
+   masası hesabında başlatıp UAC'ye BTR kimliği girerek de dene (W12). Program
+   kapanmazsa "Kütüphane Defteri hâlâ çalışıyor…" iletisi, Yeniden Dene/İptal;
+   süreç zorla sonlandırılMAZ. `/LOG` ile koşturulursa günlükte "Kapatma olayı
+   gönderildi." ve "Program düzenli kapandı." satırları görünür.
+10. **Temiz kapanış işareti (T15):** "Çık" sonrası
+    `%LOCALAPPDATA%\KutuphaneDefteri\data\temiz-kapanis.json` VAR; program
+    Görev Yöneticisi'nden sonlandırılınca YOK ve sonraki açılışta
+    `logs\uygulama.log`'da "Önceki oturum beklenmedik biçimde kapandı" satırı.
+11. **Oturum kapanışı (W14):** program tepsideyken Windows'u yeniden başlat ya
+    da oturumu kapat → kapanış engellenmez; sonraki açılışta günlükte "Önceki
+    oturum düzenli kapanmış."
+12. `--autotest` çıkış kodu 0 ve `uygulama.log`'da "Temiz kapanış işareti
+    yazıldı." (duman testi; pencere ve tepsi açılmaz).
+13. Defender/AV taraması: onedir olduğu için imzasız da olsa engellenmemeli;
+    engellenirse `docs/kurulum.md`'deki istisna adımları güncellenmeli.
 
 ## 4. Sonraki sürüm (v2) için
 

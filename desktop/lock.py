@@ -1,44 +1,55 @@
-"""Tek-instance kilidi (tasarım §4.2) + Inno AppMutex sinyali (geçici).
+"""Tek-instance kilidi + kurucuya görünen mutex'ler + ikinci açılış sinyali (tasarım §4.2).
 
 İki kopya aynı SQLite dosyasına yazarsa WAL kilitleri yüzünden kullanıcı
 "veritabanı kilitli" hatalarıyla karşılaşır; daha kötüsü iki pencere aynı dosya
-üzerinde farklı işlem yapar. Bu yüzden ikinci kopya **pencere açmadan** Türkçe
-mesajla çıkar.
+üzerinde farklı işlem yapar. Bu yüzden ikinci kopya **pencere açmaz**.
 
 Yöntem işletim sistemine göre değişir ama sözleşme aynıdır: bir dosya açılır ve
 üzerine paylaşımsız kilit konur. Kilit süreç ölünce (çökme dahil) işletim sistemi
 tarafından bırakılır — bayat PID dosyası sorunu yaşanmaz.
 
-Windows'ta kilide EK olarak `KutuphaneDefteri` adlı bir mutex açılır (tasarım §2.3).
-Tek-instance güvencesi ondan GELMEZ — o yalnız Inno Setup'ın `AppMutex`
-denetimine "program açık" sinyalidir: mutex olmadan kurucu, çalışan programın
-`_internal/` ağacını üzerine yazmaya çalışırdı (DD iskeletinde bu sinyal hiç
-üretilmiyordu; iss'teki denetim ölüydü).
+**`acquire()` hata fırlatmaya devam eder** (§4.2-1, denetim GA-11). İkinci
+açılışta pencereyi öne getirme ayrı yardımcıdadır (`signal_running_instance`) ve
+yalnız bayraksız normal açılışta çağrılır (`desktop/main.py`). Sinyal kilide
+gömülseydi `--geri-yukle` kısayolu hiçbir şey yapmadan 0 koduyla çıkar,
+kullanıcı geri yüklemenin yapıldığını sanardı.
 
-GEÇİCİ: tasarım §4.2-5'e göre kurucu `AppMutex` kullanmayacak; tepside yaşayan
-programı `KutuphaneDefteri.Kapat` adlı olayla kapatıp `KutuphaneDefteri` ve
-`Global\\KutuphaneDefteri` mutex'lerinin serbest kalmasını bekleyecek. O akış
-(F0 spike'ı) gelene dek bu mutex Inno'nun `AppMutex` denetimini besler.
+**Mutex'ler (yalnız Windows).** Kilide EK olarak `KutuphaneDefteri` ve
+`Global\\KutuphaneDefteri` açılır (§2.3). Tek-instance güvencesi onlardan GELMEZ;
+kurucu ve kaldırıcı programı `KutuphaneDefteri.Kapat` olayıyla kapattıktan sonra
+ikisinin de kaybolmasını bekler (§4.2-5; Inno `AppMutex` kullanılmaz). `Global\\`
+biçimi başka bir Windows oturumunda (hızlı kullanıcı değiştirme) çalışan kopyayı
+da görünür kılar. Güvenlik tanımlayıcısının gerekçesi `desktop/win32_objects.py`.
+
+Mutex tanıtıcıları `release()`'te KAPATILMAZ: süreç tamamen bitene dek yaşarlar
+(Inno belgesinin önerisi). Erken kapatılsalardı kurucu, çıkmakta olan sürecin
+exe'sinin ve `_internal/` dosyalarının üzerine yazmaya kalkardı.
 """
 
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from types import TracebackType
-from typing import BinaryIO
+from typing import BinaryIO, Final
 
+from desktop import instance_channel, win32_objects
 from desktop.errors import AlreadyRunningError
 
-#: Inno `AppMutex` ile birebir aynı olmak ZORUNDA (packaging/windows/kutuphane-defteri.iss;
-#: AppMutex geçicidir — modül docstring'i).
-APP_MUTEX_NAME = "KutuphaneDefteri"
+#: Kurucudaki `[Code]` beklemesiyle birebir aynı olmak ZORUNDA
+#: (packaging/windows/kutuphane-defteri.iss → `ProgramMutexleri`).
+APP_MUTEX_NAME: Final = "KutuphaneDefteri"
+GLOBAL_APP_MUTEX_NAME: Final = "Global\\KutuphaneDefteri"
+APP_MUTEX_NAMES: Final = (APP_MUTEX_NAME, GLOBAL_APP_MUTEX_NAME)
 
 _MESSAGE = "Kütüphane Defteri zaten çalışıyor. Aynı anda yalnızca bir kopya açılabilir."
 _HINT = (
-    "Açık olan pencereyi kullanın. Pencere görünmüyorsa oturumu kapatıp açın veya "
-    "görev yöneticisinden programı sonlandırın."
+    "Program tepside çalışıyor olabilir: saatin yanındaki simgeden 'Pencereyi aç'ı "
+    "seçin. Simge görünmüyorsa oturumu kapatıp açın."
 )
+
+MutexCreator = Callable[[str], int | None]
 
 
 def _apply_exclusive_lock(handle: BinaryIO) -> None:
@@ -67,12 +78,24 @@ def _release_lock(handle: BinaryIO) -> None:
 
 
 class SingleInstanceLock:
-    """Kilit dosyası üzerinden tek-instance güvencesi (context manager)."""
+    """Kilit dosyası üzerinden tek-instance güvencesi (context manager).
 
-    def __init__(self, path: Path) -> None:
+    `platform` ve `mutex_creator` yalnız testler içindir: Windows mutex yolu
+    Linux'ta sahte yaratıcıyla sınanır.
+    """
+
+    def __init__(
+        self,
+        path: Path,
+        *,
+        platform: str = sys.platform,
+        mutex_creator: MutexCreator | None = None,
+    ) -> None:
         self._path = path
         self._handle: BinaryIO | None = None
-        self._mutex_handle: int | None = None
+        self._platform = platform
+        self._mutex_creator: MutexCreator = mutex_creator or win32_objects.create_mutex
+        self._mutex_handles: list[int] = []
 
     @property
     def path(self) -> Path:
@@ -82,6 +105,11 @@ class SingleInstanceLock:
     def handle(self) -> BinaryIO | None:
         """Kilit alınmışsa açık dosya tanıtıcısı, aksi halde None (test/teşhis)."""
         return self._handle
+
+    @property
+    def mutex_handles(self) -> tuple[int, ...]:
+        """Açılmış mutex tanıtıcıları (Windows; süreç ömrünce kalır)."""
+        return tuple(self._mutex_handles)
 
     def acquire(self) -> None:
         """Kilidi alır; başka bir kopya çalışıyorsa `AlreadyRunningError` yükseltir."""
@@ -97,39 +125,31 @@ class SingleInstanceLock:
             handle.close()
             raise AlreadyRunningError(_MESSAGE, hint=_HINT) from exc
         self._handle = handle
-        self._mutex_handle = self._create_app_mutex()
+        self._open_app_mutexes()
 
-    @staticmethod
-    def _create_app_mutex() -> int | None:
-        """Windows'ta kurucuya görünen adlandırılmış mutex'i açar (yalnız sinyal).
+    def _open_app_mutexes(self) -> None:
+        """Windows'ta iki mutex'i açar. Başarısızlık açılışı DURDURMAZ.
 
-        Başarısızlık açılışı DURDURMAZ: tek-instance güvencesi dosya kilidinde;
-        mutex yalnız Inno'nun "program açıkken yükseltme yapma" denetimi içindir.
+        Tek-instance güvencesi dosya kilidindedir; mutex'ler yalnız kurucunun
+        "program kapandı mı" beklemesi içindir. Aynı süreçte ikinci `acquire`
+        (testler, geri yükleme) var olan tanıtıcıları korur.
         """
-        if sys.platform != "win32":
-            return None
-        try:
-            import ctypes
-
-            handle = int(ctypes.windll.kernel32.CreateMutexW(None, False, APP_MUTEX_NAME))
-            return handle or None
-        except (OSError, AttributeError):
-            return None
-
-    @staticmethod
-    def _close_app_mutex(handle: int) -> None:
-        if sys.platform != "win32":
+        if self._platform != "win32" or self._mutex_handles:
             return
-        import ctypes
-
-        ctypes.windll.kernel32.CloseHandle(handle)
+        for name in APP_MUTEX_NAMES:
+            try:
+                mutex = self._mutex_creator(name)
+            except OSError:
+                mutex = None
+            if mutex is not None:
+                self._mutex_handles.append(mutex)
 
     def release(self) -> None:
-        """Kilidi bırakır. Kilit alınmamışsa sessizce döner."""
-        mutex = self._mutex_handle
-        self._mutex_handle = None
-        if mutex is not None:
-            self._close_app_mutex(mutex)
+        """Dosya kilidini bırakır. Kilit alınmamışsa sessizce döner.
+
+        Mutex'ler bilerek açık kalır (modül belgesi): süreç bitince işletim
+        sistemi kapatır.
+        """
         handle = self._handle
         if handle is None:
             return
@@ -153,3 +173,35 @@ class SingleInstanceLock:
         tb: TracebackType | None,
     ) -> None:
         self.release()
+
+
+def is_instance_running(lock_path: Path) -> bool:
+    """Bu veri dizinini kullanan bir kopya çalışıyor mu? (kilidi alıp hemen bırakır)
+
+    Kilidi kendisi tutmayan teşhis kipleri içindir (`--pdf-duman`): çalışan kopya
+    varsa 2 koduyla çıkarlar (§4.2-1). Mutex açmaz.
+    """
+    probe = SingleInstanceLock(lock_path, platform="")
+    try:
+        probe.acquire()
+    except AlreadyRunningError:
+        return True
+    probe.release()
+    return False
+
+
+def signal_running_instance(
+    root: Path,
+    *,
+    sender: Callable[[Path, str], bool] | None = None,
+) -> bool:
+    """Çalışan kopyadan penceresini göstermesini ister; ulaştıysa `True` (§4.2-1).
+
+    YALNIZ bayraksız normal açılışta çağrılır. `False` dönerse (çalışan kopya
+    kanal kurmamış, ör. `--autotest`) çağıran "zaten çalışıyor" iletisine düşer.
+    """
+    send = sender or instance_channel.send_command
+    try:
+        return send(root, instance_channel.COMMAND_SHOW)
+    except OSError:
+        return False

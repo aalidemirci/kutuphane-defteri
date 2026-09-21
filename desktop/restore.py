@@ -37,6 +37,9 @@ from desktop.paths import AppPaths, resolve_backend_dir
 
 logger = logging.getLogger("kutuphane_defteri.restore")
 
+#: Program tepside yaşar (U3): "kapatın" değil, tepsiden Çık (tasarım §4.2-1, GA-11).
+RUNNING_MESSAGE = "Program tepside çalışıyor. Tepsideki simgeden Çık'ı seçip yeniden deneyin."
+
 # Kendi açtığımız konsol penceresi süreçle birlikte kapanır; sonucu okutmak
 # için çıkışta Enter beklenir. Yalnız AllocConsole başarılıysa True olur.
 _allocated = False
@@ -47,12 +50,17 @@ class RestoreCliError(Exception):
 
 
 def run_restore(paths: AppPaths, args: argparse.Namespace) -> int:
-    """Geri yükleme kipinin girişi; tek-instance kilidini kendisi alır."""
+    """Geri yükleme kipinin girişi; tek-instance kilidini kendisi alır.
+
+    Çalışan kopya varsa pencere öne getirilmez (sinyal yalnız bayraksız normal
+    açılışındır): ileti gösterilir ve 2 koduyla çıkılır.
+    """
     lock = SingleInstanceLock(paths.lock_path)
     try:
         lock.acquire()
     except AlreadyRunningError as exc:
-        show_error(exc.title, "Geri yükleme için önce açık olan programı kapatın.")
+        logger.warning("Geri yükleme reddedildi: program çalışıyor.")
+        show_error(exc.title, RUNNING_MESSAGE)
         return exc.exit_code
     try:
         return _restore_flow(paths, args)

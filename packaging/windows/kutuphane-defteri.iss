@@ -12,8 +12,11 @@
 ;     şey yazmaz (veri, günlük ve fontconfig önbelleği %LOCALAPPDATA% altında).
 ;   * WebView2 Runtime yoksa gömülü Evergreen kurucusu sessizce çalıştırılır.
 ;   * Kullanıcı verisi kurulum dizininde DEĞİLDİR; kaldırma veriyi silmez.
-;   * Güvenlik duvarı kuralı, otomatik başlatma görevi ve kapatma olayı
-;     (tasarım §4.2-5, §4.5, §5.7) sonraki fazların işidir; burada YOKTUR.
+;   * Program tepside yaşar (U3): kurucu ve kaldırıcı onu `KutuphaneDefteri.Kapat`
+;     adlı olayıyla DÜZENLİ kapatır ve iki mutex'in kaybolmasını bekler
+;     (tasarım §4.2-5; aşağıdaki [Code]). Inno `AppMutex` KULLANILMAZ.
+;   * Güvenlik duvarı kuralı ve otomatik başlatma görevi (tasarım §4.5, §5.7)
+;     sonraki fazların işidir; burada YOKTUR.
 ;
 ;  Derleme (build.ps1 çağırır):
 ;    iscc /DAppVersion=2026.9.0 /DNumericVersion=2026.9.0.0 ^
@@ -66,13 +69,10 @@ WizardStyle=modern
 SetupIconFile={#AppIconSource}
 UninstallDisplayIcon={app}\{#AppExeName}
 UninstallDisplayName={#AppName}
-; GEÇİCİ (KS'den devralındı): program çalışırken yükseltme yapılmasın (SQLite
-; dosyası açık olabilir). Ad, uygulamanın açtığı mutex'le BİREBİR aynı olmak
-; zorunda (desktop/lock.py::APP_MUTEX_NAME). Tasarım §2.3 ve §4.2-5 AppMutex'i
-; KULLANMAZ: program tepside yaşayacağı için kurucu/kaldırıcı `[Code]` içinden
-; `KutuphaneDefteri.Kapat` adlı olayı gönderip mutex'lerin serbest kalmasını
-; bekleyecek. O akış F0 spike'ında doğrulanınca bu satır kaldırılır.
-AppMutex=KutuphaneDefteri
+; `AppMutex` bilerek YOK (tasarım §2.3, §4.2-5, denetim GA-15): Inno onu hem
+; kurucuda hem kaldırıcıda denetler; kaldırıcı kapatma olayını gönderecek aşamaya
+; gelmeden "programı kapatın" iletisinde beklerdi. Program çalışırken yükseltme
+; yapılmaması güvencesi `[Code]` içindeki `ProgramiKapat`tadır.
 
 [Languages]
 Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl"
@@ -123,6 +123,99 @@ turkish.FinishedLabel=Kurulum tamamlandı.%n%nVerileriniz (kütüphane kayıtlar
 [Code]
 const
   WebView2ClientId = '{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}';
+  // Kapatma yolu (tasarım §4.2-5). Adlar programla BİREBİR aynı olmak zorunda:
+  // desktop/instance_channel.py::QUIT_EVENT_NAME ve desktop/lock.py::APP_MUTEX_NAMES
+  // (eşitliği desktop/tests/test_lock.py ve test_instance_channel.py denetler).
+  KapatOlayi = 'KutuphaneDefteri.Kapat';
+  ProgramMutexleri = 'KutuphaneDefteri,Global\KutuphaneDefteri';
+  EVENT_MODIFY_STATE = $0002;
+  KapanmaSuresiMs = 30000;
+  BeklemeAdimiMs = 250;
+
+// kernel32 — Pascal Script'in kendi işlevleriyle çakışmasın diye `Kd` önekli.
+// Program olayı ve mutex'leri Yöneticiler'e açık bir güvenlik tanımlayıcısıyla
+// kurar (desktop/win32_objects.py): UAC'de BTR kimliğiyle yükseltilmiş kurucu
+// masa hesabının nesnelerini böylece açabilir.
+function KdOpenEvent(DesiredAccess: DWORD; InheritHandle: BOOL; Name: String): THandle;
+  external 'OpenEventW@kernel32.dll stdcall';
+function KdSetEvent(Event: THandle): BOOL;
+  external 'SetEvent@kernel32.dll stdcall';
+function KdCloseHandle(Handle: THandle): BOOL;
+  external 'CloseHandle@kernel32.dll stdcall';
+
+function ProgramCalisiyor: Boolean;
+begin
+  Result := CheckForMutexes(ProgramMutexleri);
+end;
+
+// Program tepsideyse `Kapat` olayını işaretler; program düzenli kapanır
+// (pencere, tepsi, iki sunucu, temiz kapanış işareti). Olay yoksa (program
+// başka bir Windows oturumunda ya da henüz açılıyor) yalnız beklenir.
+procedure KapatmaOlayiniGonder;
+var
+  Olay: THandle;
+begin
+  Olay := KdOpenEvent(EVENT_MODIFY_STATE, False, KapatOlayi);
+  if Olay = 0 then
+  begin
+    Log('Kapatma olayı açılamadı (program bu oturumda dinlemiyor olabilir).');
+    Exit;
+  end;
+  if KdSetEvent(Olay) then
+    Log('Kapatma olayı gönderildi.')
+  else
+    Log('Kapatma olayı işaretlenemedi.');
+  KdCloseHandle(Olay);
+end;
+
+// İki mutex de kaybolana dek (süreç tamamen bitene dek) en çok `Sure` ms bekler.
+function ProgramKapanincaDekBekle(Sure: Integer): Boolean;
+var
+  Gecen: Integer;
+begin
+  Gecen := 0;
+  while ProgramCalisiyor and (Gecen < Sure) do
+  begin
+    Sleep(BeklemeAdimiMs);
+    Gecen := Gecen + BeklemeAdimiMs;
+  end;
+  Result := not ProgramCalisiyor;
+end;
+
+// Kurucu ve kaldırıcının ortak kapısı. Süreç ZORLA sonlandırılmaz: program
+// 30 sn'de kapanmazsa kullanıcıdan tepsiden Çık'ı seçmesi istenir; Yeniden Dene
+// olayı yeniden gönderir, İptal kurulumu/kaldırmayı durdurur.
+function ProgramiKapat: Boolean;
+begin
+  Result := True;
+  while ProgramCalisiyor do
+  begin
+    KapatmaOlayiniGonder;
+    if ProgramKapanincaDekBekle(KapanmaSuresiMs) then
+    begin
+      Log('Program düzenli kapandı.');
+      Exit;
+    end;
+    if SuppressibleMsgBox('Kütüphane Defteri hâlâ çalışıyor.' + #13#10#13#10 +
+        'Saatin yanındaki tepsi simgesine sağ tıklayıp Çık''ı seçin, ' +
+        'sonra Yeniden Dene''ye basın.', mbError, MB_RETRYCANCEL, IDCANCEL) <> IDRETRY then
+    begin
+      Log('Program kapanmadı; kullanıcı vazgeçti.');
+      Result := False;
+      Exit;
+    end;
+  end;
+end;
+
+function InitializeSetup: Boolean;
+begin
+  Result := ProgramiKapat;
+end;
+
+function InitializeUninstall: Boolean;
+begin
+  Result := ProgramiKapat;
+end;
 
 // Evergreen WebView2 Runtime kayıt defterinde 'pv' sürümüyle kendini bildirir.
 // (Aynı üç anahtar desktop/window.py'de de denetlenir — tek doğruluk kaynağı

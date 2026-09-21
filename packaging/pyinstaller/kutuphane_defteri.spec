@@ -37,6 +37,11 @@ bağımlılık eklenirse buraya da eklenmelidir; unutulursa paket "geliştirmede
 bu dosyadaki `hiddenimports` → `giris.py::RUNTIME_MODULES`. Paketlenmiş ikilide
 `--bagimlilik-duman` her modülü gerçekten import eder; `--pdf-duman` evrak
 şablonlarını ve WeasyPrint zincirini her derlemede sınar.
+
+Yalnız masaüstünde gereken Windows paketleri (pystray, six, pythonnet) ayrı
+zincirdedir: `packaging/requirements-paketleme.txt` (`sys_platform == "win32"`)
+→ aşağıdaki `if WINDOWS:` bloğu → `giris.py::DESKTOP_RUNTIME_MODULES`.
+`test_spec_kapsami.py` iki zinciri de platform işaretine göre denetler.
 """
 
 from __future__ import annotations
@@ -72,6 +77,10 @@ trees = [
     Tree(str(REPO / "backend" / "config"), prefix="backend/config", excludes=_TREE_EXCLUDES),
     Tree(str(REPO / "backend" / "apps"), prefix="backend/apps", excludes=_TREE_EXCLUDES),
     Tree(str(REPO / "backend" / "shared"), prefix="backend/shared", excludes=_TREE_EXCLUDES),
+    # Ağ Kataloğu WSGI (tasarım §4.1): Django uygulaması değildir, apps/ altında
+    # olmadığı için ayrı ağaç. Eksik kalırsa paketli exe'de katalog açılmaz
+    # (--autotest bunu 6 koduyla yakalar).
+    Tree(str(REPO / "backend" / "katalog"), prefix="backend/katalog", excludes=_TREE_EXCLUDES),
     # Evrak şablonları — `--pdf-duman` taban şablonu buradan işleyerek sınar.
     Tree(str(REPO / "backend" / "templates"), prefix="backend/templates", excludes=_TREE_EXCLUDES),
     # Derlenmiş SPA — `frontend/dist` boşsa paket açılır ama beyaz ekran verir;
@@ -146,12 +155,31 @@ hiddenimports += collect_submodules("openpyxl")
 # xlrd alt modüllerini (biffh, compdoc, formula…) kendiliğinden toplamaz.
 hiddenimports += collect_submodules("xlrd")
 hiddenimports += collect_submodules("pypdf")
+# Etiketteki isteğe bağlı QR (tasarım §7.2). Backend kaynak olarak paketlendiği
+# için segno'yu statik çözümleyici görmez; `segno.helpers` gibi paketin kendi
+# `__init__`'inin import etmediği alt modüller de ancak böyle toplanır.
+hiddenimports += collect_submodules("segno")
 hiddenimports += collect_submodules("webview")
 if WINDOWS:
     # pywebview edgechromium arka ucu .NET köprüsünü `import clr` ile açar;
     # pythonnet zinciri eksik paketlenirse pencere HİÇ açılmaz ve ne --autotest
-    # ne --pdf-duman bunu yakalar (NOTLAR.md W9 — açık sigorta).
+    # ne --pdf-duman bunu yakalar (NOTLAR.md W9 — açık sigorta). `clr`
+    # `giris.py::DESKTOP_RUNTIME_MODULES`'ta; `--bagimlilik-duman` onu da açar.
     hiddenimports += ["clr", "pythonnet"]
+    # Masaüstü zinciri: Windows tepsisi (tasarım §4.5, denetim UY-6; okulzili
+    # `okul-zili.spec` emsali). Paketler `requirements-paketleme.txt`'te
+    # `sys_platform == "win32"` işaretiyle durur; çalışma anı kapısı
+    # `giris.py::DESKTOP_RUNTIME_MODULES`.
+    # - pystray arka ucunu `import pystray` anında `importlib` ile seçer
+    #   (`pystray._win32`); statik çözümleyici bunu göremez → bütün alt modüller.
+    #   Linux/macOS arka uçları (`_xorg`, `_gtk`, `_darwin`, `_appindicator`)
+    #   Windows'ta çözülemez; PyInstaller bunları yalnız uyarı olarak yazar.
+    # - `six.moves` çalışma anında üretilen sanal modüldür; pystray `_base` ve
+    #   `_win32` onu import eder.
+    # - `PIL.ImageDraw` tepsi simgesi çizimi; `PIL.IcoImagePlugin` pystray'in
+    #   Windows'ta simgeyi geçici ICO dosyasına yazması (`serialized_image`) için.
+    hiddenimports += collect_submodules("pystray")
+    hiddenimports += ["six", "six.moves", "PIL.ImageDraw", "PIL.IcoImagePlugin"]
 hiddenimports += [
     # WeasyPrint zinciri
     "pydyf",

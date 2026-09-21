@@ -7,12 +7,13 @@ başka bir program tarafından tutuluyor olabilir; `port=0` ile işletim sistemi
 boş port seçtirilir ve gerçek port `effective_port`'tan okunur (önce boş port
 arayıp sonra ona bağlanmak yarış koşulu yaratırdı).
 
-`host="127.0.0.1"`: yönetim sunucusu LAN'dan erişilemez. Yerel erişim sigortası
-ayrıca `session_guard.SessionTokenMiddleware`'dedir.
+`host="127.0.0.1"`: yönetim sunucusu LAN'dan erişilemez. `BackgroundServer`
+`DEFAULT_HOST` dışında bir adres verilirse kurulmaz (§4.1 değişmezi, koruma testi
+§5.10-1). Yerel erişim sigortası ayrıca `session_guard.SessionTokenMiddleware`'dedir.
 
-Yerel ağ kataloğu ayrı bir dinleyicidir (desktop/katalog_server.py, F5): kendi
-waitress örneği ve Django'dan bağımsız WSGI uygulamasıyla çalışır; yönetim
-API'si hiçbir koşulda ağa açılmaz (tasarım §2.2 T3, §4.1 değişmezleri).
+Ağ Kataloğu ayrı bir dinleyicidir (desktop/katalog_server.py): kendi waitress
+örneği ve Django'dan bağımsız WSGI uygulamasıyla çalışır; yönetim API'si hiçbir
+koşulda ağa açılmaz (tasarım §2.2 T3, §4.1 değişmezleri).
 
 waitress istek (erişim) logu üretmez; `logging_setup` bunu ayrıca susturur.
 """
@@ -80,6 +81,10 @@ class BackgroundServer:
         threads: int = DEFAULT_THREADS,
         server_factory: ServerFactory | None = None,
     ) -> None:
+        if host != DEFAULT_HOST:
+            # Yönetim API'si (öğrenci verisi) hiçbir koşulda ağa açılmaz; ağa açılan
+            # tek dinleyici Ağ Kataloğudur (`desktop/katalog_server.py`).
+            raise ValueError(f"Yönetim sunucusu yalnız {DEFAULT_HOST} adresinde dinler.")
         self._app = app
         self._host = host
         self._threads = threads

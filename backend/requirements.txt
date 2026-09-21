@@ -35,6 +35,14 @@ weasyprint==68.0
 # ---------- PDF Okuma / Bölme ----------
 pypdf==6.14.2
 
+# ---------- Barkod / QR ----------
+# segno: etiketteki isteğe bağlı QR (tasarım §7.2; içerik URL değil rakamdır).
+# Saf Python, kendi bağımlılığı yok; sürüm OYS ile aynı. 1D barkod için dış paket
+# YOKTUR: Code128-C bağımlılıksız `shared/barcode128.py`'dedir (T8).
+# Paket zinciri (dört halka, CLAUDE.md §2-10): spec `collect_submodules("segno")`
+# + `giris.py::RUNTIME_MODULES` + `test_spec_kapsami.py::DAGITIM_IMPORT_ESLEME`.
+segno==1.6.1
+
 # ---------- Masaüstü Uygulama Altyapısı ----------
 # NOT (F9 temizliği): `filetype` ve `platformdirs` F0 brifinden geldi ama hiç
 # bağlanmadı — soru PDF doğrulaması %PDF imzası + A4 ölçüsüyle (services.py),

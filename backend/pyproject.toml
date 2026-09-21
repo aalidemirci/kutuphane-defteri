@@ -42,8 +42,8 @@ django_settings_module = "config.settings"
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["test_*.py", "*_test.py"]
-addopts = "--reuse-db --strict-markers -ra --cov=apps --cov=shared --cov-report=term-missing:skip-covered --cov-report=xml --cov-fail-under=75"
-testpaths = ["apps", "shared"]
+addopts = "--reuse-db --strict-markers -ra --cov=apps --cov=shared --cov=katalog --cov-report=term-missing:skip-covered --cov-report=xml --cov-fail-under=75"
+testpaths = ["apps", "shared", "katalog"]
 
 [tool.coverage.run]
 branch = true

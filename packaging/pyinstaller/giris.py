@@ -8,8 +8,9 @@ Ek olarak paketlenmiş sürümde **iki teşhis kipi** sunar:
 
     kutuphane-defteri --bagimlilik-duman
 
-Bu kip `RUNTIME_MODULES`'ın tamamını import eder ve hiddenimports zincirinin
-çalışma anı kapısıdır: spec'e eklenmesi unutulan bir bağımlılık burada, derleme
+Bu kip `RUNTIME_MODULES`'ın tamamını (Windows'ta ek olarak masaüstü zincirinin
+`DESKTOP_RUNTIME_MODULES`'ını) import eder ve hiddenimports zincirinin çalışma
+anı kapısıdır: spec'e eklenmesi unutulan bir bağımlılık burada, derleme
 sırasında yakalanır — sahada değil. Aşağıdaki PDF kipi yalnız WeasyPrint
 zincirini sınadığı için tek başına yetmez (KS'de `xlrd` eklendiğinde görüldü:
 yeni bağımlılığın pakete girip girmediğini sınayan kapı yoktu).
@@ -91,7 +92,33 @@ RUNTIME_MODULES: tuple[str, ...] = (
     "pypdf",
     "whitenoise",
     "waitress",
+    "segno",
 )
+
+#: Yalnız Windows masaüstü kabuğunun ihtiyaç duyduğu modüller (masaüstü zinciri;
+#: tasarım §4.5, denetim UY-6).
+#:
+#: Bu paketler backend'in değil kabuğun bağımlılığıdır; `backend/requirements.txt`
+#: yerine `packaging/requirements-paketleme.txt`'te `sys_platform == "win32"`
+#: işaretiyle durur. `RUNTIME_MODULES`'a yazılsalardı requirements eşitlik testi
+#: kırılır, hiç yazılmasalardı `--bagimlilik-duman` onları sınamazdı. Kip bu
+#: listeyi yalnız Windows'ta import eder; eşleşmeyi
+#: `packaging/tests/test_spec_kapsami.py` platform işaretine göre denetler.
+#:
+#: - `pystray`: import anında platform arka ucunu (`pystray._win32`) ve onun
+#:   `six.moves` bağımlılığını yükler; üst paketi açmak bu zinciri sınar.
+#: - `six`: pystray'in uyumluluk katmanı.
+#: - `clr` (pythonnet): WebView2 köprüsü. Import .NET çalışma zamanını ve
+#:   `Python.Runtime.dll`'i yükler; paketten eksikse pencere HİÇ açılmaz
+#:   (NOTLAR.md W9) ve bunu başka hiçbir duman kipi yakalamaz.
+DESKTOP_RUNTIME_MODULES: tuple[str, ...] = (
+    "pystray",
+    "six",
+    "clr",
+)
+
+#: `DESKTOP_RUNTIME_MODULES`'ın sınandığı platform (`sys.platform` değeri).
+DESKTOP_PLATFORM = "win32"
 
 # Duman testinin aradığı metin — Türkçe'ye özgü altı harf, hem büyük hem küçük.
 TURKISH_SAMPLE = "ĞÜŞİÖÇ ığüşiöç"
@@ -283,8 +310,15 @@ def run_pdf_smoke(target: Path) -> int:
     return 0
 
 
-def run_import_smoke() -> int:
-    """`RUNTIME_MODULES`'ın tamamını import eder; 0 = hepsi pakette.
+def smoke_modules(platform: str = sys.platform) -> tuple[str, ...]:
+    """`--bagimlilik-duman`'ın import edeceği modüller: backend + (Windows'ta) masaüstü."""
+    if platform == DESKTOP_PLATFORM:
+        return RUNTIME_MODULES + DESKTOP_RUNTIME_MODULES
+    return RUNTIME_MODULES
+
+
+def run_import_smoke(platform: str = sys.platform) -> int:
+    """`smoke_modules(platform)`'un tamamını import eder; 0 = hepsi pakette.
 
     Django ayağa KALDIRILMAZ, veri dizinine dokunulmaz — yalnız modül çözümü
     sınanır. Bir modül eksikse paket "geliştirmede çalışıyor, kurulumda
@@ -292,8 +326,9 @@ def run_import_smoke() -> int:
     """
     import importlib
 
+    moduller = smoke_modules(platform)
     eksik: list[str] = []
-    for modul in RUNTIME_MODULES:
+    for modul in moduller:
         try:
             importlib.import_module(modul)
         except Exception as hata:  # noqa: BLE001 — teşhis kipi: her hata rapor edilir
@@ -306,7 +341,7 @@ def run_import_smoke() -> int:
         _write("Düzeltme: packaging/pyinstaller/kutuphane_defteri.spec → hiddenimports.")
         return EXIT_IMPORT_SMOKE_FAILED
 
-    _write(f"Bağımlılık duman testi başarılı: {len(RUNTIME_MODULES)} modül çözüldü.")
+    _write(f"Bağımlılık duman testi başarılı: {len(moduller)} modül çözüldü.")
     return 0
 
 
@@ -330,6 +365,15 @@ def run(argv: Sequence[str] | None = None) -> int:
             return EXIT_IMPORT_SMOKE_FAILED
 
     if PDF_SMOKE_FLAG in args:
+        # Tepside çalışan kopya varken duman testi aynı veri dizinine dokunmasın
+        # (tasarım §4.2-1: bayraklı kipler çalışan kopya bulursa 2 koduyla çıkar).
+        from desktop.errors import EXIT_ALREADY_RUNNING
+        from desktop.lock import is_instance_running
+        from desktop.paths import resolve_app_paths
+
+        if is_instance_running(resolve_app_paths().lock_path):
+            _write("HATA: program tepside çalışıyor; tepsiden Çık'ı seçip yeniden deneyin.")
+            return EXIT_ALREADY_RUNNING
         try:
             return run_pdf_smoke(_smoke_target(args))
         except Exception as error:  # noqa: BLE001 — teşhis kipi: her hata rapor edilir
