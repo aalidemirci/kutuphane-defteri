@@ -1,20 +1,18 @@
 """Öğrenci listesi Excel/pano okuma: başlık tespiti, esnek (fuzzy) sütun eşleme,
 satır ayrıştırma + normalize.
 
-DD `excel_veli.py` (OYS kökenli) kalıbından SADELEŞTİRİLDİ: TCKN, veli
-(anne/baba ad-telefon, Veli Kim) ve doğum tarihi sütunları KALDIRILDI — kelebek
-bu verileri toplamaz (tasarım §5). e-Okul sınıf/okul listesi ihracının ya da
+KS'den alındı (KS bunu DD `excel_veli.py` kalıbından sadeleştirmişti): TCKN,
+veli (anne/baba ad-telefon, Veli Kim) ve doğum tarihi sütunları YOKTUR — program
+bu verileri toplamaz (tasarım §6.1). e-Okul sınıf/okul listesi ihracının ya da
 uygulama şablonunun şu üçlüsü yeter: Sınıf/Şube · Okul No · Ad-Soyad.
 
-**Cinsiyet** 20.09.2026'da eklendi (kullanıcı kararı) ve KRİTİK DEĞİLDİR:
-e-Okul sınıf listesindeki "Cinsiyeti" sütunu varsa okunur, yoksa aktarım
-aynen çalışır. Tek kullanım yeri kız/erkek ayrışması yerleştirme kuralıdır;
-hiçbir evraka, dışa aktarıma ya da ekran rozetine basılmaz. Pansiyon durumu
-hâlâ OKUNMAZ.
+e-Okul sınıf listesindeki **"Cinsiyeti"** ve "Pansiyon Durum" sütunları
+OKUNMAZ (veri en aza indirme — tasarım §6.1): eşleme sözlüğünde karşılıkları
+yoktur, dosyada bulunmaları aktarımı etkilemez.
 
-Sınıf ayrıştırması okul türünden gelen seviye kümesiyle parametriktir; küme
-`parse_rows`'a dışarıdan verilir (parser saf kalır, DB'siz test edilir).
-DB eşleştirme/yazma `services/imports.py`'dadır.
+Sınıf ayrıştırması seviye kümesiyle parametriktir; küme `parse_rows`'a
+dışarıdan verilir (parser saf kalır, DB'siz test edilir). DB eşleştirme/yazma
+`services/imports.py`'dadır.
 
 Girdi biçimi: `read_sheet` hem `.xlsx` (openpyxl) hem Excel 97-2003 `.xls`
 (xlrd) okur — e-Okul ihraçları ikincisidir. e-Okul'a ÖZGÜ yerleşim (şube
@@ -80,11 +78,6 @@ COLUMN_SYNONYMS: dict[str, list[str]] = {
     # (excel_personel'deki aynı ders), yoksa 'Öğrenci Soyadı' student_first'e düşer.
     "student_last": ["ogrenci soyadi", "soyadi"],
     "student_first": ["ogrenci adi", "adi"],
-    # Cinsiyet KRİTİK DEĞİL (20.09.2026): sütun yoksa aktarım aynen çalışır,
-    # yalnız kız/erkek ayrışması kuralı "joker" öğrenciyle karşılaşır. Sıra
-    # burada da önemlidir — anahtar hiçbir başka alanın anahtarını İÇERMEZ,
-    # ama eşleme ALT DİZE aradığı için testle sabitlenir.
-    "gender": ["cinsiyeti", "cinsiyet"],
 }
 
 # Bu sütunlar olmadan içe aktarma yapılamaz (ParserError).
@@ -130,8 +123,6 @@ class ParsedRow:
     raw_student_name: str = ""
     student_first: str = ""
     student_last: str = ""
-    #: "K" / "E" / "" (bilinmiyor). Yalnız kız/erkek ayrışması kuralı içindir.
-    gender: str = ""
 
 
 def _match_field_for_header(norm: str) -> str | None:
@@ -208,12 +199,12 @@ def parse_rows(
     rows: list[list[Any]],
     mapping: ColumnMapping,
     *,
-    valid_levels: Collection[int] = (9, 10, 11, 12),
+    valid_levels: Collection[int] = normalize.GRADE_LEVELS,
 ) -> list[ParsedRow]:
     """Başlık satırından sonraki veri satırlarını çözümler (boş satırlar atlanır).
 
-    `valid_levels` okul türünden gelir (`SchoolConfig.grade_levels`) — parser
-    saf kalsın diye parametredir; servis katmanı doldurur.
+    `valid_levels` okul yapılandırmasından gelir (`SchoolConfig.grade_levels`)
+    — parser saf kalsın diye parametredir; servis katmanı doldurur.
     """
     f = mapping.fields
     parsed: list[ParsedRow] = []
@@ -242,7 +233,6 @@ def parse_rows(
                 raw_student_name=raw_name,
                 student_first=first,
                 student_last=last,
-                gender=normalize.normalize_gender(_cell(cells, f.get("gender"))),
             )
         )
     return parsed

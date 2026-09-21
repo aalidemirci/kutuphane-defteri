@@ -12,17 +12,17 @@ Ortam değişkenleri:
     KD_DLL_DIR     → (Windows) `dll_kapanisi.py` ile üretilmiş DLL klasörü.
 
 --------------------------------------------------------------------------
-TASARIMDAN BİLİNÇLİ SAPMA — backend KAYNAK OLARAK paketlenir
+BİLİNÇLİ SEÇİM — backend KAYNAK OLARAK paketlenir
 --------------------------------------------------------------------------
-Tasarım §5.1 `collect_submodules('apps')` diyor, yani Django uygulamalarının
-donmuş arşive gömülmesini. BURADA BAŞKA YOL SEÇİLDİ: `backend/` ağacı KAYNAK
-DOSYA olarak pakete kopyalanır, çalışma anında `desktop.django_bootstrap`
-`sys.path`'e ekler. Gerekçeler:
+Alışılmış yol `collect_submodules('apps')` ile Django uygulamalarını donmuş
+arşive gömmektir. BURADA BAŞKA YOL SEÇİLDİ (KS'den devralındı): `backend/`
+ağacı KAYNAK DOSYA olarak pakete kopyalanır, çalışma anında
+`desktop.django_bootstrap` `sys.path`'e ekler. Gerekçeler:
 
 1. `desktop/paths.py::resolve_backend_dir()` paketin içinde gerçek bir
    `backend/config/settings.py` DOSYASI arar ve bulamazsa açılışı durdurur.
    Donmuş arşive gömülen modüller diskte dosya olarak görünmez; kabuk yeniden
-   yazılmadan donmuş yol çalışmaz (kabuk bu görevin dosya sahipliği dışında).
+   yazılmadan donmuş yol çalışmaz.
 2. Django'nun göç yükleyicisi, şablon yükleyicisi ve uygulama keşfi dosya
    sistemine dayanır; kaynak ağaç bu üç mekanizmayı da tuzaksız çalıştırır
    ("migrations dinamik import tuzağı" bu yolda hiç doğmaz).
@@ -32,8 +32,11 @@ BEDELİ: diskteki kaynak kodu PyInstaller'ın statik çözümleyicisi TARAMAZ.
 Dolayısıyla backend'in kullandığı ÜÇÜNCÜ TARAF paketler bu dosyada AÇIKÇA
 `hiddenimports` olarak sayılmak ZORUNDADIR. Backend'e yeni bir üçüncü taraf
 bağımlılık eklenirse buraya da eklenmelidir; unutulursa paket "geliştirmede
-çalışıyor, kurulumda çöküyor" hatası verir. `--pdf-duman` duman testi bu sınıf
-hataların en tehlikelisini (WeasyPrint zinciri) her derlemede yakalar.
+çalışıyor, kurulumda çöküyor" hatası verir. Zincirin dört halkası:
+`backend/requirements.txt` → `packaging/tests/test_spec_kapsami.py` eşlemesi →
+bu dosyadaki `hiddenimports` → `giris.py::RUNTIME_MODULES`. Paketlenmiş ikilide
+`--bagimlilik-duman` her modülü gerçekten import eder; `--pdf-duman` evrak
+şablonlarını ve WeasyPrint zincirini her derlemede sınar.
 """
 
 from __future__ import annotations
@@ -69,14 +72,8 @@ trees = [
     Tree(str(REPO / "backend" / "config"), prefix="backend/config", excludes=_TREE_EXCLUDES),
     Tree(str(REPO / "backend" / "apps"), prefix="backend/apps", excludes=_TREE_EXCLUDES),
     Tree(str(REPO / "backend" / "shared"), prefix="backend/shared", excludes=_TREE_EXCLUDES),
+    # Evrak şablonları — `--pdf-duman` taban şablonu buradan işleyerek sınar.
     Tree(str(REPO / "backend" / "templates"), prefix="backend/templates", excludes=_TREE_EXCLUDES),
-    # MEB ders çizelgesi verisi (K5): settings.CATALOG_DIR paketli kipte
-    # backend ağacının YANINDAKİ data/ klasörünü arar — tembel tohum buradan okur.
-    Tree(
-        str(REPO / "data" / "ders-cizelgeleri"),
-        prefix="data/ders-cizelgeleri",
-        excludes=_TREE_EXCLUDES,
-    ),
     # Derlenmiş SPA — `frontend/dist` boşsa paket açılır ama beyaz ekran verir;
     # `packaging/linux/build.sh` bunu derleme öncesi denetler.
     Tree(str(REPO / "frontend" / "dist"), prefix="frontend/dist", excludes=_TREE_EXCLUDES),
@@ -94,7 +91,7 @@ datas: list[tuple[str, str]] = [
 # ---------------------------------------------------------------------------
 # Fontlar + Windows font yapılandırması
 # ---------------------------------------------------------------------------
-# Tasarım §5.1: Windows'ta YALNIZ gömülü DejaVu kullanılır. Linux'ta sistem
+# "fontconfig tuzağı": Windows'ta YALNIZ gömülü DejaVu kullanılır. Linux'ta sistem
 # fontu (.deb bağımlılığı `fonts-dejavu-core`) kullanılır; yine de fontlar
 # pakete konur ki taşınabilir `.tar.gz` kurulumunda font eksikse metin
 # bozulmasın — Linux'ta `FONTCONFIG_FILE` AYARLANMAZ, bu kopya atıl durur.
@@ -124,7 +121,7 @@ if WINDOWS:
     if not dll_dir.is_dir():
         raise SystemExit(
             f"DLL klasörü yok: {dll_dir}. Önce `python packaging/windows/dll_kapanisi.py` "
-            "çalıştırın (tasarım §5.1)."
+            "çalıştırın."
         )
     dll_files = sorted(dll_dir.glob("*.dll"))
     if not dll_files:
@@ -162,31 +159,27 @@ hiddenimports += [
     "cssselect2",
     "tinyhtml5",
     "pyphen",
+    # WeasyPrint evraktaki raster görselleri Pillow ile çözer; Pillow biçim
+    # eklentilerini çalışma anında dizeyle yüklediği için açıkça sayılır.
     "PIL",
     "PIL.Image",
-    # Öğrenci fotoğrafı (19.09.2026): e-Okul Excel'indeki JPEG/PNG çözülür,
-    # JPEG'e yeniden kodlanır. Pillow eklentileri çalışma anında dizeyle yükler;
-    # `--pdf-duman` JPEG'in PDF'e gerçekten gömüldüğünü ayrıca sınar.
     "PIL.JpegImagePlugin",
     "PIL.PngImagePlugin",
     "brotli",
     "zopfli",
-    # Opsiyonel açılış parolası (F5-D5): Argon2id cffi ikilisi `argon2` ile
-    # otomatik toplanmayabilir; eksikse parola kurulu kurulumlar HİÇ açılmaz ve
-    # `--pdf-duman` bunu yakalamaz (ayrı zincir).
+    # Yönetici parolası (Argon2id) + alan şifrelemesi (Fernet): cffi ikilisi
+    # `argon2` ile otomatik toplanmayabilir; eksikse kilit HİÇ açılmaz ve
+    # `--pdf-duman` bunu yakalamaz (ayrı zincir — `--bagimlilik-duman` yakalar).
     "argon2",
     "argon2.low_level",
     "_argon2_cffi_bindings",
+    "cryptography",
     "cryptography.fernet",
     # Backend yardımcıları
     "sqlparse",
     # Django SQLite arka ucu (dizeyle import edilir)
     "django.db.backends.sqlite3",
     "django.db.backends.sqlite3.base",
-    # F5-D5 (opsiyonel parola) için: alan şifrelemesi + Argon2id
-    "cryptography",
-    "cryptography.fernet",
-    "argon2",
 ]
 
 if WITH_QT:
@@ -254,7 +247,7 @@ exe = EXE(  # noqa: F821 — PyInstaller global'i
     bootloader_ignore_signals=False,
     strip=False,
     # UPX KAPALI: sıkıştırılmış çalıştırılabilirler antivirüs yanlış-pozitifinin
-    # başlıca kaynağıdır (tasarım §9 "AV false-positive").
+    # başlıca kaynağıdır.
     upx=False,
     # Windows'ta konsol penceresi açılmaz. Teşhis çıktısı günlük dosyasına ve
     # süreç çıkış koduna düşer (`--autotest`, `--pdf-duman`).

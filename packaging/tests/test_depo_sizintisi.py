@@ -60,8 +60,8 @@ def test_bicimsiz_degerler_elenir(deger: str) -> None:
         "bir/yer/ogrenciler.xlsx",
         "bir/yer/kayit.csv",
         "yedek/okul.kdbak",
-        "backend/data/ks.sqlite3",
-        "backend/data/media/foto.txt",
+        "backend/data/kd.sqlite3",
+        "backend/data/media/ek.txt",
         "media/ekran.txt",
     ],
 )
@@ -75,7 +75,7 @@ def test_sentetik_fixturelar_muaf() -> None:
         assert depo_sizintisi.yol_riskli_mi(yol) is False
 
 
-@pytest.mark.parametrize("yol", ["backend/apps/okul/models.py", "README.md", "data/ders.md"])
+@pytest.mark.parametrize("yol", ["backend/apps/okul/models.py", "README.md", "data/ornek.md"])
 def test_masum_yollar_gecer(yol: str) -> None:
     assert depo_sizintisi.yol_riskli_mi(yol) is False
 

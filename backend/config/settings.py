@@ -1,10 +1,13 @@
 """Kütüphane Defteri — Django ayarları (tek dosya, tek kullanıcılı masaüstü uygulama).
 
 OYS'nin (Okul Yönetim Sistemi) çok-kullanıcılı/ağ-merkezli ayar dosyasının
-(config/settings/{base,dev,prod}.py) aksine burada TEK dosya yeterli: bu program
-LAN/internet servisi sunmaz, tek kullanıcı tek bilgisayarda çalıştırır. Sırlar
-`django-environ` OLMADAN doğrudan `os.environ` üzerinden okunur (bağımlılık
-yüzeyi küçük tutulur — görev brifi).
+(config/settings/{base,dev,prod}.py) aksine burada TEK dosya yeterli: program tek
+bilgisayarda çalışır ve bu ayarların sürdüğü YÖNETİM sunucusu yalnız 127.0.0.1'i
+dinler (girişsiz yüzey bu varsayıma dayanır). Yerel ağa açılan tek yüzey salt-okur
+Ağ Kataloğu'dur; o Django istek zincirini, bu ayarların MIDDLEWARE/URLconf'unu
+ve ORM'yi KULLANMAYAN ayrı bir dinleyicidir (desktop/katalog_server.py — tasarım
+§4.1, §5). Sırlar `django-environ` OLMADAN doğrudan `os.environ` üzerinden okunur
+(bağımlılık yüzeyi küçük tutulur).
 """
 
 from __future__ import annotations
@@ -64,8 +67,6 @@ INSTALLED_APPS = [
     "apps.okul",
 ]
 
-)
-
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -120,12 +121,15 @@ DATABASES = {
             # WAL: eşzamanlı okuma/yazım; foreign_keys: Django varsayılan olarak
             # açar ama açıkça belirtmek niyeti netleştirir; busy_timeout: kilit
             # çakışmasında 5 sn bekle (masaüstü uygulamada tek süreç ama arka
-            # plan görevi olabilir); synchronous=NORMAL: WAL ile güvenli + hızlı.
+            # plan görevi olabilir). synchronous=FULL (tasarım T15): WAL+NORMAL
+            # tutarlıdır ama elektrik kesintisinde son işlemleri geri alabilir;
+            # dolaşım masasında bu "kitap çıktı, kaydı yok" demektir. Dolaşımın
+            # yazma hacmi düşük olduğundan her commit diske senkronlanır.
             "init_command": (
                 "PRAGMA journal_mode=WAL;"
                 "PRAGMA foreign_keys=ON;"
                 "PRAGMA busy_timeout=5000;"
-                "PRAGMA synchronous=NORMAL;"
+                "PRAGMA synchronous=FULL;"
             ),
             "transaction_mode": "IMMEDIATE",
         },
@@ -161,7 +165,7 @@ WHITENOISE_ROOT = FRONTEND_DIR
 WHITENOISE_INDEX_FILE = True
 
 # ---------------------------------------------------------------------------
-# Medya (soru belgesi PDF'leri ve kitapçık ZIP'leri — veri dizini altında)
+# Medya (kullanıcı dosyaları — veri dizini altında)
 # ---------------------------------------------------------------------------
 MEDIA_ROOT = DATA_DIR / "media"
 

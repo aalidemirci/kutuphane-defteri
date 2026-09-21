@@ -13,19 +13,13 @@ interface NavItem {
   icon: string;
 }
 
-// Gezinme etiketi KISA addır; sıra bilinçlidir (değiştirme — kullanıcı kas
-// hafızası). Ana sayfanın tek adı "Genel Bakış"tır: eskiden gezinmede "Panel",
-// üst çubukta "Genel bakış", sayfada "Panel" yazıyordu (docs/sozluk.md §4).
+// Gezinme etiketi KISA addır (docs/sozluk.md §4). Ana sayfanın tek adı "Genel
+// Bakış"tır (gezinme + üst çubuk + h1). Kütüphane ekranları (katalog, dolaşım,
+// sayım…) fazlarıyla birlikte eklenir. Liste `App.test.tsx` "kabuk gezinmesi"
+// testiyle sabittir.
 const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Genel Bakış", icon: "space_dashboard" },
-  { to: "/takvimler", label: "Takvimler", icon: "calendar_month" },
-  { to: "/oturumlar", label: "Oturumlar", icon: "event_seat" },
-  // 19.09.2026: yeni öğe oturumların ARDINA eklendi — mevcut öğelerin birbirine
-  // göre sırası değişmedi (iş akışı: oturum → yoklama → mazeret).
-  { to: "/mazeret", label: "Mazeret Takibi", icon: "assignment_late" },
-  { to: "/salonlar", label: "Salonlar", icon: "meeting_room" },
   { to: "/kisiler", label: "Kişiler", icon: "group" },
-  { to: "/dersler", label: "Ders Havuzu", icon: "menu_book" },
   { to: "/ayarlar", label: "Ayarlar", icon: "settings" },
   { to: "/kilavuz", label: "Kılavuz", icon: "auto_stories" },
 ];
@@ -34,12 +28,7 @@ const NAV_ITEMS: NavItem[] = [
 // Düzeninde tam ad. Bir sayfanın h1'i değişirse burası da değişir; eşlik
 // `App.test.tsx` "üst çubuk başlığı" testiyle korunur.
 const PAGE_TITLES: Array<[prefix: string, title: string]> = [
-  ["/takvimler", "Sınav Takvimleri"],
-  ["/oturumlar", "Sınav Oturumları"],
-  ["/mazeret", "Mazeret Takibi"],
-  ["/salonlar", "Sınav Salonları"],
   ["/kisiler", "Kişiler"],
-  ["/dersler", "Ders Havuzu"],
   ["/ayarlar", "Ayarlar"],
   ["/kilavuz", "Kullanım Kılavuzu"],
   ["/hakkinda", "Hakkında ve Lisans"],
@@ -214,8 +203,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
         <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-5 sm:px-5 lg:px-7 lg:py-6">
           <div className="mx-auto w-full max-w-[100rem]">
-            {/* F8: GitHub sürüm denetimi — kabuk remount olmadığından denetim
-                uygulama ömründe bir kez koşar; çevrimdışıysa sessizce gizli. */}
+            {/* Güncelleme bandı açılışta DENETİM YAPMAZ (tasarım T11): yalnız
+                Ayarlar → Güncelleme'deki elle denetimin sonucunu gösterir.
+                Açılışta `/updates/` isteği çıkmadığı `App.test.tsx`'te sabittir. */}
             <UpdateBanner />
             {children}
           </div>

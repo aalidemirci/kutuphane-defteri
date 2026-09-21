@@ -1,4 +1,4 @@
-"""Veri dizini çözümü testleri (tasarım §5.3 — veri exe DIŞINDA)."""
+"""Veri dizini çözümü testleri (tasarım §4.5 — veri exe DIŞINDA)."""
 
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ def test_linux_xdg_env_degiskenleri_onceliklidir() -> None:
     assert result.cache == Path("/onbellek") / name
 
 
-def test_ks_app_home_tum_yerlesimi_gecersiz_kilar(tmp_path: Path) -> None:
+def test_kd_app_home_tum_yerlesimi_gecersiz_kilar(tmp_path: Path) -> None:
     """Test/CI için tek env değişkeniyle tam override (`--autotest` bunu kullanır)."""
     result = resolve_app_paths(
         environ={paths_mod.ENV_APP_HOME: str(tmp_path), "HOME": "/home/ali"},

@@ -1,10 +1,10 @@
 // Kurulum kapısı (DD kalıbı) — programın İLK açılışında kullanıcıyı kurulum
-// sihirbazına kilitler. Kütüphane Defteri authsuz olduğu için "giriş ekranı" yoktur;
-// kapıyı açan tek koşul kurulumun tamamlanmış olmasıdır: okul künyesi girilmeden
-// resmî evrak antedi boş çıkar, aktif ders yılı olmadan da sınav takvimi ve
-// oturum kayıtları yanlış yıla yazılır. Bu yüzden `GET /setup/status/`
-// `setup_completed=false` döndüğü sürece "/kurulum" dışındaki her rota oraya
-// yönlendirilir.
+// sihirbazına kilitler. Kapıyı açan tek koşul kurulumun tamamlanmış olmasıdır:
+// okul künyesi girilmeden resmî evrak antedi boş çıkar, aktif ders yılı olmadan
+// da şube kataloğu ve e-Okul aktarımı yanlış yıla bağlanır. Bu yüzden
+// `GET /setup/status/` `setup_completed=false` döndüğü sürece "/kurulum"
+// dışındaki her rota oraya yönlendirilir. (Kilit ekranı ayrı kapıdır:
+// `modules/guvenlik/GuvenlikKapisi`, bu kapının dışında durur.)
 //
 // Kapı FAIL-OPEN'dır: durum okunamazsa (backend kapalı/uç hata) kullanıcı içeri
 // alınır — sihirbaz da aynı backend'e muhtaç olduğundan kilitlemek çıkmaz sokak olurdu.

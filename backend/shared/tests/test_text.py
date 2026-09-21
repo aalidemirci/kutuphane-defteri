@@ -1,8 +1,4 @@
-"""Türkçe metin yardımcıları (`shared/text.py`) — tek uygulama, iki tüketici.
-
-`tr_title` ders adlarında (`dersler.text.titlecase_tr`) ve branştan üretilen zümre
-adlarında (`okul.services.departments`) kullanılır; kural burada sabitlenir.
-"""
+"""Türkçe metin yardımcıları (`shared/text.py`) — tek uygulama; kural burada sabitlenir."""
 
 from __future__ import annotations
 

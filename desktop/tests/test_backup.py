@@ -1,6 +1,6 @@
-"""Otomatik yedek testleri (tasarım §5.3 — `Connection.backup()`, 14 gün rotasyon).
+"""Otomatik yedek testleri (tasarım §4.2 — `Connection.backup()`, 14 gün rotasyon).
 
-K9 iki kip: parolalı kurulumda (yedekleme.json var) yedekler şifreli, parolasız
+KS K9 iki kip: parolalı kurulumda (yedekleme.json var) yedekler şifreli, parolasız
 kipte DÜZ `.kdbak` alınır — hiçbir kipte atlanmaz. Yardımcılar kapsayıcının
 başındaki MAGIC'e bakarak iki biçimi de açar.
 """
@@ -270,13 +270,13 @@ def test_eski_duz_yedek_sifrelenir_ve_duz_kopya_silinir(tmp_path: Path) -> None:
     assert _satir_sayisi(target) == 3
 
 
-# ------------------------------------------------------------- iki kip (K9)
+# ---------------------------------------------------------- iki kip (KS K9)
 
 
 def test_serialize_olmayan_sqlite_ile_yedek_alinir(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Pardus 21/bullseye: libsqlite3 3.34 `Connection.serialize` sunmaz (F9).
+    """Pardus 21/bullseye: libsqlite3 3.34 `Connection.serialize` sunmaz (KS F9).
 
     Geçici-dosya yedek yolu da tutarlı görüntü üretmeli ve artık bırakmamalı.
     """
@@ -292,7 +292,7 @@ def test_serialize_olmayan_sqlite_ile_yedek_alinir(
 
 
 def test_parolasiz_kipte_gunluk_yedek_duz_alinir(tmp_path: Path) -> None:
-    """K9 düzeltmesi: anahtar yoksa yedek ATLANMAZ, düz `.kdbak` yazılır."""
+    """KS K9 düzeltmesi: anahtar yoksa yedek ATLANMAZ, düz `.kdbak` yazılır."""
     db = tmp_path / "db.sqlite3"
     _db_olustur(db, sifreli=False)
 

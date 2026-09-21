@@ -1,15 +1,11 @@
-// Kişiler sayfası (DD kalıbından KS'ye) — öğrenci ve öğretmen sicillerinin tek
-// ekranı. Sicil sekmelerinde arama/filtre + sayfalama, Dialog içinde elle
+// Kişiler sayfası (DD kalıbı) — öğrenci ve öğretmen sicillerinin tek ekranı.
+// Sicil sekmelerinde arama/filtre + sayfalama, Dialog içinde elle
 // ekleme-düzenleme-silme ve "e-Okul listesinden aktar" paneli (önizle → aktar).
-// KVKK (tasarım §5): TCKN, veli ve demografi alanları bu programda HİÇ YOKTUR —
-// kelebek dağıtımı ad-soyad + okul no + sınıf/şube üçlüsüyle çalışır.
-//
-// Üçüncü sekme (20.09.2026) BEP kapsamındaki öğrenciler listesidir
-// (`bep/BepListesiPaneli` — yalnız üyelik; tanı/açıklama alanı yoktur). Sekme
-// URL'de tutulur (`?tab=bep`): kılavuz doğrudan o sekmeye bağlanır.
+// KVKK (tasarım §6.1): TCKN, veli, cinsiyet ve fotoğraf bu programda HİÇ
+// YOKTUR — sicil ad-soyad + okul no + sınıf/şube ile yürür. Sekme URL'de
+// tutulur (`?tab=personel`): başka ekranlar doğrudan o sekmeye bağlanabilir.
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 
 import { useFormErrors } from "../../hooks/useFormErrors";
 import { useTabParam } from "../../hooks/useTabParam";
@@ -32,17 +28,14 @@ import { useSnackbar } from "../../ui/SnackbarProvider";
 import Tabs, { tabPanelProps } from "../../ui/Tabs";
 import type { TabItem } from "../../ui/Tabs";
 import TextField from "../../ui/TextField";
-import BepListesiPaneli from "../bep/BepListesiPaneli";
 import {
   importCounts,
   okulApi,
-  GENDER_LABELS,
   PERSONNEL_TEMPLATE_FILENAME,
   STUDENT_STATUS_TR,
   STUDENT_TEMPLATE_FILENAME,
 } from "../okul/api";
 import type {
-  Gender,
   GradeLevelOption,
   ImportInput,
   ImportReport,
@@ -52,20 +45,17 @@ import type {
   StudentStatus,
   StudentWriteBody,
 } from "../okul/api";
-import FotografPaneli from "./FotografPaneli";
 
 /** Sayfa başına kayıt (CLAUDE.md §7 — liste uçları limit/offset, varsayılan 25). */
 const PAGE_SIZE = 25;
 
 // TAB_KEYS[0] varsayılan sekmedir (useTabParam fallback) — başa yeni anahtar EKLEME.
-const TAB_KEYS = ["ogrenciler", "personel", "bep"] as const;
+const TAB_KEYS = ["ogrenciler", "personel"] as const;
 type TabKey = (typeof TAB_KEYS)[number];
 
 const TABS: TabItem[] = [
   { key: "ogrenciler", label: "Öğrenciler", icon: "school" },
   { key: "personel", label: "Öğretmenler", icon: "badge" },
-  // Sekme etiketi kısa, panel başlığı tam addır: "BEP kapsamındaki öğrenciler".
-  { key: "bep", label: "BEP", icon: "assignment_ind" },
 ];
 
 function emptyPage<T>(): Paginated<T> {
@@ -118,7 +108,6 @@ export default function KisilerPage() {
       <div {...tabPanelProps("kisiler", active)}>
         {active === "ogrenciler" && <OgrencilerSekmesi />}
         {active === "personel" && <PersonelSekmesi />}
-        {active === "bep" && <BepListesiPaneli />}
       </div>
     </div>
   );
@@ -327,9 +316,6 @@ function OgrencilerSekmesi() {
 
       <ImportPanel kind="students" onImported={reload} />
 
-      {/* e-Okul fotoğraflı liste (19.09.2026) — salon evrakı ve yoklama planı için. */}
-      <FotografPaneli />
-
       {(creating || editing !== null) && (
         <OgrenciFormDialog
           student={editing}
@@ -372,8 +358,6 @@ function OgrenciFormDialog({
     student?.class_level == null ? "" : String(student.class_level),
   );
   const [section, setSection] = useState(student?.class_section ?? "");
-  // Cinsiyet YALNIZ kız/erkek ayrışması kuralı içindir; liste sütunu YOKTUR.
-  const [gender, setGender] = useState<Gender>(student?.gender ?? "");
   const [status, setStatus] = useState<StudentStatus>(student?.status ?? "ACTIVE");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -396,7 +380,6 @@ function OgrenciFormDialog({
       student_number: studentNumber.trim(),
       class_level: level ? Number(level) : null,
       class_section: section.trim(),
-      gender,
       status,
     };
     setBusy(true);
@@ -418,7 +401,7 @@ function OgrenciFormDialog({
     // ne olduğu söylenir; ad yalnız bu onay penceresinde görünür (hata metni değil).
     const ok = await confirm({
       title: "Öğrenci sicilden silinsin mi?",
-      message: `“${student.full_name}” listelerden ve yeni sınav oturumlarından kalkar. Kayıt silinmez, gizlenir: geçmiş oturumların evrakı değişmez. Yanlışlıkla silerseniz öğrenciyi yeniden ekleyebilir ya da e-Okul listesini yeniden içe aktarabilirsiniz.`,
+      message: `“${student.full_name}” listelerden kalkar. Kayıt silinmez, gizlenir. Yanlışlıkla silerseniz öğrenciyi yeniden ekleyebilir ya da e-Okul listesini yeniden içe aktarabilirsiniz.`,
       confirmLabel: "Sil",
     });
     if (!ok) return;
@@ -498,17 +481,6 @@ function OgrenciFormDialog({
             onChange={(e) => setSection(e.target.value)}
             error={errors.class_section}
             helperText="Türkçe harfler korunur ve büyütülür (ş → Ş, i → İ). 10/I ile 10/İ ayrı şubelerdir."
-          />
-          <Select
-            label="Cinsiyet"
-            value={gender}
-            onChange={(e) => setGender(e.target.value as Gender)}
-            options={(Object.keys(GENDER_LABELS) as Gender[]).map((g) => ({
-              value: g,
-              label: GENDER_LABELS[g],
-            }))}
-            error={errors.gender}
-            helperText="Yalnız kız/erkek ayrışması yerleştirme kuralı için kullanılır; hiçbir belgeye basılmaz."
           />
           <Select
             label="Durum"
@@ -704,7 +676,7 @@ function PersonelFormDialog({
     if (!personnel) return;
     const ok = await confirm({
       title: "Öğretmen sicilden silinsin mi?",
-      message: `“${personnel.full_name}” listelerden ve gözetmen aday havuzundan kalkar. Kayıt silinmez, gizlenir: geçmiş görevlendirme yazıları değişmez. Yanlışlıkla silerseniz öğretmeni yeniden ekleyebilir ya da personel listesini yeniden içe aktarabilirsiniz.`,
+      message: `“${personnel.full_name}” listelerden kalkar. Kayıt silinmez, gizlenir. Yanlışlıkla silerseniz öğretmeni yeniden ekleyebilir ya da personel listesini yeniden içe aktarabilirsiniz.`,
       confirmLabel: "Sil",
     });
     if (!ok) return;
@@ -778,7 +750,6 @@ function PersonelFormDialog({
             { value: "1", label: "Aktif" },
             { value: "0", label: "Pasif" },
           ]}
-          helperText="Pasif öğretmen gözetmen aday havuzuna girmez."
         />
       </div>
     </Dialog>
@@ -794,7 +765,7 @@ type ImportKind = "students" | "personnel";
 const IMPORT_LABEL: Record<ImportKind, { title: string; hint: string; template: string }> = {
   students: {
     title: "e-Okul raporundan veya şablondan öğrenci aktar",
-    hint: "e-Okul Öğrenci İşlemleri → Raporlar → OOG01001R020 — Sınıf/Şube Öğrenci Listesi raporunu Excel olarak indirip DEĞİŞTİRMEDEN yükleyin: şube blokları, sınıf başlıkları ve sayaç dipnotları otomatik çözülür. Alternatif olarak uygulama şablonu (sınıf, okul numarası, ad, soyad) doldurulabilir ya da tablo doğrudan panoya yapıştırılabilir. Cinsiyet sütunu varsa okunur ve YALNIZ kız/erkek ayrışması yerleştirme kuralında kullanılır; hiçbir belgeye basılmaz. Pansiyon durumu okunmaz.",
+    hint: "e-Okul Öğrenci İşlemleri → Raporlar → OOG01001R020 — Sınıf/Şube Öğrenci Listesi raporunu Excel olarak indirip DEĞİŞTİRMEDEN yükleyin: şube blokları, sınıf başlıkları ve sayaç dipnotları otomatik çözülür. Alternatif olarak uygulama şablonu (sınıf, okul numarası, ad, soyad) doldurulabilir ya da tablo doğrudan panoya yapıştırılabilir. Cinsiyet ve pansiyon sütunları okunmaz.",
     template: STUDENT_TEMPLATE_FILENAME,
   },
   personnel: {
@@ -962,32 +933,11 @@ function ImportReportView({ report }: { report: ImportReport }) {
     { label: "Değişmeyen", value: counts.unchanged },
   ];
 
-  // Öğretmen aktarımı zümre kataloğu BOŞKEN branşlardan zümreleri de üretir
-  // (yalnız commit yanıtında gelir; katalog doluyken liste boştur).
-  const zumreler = "departments_created" in report ? (report.departments_created ?? []) : [];
-
   return (
     <div className="space-y-3 rounded-shape-md bg-surface-container-low p-4">
       <p className="text-title-small text-on-surface">
         {report.dry_run ? "Önizleme — hiçbir kayıt yazılmadı" : "İçe aktarma sonucu"}
       </p>
-
-      {zumreler.length > 0 && (
-        <div className="flex items-start gap-2 rounded-shape-sm bg-secondary-container px-4 py-3 text-body-medium text-on-secondary-container">
-          <Icon name="groups" size="lg" />
-          <span>
-            Öğretmenlerin branşlarından {formatNumber(zumreler.length)} zümre oluşturuldu:{" "}
-            {zumreler.join(", ")}. Zümre başkanlarını{" "}
-            <Link
-              to="/ayarlar?tab=zumreler"
-              className="font-medium underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              Ayarlar → Zümreler
-            </Link>{" "}
-            ekranından seçin; zümreleri orada birleştirebilir ya da kaldırabilirsiniz.
-          </span>
-        </div>
-      )}
 
       {report.already_imported && (
         <div className="flex items-start gap-2 rounded-shape-sm bg-tertiary-container px-4 py-3 text-body-medium text-on-tertiary-container">

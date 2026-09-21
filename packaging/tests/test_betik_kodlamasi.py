@@ -48,8 +48,8 @@ def test_ps1_dosyalari_gecerli_utf8() -> None:
 def test_debian_bakim_betikleri_ascii() -> None:
     """postinst/prerm `/bin/sh` (dash) ile koşar; ASCII kuralı kapıya bağlanır.
 
-    Kural packaging/README.md'de yazılıydı ama F0 kimlik değişimi başlıklara
-    Türkçe `ı` sokmuştu ve hiçbir test yakalamıyordu (F9 denetim bulgusu).
+    Kural packaging/README.md'de yazılıydı ama KS'nin F0 kimlik değişimi başlıklara
+    Türkçe `ı` sokmuştu ve hiçbir test yakalamıyordu (KS F9 denetim bulgusu).
     """
     for ad in ("postinst", "prerm"):
         yol = PAKET_KOKU / "linux" / ad

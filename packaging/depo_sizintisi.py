@@ -38,7 +38,7 @@ from pathlib import Path
 #: Kişisel veri taşıyan dosya biçimleri. e-Okul ihraçları BÜYÜK harfli `.XLS`
 #: iner; karşılaştırma casefold ile yapılır.
 RISKLI_UZANTILAR = frozenset(
-    {".xls", ".xlsx", ".xlsm", ".csv", ".sqlite", ".sqlite3", ".db", ".kdbak", ".ddbak"}
+    {".xls", ".xlsx", ".xlsm", ".csv", ".sqlite", ".sqlite3", ".db", ".kdbak"}
 )
 
 #: Gerçek verinin yaşadığı dizinler (`.gitignore` ile aynı liste).

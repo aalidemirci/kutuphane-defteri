@@ -1,16 +1,18 @@
-> **KS koşusu 29.08.2026 (run 33257833345 — TB5):** Windows yolu CI'da uçtan
-> uca YEŞİL (setup.exe + portable.zip üretildi, Türkçe PDF duman testi gömülü
-> DejaVu ile geçti, `--autotest` çıkış 0). Bu koşu W1 (ntldd paket adı) ve W5
-> (fwlink bağlantısı indirilebildi) varsayımlarını fiilen doğruladı; W2-W4 ve
-> W6-W8 duman testleri/derleme geçtiği için dolaylı doğrulandı. **W9 da
-> doğrulandı (30.08.2026, F9 yerel koşusu):** paketlenmiş exe Windows 11'de
-> gerçek pencere açtı — WebView2/pythonnet zinciri çalışıyor, SPA (kurulum
-> sihirbazı) render oldu, adım geçişleri ve MEB ders havuzu tohumu paket
-> içinden çalıştı; `KutuphaneDefteri` mutex'i süreç açıkken dışarıdan görüldü.
-> Kurucu düzeltmeler (PS1 BOM'suzluğu, MSYS2 python gölgelemesi, paket içi
-> fontconfig) DD şablonundan devralındı.
-
 # Windows paketleme — doğrulanmamış varsayımlar ve ilk koşu çek-listesi
+
+> **Durum (21.09.2026):** Bu hat kardeş proje KS'den devralındı ve orada
+> doğrulandı: KS'nin 29.08.2026 CI koşusu uçtan uca yeşildi (setup.exe +
+> portable.zip üretildi, Türkçe PDF duman testi gömülü DejaVu ile geçti,
+> `--autotest` çıkış 0; W1 ve W5 fiilen, W2-W4 ve W6-W8 dolaylı doğrulandı).
+> W9 da KS'de doğrulandı (30.08.2026): paketlenmiş exe Windows 11'de gerçek
+> pencere açtı, WebView2/pythonnet zinciri çalıştı. Kurucu düzeltmeler (PS1
+> BOM'u, MSYS2 python gölgelemesi, paket içi fontconfig) de KS'den gelir.
+>
+> **Kütüphane Defteri adıyla henüz hiçbir Windows koşusu yapılmadı.** Ayrıca
+> iki fark KS'de hiç sınanmadı: kurucu artık **yönetici kurulumudur** (U4,
+> W8) ve `--pdf-duman` örnek belgeyi paketteki evrak şablonundan
+> (`documents/base.html`) üretir. İlk koşuda aşağıdaki çek-listesi baştan
+> yürütülür.
 
 ## 1. Doğrulanması gereken varsayımlar
 
@@ -23,8 +25,9 @@
 | W5 | WebView2 Evergreen bootstrapper bağlantısı `https://go.microsoft.com/fwlink/p/?LinkId=2124703` | CI iş akışı | indirme 404; elle indirilip `packaging/windows/` altına konur |
 | W6 | Inno Setup 6.3+ `ArchitecturesAllowed=x64compatible` destekliyor | `kutuphane-defteri.iss` | derleme hatası → `x64` yazılır (6.2 ve öncesi) |
 | W7 | `compiler:Languages\Turkish.isl` Inno kurulumunda mevcut | `kutuphane-defteri.iss` | derleme hatası → dosya Inno deposundan indirilip eklenir |
-| W8 | `PrivilegesRequired=lowest` ile `{autopf}` = `%LOCALAPPDATA%\Programs` | `kutuphane-defteri.iss` | kurulum `Program Files`e gitmeye çalışıp yetki ister |
+| W8 | `PrivilegesRequired=admin` ile `{autopf}` = `Program Files`; paketlenmiş program kurulum dizinine hiçbir şey YAZMAZ (fontconfig önbelleği `%LOCALAPPDATA%` altında) | `kutuphane-defteri.iss`, `rthook_kd.py` | standart hesapta açılışta "erişim reddedildi" ya da PDF'te font hatası; `KD_RTHOOK_UYARI` günlüğe düşer |
 | W9 | pywebview `edgechromium` arka ucu `pythonnet` ile çalışıyor ve PyInstaller ile paketleniyor | `requirements-paketleme.txt`, spec | pencere açılmaz; `webview/lib/*.dll` elle `datas`'a eklenmesi gerekebilir |
+| W10 | Kurulum sonrası "programı çalıştır" adımı yükseltilmemiş (kurucuyu başlatan) hesapla koşar | `kutuphane-defteri.iss` `[Run]` (`runasoriginaluser`) | veri UAC'ye kimliği girilen hesabın (BTR) profilinde oluşur |
 
 ## 2. Bilinen Windows tuzakları (kodda karşılığı var)
 
@@ -36,7 +39,7 @@
   `sys.stderr`'i `None` kontrolüyle yazar. `desktop/logging_setup.py`
   `--autotest` kipinde `StreamHandler(sys.stderr)` kuruyor; Windows'ta bu
   handler sessizce hiçbir şey yazmaz (çökmez, ama Windows'ta `--autotest`
-  çıktısı YALNIZ günlük dosyasındadır — kabuk sahibine bildirildi).
+  çıktısı YALNIZ günlük dosyasındadır).
 * **MSHTML düşüşü.** pywebview WebView2 bulamazsa eski IE motoruna düşer ve
   React 18 çalışmaz (beyaz pencere). `desktop/window.py` motoru açıkça
   `edgechromium` verir ve registry denetimi yapar — düşüş KODLA ENGELLİ.
@@ -47,15 +50,21 @@
 
 1. `npm run build` → `frontend\dist` oluştu mu?
 2. `powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1`
-3. `dist\cikti\pdf-duman.pdf` açılıyor mu, "ĞÜŞİÖÇ ığüşiöç" düzgün görünüyor mu?
-   (Duman testi metni zaten pypdf ile doğrular; gözle de bakılmalı.)
-4. Kurulum paketini **yönetici olmayan** bir hesapta çalıştır → hiç UAC
-   istemesin, `%LOCALAPPDATA%\Programs\Kütüphane Defteri` altına kursun.
+3. `dist\cikti\pdf-duman.pdf` açılıyor mu; antet, "ĞÜŞİÖÇ ığüşiöç" ve "Sayfa
+   1 / 1" altlığı düzgün görünüyor mu? (Duman testi metni zaten pypdf ile
+   doğrular; gözle de bakılmalı.)
+4. Kurulum paketini **yönetici olmayan** bir hesapta (kütüphane masası hesabı)
+   çalıştır → UAC yönetici kimliği istesin, program `C:\Program
+   Files\Kütüphane Defteri` altına kurulsun; son adımdaki "çalıştır" programı
+   masa hesabıyla açsın ve veri `%LOCALAPPDATA%\KutuphaneDefteri` altında
+   oluşsun (W8, W10).
 5. **WebView2 kurulu OLMAYAN** bir makinede/VM'de aç → Türkçe yönlendirme
    diyaloğu çıksın, program çıkış kodu 7 versin (beyaz pencere DEĞİL).
 6. Taşınabilir zip'i USB'den çalıştır → MotW olmadığından SmartScreen çıkmamalı.
 7. Program açıkken ikinci kez çalıştır → "zaten çalışıyor" (çıkış kodu 2).
-8. Defender/AV taraması: onedir olduğu için imzasız da olsa engellenmemeli;
+8. Program açıkken kurucuyu yeniden çalıştır → `AppMutex` "programı kapatın"
+   iletisini göstersin (geçici davranış; kapatma olayı gelince değişir).
+9. Defender/AV taraması: onedir olduğu için imzasız da olsa engellenmemeli;
    engellenirse `docs/kurulum.md`'deki istisna adımları güncellenmeli.
 
 ## 4. Sonraki sürüm (v2) için
@@ -63,5 +72,5 @@
 * **Kod imzalama** — Azure Trusted Signing veya SignPath (açık kaynak ücretsiz
   katmanı). İmzalanınca SmartScreen uyarısı ve AV yanlış-pozitif riski düşer.
 * **Fixed-Version WebView2** — kilitli/çevrimdışı okul bilgisayarları için
-  WebView2'nin sabit sürümünü paketin içine gömen "full" zip varyantı
-  (tasarım §5.1). Bu varyant henüz üretilmiyor.
+  WebView2'nin sabit sürümünü paketin içine gömen "full" zip varyantı. Bu
+  varyant henüz üretilmiyor.

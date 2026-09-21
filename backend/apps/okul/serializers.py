@@ -2,8 +2,8 @@
 
 Elle giriş, içe aktarmayla AYNI normalize edicilerden geçer (`apps.okul.normalize`):
 şube harfi Türkçe büyük harfe çevrilir (`tr_upper` — 'ş' → 'Ş', 'i' → 'İ'; ASCII'ye
-KATLANMAZ, 10/I ile 10/İ ayrı şubelerdir), seviye kümesi okul türünden (U4).
-Hatalar Türkçedir (`{code, message, fields}` sözleşmesi).
+KATLANMAZ, 10/I ile 10/İ ayrı şubelerdir); seviye kümesi okul içi sabittir (1-12,
+hazırlık bayrağıyla 0). Hatalar Türkçedir (`{code, message, fields}` sözleşmesi).
 """
 
 from __future__ import annotations
@@ -15,45 +15,27 @@ from rest_framework import serializers
 from apps.okul import normalize, selectors
 from apps.okul.models import (
     ClassSection,
-    ClassSectionGroup,
     Personnel,
     SchoolConfig,
     SchoolTerm,
     SchoolYear,
-    Shift,
     Student,
-    SubjectDepartment,
 )
-from apps.okul.services import departments as department_service
 
 
 def _validate_level(value: int) -> int:
-    """Seviyeyi okul türünün geçerli kümesine karşı doğrular (U4 — sabit aralık yok)."""
+    """Seviyeyi okulun geçerli kümesine karşı doğrular (1-12; hazırlık açıksa 0)."""
     levels = selectors.grade_level_values()
     if value not in levels:
-        etiketler = ", ".join("Hazırlık" if lvl == 0 else str(lvl) for lvl in levels)
+        etiketler = ", ".join(
+            "Hazırlık" if lvl == normalize.PREP_LEVEL else str(lvl) for lvl in levels
+        )
         raise serializers.ValidationError(f"Sınıf şu seviyelerden biri olmalıdır: {etiketler}.")
     return value
 
 
 class SchoolConfigSerializer(serializers.ModelSerializer[SchoolConfig]):
-    """Kurum künyesi. `level_programs` seviye → çizelge program anahtarları (kademeli dönüşüm).
-
-    Doğrulama: anahtar geçerli bir sınıf düzeyi (0, 9-12), değer bilinen
-    program anahtarlarının listesi. Boş sözlük = varsayılan atama. Okulun
-    seviye kümesi dışındaki seviye (ör. hazırlıksız okulda 0) reddedilmez —
-    plan onu yok sayar; hazırlık sonradan açılırsa atama hazır durur.
-    """
-
-    level_programs = serializers.JSONField(required=False)
-    # Ders saati ayarları: asıl doğrulama servistedir (`update_school_config`)
-    # — aralık kuralı günlük saat sayısıyla birlikte değerlendirilir, tek alanı
-    # tek başına doğrulayan serializer dalı ikisini ayrıştırırdı.
-    exam_period_nos = serializers.JSONField(required=False)
-    bell_schedule = serializers.JSONField(required=False)
-    afternoon_bell_schedule = serializers.JSONField(required=False)
-    bell_flow = serializers.JSONField(required=False)
-    afternoon_bell_flow = serializers.JSONField(required=False)
+    """Kurum künyesi — sihirbaz ve Okul Bilgileri ekranının ortak sözleşmesi."""
 
     class Meta:
         model = SchoolConfig
@@ -62,56 +44,10 @@ class SchoolConfigSerializer(serializers.ModelSerializer[SchoolConfig]):
             "province",
             "district",
             "principal_name",
-            "school_type",
             "has_prep_class",
-            "level_programs",
-            "daily_period_count",
-            "exam_period_nos",
-            "education_model",
-            "bell_schedule",
-            "afternoon_bell_schedule",
-            "bell_flow",
-            "afternoon_bell_flow",
-            "default_separation_mode",
             "setup_completed",
         ]
         read_only_fields = ["setup_completed"]
-
-    def validate_level_programs(self, value: Any) -> dict[str, list[str]]:
-        from apps.dersler import catalog as catalog_mod
-        from apps.dersler.models import VALID_COURSE_LEVELS
-
-        if value in (None, ""):
-            return {}
-        if not isinstance(value, dict):
-            raise serializers.ValidationError(
-                "Seviye atamaları sözlük olmalıdır: {'9': ['fen-lisesi-2025']}."
-            )
-        known = catalog_mod.load_programs()
-        cleaned: dict[str, list[str]] = {}
-        for raw_level, raw_keys in value.items():
-            try:
-                level = int(raw_level)
-            except (TypeError, ValueError) as exc:
-                raise serializers.ValidationError(
-                    f"Seviye anahtarı sayısal olmalıdır: {raw_level!r}."
-                ) from exc
-            if level not in VALID_COURSE_LEVELS:
-                raise serializers.ValidationError(
-                    f"Geçersiz seviye: {level}. Geçerli düzeyler: Hazırlık (0), 9, 10, 11, 12."
-                )
-            if not isinstance(raw_keys, list):
-                raise serializers.ValidationError(
-                    f"{level}. seviye için program listesi bekleniyor."
-                )
-            keys: list[str] = []
-            for key in raw_keys:
-                if not isinstance(key, str) or key not in known:
-                    raise serializers.ValidationError(f"Bilinmeyen çizelge programı: {key!r}.")
-                if key not in keys:
-                    keys.append(key)
-            cleaned[str(level)] = keys
-        return cleaned
 
 
 class SchoolYearSerializer(serializers.ModelSerializer[SchoolYear]):
@@ -146,10 +82,6 @@ class SchoolTermConfigurationSerializer(serializers.Serializer[dict[str, Any]]):
 
 class PersonnelSerializer(serializers.ModelSerializer[Personnel]):
     full_name = serializers.CharField(read_only=True)
-    # Branş EŞLEŞTİRME anahtarı (20.09.2026): zümre başkanı seçicisi öğretmeni zümrenin
-    # `branch_keys`iyle bu anahtar üzerinden eşler — harf büyüklüğü/şapka/boşluk
-    # katlaması TEK yerde (backend) kalır, arayüz yalnız eşitlik karşılaştırır.
-    branch_key = serializers.SerializerMethodField()
 
     class Meta:
         model = Personnel
@@ -159,84 +91,14 @@ class PersonnelSerializer(serializers.ModelSerializer[Personnel]):
             "last_name",
             "title",
             "branch",
-            "branch_key",
             "is_active",
             "full_name",
         ]
-
-    def get_branch_key(self, obj: Personnel) -> str:
-        return department_service.branch_key(obj.branch)
-
-
-class ClassSectionGroupSerializer(serializers.ModelSerializer[ClassSectionGroup]):
-    """Şube kümesi (SAY/EA/DİL) — YALNIZ seçim kolaylığı etiketi.
-
-    Teklik denetimi burada Türkçe mesajla yapılır; alan elle tanımlanır ki DRF
-    modeldeki tek alanlı UniqueConstraint'ten ALAN düzeyinde bir UniqueValidator
-    türetip İngilizce mesaj basmasın (SubjectDepartmentSerializer emsali).
-    """
-
-    name = serializers.CharField(max_length=60, validators=[])
-    section_count = serializers.SerializerMethodField()
-
-    class Meta:
-        model = ClassSectionGroup
-        validators: list[Any] = []
-        fields = ["id", "name", "order", "section_count"]
-
-    def get_section_count(self, obj: ClassSectionGroup) -> int:
-        return int(obj.sections.count())
-
-    def validate_name(self, value: str) -> str:
-        cleaned = " ".join(value.split())
-        if not cleaned:
-            raise serializers.ValidationError("Küme adı zorunludur.")
-        return cleaned
-
-    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
-        instance = self.instance if isinstance(self.instance, ClassSectionGroup) else None
-        name = attrs.get("name", getattr(instance, "name", ""))
-        if name:
-            duplicate = ClassSectionGroup.objects.filter(name=name)
-            if instance is not None:
-                duplicate = duplicate.exclude(pk=instance.pk)
-            if duplicate.exists():
-                raise serializers.ValidationError({"name": "Bu küme zaten kayıtlı."})
-        return attrs
-
-
-class SectionGroupAssignSerializer(serializers.Serializer[dict[str, Any]]):
-    """Toplu küme ataması — asıl seçim maliyetini düşüren uç."""
-
-    section_ids = serializers.ListField(child=serializers.IntegerField(), allow_empty=True)
-    group = serializers.PrimaryKeyRelatedField(
-        queryset=ClassSectionGroup.objects.all(), allow_null=True
-    )
-
-
-class SectionShiftAssignSerializer(serializers.Serializer[dict[str, Any]]):
-    """Toplu vardiya ataması (ikili eğitim) — boş `shift` işareti kaldırır."""
-
-    section_ids = serializers.ListField(child=serializers.IntegerField(), allow_empty=True)
-    shift = serializers.ChoiceField(choices=[*Shift.choices, ("", "")], allow_blank=True)
-
-
-class BellPreviewSerializer(serializers.Serializer[dict[str, Any]]):
-    """Ders akışı önizlemesi — saatleri BACKEND hesaplar, ön yüz kopyası yok."""
-
-    first_lesson = serializers.CharField(required=False, allow_blank=True)
-    lesson_count = serializers.IntegerField(required=False)
-    lesson_minutes = serializers.IntegerField(required=False)
-    break_minutes = serializers.IntegerField(required=False)
-    long_break_after = serializers.IntegerField(required=False)
-    long_break_minutes = serializers.IntegerField(required=False)
-    block_sizes = serializers.ListField(child=serializers.IntegerField(), required=False)
 
 
 class ClassSectionSerializer(serializers.ModelSerializer[ClassSection]):
     school_year_name = serializers.CharField(source="school_year.name", read_only=True)
     class_label = serializers.CharField(read_only=True)
-    group_name = serializers.SerializerMethodField()
 
     class Meta:
         model = ClassSection
@@ -248,13 +110,7 @@ class ClassSectionSerializer(serializers.ModelSerializer[ClassSection]):
             "class_level",
             "class_section",
             "class_label",
-            "group",
-            "group_name",
-            "shift",
         ]
-
-    def get_group_name(self, obj: ClassSection) -> str:
-        return obj.group.name if obj.group is not None else ""
 
     def validate_class_level(self, value: int) -> int:
         return _validate_level(value)
@@ -285,67 +141,6 @@ class ClassSectionSerializer(serializers.ModelSerializer[ClassSection]):
         return attrs
 
 
-class SubjectDepartmentSerializer(serializers.ModelSerializer[SubjectDepartment]):
-    """Zümre — okul zümre başkanları kurulu üyeliği + başkan seçimi.
-
-    Başkan adı şifreli alandan türetilir (`Personnel.full_name`); yazma tarafı
-    yalnız `head` pk'sini alır. Zümre adı BÜYÜK HARFE ÇEVRİLMEZ (`tr_upper` şube
-    harfine özgüdür) — yalnız fazla boşluk katlanır.
-    """
-
-    # DRF, modeldeki tek alanlı UniqueConstraint'ten ALAN düzeyinde bir
-    # UniqueValidator türetir; `Meta.validators = []` yalnız Meta düzeyindekini
-    # (unique_together) siler. Alan burada elle tanımlanır ki teklik mesajı
-    # depo üslubunda Türkçe olsun (`validate` içinde) — ham DRF çevirisi değil.
-    name = serializers.CharField(max_length=80, validators=[])
-    # Zümrenin branşları (20.09.2026): öğretmen sicilindeki branş adları. Doğrulama
-    # ve "bir branş tek zümrede" kuralı serviste (`departments.clean_branches`).
-    branches = serializers.ListField(
-        child=serializers.CharField(max_length=64, allow_blank=True), required=False
-    )
-    branch_keys = serializers.SerializerMethodField()
-    # `CharField(source="head.full_name", default="")` DEĞİL: `head` boşken DRF
-    # `get_default()`e düşer ve partial (PATCH) serializer'da SkipField fırlatır —
-    # anahtar yanıttan tamamen kaybolurdu. Method alanı her durumda dizge döner.
-    head_name = serializers.SerializerMethodField()
-
-    class Meta:
-        model = SubjectDepartment
-        validators: list[Any] = []
-        fields = [
-            "id",
-            "name",
-            "head",
-            "head_name",
-            "is_board_member",
-            "branches",
-            "branch_keys",
-        ]
-
-    def get_head_name(self, obj: SubjectDepartment) -> str:
-        return obj.head.full_name if obj.head is not None else ""
-
-    def get_branch_keys(self, obj: SubjectDepartment) -> list[str]:
-        return department_service.department_branch_keys(obj)
-
-    def validate_name(self, value: str) -> str:
-        cleaned = " ".join(value.split())
-        if not cleaned:
-            raise serializers.ValidationError("Zümre adı zorunludur.")
-        return cleaned
-
-    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
-        instance = self.instance if isinstance(self.instance, SubjectDepartment) else None
-        name = attrs.get("name", getattr(instance, "name", ""))
-        if name:
-            duplicate = SubjectDepartment.objects.filter(name=name)
-            if instance is not None:
-                duplicate = duplicate.exclude(pk=instance.pk)
-            if duplicate.exists():
-                raise serializers.ValidationError({"name": "Bu zümre zaten kayıtlı."})
-        return attrs
-
-
 class StudentSerializer(serializers.ModelSerializer[Student]):
     full_name = serializers.CharField(read_only=True)
     class_label = serializers.CharField(read_only=True)
@@ -361,7 +156,6 @@ class StudentSerializer(serializers.ModelSerializer[Student]):
             "class_level",
             "class_section",
             "class_label",
-            "gender",
             "status",
         ]
 
@@ -369,15 +163,6 @@ class StudentSerializer(serializers.ModelSerializer[Student]):
         if value is None:
             return None
         return _validate_level(value)
-
-    def validate_gender(self, value: str) -> str:
-        """Cinsiyet YALNIZ 'K'/'E'/'' olur; elle girilen başka değer boşa düşer.
-
-        Aktarımla aynı katlama (`normalize_gender`) — "Kız" da "K" da kabul
-        edilir. Alan yalnız kız/erkek ayrışması yerleştirme kuralı içindir;
-        listede sütun olarak GÖSTERİLMEZ, hiçbir evraka basılmaz.
-        """
-        return normalize.normalize_gender(value)
 
     def validate_class_section(self, value: str) -> str:
         # İçe aktarmayla aynı katlama: Türkçe büyük harf ('ş' → 'Ş', 'i' → 'İ').

@@ -1,4 +1,4 @@
-"""Uygulama sürümü + veri sürüm damgası (tasarım §5.3 "eski exe yeni DB'yi AÇMAZ").
+"""Uygulama sürümü + veri sürüm damgası (tasarım §4.2; F11: eski exe yeni DB'yi AÇMAZ).
 
 **Karar — damga TABLO değil DOSYA:** veri dizinindeki `surum.json`.
 Gerekçe: (1) veritabanı açılamadığında/bozukken bile okunabilir, yani sürüm

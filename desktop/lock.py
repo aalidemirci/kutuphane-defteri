@@ -1,4 +1,4 @@
-"""Tek-instance kilidi (tasarım §5.3) + Inno AppMutex sinyali.
+"""Tek-instance kilidi (tasarım §4.2) + Inno AppMutex sinyali (geçici).
 
 İki kopya aynı SQLite dosyasına yazarsa WAL kilitleri yüzünden kullanıcı
 "veritabanı kilitli" hatalarıyla karşılaşır; daha kötüsü iki pencere aynı dosya
@@ -14,6 +14,11 @@ Tek-instance güvencesi ondan GELMEZ — o yalnız Inno Setup'ın `AppMutex`
 denetimine "program açık" sinyalidir: mutex olmadan kurucu, çalışan programın
 `_internal/` ağacını üzerine yazmaya çalışırdı (DD iskeletinde bu sinyal hiç
 üretilmiyordu; iss'teki denetim ölüydü).
+
+GEÇİCİ: tasarım §4.2-5'e göre kurucu `AppMutex` kullanmayacak; tepside yaşayan
+programı `KutuphaneDefteri.Kapat` adlı olayla kapatıp `KutuphaneDefteri` ve
+`Global\\KutuphaneDefteri` mutex'lerinin serbest kalmasını bekleyecek. O akış
+(F0 spike'ı) gelene dek bu mutex Inno'nun `AppMutex` denetimini besler.
 """
 
 from __future__ import annotations
@@ -25,7 +30,8 @@ from typing import BinaryIO
 
 from desktop.errors import AlreadyRunningError
 
-#: Inno `AppMutex` ile birebir aynı olmak ZORUNDA (packaging/windows/kutuphane-defteri.iss).
+#: Inno `AppMutex` ile birebir aynı olmak ZORUNDA (packaging/windows/kutuphane-defteri.iss;
+#: AppMutex geçicidir — modül docstring'i).
 APP_MUTEX_NAME = "KutuphaneDefteri"
 
 _MESSAGE = "Kütüphane Defteri zaten çalışıyor. Aynı anda yalnızca bir kopya açılabilir."

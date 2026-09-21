@@ -8,34 +8,42 @@ Ek olarak paketlenmiş sürümde **iki teşhis kipi** sunar:
 
     kutuphane-defteri --bagimlilik-duman
 
-Bu kip `RUNTIME_MODULES`'ın tamamını import eder ve K7 borcunun (CLAUDE.md §2)
-runtime kapısıdır: spec'e eklenmeyi unutulan bir bağımlılık burada, derleme
-başında yakalanır — sahada değil. Aşağıdaki PDF kipi yalnız WeasyPrint
-zincirini sınadığı için tek başına yetmez (30.08.2026'da `xlrd` eklendiğinde
-görüldü: yeni bağımlılığın pakete girip girmediğini sınayan kapı yoktu).
+Bu kip `RUNTIME_MODULES`'ın tamamını import eder ve hiddenimports zincirinin
+çalışma anı kapısıdır: spec'e eklenmesi unutulan bir bağımlılık burada, derleme
+sırasında yakalanır — sahada değil. Aşağıdaki PDF kipi yalnız WeasyPrint
+zincirini sınadığı için tek başına yetmez (KS'de `xlrd` eklendiğinde görüldü:
+yeni bağımlılığın pakete girip girmediğini sınayan kapı yoktu).
 
     kutuphane-defteri --pdf-duman [dosya.pdf]
 
-Bu kip Türkçe metinli, tek fotoğraflı küçük bir PDF üretir ve pypdf ile geri
-okuyup doğrular. Amacı üç katmanı ayrı ayrı sınamaktır:
+Bu kip evrakın ortak taban şablonundan (`templates/documents/base.html`) küçük
+bir Türkçe örnek belge üretir ve pypdf ile geri okuyup doğrular. Amacı üç
+katmanı ayrı ayrı sınamaktır:
 
-1. **PDF motoru ayakta mı** — Windows'ta WeasyPrint pango/harfbuzz/fontconfig
+1. **Evrak şablonları pakette mi** — şablon ağacı pakete kaynak olarak
+   kopyalanır (spec `Tree`). Yol bozulursa gerçek evrak sahada ilk basımda
+   düşerdi; bu kip şablonu paketteki yerinden Django şablon motoruyla işler
+   (`{% extends %}` + `{% include "print/_design.css" %}` dahil) ve sayfa
+   altlığındaki "Sayfa n / m" metnini arar — metin yoksa taban şablon
+   uygulanmamış demektir.
+2. **PDF motoru ayakta mı** — Windows'ta WeasyPrint pango/harfbuzz/fontconfig
    DLL'lerini çalışma anında `dlopen` ile açar; paketten bir DLL eksikse bu
-   kip ilk açılışta değil, burada patlar (tasarım §9 "WeasyPrint Win DLL
-   cehennemi").
-2. **Türkçe karakterler doğru font ile mi diziliyor** — üretilen PDF'te
+   kip ilk açılışta değil, burada patlar ("WeasyPrint Windows DLL" tuzağı —
+   packaging/windows/NOTLAR.md).
+3. **Türkçe karakterler doğru font ile mi diziliyor** — üretilen PDF'te
    `ĞÜŞİÖÇ ığüşiöç` metni geri okunabiliyor ve kullanılan font gömülü DejaVu
-   ise, fontconfig gömülü fonta bakıyor demektir (tasarım §5.1 "fontconfig
-   tuzağı").
-3. **Fotoğraf JPEG olarak gömülüyor mu** — salon evrakının fotoğraflı oturma
-   planı (19.09.2026) öğrenci fotoğrafını Pillow'la JPEG'e kodlar, WeasyPrint
-   onu PDF'e gömer. WeasyPrint çözemediği görseli yalnız UYARIYLA atlar: JPEG
-   zinciri pakette eksikse evrak hata vermeden fotoğrafsız basılırdı. Kip
-   görseli çalışma anında üretir ve PDF'te DCT (JPEG) görsel nesnesi arar.
+   ise, fontconfig gömülü fonta bakıyor demektir ("fontconfig tuzağı" —
+   `fonts.conf.tmpl` başlığı).
 
-Kip hem CI duman testinde (§8) hem de sahada "programın PDF üretimi çalışıyor
+KS'deki JPEG gömme denetimi bilinçli olarak ALINMADI: tek JPEG üreticisi
+öğrenci fotoğrafıydı ve fotoğraf özelliği bu projede yok. Evrakta raster
+fotoğraf basılmadığı için denetim ürünün kullanmadığı bir yolu sınardı;
+Pillow'un pakette olduğunu `--bagimlilik-duman` zaten kanıtlar.
+
+Kip hem CI duman testinde hem de sahada "programın PDF üretimi çalışıyor
 mu?" sorusunu tek komutla yanıtlamak için kullanılır. Veritabanına DOKUNMAZ:
-Django ayağa kaldırılmaz, veri dizinine yazılmaz.
+Django ayarları yüklenmez (şablon motoru ayarsız, bağımsız bir `Engine`
+örneğiyle kurulur), veri dizinine yazılmaz.
 """
 
 from __future__ import annotations
@@ -61,13 +69,13 @@ EXIT_IMPORT_SMOKE_FAILED = 10
 
 #: Paketin İÇİNDE çalışma anında bulunması ZORUNLU üçüncü taraf modüller.
 #:
-#: K7 borcunun (CLAUDE.md §2) son halkası. Zincirin ilk üç halkası STATİKTİR ve
-#: bir modülün pakete gerçekten girdiğini kanıtlamaz:
+#: hiddenimports zincirinin son halkası. İlk üç halka STATİKTİR ve bir modülün
+#: pakete gerçekten girdiğini kanıtlamaz:
 #:   requirements.txt → DAGITIM_IMPORT_ESLEME → spec hiddenimports
 #: Bu liste dördüncü halkadır: paketlenmiş ikili her derlemede modülleri
 #: GERÇEKTEN import eder. `--pdf-duman` yalnız WeasyPrint zincirini sınar;
-#: 30.08.2026'da `xlrd` eklendiğinde onun paketlenip paketlenmediğini sınayan
-#: hiçbir kapı olmadığı görüldü (e-Okul .xls içe aktarımı sahada çökebilirdi).
+#: KS'de `xlrd` eklendiğinde onun paketlenip paketlenmediğini sınayan hiçbir
+#: kapı olmadığı görüldü (e-Okul .xls içe aktarımı sahada çökebilirdi).
 #:
 #: Liste `backend/requirements.txt` ile senkron tutulur; kaymayı
 #: `packaging/tests/test_spec_kapsami.py` kapıya bağlar.
@@ -89,26 +97,34 @@ RUNTIME_MODULES: tuple[str, ...] = (
 TURKISH_SAMPLE = "ĞÜŞİÖÇ ığüşiöç"
 # Yalnız gömülü DejaVu ile dizilmeli; sistem fontuna düşerse bu ad görünmez.
 EXPECTED_FONT_FRAGMENT = "DejaVu"
+# Taban şablonun `@page` altlığı ("Sayfa 1 / 1"); görünmüyorsa şablon uygulanmadı.
+BASE_TEMPLATE_MARKER = "Sayfa"
+# Evrakın ortak taban şablonu (backend/templates altında).
+BASE_TEMPLATE = "documents/base.html"
 
-_SMOKE_HTML = """<!DOCTYPE html>
-<html lang="tr">
-  <head>
-    <meta charset="utf-8" />
-    <style>
-      @page {{ size: A4; margin: 20mm; }}
-      body {{ font-family: "DejaVu Sans", sans-serif; font-size: 12pt; }}
-    </style>
-  </head>
-  <body>
-    <p>{sample}</p>
-    <p>Kütüphane Defteri PDF duman testi.</p>
-    <img src="{photo}" alt="" style="width: 12mm; height: 16mm" />
-  </body>
-</html>
+# Örnek belge taban şablonu genişletir; bütün kurum ve eser adları UYDURMADIR.
+_SMOKE_TEMPLATE = """{% extends "documents/base.html" %}
+{% block content %}
+  <div class="doc-title">PDF DUMAN TESTİ</div>
+  <div class="doc-subtitle">Kütüphane Defteri — paket doğrulama belgesi</div>
+  <p class="para">{{ sample }}</p>
+  <table class="info">
+    <tr><td class="label">Eser</td><td>Örnek Eser Adı</td></tr>
+    <tr><td class="label">Yazar</td><td>Örnek Yazar</td></tr>
+    <tr><td class="label">Nüsha durumu</td><td>Rafta</td></tr>
+  </table>
+  <p class="para">Bu belge paketin PDF üretim zincirini sınar; veritabanına dokunmaz.</p>
+{% endblock %}
 """
+_SMOKE_CONTEXT = {
+    "sample": TURKISH_SAMPLE,
+    "authority": "ÖRNEK İLÇE KAYMAKAMLIĞI",
+    "unit_line": "Örnek Ortaokulu Müdürlüğü",
+}
 
-# PDF'te JPEG görselin süzgeç adı (WeasyPrint JPEG'i yeniden kodlamadan gömer).
-JPEG_FILTER = "/DCTDecode"
+
+class SmokeTemplateMissing(Exception):
+    """Evrak şablon ağacı pakette bulunamadı (spec `Tree` yolu bozuk olabilir)."""
 
 
 def _write(message: str) -> None:
@@ -125,6 +141,33 @@ def _write(message: str) -> None:
         stream.flush()
     except (OSError, ValueError):
         return
+
+
+def _templates_dir() -> Path:
+    """Evrak şablonlarının kökü — paketlenmiş ve depo çalışmasında aynı çözümle.
+
+    Kabuğun kullandığı `resolve_backend_dir()` burada da kullanılır: duman testi
+    programın şablonları GERÇEKTE bulacağı yeri sınamalıdır.
+    """
+    from desktop.paths import resolve_backend_dir
+
+    try:
+        return resolve_backend_dir() / "templates"
+    except FileNotFoundError as error:
+        raise SmokeTemplateMissing(str(error)) from error
+
+
+def render_smoke_html(templates: Path) -> str:
+    """Örnek belgeyi taban şablondan HTML'e işler (Django ayarı gerektirmez)."""
+    from django.template import Context, Engine, TemplateDoesNotExist
+
+    if not (templates / BASE_TEMPLATE).is_file():
+        raise SmokeTemplateMissing(f"{templates / BASE_TEMPLATE} yok")
+    engine = Engine(dirs=[str(templates)])
+    try:
+        return engine.from_string(_SMOKE_TEMPLATE).render(Context(dict(_SMOKE_CONTEXT)))
+    except TemplateDoesNotExist as error:
+        raise SmokeTemplateMissing(f"şablon çözülemedi: {error}") from error
 
 
 def _pdf_fonts(pdf_path: Path) -> set[str]:
@@ -152,50 +195,6 @@ def _pdf_text(pdf_path: Path) -> str:
 
     reader = PdfReader(str(pdf_path))
     return reader.pages[0].extract_text() or ""
-
-
-def _pdf_image_filters(pdf_path: Path) -> list[str]:
-    """PDF'in ilk sayfasındaki görsellerin süzgeçlerini döndürür.
-
-    Görsel sayfa kaynağında ya da bir form nesnesinin içinde durabilir; ikisine
-    de bakılır (derinlik sınırlı — kendini gösteren form döngüye sokmasın).
-    """
-    from pypdf import PdfReader
-
-    reader = PdfReader(str(pdf_path))
-    resources = reader.pages[0].get("/Resources")
-    if resources is None:
-        return []
-    filters: list[str] = []
-    bekleyen = [(resources.get_object(), 0)]
-    while bekleyen:
-        kaynak, derinlik = bekleyen.pop()
-        xobjects = kaynak.get("/XObject")
-        if xobjects is None:
-            continue
-        for value in xobjects.get_object().values():
-            nesne = value.get_object()
-            if nesne.get("/Subtype") == "/Image":
-                filters.append(str(nesne.get("/Filter", "")))
-            elif nesne.get("/Resources") is not None and derinlik < 3:
-                bekleyen.append((nesne["/Resources"].get_object(), derinlik + 1))
-    return filters
-
-
-def _smoke_photo_uri() -> str:
-    """Duman fotoğrafı: Pillow ile ÇALIŞMA ANINDA kodlanmış küçük bir JPEG.
-
-    Depoya ikili gömülmez; öğrenci fotoğrafının yolunu (Pillow JPEG kodlayıcı →
-    data URI → WeasyPrint) birebir izler. Kodlayıcı pakette yoksa burada düşer.
-    """
-    import base64
-    import io
-
-    from PIL import Image
-
-    tampon = io.BytesIO()
-    Image.new("RGB", (30, 40), (170, 60, 60)).save(tampon, format="JPEG", quality=85)
-    return "data:image/jpeg;base64," + base64.b64encode(tampon.getvalue()).decode("ascii")
 
 
 def _fontconfig_teshisi() -> None:
@@ -230,22 +229,44 @@ def _fontconfig_teshisi() -> None:
 
 
 def run_pdf_smoke(target: Path) -> int:
-    """Türkçe metinli, fotoğraflı PDF üretir, geri okuyup doğrular; 0 = başarılı."""
+    """Taban şablondan Türkçe örnek belge üretir, geri okuyup doğrular; 0 = başarılı."""
+    try:
+        html = render_smoke_html(_templates_dir())
+    except SmokeTemplateMissing as error:
+        _write(
+            f"HATA: evrak şablonu pakette bulunamadı ({error}). "
+            "spec'teki backend/templates Tree yolu bozulmuş olabilir."
+        )
+        return EXIT_PDF_SMOKE_FAILED
+
     from weasyprint import HTML
 
     target.parent.mkdir(parents=True, exist_ok=True)
-    html = _SMOKE_HTML.format(sample=TURKISH_SAMPLE, photo=_smoke_photo_uri())
     HTML(string=html).write_pdf(str(target))
     if not target.is_file() or target.stat().st_size == 0:
         _write(f"HATA: PDF üretilemedi ({target}).")
         return EXIT_PDF_SMOKE_FAILED
 
     text = _pdf_text(target)
-    # PDF metin çıkarımı satır sonu/boşluk ekleyebilir; harf harf aranır.
-    missing = [letter for letter in TURKISH_SAMPLE if letter != " " and letter not in text]
-    if missing:
-        _write("HATA: PDF metninde Türkçe karakterler bulunamadı: " + "".join(missing))
+    # PDF metin çıkarımı satır sonu/boşluk ekleyebilir; boşluklar atılıp örnek
+    # metin BÜTÜN olarak aranır (belgenin geri kalanı da Türkçe harf taşıdığı
+    # için harf harf aramak eksik glifi gizleyebilirdi).
+    duz_metin = "".join(text.split())
+    if "".join(TURKISH_SAMPLE.split()) not in duz_metin:
+        missing = [harf for harf in TURKISH_SAMPLE if harf != " " and harf not in duz_metin]
+        _write(
+            "HATA: PDF metninde Türkçe örnek bulunamadı"
+            + (f" (eksik harfler: {''.join(missing)})" if missing else "")
+            + "."
+        )
         _write(f"Okunan metin: {text!r}")
+        return EXIT_PDF_SMOKE_FAILED
+
+    if BASE_TEMPLATE_MARKER not in text:
+        _write(
+            f"HATA: taban şablonun sayfa altlığı ('{BASE_TEMPLATE_MARKER} n / m') PDF'te yok; "
+            f"{BASE_TEMPLATE} uygulanmamış görünüyor."
+        )
         return EXIT_PDF_SMOKE_FAILED
 
     fonts = _pdf_fonts(target)
@@ -257,18 +278,8 @@ def run_pdf_smoke(target: Path) -> int:
         _fontconfig_teshisi()
         return EXIT_PDF_SMOKE_FAILED
 
-    filters = _pdf_image_filters(target)
-    if not any(JPEG_FILTER in filtre for filtre in filters):
-        _write(
-            f"HATA: PDF'e JPEG fotoğraf gömülmemiş (bulunan görseller: {filters}). "
-            "Pillow JPEG eklentisi ya da WeasyPrint görsel zinciri pakette eksik; "
-            "salon evrakının oturma planı fotoğrafsız basılır."
-        )
-        return EXIT_PDF_SMOKE_FAILED
-
     _write(f"PDF duman testi başarılı: {target}")
     _write(f"Fontlar: {sorted(fonts)}")
-    _write(f"Görseller: {filters}")
     return 0
 
 
@@ -289,7 +300,7 @@ def run_import_smoke() -> int:
             eksik.append(f"{modul} ({hata!r})")
 
     if eksik:
-        _write("HATA: şu modüller pakette çözülemedi (K7 hiddenimports eksiği):")
+        _write("HATA: şu modüller pakette çözülemedi (hiddenimports eksiği):")
         for satir in eksik:
             _write(f"  - {satir}")
         _write("Düzeltme: packaging/pyinstaller/kutuphane_defteri.spec → hiddenimports.")

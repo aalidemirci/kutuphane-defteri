@@ -7,13 +7,10 @@ denetiminin sözleşmesidir — küme değişirse FE `SetupStatus` tipi ve
 
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
-from django.core.exceptions import ValidationError
 from rest_framework.test import APIClient
 
-from apps.okul.models import SchoolConfig, SchoolType
+from apps.okul.models import SchoolConfig
 from apps.okul.services import setup as setup_service
 
 
@@ -59,19 +56,15 @@ class TestSetupStatus:
 
 @pytest.mark.django_db
 class TestSchoolConfigApi:
-    def test_okul_turu_ve_hazirlik_guncellenir(self, client: APIClient) -> None:
+    def test_kunye_ve_hazirlik_guncellenir(self, client: APIClient) -> None:
         yanit = client.put(
             "/api/v1/setup/school-config/",
-            {
-                "school_name": "Örnek AL",
-                "school_type": SchoolType.ANADOLU_LISESI,
-                "has_prep_class": True,
-            },
+            {"school_name": "Örnek Okul", "has_prep_class": True},
             format="json",
         )
         assert yanit.status_code == 200
         assert yanit.json()["has_prep_class"] is True
-        assert SchoolConfig.load().grade_levels == (0, 9, 10, 11, 12)
+        assert SchoolConfig.load().grade_levels == (0, *range(1, 13))
 
     def test_setup_completed_put_ile_degistirilemez(self, client: APIClient) -> None:
         """Kapı alanı yalnız `setup/complete/` ucuyla açılır (read-only)."""
@@ -82,20 +75,22 @@ class TestSchoolConfigApi:
         )
         assert SchoolConfig.load().setup_completed is False
 
-    def test_gecersiz_okul_turu_reddedilir(self, client: APIClient) -> None:
+    def test_gecersiz_hazirlik_bayragi_reddedilir(self, client: APIClient) -> None:
         yanit = client.put(
             "/api/v1/setup/school-config/",
-            {"school_name": "X", "school_type": "MESLEK_LISESI"},
+            {"school_name": "X", "has_prep_class": "belki"},
             format="json",
         )
         assert yanit.status_code == 400
+        assert "has_prep_class" in yanit.json()["fields"]
 
 
 @pytest.mark.django_db
 class TestGradeLevelsApi:
-    def test_seviyeler_okul_turunden_turetilir(self, client: APIClient) -> None:
+    def test_seviyeler_okul_ici_sabitten_gelir(self, client: APIClient) -> None:
         veri = client.get("/api/v1/grade-levels/").json()
-        assert [x["value"] for x in veri["levels"]] == [9, 10, 11, 12]
+        assert [x["value"] for x in veri["levels"]] == list(range(1, 13))
+        assert veri["levels"][0] == {"value": 1, "label": "1"}
         assert veri["prep_enabled"] is False
 
     def test_hazirlik_acilinca_listeye_girer(self, client: APIClient) -> None:
@@ -155,91 +150,3 @@ def test_update_school_config_whitelist_disi_alan_yazmaz() -> None:
 @pytest.mark.django_db
 def test_letterhead_identity_bos_okul_adi_yer_tutucuya_duser() -> None:
     assert setup_service.get_letterhead_identity()["school_name"] == "Okul"
-
-
-# ---------------------------------------------------------------------------
-# Ders saati ayarları (F6 eki-2, 03.09.2026) — gün uzunluğu + sınav saatleri
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.django_db
-def test_gunluk_ders_saati_varsayilani_sekiz() -> None:
-    """Genel liselerde gün 8 ders saatidir; ayar dokunulmadan da geçerli olur."""
-    config = setup_service.update_school_config(fields={"school_name": "Örnek Lisesi"})
-    assert config.daily_period_count == 8
-    assert config.exam_period_nos == []  # boş = tüm saatler sınava açık
-
-
-@pytest.mark.django_db
-def test_sinav_saatleri_teklenir_ve_siralanir() -> None:
-    config = setup_service.update_school_config(
-        fields={"daily_period_count": 10, "exam_period_nos": [3, 1, 3, 2]}
-    )
-    assert config.daily_period_count == 10
-    assert config.exam_period_nos == [1, 2, 3]
-
-
-@pytest.mark.django_db
-def test_gunluk_ders_saati_sinirlari_reddedilir() -> None:
-    with pytest.raises(ValidationError):
-        setup_service.update_school_config(fields={"daily_period_count": 0})
-    with pytest.raises(ValidationError):
-        setup_service.update_school_config(fields={"daily_period_count": 99})
-
-
-@pytest.mark.django_db
-def test_acikca_gonderilen_aralik_disi_sinav_saati_sessizce_dusmez() -> None:
-    """İdareci ne seçtiğini görmeli: gönderilen listede olmayan saat HATA olur."""
-    with pytest.raises(ValidationError, match="9. ders saati yok"):
-        setup_service.update_school_config(
-            fields={"daily_period_count": 8, "exam_period_nos": [1, 9]}
-        )
-
-
-@pytest.mark.django_db
-def test_gun_kisalinca_eski_sinav_saatleri_kirpilir() -> None:
-    """Yalnız gün uzunluğu değiştiyse taşan kuyruk kırpılır (olmayan saate takvim kurulmaz)."""
-    setup_service.update_school_config(
-        fields={"daily_period_count": 10, "exam_period_nos": [1, 9, 10]}
-    )
-
-    config = setup_service.update_school_config(fields={"daily_period_count": 8})
-
-    assert config.exam_period_nos == [1]
-
-
-@pytest.mark.django_db
-def test_ders_saati_ayarlari_api_uzerinden_yazilir(client: APIClient) -> None:
-    yanit = client.put(
-        "/api/v1/setup/school-config/",
-        {
-            "school_name": "Örnek MTAL",
-            "school_type": SchoolType.MESLEKI_VE_TEKNIK_ANADOLU_LISESI,
-            "daily_period_count": 10,
-            "exam_period_nos": [1, 2, 3],
-        },
-        format="json",
-    )
-    assert yanit.status_code == 200
-    assert yanit.json()["daily_period_count"] == 10
-    assert yanit.json()["exam_period_nos"] == [1, 2, 3]
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize(
-    "govde",
-    [
-        {"daily_period_count": 0},
-        {"daily_period_count": 8, "exam_period_nos": [99]},
-    ],
-)
-def test_gecersiz_ders_saati_ayari_api_400_doner(client: APIClient, govde: dict[str, Any]) -> None:
-    """A5: geçersiz ders saati ayarı 500 değil, Türkçe mesajlı 400'dür."""
-    yanit = client.put(
-        "/api/v1/setup/school-config/",
-        {"school_name": "Örnek Lise", "school_type": SchoolType.ANADOLU_LISESI, **govde},
-        format="json",
-    )
-    assert yanit.status_code == 400
-    assert yanit.json()["code"] == "validation_error"
-    assert yanit.json()["message"] != "Gönderilen veride hatalar var."

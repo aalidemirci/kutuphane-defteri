@@ -1,4 +1,4 @@
-"""Tek-instance kilidi testleri (tasarım §5.3 — ikinci kopya pencere AÇMAZ)."""
+"""Tek-instance kilidi testleri (tasarım §4.2 — ikinci kopya pencere AÇMAZ)."""
 
 from __future__ import annotations
 

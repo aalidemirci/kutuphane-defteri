@@ -1,11 +1,11 @@
 """Öğrenci/Personel toplu içe aktarma — preview (dry-run) + commit.
 
-DD `services/imports.py` (OYS kökenli) kalıbından KS'ye uyarlandı (tasarım §6):
+KS'den alındı (KS bunu DD `services/imports.py` kalıbından uyarlamıştı):
 
-- TCKN ve veli zinciri TAMAMEN YOK — öğrenci upsert anahtarı OKUL NUMARASIDIR
-  (aktif canlı kayıtlar arasında; numara alanı düz olduğundan DB filtresi
-  şifreli kipte de çalışır — TB3 dolambacı burada gerekmez).
-- Sınıf/şube ayrıştırması okul türünden gelen seviye kümesiyle parametrik (U4).
+- TCKN, veli ve cinsiyet zinciri TAMAMEN YOK — öğrenci upsert anahtarı OKUL
+  NUMARASIDIR (aktif canlı kayıtlar arasında; numara alanı düz olduğundan DB
+  filtresi şifreli kipte de çalışır — TB3 dolambacı burada gerekmez).
+- Sınıf/şube ayrıştırması okul yapılandırmasındaki seviye kümesiyle parametrik.
 - Excel (.xlsx ŞABLONU ve e-Okul'un .xls İHRACI) ile pano yapıştırması AYNI
   boru hattı: her girişten önce `rows` matrisi üretilir (`read_sheet` /
   `text_to_grid`), ardından `eokul.hazirla_*_matrisi` e-Okul'a özgü blok
@@ -157,7 +157,7 @@ def _grid_from_file(file_bytes: bytes) -> list[list[Any]]:
 
 
 def _valid_levels() -> tuple[int, ...]:
-    """Okul türünden geçerli seviye kümesi (U4 — parser'a parametre geçilir)."""
+    """Okulun geçerli seviye kümesi (1-12 + hazırlık bayrağı; parser'a parametre geçilir)."""
     return SchoolConfig.load().grade_levels
 
 
@@ -279,19 +279,12 @@ def _process_student_row(row: ParsedRow, *, report: StudentImportReport) -> None
         student_number=row.student_number, status=StudentStatus.ACTIVE
     ).first()
     if student is None:
-        Student.objects.create(**fields, gender=row.gender)
+        Student.objects.create(**fields)
         report.created_students += 1
     else:
         changed = [name for name, value in fields.items() if getattr(student, name) != value]
         for name in changed:
             setattr(student, name, fields[name])
-        # Cinsiyet YALNIZ dolu ve farklı gelirse yazılır: cinsiyet sütunu
-        # olmayan bir aktarım (uygulama şablonu, panodan yapıştırma) kayıtlı
-        # cinsiyeti SİLMEZ — personeldeki `title`/`branch` emsali. Sayaçlar
-        # değişmez: cinsiyet farkı da "güncellenen" sayılır.
-        if row.gender and student.gender != row.gender:
-            student.gender = row.gender
-            changed.append("gender")
         if changed:
             student.save(update_fields=[*changed, "updated_at"])
             report.updated_students += 1
@@ -516,13 +509,3 @@ def _record_failed(source_type: str, source_hash: str, file_name: str, error: Ex
         finished_at=timezone.now(),
         report={"error": str(error)},
     )
-
-
-# Başka uygulamaların içe aktarmaları (`dersler.enrollment_import` — e-Okul seçmeli
-# ders öğrencileri) AYNI koşu yaşam döngüsünü kullanır: idempotency uyarısı,
-# PREVIEWED/FAILED izleri ve koşullu teklik aynı kurallarla işlesin diye ikinci
-# kopya yazılmaz.
-open_import_run = _open_run
-close_import_run = _close_run
-record_import_preview = _record_preview
-record_import_failure = _record_failed

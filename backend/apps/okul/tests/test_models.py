@@ -1,7 +1,7 @@
-"""`okul` modelleri — kısıtlar, singleton, seviye türetimi (KS uyarlaması).
+"""`okul` modelleri — kısıtlar, singleton, seviye kümesi (KS'den alındı).
 
-DD test kalıbından uyarlandı: TCKN/veli/tatil testleri kalktı; okul türünden
-seviye türetimi (U4), okul-no upsert kısıtı ve şube kataloğu eklendi.
+DD test kalıbından uyarlandı: TCKN/veli/tatil testleri kalktı; okul içi seviye
+sabiti (1-12 + hazırlık bayrağı), okul-no upsert kısıtı ve şube kataloğu eklendi.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from django.db import IntegrityError
 from apps.okul.models import (
     ClassSection,
     SchoolConfig,
-    SchoolType,
     SchoolYear,
     Student,
     StudentStatus,
@@ -36,21 +35,15 @@ class TestSchoolConfig:
 
 
 class TestGradeLevels:
-    def test_anadolu_lisesi_varsayilan_9_12(self) -> None:
-        assert grade_levels_for(SchoolType.ANADOLU_LISESI, has_prep_class=False) == (9, 10, 11, 12)
+    def test_varsayilan_kume_1_12(self) -> None:
+        """Seviye kümesi okul içi sabittir: ders çizelgesine/okul türüne bağlı değildir."""
+        assert grade_levels_for(has_prep_class=False) == tuple(range(1, 13))
 
-    def test_hazirlik_bayragi_sifir_seviyesini_ekler(self) -> None:
-        assert grade_levels_for(SchoolType.ANADOLU_LISESI, has_prep_class=True) == (
-            0,
-            9,
-            10,
-            11,
-            12,
-        )
+    def test_hazirlik_bayragi_sifir_seviyesini_basa_ekler(self) -> None:
+        assert grade_levels_for(has_prep_class=True) == (0, *range(1, 13))
 
-    def test_bilinmeyen_tur_anadolu_lisesine_duser(self) -> None:
-        """Veri dosyası eklenmeden tür seçilirse program kırılmaz (konservatif düşüş)."""
-        assert grade_levels_for("BILINMEYEN", has_prep_class=False) == (9, 10, 11, 12)
+    def test_kurulmamis_okulda_hazirlik_kapalidir(self) -> None:
+        assert SchoolConfig().grade_levels == tuple(range(1, 13))
 
 
 @pytest.mark.django_db

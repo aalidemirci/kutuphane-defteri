@@ -1,4 +1,4 @@
-"""Bütünlük denetimi + sürüm damgası testleri (tasarım §5.3)."""
+"""Bütünlük denetimi + sürüm damgası testleri (tasarım §4.2)."""
 
 from __future__ import annotations
 
@@ -87,6 +87,13 @@ def test_bos_dosya_bozuk_sayilmaz(tmp_path: Path) -> None:
         ("0.1.0", "0.2.0"),
         ("0.9.0", "1.0.0"),
         ("1.0.0-dev", "1.0.0"),  # ön-sürüm, kesin sürümden ÖNCE gelir
+        # Ön-sürüm hattı alpha → beta → rc → kesin (packaging/README.md "Sürüm");
+        # "dev" alfabede "beta"dan SONRA gelir, bu yüzden hatta kullanılmaz.
+        ("2026.9.0-alpha.0", "2026.9.0-alpha.1"),
+        ("2026.9.0-alpha.9", "2026.9.0-beta.1"),
+        ("2026.9.0-beta.9", "2026.9.0-beta.10"),  # doğal sıralama (metin değil)
+        ("2026.9.0-beta.10", "2026.9.0-rc.1"),
+        ("2026.9.0-rc.1", "2026.9.0"),
         ("1.0.0", "1.0.1"),
         ("1.2.0", "1.10.0"),  # sayısal karşılaştırma (metin değil)
     ],

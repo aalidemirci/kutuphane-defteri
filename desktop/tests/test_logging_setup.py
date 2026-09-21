@@ -1,4 +1,4 @@
-"""Günlük yapılandırması testleri — erişim logu KAPALI, PII yazılmaz (F2 bulgu #20)."""
+"""Günlük yapılandırması testleri — erişim logu KAPALI, PII yazılmaz (KS F2 bulgu #20)."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Açılışta SQLite bütünlük denetimi (tasarım §5.3).
+"""Açılışta SQLite bütünlük denetimi (tasarım §4.2).
 
 Bozuk bir veritabanıyla pencere AÇILMAZ: kullanıcı bozuk veri üzerinde çalışıp
 kaydettikçe hasar büyür ve elindeki sağlam yedekler rotasyonla eskir. Bunun
@@ -6,7 +6,7 @@ yerine program durur ve "son yedekten dön" yolunu gösterir.
 
 `PRAGMA integrity_check(1)` kullanılır: tam denetimin hızlı biçimi (ilk hatada
 durur). Açılışa saniyeler eklememesi için tam tarama yerine bu seçildi; okulun
-tek makinesinde veritabanı zaten küçüktür (≤1000 öğrenci).
+tek makinesinde veritabanı görece küçüktür (birkaç bin üye, on binlerce nüsha).
 """
 
 from __future__ import annotations

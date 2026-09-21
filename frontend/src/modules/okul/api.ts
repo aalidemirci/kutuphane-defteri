@@ -1,8 +1,8 @@
 // `okul` modülü API istemcisi — kurum künyesi/kurulum, ders yılı + dönemler,
 // kişi sicilleri (öğrenci + personel), şube kataloğu, toplu içe aktarma ve
 // şablon indirme uçları. Backend `apps/okul/{urls,views,serializers}.py` ile
-// BİREBİR. DD kalıbından KS'ye: TCKN/veli/tatil/sınıf-sorumlusu tipleri KALKTI
-// (tasarım §5 — o veriler hiç toplanmaz); okul türü + şube kataloğu EKLENDİ.
+// BİREBİR. TCKN, veli, cinsiyet ve fotoğraf alanları YOKTUR — o veriler hiç
+// toplanmaz (tasarım §6.1).
 
 import { api } from "../../lib/api";
 import { getGradeLevels as fetchGradeLevels } from "../../lib/gradeLevels";
@@ -59,167 +59,16 @@ export interface SetupStatus {
   class_section_count: number;
 }
 
-/**
- * Okul türü — ders havuzunun çizelge kaynağı bundan türetilir (U4). Backend
- * `okul.SchoolType` ile birebir; hangi türün çizelge verisi olduğunu
- * `GET /setup/school-types/` söyler (`available`).
- */
-export type SchoolType =
-  | "ANADOLU_LISESI"
-  | "FEN_LISESI"
-  | "SOSYAL_BILIMLER_LISESI"
-  | "ANADOLU_IMAM_HATIP_LISESI"
-  | "MESLEKI_VE_TEKNIK_ANADOLU_LISESI"
-  | "COK_PROGRAMLI_ANADOLU_LISESI"
-  | "GUZEL_SANATLAR_LISESI"
-  | "SPOR_LISESI";
-
-export const SCHOOL_TYPE_TR: Record<SchoolType, string> = {
-  ANADOLU_LISESI: "Anadolu Lisesi",
-  FEN_LISESI: "Fen Lisesi",
-  SOSYAL_BILIMLER_LISESI: "Sosyal Bilimler Lisesi",
-  ANADOLU_IMAM_HATIP_LISESI: "Anadolu İmam Hatip Lisesi",
-  MESLEKI_VE_TEKNIK_ANADOLU_LISESI: "Mesleki ve Teknik Anadolu Lisesi",
-  COK_PROGRAMLI_ANADOLU_LISESI: "Çok Programlı Anadolu Lisesi",
-  GUZEL_SANATLAR_LISESI: "Güzel Sanatlar Lisesi",
-  SPOR_LISESI: "Spor Lisesi",
-};
-
-/** `GET /setup/school-types/` satırı — `available`: bu sürümde çizelge verisi var. */
-export interface SchoolTypeOption {
-  value: SchoolType;
-  label: string;
-  available: boolean;
-  program_keys: string[];
-}
-
-/**
- * Okul türü seçici seçenekleri: API listesi (çizelge verisi olmayan tür
- * "(çizelge verisi yok)" ekiyle), liste gelmediyse sabit sözlük. Kurulum
- * sihirbazı ve Ayarlar → Okul bilgileri aynı yardımcıyı kullanır.
- */
-export function okulTuruSecenekleri(
-  okulTurleri: SchoolTypeOption[],
-): { value: string; label: string }[] {
-  if (okulTurleri.length === 0) {
-    return Object.entries(SCHOOL_TYPE_TR).map(([value, label]) => ({ value, label }));
-  }
-  return okulTurleri.map((t) => ({
-    value: t.value,
-    label: t.available ? t.label : `${t.label} (çizelge verisi yok)`,
-  }));
-}
-
-/**
- * Seviye → çizelge program anahtarları (kademeli dönüşüm / çok programlı okul).
- * BOŞ nesne = varsayılan atama (okul türü + hazırlık + ders yılından türetilir);
- * yazılan seviye için yalnız listedeki programlar uygulanır.
- */
-export type LevelPrograms = Record<string, string[]>;
-
 /** Kurum künyesi — evrak antedi buradan çözülür (`setup_completed` salt-okunur). */
 export interface SchoolConfig {
   school_name: string;
   province: string;
   district: string;
   principal_name: string;
-  school_type: SchoolType;
+  /** Açıksa sınıf düzeylerine Hazırlık (0) eklenir. */
   has_prep_class: boolean;
-  level_programs: LevelPrograms;
-  /** Bir okul gününde kaç ders saati var (genel liselerde 8, MTAL'de değişir). */
-  daily_period_count: number;
-  /** Sınav yapılabilecek ders saatleri; BOŞ liste = tüm saatler serbest. */
-  exam_period_nos: number[];
-  /** Kız/erkek ayrışmasının OKUL varsayılanı; yeni oturumlar bununla açılır. */
-  default_separation_mode: SeparationMode;
-  /** Eğitim modeli — ikili eğitimde aynı ders saati iki farklı zamana denk gelir. */
-  education_model: EducationModel;
-  /** Ders saati listesi (sabah / tam gün); boşsa backend varsayılanı üretir. */
-  bell_schedule: BellPeriod[];
-  /** İkili eğitimde öğle grubunun çizelgesi; boşsa sabahınki kullanılır. */
-  afternoon_bell_schedule: BellPeriod[];
-  /** Hesaplayıcıyı yeniden doldurmak için akış parametreleri (çizelge elle düzeltilebilir). */
-  bell_flow: LessonFlowBody;
-  afternoon_bell_flow: LessonFlowBody;
   setup_completed: boolean;
 }
-
-export type EducationModel = "FULL_DAY" | "DUAL";
-
-/** Şubenin devam ettiği oturum; boş = belirtilmemiş (tam gün okulun normali). */
-export type Shift = "" | "MORNING" | "AFTERNOON";
-
-export const SHIFT_LABELS: Record<Exclude<Shift, "">, string> = {
-  MORNING: "Sabah",
-  AFTERNOON: "Öğleden sonra",
-};
-
-/** Ders saati listesi öğesi — şekil backend sözleşmesiyle birebir. */
-export interface BellPeriod {
-  no: number;
-  name: string;
-  /** "SS:DD"; boş bırakılabilir (o saat için zaman basılmaz). */
-  start: string;
-}
-
-/** Ders akışı parametreleri — saatleri BACKEND hesaplar (ön yüzde kopya yok). */
-export interface LessonFlowBody {
-  first_lesson?: string;
-  lesson_count?: number;
-  lesson_minutes?: number;
-  break_minutes?: number;
-  long_break_after?: number;
-  long_break_minutes?: number;
-  block_sizes?: number[];
-}
-
-export interface BellPreview {
-  periods: BellPeriod[];
-  /** Son dersin bitiş saati. */
-  end_time: string;
-  /** İkili eğitimde öğleden sonra oturumu için önerilen başlangıç. */
-  next_start: string;
-  flow: Required<LessonFlowBody>;
-}
-
-/**
- * Kız/erkek ayrışması kipi (20.09.2026). Etiketler docs/sozluk.md'ye tabidir:
- * iç kod (DESK/ROOM) kullanıcıya GÖSTERİLMEZ, `SEPARATION_LABELS` basılır.
- */
-export type SeparationMode = "NONE" | "DESK" | "ROOM";
-
-export const SEPARATION_LABELS: Record<SeparationMode, string> = {
-  NONE: "Kapalı",
-  DESK: "Aynı sıraya oturtma",
-  ROOM: "Ayrı salonlar",
-};
-
-export const SEPARATION_HINTS: Record<SeparationMode, string> = {
-  NONE: "Kız ve erkek öğrenciler için ayrı bir kural uygulanmaz.",
-  DESK: "Kız ve erkek öğrenciler aynı sıraya oturtulmaz; salonlar karışıktır.",
-  ROOM: "Kız ve erkek öğrenciler ayrı salonlara yerleştirilir; daha çok salon gerekebilir.",
-};
-
-/** Cinsiyet — YALNIZ kız/erkek ayrışması kuralı için; hiçbir belgeye basılmaz. */
-export type Gender = "" | "K" | "E";
-
-export const GENDER_LABELS: Record<Gender, string> = {
-  "": "Belirtilmemiş",
-  K: "Kız",
-  E: "Erkek",
-};
-
-// Ders saati ayarı (F6 eki-2) — sınırlar backend'le AYNI olmalı
-// (`apps.okul.models.DEFAULT_DAILY_PERIOD_COUNT` / `MAX_DAILY_PERIOD_COUNT`).
-// Asıl doğrulama serviste; buradaki değerler yalnız seçenek listesi üretir.
-export const VARSAYILAN_GUNLUK_DERS_SAATI = 8;
-export const MAKS_GUNLUK_DERS_SAATI = 16;
-
-/** Gün uzunluğu programa göre değişen türler — yardım metni onlara ayrı konuşur. */
-export const MESLEKI_TURLER: SchoolType[] = [
-  "MESLEKI_VE_TEKNIK_ANADOLU_LISESI",
-  "COK_PROGRAMLI_ANADOLU_LISESI",
-];
 
 /** PUT gövdesi kısmi olabilir — backend MERGE semantiği uygular. */
 export type SchoolConfigBody = Partial<Omit<SchoolConfig, "setup_completed">>;
@@ -245,8 +94,6 @@ export interface Student {
   class_level: number | null;
   class_section: string;
   class_label: string;
-  /** Kız/erkek ayrışması kuralının girdisi; listede sütun olarak GÖSTERİLMEZ. */
-  gender: Gender;
   status: StudentStatus;
 }
 
@@ -257,7 +104,6 @@ export interface StudentWriteBody {
   student_number?: string;
   class_level?: number | null;
   class_section?: string;
-  gender?: Gender;
   status?: StudentStatus;
 }
 
@@ -268,12 +114,6 @@ export interface Personnel {
   last_name: string;
   title: string;
   branch: string;
-  /**
-   * Branşın EŞLEŞTİRME anahtarı (backend `departments.branch_key`): harf büyüklüğü,
-   * şapka ve boşluk farkları katlanmıştır. Zümre başkanı seçicisi öğretmeni zümrenin
-   * `branch_keys`iyle bu alan üzerinden eşler — arayüz yalnız eşitlik karşılaştırır.
-   */
-  branch_key: string;
   is_active: boolean;
   full_name: string;
 }
@@ -286,68 +126,7 @@ export interface PersonnelWriteBody {
   is_active?: boolean;
 }
 
-/**
- * Zümre — okul zümre başkanları kurulunu oluşturan sınıf/alan zümreleri.
- * Sınav takvimi PDF'inin imza bloğu bu katalogdan seçilir (SubjectDepartmentSerializer).
- */
-export interface SubjectDepartment {
-  id: number;
-  name: string;
-  head: number | null;
-  /** Başkanın ad-soyadı — backend şifreli alandan çözer (yazma tarafı yalnız `head`). */
-  head_name: string;
-  is_board_member: boolean;
-  /**
-   * Zümrenin branşları (öğretmen sicilindeki branş adları). Boşsa zümrenin branşı
-   * tanımsızdır: başkan adayı bütün aktif öğretmenlerdir. Bir branş en çok bir zümrededir.
-   */
-  branches: string[];
-  /** `branches`in eşleştirme anahtarları — `Personnel.branch_key` ile karşılaştırılır. */
-  branch_keys: string[];
-}
-
-export interface SubjectDepartmentWriteBody {
-  name: string;
-  head?: number | null;
-  is_board_member?: boolean;
-  branches?: string[];
-}
-
-/**
- * Öğretmen sicilindeki bir branş ve zümre kataloğundaki durumu
- * (`GET /subject-departments/branch-candidates/`).
- * NEW → zümresi yok, üretilebilir · LINKABLE → aynı adlı zümre var, üretim branşı
- * ona bağlar · COVERED → branş zaten bir zümrede (`department_name`).
- */
-export interface BranchCandidate {
-  key: string;
-  name: string;
-  teacher_count: number;
-  status: "NEW" | "LINKABLE" | "COVERED";
-  department_id: number | null;
-  department_name: string;
-}
-
-/** `POST /subject-departments/generate/` yanıtı — zümre ADLARI. */
-export interface DepartmentGenerateResult {
-  created: string[];
-  linked: string[];
-  skipped: string[];
-}
-
-/**
- * Şube kümesi (SAY/EA/DİL gibi) — YALNIZ seçim kolaylığı etiketi.
- * Küme kimliği hiçbir oturum kaydına yazılmaz; sihirbaz kümeyi yazma anında
- * somut şube pk'lerine açar.
- */
-export interface ClassSectionGroup {
-  id: number;
-  name: string;
-  order: number;
-  section_count: number;
-}
-
-/** Şube kataloğu satırı — salon-şube eşlemesi (F2) ve R2k bu katalogdan okur. */
+/** Şube kataloğu satırı — ClassSectionSerializer ile birebir. */
 export interface ClassSection {
   id: number;
   school_year: number;
@@ -355,10 +134,6 @@ export interface ClassSection {
   class_level: number;
   class_section: string;
   class_label: string;
-  group: number | null;
-  group_name: string;
-  /** İkili eğitimde şubenin oturumu — evrakta basılacak saati belirler. */
-  shift: Shift;
 }
 
 export interface ClassSectionWriteBody {
@@ -418,11 +193,6 @@ export interface PersonnelImportReport extends ImportReportBase {
   created_personnel: number;
   updated_personnel: number;
   unchanged_personnel: number;
-  /**
-   * Yalnız COMMIT yanıtında: zümre kataloğu BOŞKEN branşlardan kendiliğinden üretilen
-   * zümrelerin adları (katalogda zümre varsa boş liste — elle kurulan düzene dokunulmaz).
-   */
-  departments_created?: string[];
 }
 
 export type ImportReport = StudentImportReport | PersonnelImportReport;
@@ -473,65 +243,6 @@ function asPage<T>(data: Paginated<T> | T[]): Paginated<T> {
     : data;
 }
 
-// ---------------------------------------------------------------------------
-// Öğrenci fotoğrafları (19.09.2026) — e-Okul OOG01001R080, sınıf düzeyi başına dosya
-// ---------------------------------------------------------------------------
-
-/** Mükerrer yükleme: kayıtlı fotoğrafı yenisinden FARKLI öğrenci için seçim. */
-export type PhotoConflictChoice = "keep" | "replace";
-
-export interface PhotoStats {
-  with_photo: number;
-  active_students: number;
-  without_photo: number;
-}
-
-export interface PhotoImportIssue {
-  /** Excel konumu ("C8"). */
-  location: string;
-  issue: string;
-  /** Okul numarası — ad YOK (KVKK). */
-  value: string;
-}
-
-export interface PhotoImportReport {
-  file_hash: string;
-  file_name: string;
-  dry_run: boolean;
-  already_imported: boolean;
-  on_conflict: PhotoConflictChoice;
-  total: number;
-  /** e-Okul'da fotoğrafı olmayan (yer tutucu) öğrenci sayısı. */
-  placeholders: number;
-  matched: number;
-  created: number;
-  same: number;
-  /** Kayıtlı fotoğrafı yenisinden farklı öğrenci sayısı. */
-  conflicts: number;
-  replaced: number;
-  kept: number;
-  /** Eşleşen öğrencilerin sınıf düzeyleri ("9. Sınıf") ve şubeleri ("9/A"). */
-  levels: string[];
-  sections: string[];
-  /** Bu düzeylerde aktarımdan sonra fotoğrafı olmayan aktif öğrenci sayısı. */
-  missing_in_levels: number;
-  conflict_students: { student_number: string; class_label: string }[];
-  conflicts_truncated: number;
-  skipped: PhotoImportIssue[];
-  skipped_truncated: number;
-}
-
-function photoImport(
-  path: string,
-  file: File,
-  onConflict: PhotoConflictChoice,
-): Promise<PhotoImportReport> {
-  const form = new FormData();
-  form.append("file", file);
-  form.append("on_conflict", onConflict);
-  return api.postForm<PhotoImportReport>(path, form);
-}
-
 /** Dosya yolu multipart (`file`), metin yolu JSON (`text`) — backend tam olarak birini bekler. */
 function importRequest<R>(path: string, input: ImportInput): Promise<R> {
   if ("file" in input) {
@@ -543,16 +254,6 @@ function importRequest<R>(path: string, input: ImportInput): Promise<R> {
 }
 
 export const okulApi = {
-  // --- Öğrenci fotoğrafları (e-Okul OOG01001R080) ---
-  photoStats: () => api.get<PhotoStats>("/student-photos/"),
-  /** Yazmadan önizleme: yeni/aynı/farklı sayıları, sorunlu satırlar. */
-  previewPhotoImport: (file: File, onConflict: PhotoConflictChoice = "keep") =>
-    photoImport("/student-photos/import/preview/", file, onConflict),
-  commitPhotoImport: (file: File, onConflict: PhotoConflictChoice = "keep") =>
-    photoImport("/student-photos/import/commit/", file, onConflict),
-  /** KVKK düğmesi: bütün fotoğrafları KALICI siler. */
-  deleteAllPhotos: () => api.del<{ deleted: number }>("/student-photos/"),
-
   // --- Kurulum sihirbazı ---
 
   getSetupStatus: (): Promise<SetupStatus> => api.get<SetupStatus>("/setup/status/"),
@@ -566,11 +267,7 @@ export const okulApi = {
   completeSetup: (): Promise<{ setup_completed: boolean }> =>
     api.post<{ setup_completed: boolean }>("/setup/complete/"),
 
-  /** Okul türleri + çizelge verisi var mı (seçici bu listeden dolar). */
-  listSchoolTypes: (): Promise<SchoolTypeOption[]> =>
-    api.get<SchoolTypeOption[]>("/setup/school-types/"),
-
-  /** Öğrenim seviyeleri — okul türünden türetilir (U4). */
+  /** Öğrenim seviyeleri — okul içi sabit 1-12, hazırlık açıksa başta 0. */
   getGradeLevels: (): Promise<GradeLevelsResponse> => fetchGradeLevels(),
 
   // --- Ders yılları ---
@@ -617,13 +314,6 @@ export const okulApi = {
 
   getStudent: (id: number): Promise<Student> => api.get<Student>(`/students/${id}/`),
 
-  /**
-   * Cinsiyeti bilinmeyen AKTİF öğrenci SAYISI (kız/erkek ayrışması uyarısı).
-   * Yalnız sayı döner — liste, ad ya da kimlik YOKTUR.
-   */
-  genderCoverage: (): Promise<{ missing: number; total: number }> =>
-    api.get<{ missing: number; total: number }>("/students/gender-coverage/"),
-
   createStudent: (body: StudentWriteBody): Promise<Student> =>
     api.post<Student>("/students/", body),
 
@@ -669,83 +359,6 @@ export const okulApi = {
     api.post<ClassSection>("/class-sections/", body),
 
   deleteClassSection: (id: number): Promise<void> => api.del<void>(`/class-sections/${id}/`),
-
-  // --- Şube kümeleri (SAY/EA/DİL — sihirbazda toplu şube seçimi) ---
-
-  listClassSectionGroups: async (): Promise<ClassSectionGroup[]> => {
-    const data = await api.get<Paginated<ClassSectionGroup> | ClassSectionGroup[]>(
-      "/class-section-groups/?limit=200",
-    );
-    return unwrap(data);
-  },
-
-  createClassSectionGroup: (body: { name: string; order?: number }): Promise<ClassSectionGroup> =>
-    api.post<ClassSectionGroup>("/class-section-groups/", body),
-
-  updateClassSectionGroup: (
-    id: number,
-    body: Partial<{ name: string; order: number }>,
-  ): Promise<ClassSectionGroup> =>
-    api.patch<ClassSectionGroup>(`/class-section-groups/${id}/`, body),
-
-  deleteClassSectionGroup: (id: number): Promise<void> =>
-    api.del<void>(`/class-section-groups/${id}/`),
-
-  /** Toplu atama — şube tek tek düzenlenmez. */
-  assignClassSectionGroup: (body: {
-    section_ids: number[];
-    group: number | null;
-  }): Promise<{ updated: number }> =>
-    api.post<{ updated: number }>("/class-section-groups/assign/", body),
-
-  /** Toplu vardiya işareti (ikili eğitim); boş `shift` işareti kaldırır. */
-  assignClassSectionShift: (body: {
-    section_ids: number[];
-    shift: Shift;
-  }): Promise<{ updated: number }> =>
-    api.post<{ updated: number }>("/class-sections/assign-shift/", body),
-
-  /**
-   * Ders akışından zil çizelgesi önizlemesi — HİÇBİR ŞEY kaydedilmez.
-   * Hesap backend'dedir; ekran her değişiklikte bu ucu çağırır.
-   */
-  previewBellSchedule: (body: LessonFlowBody): Promise<BellPreview> =>
-    api.post<BellPreview>("/setup/bell-preview/", body),
-
-  // --- Zümreler (takvim imza bloğunun kaynağı) ---
-
-  /** `limit=500`: DRF varsayılan sayfası 25'tir, zümre listesi sessizce kesilmesin. */
-  listSubjectDepartments: async (boardOnly = false): Promise<SubjectDepartment[]> => {
-    const path = boardOnly
-      ? "/subject-departments/?board_only=true&limit=500"
-      : "/subject-departments/?limit=500";
-    const data = await api.get<Paginated<SubjectDepartment> | SubjectDepartment[]>(path);
-    return unwrap(data);
-  },
-
-  createSubjectDepartment: (body: SubjectDepartmentWriteBody): Promise<SubjectDepartment> =>
-    api.post<SubjectDepartment>("/subject-departments/", body),
-
-  updateSubjectDepartment: (
-    id: number,
-    body: Partial<SubjectDepartmentWriteBody>,
-  ): Promise<SubjectDepartment> =>
-    api.patch<SubjectDepartment>(`/subject-departments/${id}/`, body),
-
-  deleteSubjectDepartment: (id: number): Promise<void> =>
-    api.del<void>(`/subject-departments/${id}/`),
-
-  /** Öğretmen sicilindeki branşlar + katalogdaki durumları (üretim penceresinin adayları). */
-  listBranchCandidates: async (): Promise<BranchCandidate[]> =>
-    (await api.get<{ candidates: BranchCandidate[] }>("/subject-departments/branch-candidates/"))
-      .candidates,
-
-  /** Branşlardan zümre üretir (idempotent). `keys` verilmezse bütün adaylar işlenir. */
-  generateDepartments: (keys?: string[]): Promise<DepartmentGenerateResult> =>
-    api.post<DepartmentGenerateResult>(
-      "/subject-departments/generate/",
-      keys === undefined ? {} : { keys },
-    ),
 
   // --- İçe aktarma (önizleme hiçbir şey yazmaz; commit gerçek yazar) ---
 

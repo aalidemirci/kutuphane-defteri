@@ -1,10 +1,7 @@
-// Ayarlar sayfası (DD kalıbından KS'ye) — sekiz sekme: ders yılları (dönemlerle),
-// şube kataloğu (salon-şube eşlemesi ve şube sınav duyurusu bu katalogdan okur;
-// R2k şube yoklama listesi kaldırılmıştı), şube kümeleri (SAY/EA/DİL —
-// sihirbazda toplu şube seçimi), zümreler (okul zümre başkanları kurulu — sınav
-// takvimi imza bloğunun kaynağı), okul bilgileri (evrak antedi + okul türü, U4),
-// güvenlik (uygulama parolası) ve güncelleme (F8 — GitHub sürüm denetimi).
-// DD'deki tatil sekmesi YOK (iş günü hesabı alınmadı).
+// Ayarlar sayfası (DD kalıbı) — beş sekme: ders yılları (dönemlerle), şube
+// kataloğu, okul bilgileri (evrak antedi + hazırlık sınıfı), güvenlik
+// (uygulama parolası, yedek) ve güncelleme (yalnız elle denetim, tasarım T11).
+// Tatil sekmesi YOK: kapalı günler takvimi F1'de gelir (tasarım §6.1 Holiday).
 
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
@@ -27,50 +24,17 @@ import Tabs, { tabPanelProps } from "../../ui/Tabs";
 import type { TabItem } from "../../ui/Tabs";
 import TextField from "../../ui/TextField";
 import UpdatePanel from "../guncelleme/UpdatePanel";
-import DersSaatleriPaneli from "./DersSaatleriPaneli";
-import SubeKumeleriPaneli from "./SubeKumeleriPaneli";
-import ZumrelerPaneli from "./ZumrelerPaneli";
 import GuvenlikAyarlari from "../guvenlik/GuvenlikAyarlari";
-import CizelgeAtamaMatrisi from "../okul/CizelgeAtamaMatrisi";
-import {
-  MAKS_GUNLUK_DERS_SAATI,
-  MESLEKI_TURLER,
-  SEPARATION_HINTS,
-  SEPARATION_LABELS,
-  VARSAYILAN_GUNLUK_DERS_SAATI,
-  okulApi,
-  okulTuruSecenekleri,
-} from "../okul/api";
-import type {
-  ClassSection,
-  GradeLevelOption,
-  LevelPrograms,
-  SchoolTerm,
-  SchoolType,
-  SchoolTypeOption,
-  SchoolYear,
-  SeparationMode,
-} from "../okul/api";
+import { okulApi } from "../okul/api";
+import type { ClassSection, GradeLevelOption, SchoolTerm, SchoolYear } from "../okul/api";
 
 // TABS[0] varsayılan sekmedir (useTabParam fallback) — başa yeni anahtar EKLEME.
-const TABS = [
-  "ders-yillari",
-  "subeler",
-  "sube-kumeleri",
-  "zumreler",
-  "ders-saatleri",
-  "okul",
-  "guvenlik",
-  "guncelleme",
-] as const;
+const TABS = ["ders-yillari", "subeler", "okul", "guvenlik", "guncelleme"] as const;
 type TabKey = (typeof TABS)[number];
 
 const TAB_ITEMS: TabItem[] = [
   { key: "ders-yillari", label: "Ders Yılları", icon: "calendar_month" },
   { key: "subeler", label: "Şubeler", icon: "meeting_room" },
-  { key: "sube-kumeleri", label: "Şube Kümeleri", icon: "category" },
-  { key: "zumreler", label: "Zümreler", icon: "groups" },
-  { key: "ders-saatleri", label: "Ders Saatleri", icon: "schedule" },
   { key: "okul", label: "Okul Bilgileri", icon: "apartment" },
   { key: "guvenlik", label: "Güvenlik", icon: "lock" },
   { key: "guncelleme", label: "Güncelleme", icon: "system_update" },
@@ -148,10 +112,8 @@ export default function AyarlarPage() {
         <div>
           <h1 className="kd-page-title">Ayarlar</h1>
           <p className="kd-page-description">
-            Ders yılı, şube kataloğu, şube kümeleri, zümreler, okul künyesi ve uygulama parolası
-            burada yönetilir. Okul künyesi salon evrakının antedinde kullanılır; şube kataloğu
-            salon-şube eşlemesini, şube kümeleri sihirbazdaki toplu şube seçimini, zümre listesi de
-            sınav takviminin imza bloğunu besler. Salon kümeleri (Sabah/Öğle) Salonlar ekranındadır.
+            Ders yılı, şube kataloğu, okul künyesi, uygulama parolası, yedekler ve güncelleme burada
+            yönetilir. Okul künyesi programın bastığı evrakın antedinde kullanılır.
           </p>
         </div>
       </div>
@@ -174,9 +136,6 @@ export default function AyarlarPage() {
           />
         )}
         {tab === "subeler" && <SubelerPanel years={years} yearsLoading={yearsLoading} />}
-        {tab === "sube-kumeleri" && <SubeKumeleriPaneli />}
-        {tab === "zumreler" && <ZumrelerPaneli />}
-        {tab === "ders-saatleri" && <DersSaatleriPaneli />}
         {tab === "okul" && <OkulBilgileriPanel />}
         {tab === "guvenlik" && <GuvenlikAyarlari okulAdi={okulAdi} />}
         {tab === "guncelleme" && <UpdatePanel />}
@@ -185,12 +144,6 @@ export default function AyarlarPage() {
       <section className="space-y-3">
         <h2 className="text-title-medium text-on-surface">Diğer ayarlar</h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <HubFeatureCard
-            to="/dersler"
-            icon="menu_book"
-            title="Ders Havuzu"
-            description="MEB haftalık ders çizelgesinden türetilen ders listesi: elle ders ekleyin, pasifleştirin, mükerrerleri birleştirin."
-          />
           {/* Kurulum tamamlandıktan sonra sihirbaza gezinilebilir tek yol burasıdır
               (menüde yer almaz); adımları gözden geçirmek isteyen kullanıcı sıkışmasın. */}
           <HubFeatureCard
@@ -227,8 +180,8 @@ function DersYillariPanel({
       <Card elevation={1} className="p-6">
         <p className="text-title-medium text-on-surface">Ders yılları</p>
         <p className="mt-1 text-body-medium text-on-surface-variant">
-          Aynı anda yalnız BİR ders yılı aktif olabilir. Şube kataloğu, sınav takvimleri ve
-          oturumlar aktif yıla bağlanır.
+          Aynı anda yalnız BİR ders yılı aktif olabilir. Şube kataloğu ve e-Okul aktarımı aktif yıla
+          bağlanır.
         </p>
 
         {loading ? (
@@ -265,7 +218,7 @@ function SchoolYearRow({ year, onChanged }: { year: SchoolYear; onChanged: () =>
   const activate = async () => {
     const ok = await confirm({
       title: "Ders yılı aktifleştirilsin mi?",
-      message: `“${year.name}” aktif ders yılı olur; aynı anda yalnız bir yıl aktif olabildiğinden diğer yıllar pasife çekilir. Yeni sınav takvimleri ve oturumlar bu yıla açılır, ders havuzu bu yılın çizelgesine göre güncellenir.`,
+      message: `“${year.name}” aktif ders yılı olur; aynı anda yalnız bir yıl aktif olabildiğinden diğer yıllar pasife çekilir. Bundan sonraki e-Okul aktarımlarında görülen şubeler bu yılın kataloğuna eklenir.`,
       confirmLabel: "Aktifleştir",
     });
     if (!ok) return;
@@ -523,7 +476,7 @@ function SchoolYearCreateCard({ onCreated }: { onCreated: () => void }) {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Şubeler (şube kataloğu — salon-şube eşlemesi ve şube sınav duyurusu okur)
+// 2. Şubeler (şube kataloğu — ders yılı başına; aktarım kendiliğinden doldurur)
 // ---------------------------------------------------------------------------
 
 function SubelerPanel({ years, yearsLoading }: { years: SchoolYear[]; yearsLoading: boolean }) {
@@ -616,9 +569,8 @@ function SubelerPanel({ years, yearsLoading }: { years: SchoolYear[]; yearsLoadi
       <Card elevation={1} className="p-6">
         <p className="text-title-medium text-on-surface">Şube kataloğu</p>
         <p className="mt-1 text-body-medium text-on-surface-variant">
-          Öğrenci aktarımında görülen şubeler buraya kendiliğinden eklenir. Salon-şube eşlemesi
-          (“Kendi dersliğinde” düzeni) bu katalogdan kurulur. Şube sınav duyurusu bu katalogdan
-          beslenir.
+          Öğrenci aktarımında görülen şubeler buraya kendiliğinden eklenir; eksik kalan şubeyi
+          aşağıdan elle ekleyebilirsiniz.
         </p>
 
         <div className="mt-4 max-w-sm">
@@ -694,7 +646,7 @@ function SubelerPanel({ years, yearsLoading }: { years: SchoolYear[]; yearsLoadi
 }
 
 // ---------------------------------------------------------------------------
-// 3. Okul bilgileri (kurum künyesi + okul türü)
+// 3. Okul bilgileri (kurum künyesi + hazırlık sınıfı)
 // ---------------------------------------------------------------------------
 
 function OkulBilgileriPanel() {
@@ -702,15 +654,7 @@ function OkulBilgileriPanel() {
   const [il, setIl] = useState("");
   const [ilce, setIlce] = useState("");
   const [mudur, setMudur] = useState("");
-  const [okulTuru, setOkulTuru] = useState<SchoolType>("ANADOLU_LISESI");
   const [hazirlikVar, setHazirlikVar] = useState(false);
-  const [levelPrograms, setLevelPrograms] = useState<LevelPrograms>({});
-  const [gunlukDersSaati, setGunlukDersSaati] = useState(VARSAYILAN_GUNLUK_DERS_SAATI);
-  const [sinavSaatleri, setSinavSaatleri] = useState<number[]>([]);
-  const [ayrisma, setAyrisma] = useState<SeparationMode>("NONE");
-  // Cinsiyeti bilinmeyen öğrenci SAYISI (kimlik değil) — yalnız kural açıkken çekilir.
-  const [cinsiyetEksik, setCinsiyetEksik] = useState<number | null>(null);
-  const [okulTurleri, setOkulTurleri] = useState<SchoolTypeOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -727,12 +671,7 @@ function OkulBilgileriPanel() {
         setIl(c.province);
         setIlce(c.district);
         setMudur(c.principal_name);
-        setOkulTuru(c.school_type);
         setHazirlikVar(c.has_prep_class);
-        setLevelPrograms(c.level_programs ?? {});
-        setGunlukDersSaati(c.daily_period_count || VARSAYILAN_GUNLUK_DERS_SAATI);
-        setSinavSaatleri(c.exam_period_nos ?? []);
-        setAyrisma(c.default_separation_mode ?? "NONE");
         setError(null);
       })
       .catch((e: unknown) =>
@@ -741,39 +680,10 @@ function OkulBilgileriPanel() {
       .finally(() => {
         if (!iptal) setLoading(false);
       });
-    okulApi
-      .listSchoolTypes()
-      .then((r) => {
-        if (!iptal) setOkulTurleri(r);
-      })
-      .catch(() => {
-        if (!iptal) setOkulTurleri([]);
-      });
     return () => {
       iptal = true;
     };
   }, []);
-
-  // Sayaç YALNIZ kural açıkken çekilir: cinsiyet şifreli olduğu için sayım
-  // bütün öğrencileri çözer; kapalıyken kimse bu bedeli ödemesin.
-  useEffect(() => {
-    if (ayrisma === "NONE") {
-      setCinsiyetEksik(null);
-      return;
-    }
-    let iptal = false;
-    okulApi
-      .genderCoverage()
-      .then((r) => {
-        if (!iptal) setCinsiyetEksik(r.missing);
-      })
-      .catch(() => {
-        if (!iptal) setCinsiyetEksik(null);
-      });
-    return () => {
-      iptal = true;
-    };
-  }, [ayrisma]);
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -786,16 +696,9 @@ function OkulBilgileriPanel() {
         province: il.trim(),
         district: ilce.trim(),
         principal_name: mudur.trim(),
-        school_type: okulTuru,
         has_prep_class: hazirlikVar,
-        level_programs: levelPrograms,
-        daily_period_count: gunlukDersSaati,
-        // Gün kısaldıysa taşan saatler gönderilmez: backend'in "açıkça
-        // gönderilen liste sessizce kırpılmaz" kuralı hata döndürürdü.
-        exam_period_nos: sinavSaatleri.filter((no) => no <= gunlukDersSaati),
-        default_separation_mode: ayrisma,
       });
-      snackbar.success("Okul bilgileri kaydedildi. Ders havuzu çizelgeye göre güncellendi.");
+      snackbar.success("Okul bilgileri kaydedildi.");
     } catch (err) {
       const split = splitApiError(err, "Okul bilgileri kaydedilemedi.");
       setFieldErrors(split.fields);
@@ -811,9 +714,8 @@ function OkulBilgileriPanel() {
     <Card elevation={1} className="p-6">
       <p className="text-title-medium text-on-surface">Okul bilgileri</p>
       <p className="mt-1 text-body-medium text-on-surface-variant">
-        Salon evrakının antedi bu bilgilerden üretilir. Okul türü, hazırlık sınıfı ve sınıf düzeyine
-        göre çizelge ataması, ders havuzunun hangi MEB çizelgesinden türetileceğini ve geçerli sınıf
-        düzeylerini belirler; kaydedince ders havuzu çizelgeye göre yeniden güncellenir.
+        Programın bastığı evrakın antedi bu bilgilerden üretilir. Hazırlık sınıfı varsa sınıf
+        düzeylerine Hazırlık eklenir.
       </p>
       {error && (
         <div className="mt-4">
@@ -842,17 +744,10 @@ function OkulBilgileriPanel() {
           error={fieldErrors.district}
         />
         <TextField
-          className="sm:col-span-2"
           label="Okul müdürü"
           value={mudur}
           onChange={(e) => setMudur(e.target.value)}
           error={fieldErrors.principal_name}
-        />
-        <Select
-          label="Okul türü"
-          value={okulTuru}
-          onChange={(e) => setOkulTuru(e.target.value as SchoolType)}
-          options={okulTuruSecenekleri(okulTurleri)}
         />
         <Select
           label="Hazırlık sınıfı"
@@ -862,82 +757,8 @@ function OkulBilgileriPanel() {
             { value: "0", label: "Yok" },
             { value: "1", label: "Var" },
           ]}
+          error={fieldErrors.has_prep_class}
         />
-        <Select
-          label="Günlük ders saati sayısı"
-          value={String(gunlukDersSaati)}
-          onChange={(e) => setGunlukDersSaati(Number(e.target.value))}
-          options={Array.from({ length: MAKS_GUNLUK_DERS_SAATI }, (_, i) => ({
-            value: String(i + 1),
-            label: `${i + 1} ders saati`,
-          }))}
-          helperText={
-            MESLEKI_TURLER.includes(okulTuru)
-              ? "Atölye ve işletmede beceri eğitimi günleriyle değişebilir — okulunuzun gününü girin."
-              : "Genel liselerde gün 8 ders saatidir."
-          }
-        />
-        <div className="sm:col-span-2">
-          <fieldset>
-            <legend className="text-label-large text-on-surface">
-              Sınav yapılabilecek ders saatleri
-            </legend>
-            <p className="mb-2 text-body-small text-on-surface-variant">
-              Otomatik yerleştirme sınavları YALNIZ işaretli saatlere koyar. Hiçbiri işaretli
-              değilse tüm saatler sınava açıktır. Elle yerleştirmede bu seçim bağlayıcı değildir —
-              sınav saatini okul müdürlüğü belirler (Yazılı ve Uygulamalı Sınavlar Yönergesi md. 5).
-            </p>
-            <div className="grid grid-cols-3 gap-1 sm:grid-cols-4">
-              {Array.from({ length: gunlukDersSaati }, (_, i) => i + 1).map((no) => (
-                <label
-                  key={no}
-                  className="flex min-h-9 cursor-pointer items-center gap-2 rounded-shape-sm border border-outline px-3 text-body-medium text-on-surface"
-                >
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5 accent-primary"
-                    checked={sinavSaatleri.includes(no)}
-                    aria-label={`${no}. ders saati sınava açık`}
-                    onChange={() =>
-                      setSinavSaatleri((prev) =>
-                        prev.includes(no)
-                          ? prev.filter((x) => x !== no)
-                          : [...prev, no].sort((a, b) => a - b),
-                      )
-                    }
-                  />
-                  {no}. ders
-                </label>
-              ))}
-            </div>
-          </fieldset>
-        </div>
-        <div className="sm:col-span-2">
-          <Select
-            label="Kız/erkek ayrışması"
-            value={ayrisma}
-            onChange={(e) => setAyrisma(e.target.value as SeparationMode)}
-            options={(Object.keys(SEPARATION_LABELS) as SeparationMode[]).map((kip) => ({
-              value: kip,
-              label: SEPARATION_LABELS[kip],
-            }))}
-            helperText={`${SEPARATION_HINTS[ayrisma]} Yeni sınav oturumları bu seçimle açılır; her oturumda ayrıca değiştirilebilir. “Kendi dersliğinde” düzeninde uygulanmaz.`}
-          />
-          {ayrisma !== "NONE" && cinsiyetEksik !== null && cinsiyetEksik > 0 && (
-            <p role="status" className="mt-1 text-body-small text-error">
-              {cinsiyetEksik} öğrencinin cinsiyet bilgisi yok; bu öğrencilere kural uygulanmaz.
-              e-Okul sınıf listesini yeniden aktarın (Kişiler → İçe aktar).
-            </p>
-          )}
-        </div>
-        <div className="sm:col-span-2">
-          <CizelgeAtamaMatrisi
-            schoolType={okulTuru}
-            hasPrepClass={hazirlikVar}
-            value={levelPrograms}
-            onChange={setLevelPrograms}
-          />
-        </div>
         <div className="flex justify-end sm:col-span-2">
           <Button type="submit" icon="check" disabled={busy}>
             {busy ? "Kaydediliyor…" : "Kaydet"}

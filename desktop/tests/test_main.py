@@ -1,4 +1,4 @@
-"""Açılış orkestrasyonu testleri (tasarım §5.3 açılış sırası).
+"""Açılış orkestrasyonu testleri (tasarım §4.2 açılış sırası).
 
 Buradaki testler Django'yu çalıştırmaz — sıra ve karar mantığı sahte adımlarla
 doğrulanır. Gerçek uçtan uca açılış (migrate + waitress + belirteç koruması)
@@ -254,7 +254,7 @@ def test_ikinci_acilis_gunluk_yedegi_alir(tmp_path: Path) -> None:
         )
         assert sonuc.returncode == EXIT_OK, sonuc.stderr
 
-    # K9 iki kip: parolasız kipte günlük yedek ATLANMAZ — düz `.kdbak` alınır.
+    # KS K9 iki kip: parolasız kipte günlük yedek ATLANMAZ — düz `.kdbak` alınır.
     yedekler = list((tmp_path / "backups").glob("gunluk-*.kdbak"))
     assert len(yedekler) == 1
     assert yedekler[0].read_bytes().startswith(b"SQLite format 3")
@@ -262,7 +262,7 @@ def test_ikinci_acilis_gunluk_yedegi_alir(tmp_path: Path) -> None:
 
 @pytest.mark.slow
 def test_gunluge_ogrenci_arama_sorgusu_dusmez(tmp_path: Path) -> None:
-    """Erişim logu kapalı: istek yolu ne dosyaya ne de konsola düşmeli (F2 #20).
+    """Erişim logu kapalı: istek yolu ne dosyaya ne de konsola düşmeli (KS F2 #20).
 
     `KD_DEBUG=1` ile koşar: Django'nun konsol handler'ı ancak DEBUG açıkken
     yayın yapar, yani sızıntı bu kipte görünür hale gelir.

@@ -24,9 +24,8 @@ services:
       KD_DEBUG: "1"
       # `apps.okul.services.app_password` masaüstü yedek katmanını
       # (`desktop.backup*`) import eder; paketli çalışmada desktop donmuş
-      # modüldür, geliştirmede /repo bağlamından çözülür. (DD'de bu satır
-      # yoktu ve backend API testleri konteynerde ModuleNotFoundError ile
-      # kırılıyordu — burada baştan düzeltildi.)
+      # modüldür, geliştirmede /repo bağlamından çözülür. (Satır olmazsa
+      # backend API testleri konteynerde ModuleNotFoundError ile kırılır.)
       PYTHONPATH: /repo
     command: sleep infinity
 

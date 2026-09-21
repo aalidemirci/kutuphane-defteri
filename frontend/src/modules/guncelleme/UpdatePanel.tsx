@@ -1,8 +1,12 @@
 // Ayarlar → Güncelleme. Metin kullanıcı dilindedir (docs/sozluk.md §1): sürüm
 // kaynağı "yayımlanan son sürüm", paket "kurulum dosyası"dır — "GitHub sürümü",
 // "Release", "kurucu" ve özet algoritmasının adı yüzeye çıkmaz.
+//
+// Denetim YALNIZ "Şimdi denetle" düğmesiyle yapılır (tasarım T11): sekme
+// açılınca da istek atılmaz. Sonuç kabuktaki banda da yayınlanır
+// (`denetimOlayi.ts`), kullanıcı başka ekrana geçtiğinde hatırlatma sürer.
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 
 import { ApiError } from "../../lib/api";
 import { saveBlob } from "../../lib/download";
@@ -14,6 +18,7 @@ import { SkeletonList } from "../../ui/Skeleton";
 import { useSnackbar } from "../../ui/SnackbarProvider";
 import { updateApi } from "./api";
 import type { UpdateStatus } from "./api";
+import { denetimSonucunuYayinla } from "./denetimOlayi";
 
 /** Dosya boyutu — Türkçe sayı biçimiyle (ondalık virgül): "41,5 MB". */
 function formatBytes(bytes: number): string {
@@ -23,16 +28,19 @@ function formatBytes(bytes: number): string {
 
 export default function UpdatePanel() {
   const [status, setStatus] = useState<UpdateStatus | null>(null);
-  const [checking, setChecking] = useState(true);
+  const [checking, setChecking] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const snackbar = useSnackbar();
 
-  const check = useCallback(async (force = false) => {
+  // Kullanıcı düğmeye bastı: sunucu önbelleği atlanır (`force`), taze sonuç alınır.
+  const check = async () => {
     setChecking(true);
     setError(null);
     try {
-      setStatus(await updateApi.check(force));
+      const sonuc = await updateApi.check(true);
+      setStatus(sonuc);
+      denetimSonucunuYayinla(sonuc);
     } catch (e) {
       setError(
         e instanceof ApiError
@@ -42,11 +50,7 @@ export default function UpdatePanel() {
     } finally {
       setChecking(false);
     }
-  }, []);
-
-  useEffect(() => {
-    void check();
-  }, [check]);
+  };
 
   const download = async () => {
     if (!status) return;
@@ -70,15 +74,16 @@ export default function UpdatePanel() {
           <div>
             <p className="text-title-medium text-on-surface">Uygulama güncellemesi</p>
             <p className="mt-1 text-body-medium text-on-surface-variant">
-              Yayımlanan son sürüm denetlenir; programın internete çıkan tek isteği budur ve kişisel
-              veri taşımaz. Kurulum dosyası, bütünlüğü doğrulanmadan indirmeye sunulmaz.
+              Yayımlanan son sürüm yalnız “Şimdi denetle” düğmesine bastığınızda denetlenir; program
+              açılışta internete çıkmaz. Programın internete çıkan tek isteği budur ve kişisel veri
+              taşımaz. Kurulum dosyası, bütünlüğü doğrulanmadan indirmeye sunulmaz.
             </p>
           </div>
           <Button
             variant="outlined"
             icon="refresh"
             disabled={checking || downloading}
-            onClick={() => void check(true)}
+            onClick={() => void check()}
           >
             {checking ? "Denetleniyor…" : "Şimdi denetle"}
           </Button>

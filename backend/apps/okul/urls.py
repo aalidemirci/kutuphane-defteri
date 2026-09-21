@@ -16,9 +16,8 @@ urlpatterns = [
     # Kurulum sihirbazı
     path("setup/status/", views.SetupStatusView.as_view(), name="setup-status"),
     path("setup/school-config/", views.SchoolConfigView.as_view(), name="setup-school-config"),
-    path("setup/school-types/", views.SchoolTypesView.as_view(), name="setup-school-types"),
     path("setup/complete/", views.SetupCompleteView.as_view(), name="setup-complete"),
-    # Öğrenim seviyeleri (okul türünden türetilir — U4)
+    # Öğrenim seviyeleri (okul içi sabit 1-12 + hazırlık bayrağı)
     path("grade-levels/", views.GradeLevelsView.as_view(), name="grade-levels"),
     # Ders yılları + dönemler
     path("school-years/", views.SchoolYearListCreateView.as_view(), name="school-year-list"),
@@ -35,11 +34,6 @@ urlpatterns = [
     # Öğrenciler / Personel / Şubeler
     path("students/", views.StudentListCreateView.as_view(), name="student-list"),
     path("students/<int:pk>/", views.StudentDetailView.as_view(), name="student-detail"),
-    path(
-        "students/gender-coverage/",
-        views.StudentGenderCoverageView.as_view(),
-        name="student-gender-coverage",
-    ),
     path("personnel/", views.PersonnelListCreateView.as_view(), name="personnel-list"),
     path("personnel/<int:pk>/", views.PersonnelDetailView.as_view(), name="personnel-detail"),
     path("class-sections/", views.ClassSectionListCreateView.as_view(), name="class-section-list"),
@@ -47,50 +41,6 @@ urlpatterns = [
         "class-sections/<int:pk>/",
         views.ClassSectionDetailView.as_view(),
         name="class-section-detail",
-    ),
-    # İkili eğitim: şube vardiyası (evrakın saatini belirler) + ders akışı önizlemesi
-    path(
-        "class-sections/assign-shift/",
-        views.ClassSectionShiftAssignView.as_view(),
-        name="class-section-assign-shift",
-    ),
-    path("setup/bell-preview/", views.BellPreviewView.as_view(), name="setup-bell-preview"),
-    # Şube kümeleri (SAY/EA/DİL — sihirbazda toplu şube seçimi)
-    path(
-        "class-section-groups/",
-        views.ClassSectionGroupListCreateView.as_view(),
-        name="class-section-group-list",
-    ),
-    path(
-        "class-section-groups/assign/",
-        views.ClassSectionGroupAssignView.as_view(),
-        name="class-section-group-assign",
-    ),
-    path(
-        "class-section-groups/<int:pk>/",
-        views.ClassSectionGroupDetailView.as_view(),
-        name="class-section-group-detail",
-    ),
-    # Zümreler (okul zümre başkanları kurulu — takvim imza bloğunun kaynağı)
-    path(
-        "subject-departments/",
-        views.SubjectDepartmentListCreateView.as_view(),
-        name="subject-department-list",
-    ),
-    path(
-        "subject-departments/branch-candidates/",
-        views.DepartmentBranchCandidatesView.as_view(),
-        name="subject-department-branch-candidates",
-    ),
-    path(
-        "subject-departments/generate/",
-        views.DepartmentGenerateView.as_view(),
-        name="subject-department-generate",
-    ),
-    path(
-        "subject-departments/<int:pk>/",
-        views.SubjectDepartmentDetailView.as_view(),
-        name="subject-department-detail",
     ),
     # İçe aktarma (dosya veya pano metni)
     path(
@@ -112,18 +62,6 @@ urlpatterns = [
         "imports/personnel/commit/",
         views.PersonnelImportCommitView.as_view(),
         name="import-personnel-commit",
-    ),
-    # Öğrenci fotoğrafları (e-Okul OOG01001R080 — sınıf düzeyi başına bir dosya)
-    path("student-photos/", views.StudentPhotosView.as_view(), name="student-photos"),
-    path(
-        "student-photos/import/preview/",
-        views.StudentPhotoImportPreviewView.as_view(),
-        name="student-photos-import-preview",
-    ),
-    path(
-        "student-photos/import/commit/",
-        views.StudentPhotoImportCommitView.as_view(),
-        name="student-photos-import-commit",
     ),
     # Şablon indirme
     path("templates/students/", views.StudentTemplateView.as_view(), name="template-students"),

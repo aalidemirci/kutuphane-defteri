@@ -15,9 +15,13 @@ GUVENLI_METIN = cast(Callable[[str, str | None], str], MODUL["guvenli_metin"])
 
 
 def test_temiz_paket_kabul_edilir(tmp_path: Path) -> None:
-    dosya = tmp_path / "_internal" / "templates" / "bos-form.pdf"
-    dosya.parent.mkdir(parents=True)
-    dosya.touch()
+    """Meşru paket içeriği (evrak şablonları dahil) yasak kurallara TAKILMAMALI."""
+    for dosya in (
+        tmp_path / "_internal" / "templates" / "bos-form.pdf",
+        tmp_path / "_internal" / "backend" / "templates" / "documents" / "base.html",
+    ):
+        dosya.parent.mkdir(parents=True)
+        dosya.touch()
 
     assert YASAK_DOSYALARI_BUL(tmp_path) == []
 
@@ -38,17 +42,16 @@ def test_excel_dosyasi_reddedilir(tmp_path: Path) -> None:
 
 
 def test_medya_klasoru_reddedilir(tmp_path: Path) -> None:
-    # KS yerleşimi: MEDIA_ROOT = DATA_DIR/media → paket içi yol backend/data/media/...
-    # (DD dönemi backend/media çifti ölüydü — F9 denetim bulgusu).
-    dosya = tmp_path / "_internal" / "backend" / "data" / "media" / "soru.pdf"
+    # MEDIA_ROOT = DATA_DIR/media → paket içi yol backend/data/media/...
+    dosya = tmp_path / "_internal" / "backend" / "data" / "media" / "ek.pdf"
     dosya.parent.mkdir(parents=True)
     dosya.touch()
 
-    assert YASAK_DOSYALARI_BUL(tmp_path) == [Path("_internal/backend/data/media/soru.pdf")]
+    assert YASAK_DOSYALARI_BUL(tmp_path) == [Path("_internal/backend/data/media/ek.pdf")]
 
 
-def test_ksbak_yedegi_reddedilir(tmp_path: Path) -> None:
-    """K9: parolasız kipte `.kdbak` DÜZ SQLite baytlarıdır — pakete asla giremez."""
+def test_kdbak_yedegi_reddedilir(tmp_path: Path) -> None:
+    """Parolasız kurulumda `.kdbak` DÜZ SQLite baytlarıdır — pakete asla giremez."""
     dosya = tmp_path / "gunluk-2026-08-30.kdbak"
     dosya.touch()
 
@@ -67,15 +70,6 @@ def test_kullanici_durum_dosyalari_reddedilir(tmp_path: Path) -> None:
         "surum.json",
         "guvenlik-arsiv-2026.json",
     }
-
-
-def test_katalog_verisi_serbesttir(tmp_path: Path) -> None:
-    """Meşru `data/ders-cizelgeleri` içeriği yasak kurallara TAKILMAMALI (K5)."""
-    dosya = tmp_path / "_internal" / "data" / "ders-cizelgeleri" / "anadolu-lisesi-2025.md"
-    dosya.parent.mkdir(parents=True)
-    dosya.touch()
-
-    assert YASAK_DOSYALARI_BUL(tmp_path) == []
 
 
 def test_windows_cp1252_konsolunda_turkce_mesaj_derlemeyi_kirmaz() -> None:

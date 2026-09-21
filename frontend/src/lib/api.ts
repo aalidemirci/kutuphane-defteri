@@ -3,8 +3,8 @@
 // token yenileme, `personnel_inactive`/`password_change_required` oturum kapıları
 // ve impersonation TAMAMEN çıkarıldı. Kalan: temel `fetch` sarmalayıcı, `ApiError`,
 // backend `{code, message, fields}` hata sözleşmesi (CLAUDE.md §7 mirası) ve
-// snake_case gövde. Blob yardımcıları (`getBlob`/`postBlob`) evrak/PDF üretimi
-// (sınav evrak seti: kroki, yoklama, tutanaklar, kitapçıklar) için korunur.
+// snake_case gövde. Blob yardımcıları (`getBlob`/`postBlob`) dosya indirmeleri
+// (Excel şablonları, şifreli yedek, kurulum dosyası, evrak/PDF) için korunur.
 
 // Boş/tanımsız → göreli "/api/v1": geliştirmede Vite proxy'si (vite.config.ts
 // server.proxy) backend'e yönlendirir. Mutlak URL yalnız özel senaryoda gerekir.
@@ -72,7 +72,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return data as T;
 }
 
-/** İkili (dosya) indirme — evrak/PDF üretimi (sınav evrak seti) için. */
+/** İkili (dosya) indirme — şablon, yedek, kurulum dosyası ve evrak/PDF için. */
 async function requestBlob(
   path: string,
   options: { method?: string; body?: unknown } = {},

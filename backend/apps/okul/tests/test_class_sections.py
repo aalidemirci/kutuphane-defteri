@@ -1,8 +1,8 @@
 """Şube kataloğu (ClassSection) — elle ekleme/silme ucu ve doğrulamaları.
 
 Şube kataloğu çoğunlukla içe aktarmayla tohumlanır (`test_imports.py`); burada
-ELLE ekleme yolu sabitlenir. Salon-şube eşlemesi, takvim kapsamı ve şube
-yoklaması bu kataloğa bağlandığı için üç kural kritiktir:
+ELLE ekleme yolu sabitlenir. Seçiciler ve şube bazlı listeler bu kataloğa
+bağlandığı için üç kural kritiktir:
 
 - Şube harfi içe aktarmayla AYNI katlamadan geçer (Türkçe büyük harf; ASCII'ye
   katlanmaz) — 10/I ile 10/İ ayrı şubelerdir ve liste Türk alfabesiyle sıralanır.
@@ -64,7 +64,14 @@ def test_sube_harfi_turkce_buyutulur_ve_etiketler_cozulur(client: APIClient) -> 
     assert veri["class_section"] == "Ş"
     assert veri["class_label"] == "10/Ş"
     assert veri["school_year_name"] == "2026-2027"
-    assert (veri["group"], veri["group_name"]) == (None, "")
+    assert set(veri) == {
+        "id",
+        "school_year",
+        "school_year_name",
+        "class_level",
+        "class_section",
+        "class_label",
+    }
 
 
 def test_i_ve_noktali_i_ayri_subelerdir(client: APIClient) -> None:
@@ -113,13 +120,18 @@ def test_silinen_sube_yeniden_eklenebilir(client: APIClient) -> None:
     assert yeniden.status_code == 201 and yeniden.json()["id"] != ilk_id
 
 
-def test_seviye_okul_turunun_kumesine_karsi_dogrulanir(client: APIClient) -> None:
+def test_seviye_okul_ici_sabite_karsi_dogrulanir(client: APIClient) -> None:
+    """Küme 1-12'dir (ilkokuldan liseye); hazırlık kapalıyken 0 da geçersizdir."""
     yil = _yil()
 
-    yanit = _ekle(client, yil, 8, "A")
-
-    assert yanit.status_code == 400
-    assert "9, 10, 11, 12" in str(yanit.json()["fields"]["class_level"])
+    assert _ekle(client, yil, 1, "A").status_code == 201
+    assert _ekle(client, yil, 8, "A").status_code == 201
+    for gecersiz in (13, 0):
+        yanit = _ekle(client, yil, gecersiz, "B")
+        assert yanit.status_code == 400
+        assert "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12." in str(
+            yanit.json()["fields"]["class_level"]
+        )
 
 
 def test_liste_seviye_sonra_turk_alfabesiyle_siralanir(client: APIClient) -> None:

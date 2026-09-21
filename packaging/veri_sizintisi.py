@@ -11,10 +11,10 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-# .kdbak: KS yedek kapsayıcısı (K9 — parolasız kipte DÜZ SQLite baytları taşır).
+# .kdbak: programın yedek kapsayıcısı (parolasız kurulumda DÜZ SQLite baytları taşır).
 YASAK_UZANTILAR = frozenset({".sqlite", ".sqlite3", ".xls", ".xlsx", ".kdbak"})
-# KS yerleşiminde medya DATA_DIR altındadır (backend/data/media/...); DD dönemi
-# ("backend","media") çifti ölüydü — gerçek yol ("data","media") ile yakalanır.
+# Medya DATA_DIR altındadır (paket içi yolu backend/data/media/...): ("data","media")
+# çifti onu, ("backend","data") çifti geliştirme veri dizininin tamamını yakalar.
 YASAK_DIZIN_CIFTLERI = frozenset(
     {
         ("backend", "data"),
@@ -24,7 +24,7 @@ YASAK_DIZIN_CIFTLERI = frozenset(
 YASAK_SONLAR = (".sqlite3-shm", ".sqlite3-wal")
 # Kullanıcı kurulumuna ait durum dosyaları — pakete girmeleri, geliştirme veri
 # dizininin yanlışlıkla paketlendiğinin kanıtıdır (guvenlik.json parola sarmalı
-# taşır; ders-cizelgeleri gibi meşru data/ içeriğini uzantı/çift kuralları zaten
+# taşır; evrak şablonları gibi meşru paket içeriğini uzantı/çift kuralları zaten
 # serbest bırakır).
 YASAK_ADLAR = frozenset({"guvenlik.json", "yedekleme.json", "surum.json"})
 

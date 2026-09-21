@@ -1,7 +1,8 @@
-// Kurulum sihirbazı testi (DD kalıbından KS'ye): üç adımın mutlu yolu + kapılar +
-// hata durumu. `../okul/api` (kurulum + ders yılı uçlarının tek sınırı) vi.mock ile taklit
-// edilir; yönlendirme GERÇEK router üzerinden doğrulanır (useNavigate mock'lanmaz —
-// "/" rotası bir işaretle render edilir, sihirbaz oraya gidince işaret ekrana düşer).
+// Kurulum sihirbazı testi (DD kalıbı): üç adımın mutlu yolu + kapılar + hata
+// durumu. `../okul/api` (kurulum + ders yılı uçlarının tek sınırı) vi.mock ile
+// taklit edilir; yönlendirme GERÇEK router üzerinden doğrulanır (useNavigate
+// mock'lanmaz — "/" rotası bir işaretle render edilir, sihirbaz oraya gidince
+// işaret ekrana düşer).
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -10,105 +11,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "../../lib/api";
 import { SnackbarProvider } from "../../ui/SnackbarProvider";
-import type { SetupStatus } from "../okul/api";
+import type { SchoolConfig, SetupStatus } from "../okul/api";
 
 const oapi = vi.hoisted(() => ({
   getSetupStatus: vi.fn(),
   getSchoolConfig: vi.fn(),
   updateSchoolConfig: vi.fn(),
   completeSetup: vi.fn(),
-  listSchoolTypes: vi.fn(),
   listSchoolYears: vi.fn(),
   createSchoolYear: vi.fn(),
   configureSchoolTerms: vi.fn(),
   activateSchoolYear: vi.fn(),
 }));
 
-// Çizelge matrisi (CizelgeAtamaMatrisi) planı ders havuzu API'sinden önizler.
-const dapi = vi.hoisted(() => ({
-  getCatalogStatus: vi.fn(),
-}));
-
 vi.mock("../okul/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../okul/api")>();
   return { ...actual, okulApi: oapi };
 });
-
-vi.mock("../dersler/api", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../dersler/api")>();
-  return { ...actual, derslerApi: { ...actual.derslerApi, ...dapi } };
-});
-
-/** Asgari çizelge planı — Anadolu Lisesi, tüm seviyeler tek program. */
-const CIZELGE_PLANI = {
-  year: 2026,
-  year_label: "2026-2027",
-  school_type: "ANADOLU_LISESI" as const,
-  school_type_label: "Anadolu Lisesi",
-  has_prep_class: false,
-  transitional: false,
-  custom: false,
-  synced: true,
-  data_available: true,
-  warnings: [],
-  levels: [9, 10, 11, 12].map((level) => ({
-    level,
-    label: `${level}. Sınıf`,
-    explicit: false,
-    programs: [
-      {
-        key: "anadolu-lisesi-2025",
-        name: "Anadolu Lisesi Haftalık Ders Çizelgesi (TTK 09.05.2025/5)",
-        source: "TTK 09.05.2025/5",
-        role: "ortak+seçmeli",
-      },
-    ],
-    default_program_keys: ["anadolu-lisesi-2025"],
-    warnings: [],
-  })),
-  programs: [
-    {
-      key: "anadolu-lisesi-2025",
-      name: "Anadolu Lisesi Haftalık Ders Çizelgesi (TTK 09.05.2025/5)",
-      school_type: "ANADOLU_LISESI" as const,
-      school_type_label: "Anadolu Lisesi",
-      has_prep: false,
-      department: "",
-      source: "TTK 09.05.2025/5",
-      start_year: 2025,
-      phased: false,
-      default_included: true,
-      course_count: 61,
-    },
-    {
-      key: "fen-lisesi-2025",
-      name: "Fen Lisesi Haftalık Ders Çizelgesi (TTK 09.05.2025/5)",
-      school_type: "FEN_LISESI" as const,
-      school_type_label: "Fen Lisesi",
-      has_prep: false,
-      department: "",
-      source: "TTK 09.05.2025/5",
-      start_year: 2025,
-      phased: false,
-      default_included: true,
-      course_count: 57,
-    },
-  ],
-  school_types: [
-    {
-      value: "ANADOLU_LISESI" as const,
-      label: "Anadolu Lisesi",
-      available: true,
-      program_keys: ["anadolu-lisesi-2025"],
-    },
-    {
-      value: "FEN_LISESI" as const,
-      label: "Fen Lisesi",
-      available: true,
-      program_keys: ["fen-lisesi-2025"],
-    },
-  ],
-};
 
 import KurulumPage from "./KurulumPage";
 
@@ -121,17 +40,12 @@ const BOS_DURUM: SetupStatus = {
   class_section_count: 0,
 };
 
-const BOS_CONFIG = {
+const BOS_CONFIG: SchoolConfig = {
   school_name: "",
   province: "",
   district: "",
   principal_name: "",
-  school_type: "ANADOLU_LISESI" as const,
   has_prep_class: false,
-  level_programs: {},
-  // Ders saati ayarı (F6 eki-2): gün 8 saat, sınav saati seçimi boş = tümü.
-  daily_period_count: 8,
-  exam_period_nos: [],
   setup_completed: false,
 };
 
@@ -152,10 +66,8 @@ function renderPage(state?: unknown) {
 beforeEach(() => {
   oapi.getSetupStatus.mockResolvedValue(BOS_DURUM);
   oapi.getSchoolConfig.mockResolvedValue(BOS_CONFIG);
-  oapi.listSchoolTypes.mockResolvedValue(CIZELGE_PLANI.school_types);
   oapi.listSchoolYears.mockResolvedValue([]);
   oapi.configureSchoolTerms.mockResolvedValue([]);
-  dapi.getCatalogStatus.mockResolvedValue(CIZELGE_PLANI);
 });
 
 afterEach(() => {
@@ -175,79 +87,30 @@ describe("KurulumPage", () => {
     ).toBeInTheDocument();
     await user.type(screen.getByLabelText(/Okul adı/), "Deneme Lisesi");
     await user.type(screen.getByLabelText("İl"), "Ankara");
+    await user.selectOptions(screen.getByLabelText("Hazırlık sınıfı"), "1");
     await user.click(screen.getByRole("button", { name: "Kaydet ve devam et" }));
 
+    // Gövde yalnız künye + hazırlık bayrağıdır (okul türü/çizelge/ders saati yok).
     await waitFor(() =>
       expect(oapi.updateSchoolConfig).toHaveBeenCalledWith({
         school_name: "Deneme Lisesi",
         province: "Ankara",
         district: "",
         principal_name: "",
-        school_type: "ANADOLU_LISESI",
-        has_prep_class: false,
-        level_programs: {},
-        daily_period_count: 8,
-        exam_period_nos: [],
+        has_prep_class: true,
       }),
     );
     expect(await screen.findByText("2. Ders yılı")).toBeInTheDocument();
   });
 
-  it("yürürlükteki çizelgeyi gösterir; sınıf düzeyine göre özelleştirme atamayı gönderir", async () => {
-    oapi.updateSchoolConfig.mockResolvedValue({ ...BOS_CONFIG, school_name: "Deneme Lisesi" });
-    const user = userEvent.setup();
+  it("1. adımda kaldırılan alanlar (okul türü, ders saatleri, çizelge) yoktur", async () => {
     renderPage();
-
-    // Plan paneli kayıtsız seçimin ÖNİZLEMESİYLE gelir (okul türü + hazırlık).
-    expect(await screen.findByText(/Yürürlükteki ders çizelgesi — 2026-2027/)).toBeInTheDocument();
-    expect(dapi.getCatalogStatus).toHaveBeenCalledWith({
-      schoolType: "ANADOLU_LISESI",
-      hasPrepClass: false,
-      levelPrograms: {},
-    });
-    // Çizelge verisi olmayan tür seçenekte işaretlenir (bu planda hepsi var).
-    expect(screen.getByRole("option", { name: "Fen Lisesi" })).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Sınıf düzeyine göre özelleştir" }));
-    // Matris onay kutuları diğer formlarla aynı ölçü/renkte (boyutsuz kutu
-    // tarayıcı varsayılanına düşüyordu — erişilebilirlik bulgusu).
-    const tumuKutusu = screen.getByRole("checkbox", {
-      name: "Diğer okul türlerinin çizelgelerini de göster",
-    });
-    expect(tumuKutusu).toHaveClass("h-5", "w-5", "accent-primary");
-    // Kademeli dönüşüm: 9. sınıfa Fen çizelgesi eklenir, AL kaldırılır.
-    await user.click(tumuKutusu);
-    expect(
-      screen.getByRole("checkbox", {
-        name: "Fen Lisesi Haftalık Ders Çizelgesi (TTK 09.05.2025/5) — 9. Sınıf",
-      }),
-    ).toHaveClass("h-5", "w-5", "accent-primary");
-    await user.click(
-      screen.getByRole("checkbox", {
-        name: "Fen Lisesi Haftalık Ders Çizelgesi (TTK 09.05.2025/5) — 9. Sınıf",
-      }),
-    );
-    await user.click(
-      screen.getByRole("checkbox", {
-        name: "Anadolu Lisesi Haftalık Ders Çizelgesi (TTK 09.05.2025/5) — 9. Sınıf",
-      }),
-    );
-
-    await user.type(screen.getByLabelText(/Okul adı/), "Deneme Lisesi");
-    await user.click(screen.getByRole("button", { name: "Kaydet ve devam et" }));
-
-    await waitFor(() =>
-      expect(oapi.updateSchoolConfig).toHaveBeenCalledWith(
-        expect.objectContaining({
-          level_programs: {
-            "9": ["fen-lisesi-2025"],
-            "10": ["anadolu-lisesi-2025"],
-            "11": ["anadolu-lisesi-2025"],
-            "12": ["anadolu-lisesi-2025"],
-          },
-        }),
-      ),
-    );
+    expect(await screen.findByText("1. Okul bilgileri")).toBeInTheDocument();
+    for (const etiket of [/Okul türü/, /ders saati/i]) {
+      expect(screen.queryByLabelText(etiket)).toBeNull();
+    }
+    expect(screen.queryByText(/çizelge/i)).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
   });
 
   it("okul adı boşken 'Kaydet ve devam et' pasiftir", async () => {
@@ -298,9 +161,11 @@ describe("KurulumPage", () => {
     expect(await screen.findByText("2. Ders yılı")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /İleri/ })).toBeDisabled();
     expect(screen.getByText(/Devam etmek için bir ders yılını aktifleştirin/)).toBeInTheDocument();
-    // İç faz kodu kullanıcı metnine sızmaz (docs/sozluk.md §2 — eskiden "(F6)").
-    expect(screen.getByText(/mevzuat pencereleri dönem/)).toBeInTheDocument();
-    expect(screen.queryByText(/\(F6\)/)).not.toBeInTheDocument();
+    // Dönem notu yarıyılı anlatır; iç faz kodu ya da kaldırılan sınav takvimi
+    // kullanıcı metnine sızmaz (docs/sozluk.md §2).
+    expect(screen.getByText(/Yarıyıl tatili 1\. dönemin bitişiyle/)).toBeInTheDocument();
+    expect(screen.queryByText(/\(F\d+\)/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/sınav/i)).not.toBeInTheDocument();
 
     await user.clear(screen.getByLabelText(/^Ad/));
     await user.type(screen.getByLabelText(/^Ad/), "2026-2027");

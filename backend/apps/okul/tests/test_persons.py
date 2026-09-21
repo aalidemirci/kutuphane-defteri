@@ -8,7 +8,7 @@ ekleme/düzeltme/silme yolu sabitlenir. Üç sözleşme:
 - Silme SOFT'tur: kayıt arşiv evrakı için durur, canlı listeden düşer ve okul
   numarası yeniden kullanılabilir.
 - Elle giriş içe aktarmayla AYNI katlamadan geçer: şube harfi Türkçe büyütülür
-  ('i' → 'İ'), seviye okul türünün kümesine karşı doğrulanır (U4).
+  ('i' → 'İ'), seviye okul içi sabite (1-12 + hazırlık bayrağı) karşı doğrulanır.
 
 Tüm ad ve numaralar uydurmadır (KVKK).
 """
@@ -22,7 +22,7 @@ import pytest
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from apps.okul.models import Personnel, Student, StudentStatus, SubjectDepartment
+from apps.okul.models import Personnel, Student, StudentStatus
 from apps.okul.services import persons
 from apps.okul.services import setup as setup_service
 
@@ -145,7 +145,7 @@ def test_ogrenci_silme_softtur_ve_okul_numarasi_yeniden_kullanilir() -> None:
 
 
 def test_personel_olusturulur_ve_varsayilan_aktiftir() -> None:
-    """Gözetmen havuzu aktif personelden türer — yeni kayıt havuza doğrudan girer."""
+    """Yeni personel kaydı aktif açılır — seçicilere doğrudan girer."""
     kisi = _personel()
 
     kisi.refresh_from_db()
@@ -185,18 +185,14 @@ def test_personel_guncelleme_dokunulmayan_alani_ezmez() -> None:
     assert (kisi.branch, kisi.is_active) == ("Tarih", False)
 
 
-def test_zumre_baskani_personel_silinebilir() -> None:
-    """Silme soft olduğundan `on_delete=PROTECT` TETİKLENMEZ: okuldan ayrılan zümre
-    başkanı sicilden düşürülebilir (evrak yolu silinmiş başkanı ayrıca eler)."""
-    baskan = _personel()
-    zumre = SubjectDepartment.objects.create(name="Sosyal Bilimler", head=baskan)
+def test_personel_silme_softtur() -> None:
+    """Kayıt canlı listeden düşer ama arşiv evrakı için satır durur."""
+    kisi = _personel()
 
-    persons.delete_personnel(baskan)
+    persons.delete_personnel(kisi)
 
-    assert not Personnel.objects.filter(pk=baskan.pk).exists()
-    assert Personnel.all_objects.filter(pk=baskan.pk).exists()
-    zumre.refresh_from_db()
-    assert zumre.head_id == baskan.pk  # bağ durur; canlılığı okuyan taraf denetler
+    assert not Personnel.objects.filter(pk=kisi.pk).exists()
+    assert Personnel.all_objects.filter(pk=kisi.pk).exists()
 
 
 # ---------------------------------------------------------------------------
@@ -225,13 +221,19 @@ def test_api_ogrenci_ekleme_sube_harfini_turkce_buyutur(client: APIClient) -> No
     assert Student.objects.get(student_number="601").class_section == "İ"
 
 
-def test_api_ogrenci_seviyesi_okul_turunun_kumesine_karsi_dogrulanir(client: APIClient) -> None:
-    """Sabit 9-12 aralığı YOK (U4): küme okul yapılandırmasından gelir, mesaj onu sayar."""
+def test_api_ogrenci_seviyesi_okul_ici_sabite_karsi_dogrulanir(client: APIClient) -> None:
+    """Küme okul içi sabittir (1-12); hazırlık bayrağı 0'ı ekler, mesaj kümeyi sayar."""
     govde = {"first_name": "DENEME", "last_name": "ÖĞRENCİ", "class_section": "A"}
 
-    ortaokul = client.post(OGRENCI_URL, {**govde, "class_level": 8}, format="json")
-    assert ortaokul.status_code == 400
-    assert "9, 10, 11, 12" in str(ortaokul.json()["fields"]["class_level"])
+    ilkokul = client.post(OGRENCI_URL, {**govde, "class_level": 1}, format="json")
+    assert ilkokul.status_code == 201
+    assert ilkokul.json()["class_label"] == "1/A"
+
+    kume_disi = client.post(OGRENCI_URL, {**govde, "class_level": 13}, format="json")
+    assert kume_disi.status_code == 400
+    assert "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12." in str(
+        kume_disi.json()["fields"]["class_level"]
+    )
 
     # Hazırlık kapalıyken 0 da geçersizdir; açılınca kabul edilir ve etiketi "Hz/…" olur.
     assert client.post(OGRENCI_URL, {**govde, "class_level": 0}, format="json").status_code == 400
@@ -240,8 +242,8 @@ def test_api_ogrenci_seviyesi_okul_turunun_kumesine_karsi_dogrulanir(client: API
     assert hazirlik.status_code == 201
     assert hazirlik.json()["class_label"] == "Hz/A"
 
-    hata = client.post(OGRENCI_URL, {**govde, "class_level": 8}, format="json")
-    assert "Hazırlık, 9, 10, 11, 12" in str(hata.json()["fields"]["class_level"])
+    hata = client.post(OGRENCI_URL, {**govde, "class_level": 13}, format="json")
+    assert "Hazırlık, 1, 2, 3" in str(hata.json()["fields"]["class_level"])
 
 
 def test_api_sinifsiz_ogrenci_kaydedilebilir(client: APIClient) -> None:
@@ -336,7 +338,7 @@ def test_api_personel_ekleme_duzeltme_ve_silme(client: APIClient) -> None:
     assert ekle.json()["is_active"] is True
     kisi_id = ekle.json()["id"]
 
-    # Pasifleştirme gözetmen havuzundan düşürür ama sicilde bırakır.
+    # Pasifleştirme seçicilerden düşürür ama sicilde bırakır.
     pasif = client.patch(f"{PERSONEL_URL}{kisi_id}/", {"is_active": False}, format="json")
     assert pasif.status_code == 200 and pasif.json()["is_active"] is False
     assert [p["id"] for p in _sonuclar(client.get(PERSONEL_URL))] == [kisi_id]
@@ -376,7 +378,7 @@ def test_api_personel_aramasi_ad_unvan_ve_bransta_turkce_katlar(client: APIClien
 def test_unutma_kancasi_pasiflesen_ve_silinen_ogrencide_calisir(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Bağımlılık yönü sinav → okul'dur: okul kancayı ÇAĞIRIR, kimin dinlediğini bilmez."""
+    """Bağımlılık yönü <uygulama> → okul'dur: okul kancayı ÇAĞIRIR, kimin dinlediğini bilmez."""
     cagrilar: list[int] = []
     monkeypatch.setattr(persons, "_forget_hooks", [])
     persons.register_student_forget_hook(cagrilar.append)

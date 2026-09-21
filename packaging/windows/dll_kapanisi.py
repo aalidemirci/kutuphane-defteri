@@ -9,7 +9,7 @@ Neden gerekli?
 WeasyPrint 63, pango/harfbuzz/fontconfig kütüphanelerini derleme anında
 BAĞLAMAZ; çalışma anında `ctypes`/`cffi` ile açar. PyInstaller'ın statik
 çözümleyicisi bu bağı göremez, dolayısıyla bu DLL'ler pakete KENDİLİĞİNDEN
-girmez. Tasarım §5.1: liste ELLE yazılmaz — bir sürüm yükseltmesinde sessizce
+girmez. Kural: liste ELLE yazılmaz — bir sürüm yükseltmesinde sessizce
 eksilir ve hata yalnız sahada, PDF üretilirken ortaya çıkar. Bunun yerine
 kapanış her derlemede araçla hesaplanır.
 

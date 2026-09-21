@@ -1,10 +1,9 @@
-"""K7 borcunun otomatik kapısı: spec hiddenimports ↔ backend/requirements.txt.
+"""hiddenimports zincirinin otomatik kapısı: spec ↔ backend/requirements.txt.
 
 Backend pakete KAYNAK olarak kopyalanır; PyInstaller statik çözümleyicisi orayı
 taramaz (spec docstring'i). Yeni bir üçüncü taraf bağımlılık spec'e elle
 eklenmek ZORUNDADIR — unutulursa paket geliştirmede çalışır, sahada çöker
-(CLAUDE.md §2 hiddenimports tuzağı). Bu test unutmayı kapıya bağlar: DD'de de
-emsali yoktu, F9 denetim bulgusuyla eklendi.
+(hiddenimports tuzağı). Bu test unutmayı kapıya bağlar (KS'den devralındı).
 
 Ayrıca `giris.py` teşhis kipinin sözleşmesi sabitlenir: bayrak adı, çıkış kodu
 (desktop/errors.py ile ikiz) ve hedef dosya ayrıştırması — üç paket betiği
@@ -55,12 +54,32 @@ def test_her_backend_bagimliligi_spec_kapsaminda() -> None:
         assert modul is not None, (
             f"requirements.txt'e yeni bağımlılık girmiş: {dagitim!r}. "
             "Önce DAGITIM_IMPORT_ESLEME'ye eşlemesini, sonra spec hiddenimports'a "
-            "modülünü ekleyin (K7 — CLAUDE.md §2)."
+            "modülünü ekleyin (hiddenimports zinciri)."
         )
         kapsandi = f'collect_submodules("{modul}")' in spec_metni or f'"{modul}"' in spec_metni
         if not kapsandi:
             eksik.append(f"{dagitim} → {modul}")
     assert eksik == [], f"spec hiddenimports şu bağımlılıkları kapsamıyor: {eksik}"
+
+
+def test_spec_yalniz_var_olan_kaynak_agaclarini_paketler() -> None:
+    """spec'teki her `Tree(REPO / ...)` kaynağı depoda bulunmalı.
+
+    Silinen bir veri ağacı spec'te kalırsa PyInstaller derlemesi Windows/Linux
+    koşusunda ancak dakikalar sonra düşer; bu kapı aynı hatayı saniyede verir.
+    `frontend/dist` derleme çıktısıdır, depoda tutulmaz — muaf.
+    """
+    spec_metni = SPEC.read_text(encoding="utf-8")
+    agaclar = re.findall(r'Tree\(\s*str\(REPO((?:\s*/\s*"[^"]+")+)\)', spec_metni)
+    assert agaclar, "spec'te Tree kaynağı bulunamadı (desen değişti mi?)"
+    eksik: list[str] = []
+    for ham in agaclar:
+        goreli = "/".join(re.findall(r'"([^"]+)"', ham))
+        if goreli == "frontend/dist":
+            continue
+        if not (REPO / goreli).is_dir():
+            eksik.append(goreli)
+    assert eksik == [], f"spec depoda olmayan kaynak ağaçlarını paketliyor: {eksik}"
 
 
 # ---------------------------------------------------------------------------
@@ -97,41 +116,40 @@ def test_bagimlilik_duman_var_olan_modulde_gecer(monkeypatch: pytest.MonkeyPatch
     assert fn() == 0
 
 
-def test_pdf_duman_uctan_uca_turkce_font_ve_jpeg(tmp_path: Path) -> None:
-    """Sağlıklı kurulumda (backend kabı: WeasyPrint + DejaVu) duman kipi geçer."""
+def test_pdf_duman_uctan_uca_taban_sablon_turkce_ve_font(tmp_path: Path) -> None:
+    """Sağlıklı kurulumda (backend kabı: WeasyPrint + DejaVu) duman kipi geçer.
+
+    Belge `documents/base.html`'den üretilir: antet ve sayfa altlığı PDF'te
+    görünmeli, fontlar gömülü DejaVu olmalı.
+    """
     hedef = tmp_path / "duman.pdf"
     assert _GIRIS["run_pdf_smoke"](hedef) == 0
-    filtreler = _GIRIS["_pdf_image_filters"](hedef)
-    assert any(_GIRIS["JPEG_FILTER"] in filtre for filtre in filtreler)
+    metin = _GIRIS["_pdf_text"](hedef)
+    assert "ÖRNEK İLÇE KAYMAKAMLIĞI" in metin  # antet bloğu taban şablondan
+    assert "Sayfa 1 / 1" in metin  # `@page` altlığı taban şablondan
+    assert all("DejaVu" in ad for ad in _GIRIS["_pdf_fonts"](hedef))
 
 
-def test_pdf_duman_jpeg_gomulmezse_kapanir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Kapının GERÇEKTEN kapandığı: görsel JPEG olarak gömülmezse 8 döner.
+def test_pdf_duman_sablon_yoksa_kapanir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Kapının GERÇEKTEN kapandığı: şablon ağacı pakette yoksa 8 döner, PDF üretilmez.
 
-    WeasyPrint çözemediği görseli yalnız uyarıyla atlar; JPEG zinciri eksik
-    pakette salon evrakı hata vermeden fotoğrafsız basılırdı. Burada görsel
-    PNG verilir (PDF'e JPEG olmadan gömülür) — denetim onu kabul ETMEMELİ.
+    spec'teki `backend/templates` Tree yolu bozulursa program açılır ama ilk
+    evrak basımında düşerdi; duman kipi bunu derleme sırasında yakalamalı.
     """
-    import base64
-    import io
-
-    from PIL import Image
-
-    tampon = io.BytesIO()
-    Image.new("RGB", (4, 4), (0, 0, 0)).save(tampon, format="PNG")
-    png = "data:image/png;base64," + base64.b64encode(tampon.getvalue()).decode("ascii")
     fn = _GIRIS["run_pdf_smoke"]
-    monkeypatch.setitem(fn.__globals__, "_smoke_photo_uri", lambda: png)
-    assert fn(tmp_path / "duman.pdf") == 8
+    monkeypatch.setitem(fn.__globals__, "_templates_dir", lambda: tmp_path / "yok")
+    hedef = tmp_path / "duman.pdf"
+    assert fn(hedef) == 8
+    assert not hedef.exists()
 
 
 def test_runtime_modules_requirements_ile_senkron() -> None:
-    """K7 zincirinin son halkası: her bağımlılık pakette RUNTIME'da da sınanır.
+    """hiddenimports zincirinin son halkası: her bağımlılık pakette RUNTIME'da da sınanır.
 
     `test_her_backend_bagimliligi_spec_kapsaminda` yalnız spec metnine bakar —
     statiktir, modülün pakete gerçekten girdiğini kanıtlamaz. `--bagimlilik-duman`
     kipi bunu paketlenmiş ikilide import ederek kanıtlar; bu test de listenin
-    requirements.txt ile birlikte büyümesini zorunlu kılar (30.08.2026: `xlrd`
+    requirements.txt ile birlikte büyümesini zorunlu kılar (KS'de `xlrd`
     eklendiğinde onu paket içinde sınayan hiçbir kapı yoktu).
     """
     beklenen = {DAGITIM_IMPORT_ESLEME[d] for d in _gereksinimler()}

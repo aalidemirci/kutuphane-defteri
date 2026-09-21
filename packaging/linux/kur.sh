@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# kur.sh — Kütüphane Defteri'ı yönetici yetkisi OLMADAN kurar
+# kur.sh — Kütüphane Defteri'ni yönetici yetkisi OLMADAN kurar
 # =============================================================================
 # Taşınabilir arşivin (.tar.gz) içinden çalıştırılır:
 #

@@ -13,53 +13,52 @@ describe("TextField", () => {
   it("etiket alana bağlıdır ve yazılan değer onChange'e ulaşır", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    render(<TextField label="Salon adı" value="" onChange={onChange} />);
+    render(<TextField label="Eser adı" value="" onChange={onChange} />);
 
-    await user.type(screen.getByLabelText("Salon adı"), "A");
+    await user.type(screen.getByLabelText("Eser adı"), "A");
 
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 
   it("zorunlu alanda yıldız gösterir ve alanı required işaretler", () => {
-    render(<TextField label="Oturum adı" required defaultValue="" />);
+    render(<TextField label="Kayıt no" required defaultValue="" />);
 
     expect(screen.getByText("*")).toBeInTheDocument();
     expect(screen.getByRole("textbox")).toBeRequired();
   });
 
   it("hata metni alert olarak duyurulur ve alana bağlanır", () => {
-    render(<TextField label="Kapasite" error="Kapasite 1-60 arasında olmalı." defaultValue="" />);
+    render(
+      <TextField label="Nüsha sayısı" error="Nüsha sayısı 1-50 arasında olmalı." defaultValue="" />,
+    );
 
-    const alan = screen.getByLabelText("Kapasite");
+    const alan = screen.getByLabelText("Nüsha sayısı");
     const hata = screen.getByRole("alert");
-    expect(hata).toHaveTextContent("Kapasite 1-60 arasında olmalı.");
+    expect(hata).toHaveTextContent("Nüsha sayısı 1-50 arasında olmalı.");
     expect(alan).toHaveAttribute("aria-invalid", "true");
     expect(alan).toHaveAttribute("aria-describedby", hata.id);
   });
 
   it("yardımcı metin duyurulmaz ama alana bağlanır; hata varsa yerini hataya bırakır", () => {
     const { rerender } = render(
-      <TextField label="Dağıtım numarası" helperText="Boş bırakılırsa rastgele." defaultValue="" />,
+      <TextField label="Eski kayıt no" helperText="İsteğe bağlıdır." defaultValue="" />,
     );
 
-    const yardim = screen.getByText("Boş bırakılırsa rastgele.");
+    const yardim = screen.getByText("İsteğe bağlıdır.");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Dağıtım numarası")).toHaveAttribute(
-      "aria-describedby",
-      yardim.id,
-    );
-    expect(screen.getByLabelText("Dağıtım numarası")).not.toHaveAttribute("aria-invalid");
+    expect(screen.getByLabelText("Eski kayıt no")).toHaveAttribute("aria-describedby", yardim.id);
+    expect(screen.getByLabelText("Eski kayıt no")).not.toHaveAttribute("aria-invalid");
 
     rerender(
       <TextField
-        label="Dağıtım numarası"
-        helperText="Boş bırakılırsa rastgele."
+        label="Eski kayıt no"
+        helperText="İsteğe bağlıdır."
         error="Sayı girin."
         defaultValue=""
       />,
     );
 
-    expect(screen.queryByText("Boş bırakılırsa rastgele.")).not.toBeInTheDocument();
+    expect(screen.queryByText("İsteğe bağlıdır.")).not.toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("Sayı girin.");
   });
 

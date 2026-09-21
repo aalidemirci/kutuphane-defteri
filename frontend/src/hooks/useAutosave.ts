@@ -17,7 +17,7 @@
 //
 // Kullanım:
 //   const autosave = useAutosave<DecisionNarrativeBody>({
-//     save: (changed) => oturumApi.updateNotes(sessionId, changed),
+//     save: (changed) => kayitApi.updateNotes(kayitId, changed),
 //   });
 //   onChange → autosave.notifyChange({ health_status: value });
 //   manuel tam kayıt sonrası → autosave.markSaved();

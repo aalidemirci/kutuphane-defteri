@@ -12,13 +12,13 @@ import Autocomplete from "./Autocomplete";
 interface Kisi {
   id: number;
   ad: string;
-  muaf?: boolean;
+  ayrildi?: boolean;
 }
 
 // KVKK: adlar uydurmadır.
 const KISILER: Kisi[] = [
   { id: 1, ad: "Ayşe Yılmaz" },
-  { id: 2, ad: "Ayhan Demir", muaf: true },
+  { id: 2, ad: "Ayhan Demir", ayrildi: true },
   { id: 3, ad: "Aylin Kaya" },
 ];
 
@@ -51,7 +51,7 @@ function Alan({
       onClear={() => setSecili(null)}
       getKey={(k) => k.id}
       getLabel={(k) => k.ad}
-      getDisabled={(k) => (k.muaf ? "muaf" : undefined)}
+      getDisabled={(k) => (k.ayrildi ? "ayrıldı" : undefined)}
       minChars={1}
       debounceMs={0}
     />
@@ -124,7 +124,7 @@ describe("Autocomplete — ARIA 1.2 combobox", () => {
     await user.type(alan, "ayhan");
     const secenek = await screen.findByRole("option", { name: /Ayhan Demir/ });
     expect(secenek).toHaveAttribute("aria-disabled", "true");
-    expect(within(secenek).getByText(/muaf/)).toBeInTheDocument();
+    expect(within(secenek).getByText(/ayrıldı/)).toBeInTheDocument();
 
     await user.click(secenek);
     await user.keyboard("{Enter}");
@@ -144,7 +144,9 @@ describe("Autocomplete — ARIA 1.2 combobox", () => {
   });
 
   it("görsel etiket yokken erişilebilir ad ariaLabel'dan gelir", () => {
-    renderAlan({ label: "", ariaLabel: "D-204 için gözetmen ata" });
-    expect(screen.getByRole("combobox", { name: "D-204 için gözetmen ata" })).toBeInTheDocument();
+    renderAlan({ label: "", ariaLabel: "5/A sınıf kitaplığı için öğretmen seçin" });
+    expect(
+      screen.getByRole("combobox", { name: "5/A sınıf kitaplığı için öğretmen seçin" }),
+    ).toBeInTheDocument();
   });
 });

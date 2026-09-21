@@ -6,11 +6,12 @@ bir yedek üretir. `Connection.backup()` ise SQLite'ın kendi çevrimiçi yedek 
 kullanır: kaynak veritabanını sayfa sayfa RAM'e okur, WAL dahil tutarlı bir görüntü
 çıkarır.
 
-**Kip, yedek anahtarı dosyasından (`yedekleme.json`) belirlenir (K9 düzeltmesi):**
+**Kip, yedek anahtarı dosyasından (`yedekleme.json`) belirlenir (KS K9 düzeltmesi):**
 uygulama parolası kuruluysa görüntü diske X25519 şifreli `.kdbak` kapsayıcısı
 olarak yazılır; parolasız kipte DÜZ SQLite baytları (yine `.kdbak` adıyla) yazılır.
 DD şablonundaki "parolasız kipte günlük yedek atlanır" dalı burada bilinçle
-düzeltildi — yedek her gün ALINIR. Anahtar dosyası VAR ama bozuksa düz yedek
+düzeltildi — yedek her gün ALINIR. (Kütüphane Defteri'nde yönetici parolası
+zorunludur; düz dal F1'de sökülür — tasarım §12 UYARLA `backup.py`.) Anahtar dosyası VAR ama bozuksa düz yedek
 YAZILMAZ (şifreli kurulumdan düz kopya sızdırmak olurdu): uyarı loglanıp atlanır;
 kilit bir kez açıldığında `ensure_public_config` dosyayı onarır.
 
@@ -59,7 +60,7 @@ _LEGACY_PATTERNS = (
 
 # CPython `Connection.serialize`i ancak SQLite ≥3.36 (SQLITE_ENABLE_DESERIALIZE)
 # ile derlendiyse sunar; Pardus 21/bullseye tabanının libsqlite3'ü 3.34'tür ve
-# yöntem HİÇ yoktur — F9 paket `--autotest`i bullseye kabında bununla çöktü
+# yöntem HİÇ yoktur — KS F9 paket `--autotest`i bullseye kabında bununla çöktü
 # (eski kod parolasız kipte yedeği atladığı için tuzak hiç tetiklenmemişti).
 _HAS_SERIALIZE = hasattr(sqlite3.Connection, "serialize")
 
@@ -100,7 +101,7 @@ def _copy_database(source_path: Path, target_path: Path) -> bool:
     """Tutarlı SQLite görüntüsünü KİPE GÖRE yazar; yazıldıysa True döner.
 
     Kip anahtarı `yedekleme.json`un VARLIĞIdır: dosya hiç yoksa parolasız kip →
-    düz yedek (K9); dosya var ama okunamıyorsa şifreli kurulum bozulmuş demektir →
+    düz yedek (KS K9); dosya var ama okunamıyorsa şifreli kurulum bozulmuş demektir →
     düz kopya SIZINTI olurdu, yedek atlanır (False).
     """
     data_dir = source_path.parent
@@ -133,7 +134,7 @@ def encrypt_legacy_backups(backup_dir: Path, data_dir: Path) -> list[Path]:
     """Düz yedekleri atomik olarak şifreli `.kdbak` biçimine çevirir.
 
     İki kaynak vardır: DD dönemi kalıbındaki `*.sqlite3` adlı düz yedekler ve
-    parolasız kipte alınmış düz `.kdbak` yedekleri (K9). Parola kurulduğunda /
+    parolasız kipte alınmış düz `.kdbak` yedekleri (KS K9). Parola kurulduğunda /
     kilit her açıldığında çağrılır — kaynak şifreliyken diskte düz kopya kalmaz.
     """
     if not backup_dir.is_dir():

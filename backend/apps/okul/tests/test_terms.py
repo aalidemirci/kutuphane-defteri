@@ -1,8 +1,7 @@
 """Ders yılı dönemleri — kurulum, tarih doğrulaması ve tarihten dönem çözümü.
 
-Dönem, sınav takviminin bağlandığı birimdir (`ExamCalendar.semester`) ve mevzuat
-pencereleri dönem sınırlarına kırpılır; yanlış kurulmuş dönem takvim penceresini
-de kaydırır. Sabitlenen sözleşmeler:
+Dönem, dönem bazlı raporların ve tarih → dönem çözümünün birimidir; yanlış
+kurulmuş dönem bu çözümü kaydırır. Sabitlenen sözleşmeler:
 
 - İki dönem ders yılının UÇLARINA yaslanır: 1. dönem yıl başlangıcında başlar,
   2. dönem yıl bitişinde biter — idareci yalnız aradaki iki tarihi verir.
@@ -87,7 +86,7 @@ def test_gecersiz_donem_tarihleri_turkce_gerekceyle_reddedilir(
 
 
 def test_sinir_gunleri_doneme_dahildir() -> None:
-    """Dönemin ilk ve son günü o döneme aittir (uç günlere sınav konabilir)."""
+    """Dönemin ilk ve son günü o döneme aittir."""
     yil = _donemli_yil()
 
     def sira(gun: date) -> int | None:

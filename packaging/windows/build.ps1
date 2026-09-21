@@ -16,7 +16,7 @@
      powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1
 
  Çıktılar: dist\cikti\
-   kutuphane-defteri-<sürüm>-win64-setup.exe      (Inno, yönetici GEREKTİRMEZ)
+   kutuphane-defteri-<sürüm>-win64-setup.exe      (Inno, yönetici İSTER — U4)
    kutuphane-defteri-<sürüm>-win64-portable.zip   (taşınabilir)
    SHA256SUMS.txt
 =============================================================================
@@ -129,14 +129,6 @@ Write-Adim "paket kişisel veri sızıntısı denetimi"
 & $PythonExe (Join-Path $Repo "packaging\veri_sizintisi.py") $AppDir
 if ($LASTEXITCODE -ne 0) { throw "Paket kişisel veri denetimi başarısız." }
 
-# MEB çizelge verisi (K5): spec Tree yolu bozulursa tohum SESSİZCE boş kalırdı
-# (TB2 düşüşü) — pakette dosyanın varlığı ve boş olmadığı burada sabitlenir.
-Write-Adim "paket içi katalog verisi denetimi"
-$Katalog = Join-Path $AppDir "_internal\data\ders-cizelgeleri\anadolu-lisesi-2025.md"
-if (-not (Test-Path $Katalog) -or (Get-Item $Katalog).Length -eq 0) {
-    throw "MEB çizelge verisi pakette yok/boş: $Katalog (spec Tree yolu bozulmuş olabilir)."
-}
-
 # --- 4b. Paket içi fontconfig yapılandırması --------------------------------
 # PyInstaller MSYS2'nin etc/fonts/ ağacını pakete gömüyor ve Windows'ta
 # libfontconfig yapılandırmayı DLL'in yanındaki O AĞAÇTAN çözüyor;
@@ -153,23 +145,25 @@ Copy-Item -Force $FontsConfKaynak $FontsConfHedef
 
 # --- 5. Duman testleri ------------------------------------------------------
 # ÖNCE bağımlılık kapısı: eksik bir hiddenimport'u burada yakalamak, sonraki
-# testlerin anlaşılmaz hatalarını okumaktan ucuzdur (K7 — CLAUDE.md §2).
-Write-Adim "duman testi: --bagimlilik-duman (K7 hiddenimports)"
+# testlerin anlaşılmaz hatalarını okumaktan ucuzdur (hiddenimports zinciri).
+Write-Adim "duman testi: --bagimlilik-duman (hiddenimports)"
 $kod = Invoke-Uygulama $AppExe @("--bagimlilik-duman")
 if ($kod -ne 0) {
     throw "Bağımlılık duman testi BAŞARISIZ (çıkış $kod). spec hiddenimports eksik."
 }
 
-Write-Adim "duman testi: --pdf-duman (Türkçe PDF)"
+# Kip örnek belgeyi paketteki evrak şablonundan (documents/base.html) üretir;
+# şablon ağacı pakete girmemişse de burada düşer.
+Write-Adim "duman testi: --pdf-duman (evrak şablonu + Türkçe PDF)"
 $pdf = Join-Path $Output "pdf-duman.pdf"
 $kod = Invoke-Uygulama $AppExe @("--pdf-duman", $pdf)
 if ($kod -ne 0) {
-    throw "PDF duman testi BAŞARISIZ (çıkış $kod). WeasyPrint DLL kapanışı veya fontconfig eksik."
+    throw "PDF duman testi BAŞARISIZ (çıkış $kod). Evrak şablonları, WeasyPrint DLL kapanışı veya fontconfig eksik."
 }
 if (-not (Test-Path $pdf)) { throw "PDF üretilmedi: $pdf" }
 
 Write-Adim "duman testi: --autotest"
-$gecici = Join-Path ([System.IO.Path]::GetTempPath()) ("ks-" + [Guid]::NewGuid().ToString("N"))
+$gecici = Join-Path ([System.IO.Path]::GetTempPath()) ("kd-" + [Guid]::NewGuid().ToString("N"))
 $kod = Invoke-Uygulama $AppExe @("--autotest") @{ "KD_APP_HOME" = $gecici }
 Remove-Item -Recurse -Force $gecici -ErrorAction SilentlyContinue
 if ($kod -ne 0) { throw "Açılış denetimi BAŞARISIZ (çıkış $kod)." }
@@ -182,8 +176,8 @@ Compress-Archive -Path (Join-Path $AppDir "*") -DestinationPath $zip
 
 # --- 7. Inno Setup kurulum paketi -------------------------------------------
 if (-not $SkipInno) {
-    # WebView2 Evergreen önyükleyicisi kurucuya gömülür (tasarım §12 F9 "WebView2
-    # gömülü"). Daha önce yalnız CI indiriyordu; yerel/elle üretilen her setup.exe
+    # WebView2 Evergreen önyükleyicisi kurucuya gömülür (tasarım §14 F12).
+    # KS'de önce yalnız CI indiriyordu; yerel/elle üretilen her setup.exe
     # onsuz çıkıyor ve .iss önişlemcisi bunu SESSİZCE düşürüyordu. İndirilemezse
     # paket yine üretilir (iss artık uyarı basar); program ilk açılışta Türkçe
     # yönlendirme verir (desktop/window.py).

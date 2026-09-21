@@ -2,7 +2,7 @@
 # =============================================================================
 # packaging/linux/test-kurulum.sh — .deb'i TEMİZ Debian kaplarında sınar
 # =============================================================================
-# Tasarım §12 F9 kapısı: paket, derlendiği kapta değil, hiçbir geliştirme
+# Tasarım §14 F12 kapısı: paket, derlendiği kapta değil, hiçbir geliştirme
 # bağımlılığı olmayan TEMİZ bir sistemde kurulup açılabilmelidir.
 #
 #   debian:11 (bullseye) → Pardus 21 provası
@@ -33,11 +33,14 @@ fi
 for surum in "${SURUMLER[@]}"; do
     echo
     echo "############ debian:$surum ############"
+    # Betik dizini BÜTÜN olarak bağlanır: kap-ici-test.sh yanındaki apt_dene.sh'yi
+    # kaynak olarak alır. Yalnız tek dosya bağlansaydı yerel prova "apt_dene.sh
+    # yok" ile düşerdi (CI'da depo checkout'u olduğu için fark görünmüyordu).
     docker run --rm \
         -v "$CIKTI:/paketler:ro" \
-        -v "$DEPO/packaging/linux/kap-ici-test.sh:/test.sh:ro" \
+        -v "$DEPO/packaging/linux:/betikler:ro" \
         "debian:$surum" \
-        bash /test.sh
+        bash /betikler/kap-ici-test.sh
 done
 
 echo

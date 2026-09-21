@@ -2,7 +2,7 @@
 # =============================================================================
 # packaging/linux/apt_dene.sh — apt komutlarını ayna tutarsızlığına karşı sarar
 # =============================================================================
-# 04.09.2026 vakası: v2026.9.0-beta.5 etiket koşusu `apt-get install git`
+# 04.09.2026 vakası (KS): v2026.9.0-beta.5 etiket koşusu `apt-get install git`
 # adımında düştü — `libperl5.32_5.32.1-4+deb11u5_amd64.deb` için **404 Not
 # Found**. Sebep kodda değil: kap imajının apt indeksi, aynadan kaldırılmış bir
 # güvenlik güncellemesine işaret ediyordu (bir edge eski indeksi, depo yeni
@@ -28,7 +28,7 @@
 APT_BULLSEYE_GUVENLIK_ANLIK="${APT_BULLSEYE_GUVENLIK_ANLIK:-20260903T000000Z}"
 
 # apt_bullseye_guvenlik_kaynagini_sabitle
-# 19.09.2026 vakası: v2026.9.0-beta.6 etiket koşusu Linux paketinde düştü —
+# 19.09.2026 vakası (KS): v2026.9.0-beta.6 etiket koşusu Linux paketinde düştü —
 # `libglib2.0-0_2.66.8-1+deb11u8` için 404, ÜÇ denemede de. Bu kez sebep geçici
 # ayna tutarsızlığı DEĞİL: Debian 11 (bullseye) uzun dönem desteği 31.08.2026'da
 # bitti ve `bullseye-security` deposunun paket havuzu 03-05.09.2026 arasında

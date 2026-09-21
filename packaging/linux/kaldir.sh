@@ -2,7 +2,7 @@
 # =============================================================================
 # kaldir.sh — Taşınabilir kurulumu kaldırır (VERİLER SİLİNMEZ)
 # =============================================================================
-# Program dosyalarını, kısayolu ve ikonları siler. Sınav kayıtları, yedekler
+# Program dosyalarını, kısayolu ve ikonları siler. Kütüphane kayıtları, yedekler
 # ve günlükler ev dizinindeki veri klasöründe KALIR:
 #
 #     ~/.local/share/kutuphane-defteri     (veritabanı + yedekler)

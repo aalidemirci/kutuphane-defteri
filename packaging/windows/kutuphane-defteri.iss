@@ -3,16 +3,21 @@
 ; =============================================================================
 ;  BU DOSYA BU ORTAMDA DOĞRULANMADI — ilk Windows koşusunda sınanacak.
 ;
-;  Tasarım §5.1:
-;   * PrivilegesRequired=lowest → yönetici parolası GEREKMEZ; program
-;     %LOCALAPPDATA%\Programs altına kurulur (VS Code deseni). Okul
-;     bilgisayarlarında öğretmenin yönetici hesabı çoğunlukla yoktur.
+;  Tasarım §2.1 U4 (okulzili deseni):
+;   * PrivilegesRequired=admin → kurucu HER ZAMAN yönetici ister; program
+;     Program Files altına ({autopf}) bütün hesaplar için kurulur. Kurucu
+;     kütüphane masası hesabında başlatılır, UAC penceresine BTR kimliği
+;     girilir (tasarım §4.5). Her güncelleme de yönetici ister (tasarım §16).
+;   * Kurulum dizini standart kullanıcıya SALT OKUNURDUR: program oraya hiçbir
+;     şey yazmaz (veri, günlük ve fontconfig önbelleği %LOCALAPPDATA% altında).
 ;   * WebView2 Runtime yoksa gömülü Evergreen kurucusu sessizce çalıştırılır.
 ;   * Kullanıcı verisi kurulum dizininde DEĞİLDİR; kaldırma veriyi silmez.
+;   * Güvenlik duvarı kuralı, otomatik başlatma görevi ve kapatma olayı
+;     (tasarım §4.2-5, §4.5, §5.7) sonraki fazların işidir; burada YOKTUR.
 ;
 ;  Derleme (build.ps1 çağırır):
-;    iscc /DAppVersion=2026.7.0 /DNumericVersion=2026.7.0.0 ^
-;         /DSourceDir=...\dist\paket\kutuphane-defteri /DOutputDir=...\dist\cikti ^
+;    iscc /DAppVersion=2026.9.0 /DNumericVersion=2026.9.0.0 ^
+;         /DSourceDir=...\dist\paket-win\kutuphane-defteri /DOutputDir=...\dist\cikti ^
 ;         packaging\windows\kutuphane-defteri.iss
 ; =============================================================================
 
@@ -23,7 +28,7 @@
   #define NumericVersion "0.0.0.0"
 #endif
 #ifndef SourceDir
-  #define SourceDir "..\..\dist\paket\kutuphane-defteri"
+  #define SourceDir "..\..\dist\paket-win\kutuphane-defteri"
 #endif
 #ifndef OutputDir
   #define OutputDir "..\..\dist\cikti"
@@ -47,8 +52,10 @@ AppPublisher=Kütüphane Defteri
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
-; Yönetici yetkisi istenmez → {autopf} = %LOCALAPPDATA%\Programs
-PrivilegesRequired=lowest
+; U4: yönetici kurulumu → {autopf} = Program Files; {group} ve {autodesktop}
+; ortak (bütün hesaplar) Başlat menüsü ve masaüstüdür. Kullanıcıya "yalnız
+; benim için" seçeneği SUNULMAZ (PrivilegesRequiredOverridesAllowed yok).
+PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir={#OutputDir}
@@ -59,10 +66,12 @@ WizardStyle=modern
 SetupIconFile={#AppIconSource}
 UninstallDisplayIcon={app}\{#AppExeName}
 UninstallDisplayName={#AppName}
-; Program çalışırken yükseltme yapılmasın (SQLite dosyası açık olabilir).
-; Ad, uygulamanın açtığı mutex'le BİREBİR aynı olmak zorunda
-; (desktop/lock.py::APP_MUTEX_NAME; tasarım §2.3) — F9'a dek uygulama bu
-; mutex'i hiç üretmiyordu, denetim ölüydü.
+; GEÇİCİ (KS'den devralındı): program çalışırken yükseltme yapılmasın (SQLite
+; dosyası açık olabilir). Ad, uygulamanın açtığı mutex'le BİREBİR aynı olmak
+; zorunda (desktop/lock.py::APP_MUTEX_NAME). Tasarım §2.3 ve §4.2-5 AppMutex'i
+; KULLANMAZ: program tepside yaşayacağı için kurucu/kaldırıcı `[Code]` içinden
+; `KutuphaneDefteri.Kapat` adlı olayı gönderip mutex'lerin serbest kalmasını
+; bekleyecek. O akış F0 spike'ında doğrulanınca bu satır kaldırılır.
 AppMutex=KutuphaneDefteri
 
 [Languages]
@@ -101,11 +110,15 @@ Type: files; Name: "{app}\kutuphane-defteri-*.ico"
 Filename: "{app}\{#WebView2Setup}"; Parameters: "/silent /install"; \
     StatusMsg: "Microsoft Edge WebView2 bileşeni kuruluyor..."; \
     Check: WebView2Eksik and WebView2KurucusuVar; Flags: waituntilterminated skipifdoesntexist
+; Program YÜKSELTİLMİŞ kimlikle açılmamalı: veri, programı çalıştıran hesabın
+; %LOCALAPPDATA%'sına yazılır; UAC'de BTR kimliği girildiyse yükseltilmiş süreç
+; veriyi BTR'nin profiline açardı. `runasoriginaluser` postinstall girdilerinde
+; zaten varsayılandır; niyet belgelensin diye açıkça yazılır.
 Filename: "{app}\{#AppExeName}"; Description: "{#AppName} programını çalıştır"; \
-    Flags: nowait postinstall skipifsilent
+    Flags: nowait postinstall skipifsilent runasoriginaluser
 
 [Messages]
-turkish.FinishedLabel=Kurulum tamamlandı.%n%nVerileriniz (sınav kayıtları ve yedekler) programın kurulduğu klasörde DEĞİL, kullanıcı klasörünüzde saklanır. Programı kaldırsanız bile kayıtlarınız silinmez.
+turkish.FinishedLabel=Kurulum tamamlandı.%n%nVerileriniz (kütüphane kayıtları ve yedekler) programın kurulduğu klasörde DEĞİL, kullanıcı klasörünüzde saklanır. Programı kaldırsanız bile kayıtlarınız silinmez.
 
 [Code]
 const

@@ -1,7 +1,7 @@
-"""`apps.okul.normalize` — saf normalize ediciler (KS: sınıf/şube + ad bölme).
+"""`apps.okul.normalize` — saf normalize ediciler (sınıf/şube + ad bölme; KS'den alındı).
 
-DD'nin TCKN/telefon/tarih/cinsiyet testleri kalktı (fonksiyonlar alınmadı —
-kelebek o verileri toplamaz, tasarım §5).
+TCKN/telefon/tarih/cinsiyet normalize edicileri yoktur — program o verileri
+toplamaz (tasarım §6.1).
 """
 
 from __future__ import annotations
@@ -65,9 +65,13 @@ class TestClassSection:
         assert normalize.tr_sort_key("İ") < normalize.tr_sort_key("Z")
         assert normalize.tr_sort_key("I") < normalize.tr_sort_key("İ")
 
-    def test_kume_disi_seviye_none(self) -> None:
-        assert normalize.normalize_class_section("8/A") is None
+    def test_varsayilan_kume_okul_ici_sabittir(self) -> None:
+        """Varsayılan küme 1-12'dir (ilkokuldan liseye); dışı çözülmez."""
+        assert normalize.GRADE_LEVELS == tuple(range(1, 13))
+        assert normalize.normalize_class_section("1/A") == (1, "A")
+        assert normalize.normalize_class_section("8/A") == (8, "A")
         assert normalize.normalize_class_section("13/A") is None
+        assert normalize.normalize_class_section("0/A") is None
 
     def test_kume_parametriktir(self) -> None:
         assert normalize.normalize_class_section("5/A", valid_levels=(5, 6, 7, 8)) == (5, "A")
@@ -80,7 +84,8 @@ class TestClassSection:
         )
         assert normalize.normalize_class_section("HAZ B", valid_levels=(0, 9)) == (0, "B")
         assert normalize.normalize_class_section("Hz-C", valid_levels=(0, 9)) == (0, "C")
-        assert normalize.normalize_class_section("HAZIRLIK/A") is None  # varsayılan 9-12
+        # Varsayılan kümede hazırlık yoktur (bayrak `SchoolConfig.has_prep_class`'ta).
+        assert normalize.normalize_class_section("HAZIRLIK/A") is None
 
     def test_bos_ve_cozumsuz_none(self) -> None:
         assert normalize.normalize_class_section(None) is None
@@ -102,30 +107,3 @@ class TestSplitFullName:
     def test_ham_birakilir_title_case_uygulanmaz(self) -> None:
         """TR büyük harf tuzağı: görüntü biçimi başka katmanda (CLAUDE.md §2)."""
         assert normalize.split_full_name("emre can yılmaz") == ("emre can", "yılmaz")
-
-
-class TestNormalizeGender:
-    """Cinsiyet katlaması (20.09.2026) — yalnız kız/erkek ayrışması kuralı için."""
-
-    def test_eokul_yazimi(self) -> None:
-        assert normalize.normalize_gender("Kız") == "K"
-        assert normalize.normalize_gender("Erkek") == "E"
-
-    def test_buyuk_kucuk_ve_bosluk_farketmez(self) -> None:
-        assert normalize.normalize_gender(" KIZ ") == "K"
-        assert normalize.normalize_gender("erkek") == "E"
-        assert normalize.normalize_gender("K") == "K"
-        assert normalize.normalize_gender("e") == "E"
-
-    def test_oteki_yazimlar(self) -> None:
-        assert normalize.normalize_gender("Bayan") == "K"
-        assert normalize.normalize_gender("Female") == "K"
-        assert normalize.normalize_gender("BAY") == "E"
-        assert normalize.normalize_gender("male") == "E"
-
-    def test_taninmayan_deger_jokerdir(self) -> None:
-        """Tanınmayan değer aktarımı DÜŞÜRMEZ; kural tarafında joker olur."""
-        assert normalize.normalize_gender("belirtilmemiş") == ""
-        assert normalize.normalize_gender("") == ""
-        assert normalize.normalize_gender(None) == ""
-        assert normalize.normalize_gender(0) == ""

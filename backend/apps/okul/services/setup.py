@@ -1,6 +1,6 @@
 """Kurum yapılandırması (SchoolConfig singleton) — okuma + yazma + antet çözümleme.
 
-OYS `core.services.school_config` ikamesi (F1-T3). Farklar: env (`OYS_*`)
+OYS `core.services.school_config` ikamesi (KS'den alındı). Farklar: env (`OYS_*`)
 fallback YOK — tek doğruluk kaynağı DB satırıdır; `principal_name` Müdür
 hesabından değil doğrudan yapılandırmadan gelir (login'siz program).
 `setup_completed` yalnız `mark_setup_completed` ile değişir — sihirbaz kapısının
@@ -11,15 +11,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from apps.okul import bell
-from apps.okul.models import (
-    MAX_DAILY_PERIOD_COUNT,
-    EducationModel,
-    SchoolConfig,
-)
+from apps.okul.models import SchoolConfig
 
 # Ayar/sihirbaz ekranından güncellenebilir alanlar (whitelist — başka alan yazılamaz).
 UPDATABLE_FIELDS: tuple[str, ...] = (
@@ -27,21 +21,8 @@ UPDATABLE_FIELDS: tuple[str, ...] = (
     "province",
     "district",
     "principal_name",
-    "school_type",
     "has_prep_class",
-    "level_programs",
-    "daily_period_count",
-    "exam_period_nos",
-    "default_separation_mode",
-    "education_model",
-    "bell_schedule",
-    "afternoon_bell_schedule",
-    "bell_flow",
-    "afternoon_bell_flow",
 )
-
-#: Değişince ders kataloğunun çizelgeye yeniden çekilmesini gerektiren alanlar.
-CATALOG_FIELDS: frozenset[str] = frozenset({"school_type", "has_prep_class", "level_programs"})
 
 
 def get_school_config() -> SchoolConfig:
@@ -49,107 +30,9 @@ def get_school_config() -> SchoolConfig:
     return SchoolConfig.load()
 
 
-def _clean_daily_period_count(value: Any) -> int:
-    """Günlük ders saati sayısı → 1..MAX arası tam sayı."""
-    try:
-        count = int(value)
-    except (TypeError, ValueError):
-        raise ValidationError(
-            {"daily_period_count": "Günlük ders saati sayısı tam sayı olmalı."}
-        ) from None
-    if not 1 <= count <= MAX_DAILY_PERIOD_COUNT:
-        raise ValidationError(
-            {
-                "daily_period_count": "Günlük ders saati sayısı 1 ile "
-                f"{MAX_DAILY_PERIOD_COUNT} arasında olmalı."
-            }
-        )
-    return count
-
-
-def _clean_education_model(value: Any) -> str:
-    """Eğitim modeli → geçerli seçenek."""
-    metin = str(value or "").strip().upper()
-    if metin not in EducationModel.values:
-        raise ValidationError({"education_model": "Geçersiz eğitim modeli."})
-    return metin
-
-
-def _clean_bell_schedule(value: Any, *, field: str, label: str) -> list[dict[str, Any]]:
-    """Ders saati listesini doğrular (saf hesap `okul.bell`de)."""
-    try:
-        return bell.normalize_periods(value, label=label)
-    except ValueError as exc:
-        raise ValidationError({field: str(exc)}) from exc
-
-
-def _clean_bell_flow(value: Any, *, field: str, label: str) -> dict[str, Any]:
-    """Ders akışı parametrelerini doğrular; boş sözlük "akış tanımlı değil"dir."""
-    if value in (None, "", {}):
-        return {}
-    if not isinstance(value, dict):
-        raise ValidationError({field: f"{label} sözlük olmalı."})
-    akis = bell.LessonFlow.from_dict(value)
-    sorunlar = akis.errors(prefix=f"{label}: ")
-    if sorunlar:
-        raise ValidationError({field: " ".join(sorunlar)})
-    return akis.to_dict()
-
-
-def _clean_exam_period_nos(value: Any, daily_period_count: int, *, strict: bool) -> list[int]:
-    """Sınav ders saatleri → benzersiz + sıralı saat no listesi (boş = tümü).
-
-    `strict` istekte alanın AÇIKÇA gönderildiğini söyler: o zaman aralık dışı
-    saat sessizce düşmez, hata olur (idareci ne seçtiğini görmeli). Alan
-    gönderilmeden yalnız `daily_period_count` küçültüldüyse eski listenin
-    taşan kuyruğu kırpılır — 10 saatlik okul 8 saate inince 9-10. saatleri
-    "sınav yapılabilir" bırakmak, olmayan bir saate takvim kurardı.
-    """
-    if value in (None, ""):
-        return []
-    if not isinstance(value, list | tuple):
-        raise ValidationError({"exam_period_nos": "Sınav ders saatleri liste olmalı."})
-    cleaned: set[int] = set()
-    for raw in value:
-        try:
-            no = int(raw)
-        except (TypeError, ValueError):
-            raise ValidationError(
-                {"exam_period_nos": "Sınav ders saatleri tam sayı olmalı."}
-            ) from None
-        if not 1 <= no <= daily_period_count:
-            if strict:
-                raise ValidationError(
-                    {
-                        "exam_period_nos": f"{no}. ders saati yok — okulun günlük ders "
-                        f"saati sayısı {daily_period_count}."
-                    }
-                )
-            continue
-        cleaned.add(no)
-    return sorted(cleaned)
-
-
-def sync_course_catalog() -> None:
-    """Ders kataloğunu okulun yürürlükteki çizelgesine çeker (damga farklıysa).
-
-    `dersler` servisine köprü: okul türü/hazırlık/seviye ataması/ders yılı
-    değişince havuz aynı işlemde güncellensin, idareci Ders Havuzu ekranını
-    açmadan takvim havuzunu doldurursa eski çizelge çekilmesin. Çizelge dosyası
-    yoksa sessizce atlar (TB2).
-    """
-    from apps.dersler import services as ders_services
-
-    ders_services.ensure_catalog_synced()
-    ders_services.ensure_course_aliases()
-
-
 @transaction.atomic
 def update_school_config(*, fields: dict[str, Any]) -> SchoolConfig:
-    """Kurum yapılandırmasını günceller (whitelist alanları). Satır yoksa oluşturur.
-
-    Çizelgeyi etkileyen alan değiştiyse katalog aynı işlemde senkronlanır.
-    """
+    """Kurum yapılandırmasını günceller (whitelist alanları). Satır yoksa oluşturur."""
     config: SchoolConfig
     config, _created = SchoolConfig.objects.get_or_create(pk=SchoolConfig.SINGLETON_PK)
     update_fields: list[str] = ["updated_at"]
@@ -157,66 +40,22 @@ def update_school_config(*, fields: dict[str, Any]) -> SchoolConfig:
         if name in fields:
             setattr(config, name, fields[name])
             update_fields.append(name)
-    # Ders saati çifti BİRLİKTE normalize edilir: sınav saatleri günlük ders
-    # saati sayısına bağlıdır ve ikisi aynı istekte gelebilir (sihirbazın tek
-    # adımı). Sıra önemlidir — önce sayı yerine oturur, sınav saatleri ona göre
-    # kırpılır; aksi hâlde 10 → 8'e düşen okulda 9. saat sınav listesinde kalırdı.
-    if "education_model" in fields:
-        config.education_model = _clean_education_model(config.education_model)
-    for alan, etiket in (
-        ("bell_schedule", "Ders saati listesi"),
-        ("afternoon_bell_schedule", "Öğleden sonra ders saati listesi"),
-    ):
-        if alan in fields:
-            setattr(
-                config, alan, _clean_bell_schedule(getattr(config, alan), field=alan, label=etiket)
-            )
-    for alan, etiket in (
-        ("bell_flow", "Ders akışı"),
-        ("afternoon_bell_flow", "Öğleden sonra ders akışı"),
-    ):
-        if alan in fields:
-            setattr(config, alan, _clean_bell_flow(getattr(config, alan), field=alan, label=etiket))
-    # Elle girilmiş çizelge günlük ders saati sayısını BELİRLER (CLAUDE.md: iki
-    # alan çelişirse elle girilen kazanır). Sayı çizelgeden geride kalırsa
-    # `exam_period_nos` kırpması olmayan saatleri sınava açık bırakırdı.
-    if fields.get("bell_schedule"):
-        config.daily_period_count = len(config.bell_schedule)
-        if "daily_period_count" not in update_fields:
-            update_fields.append("daily_period_count")
-    if "daily_period_count" in fields or "exam_period_nos" in fields or fields.get("bell_schedule"):
-        config.daily_period_count = _clean_daily_period_count(config.daily_period_count)
-        config.exam_period_nos = _clean_exam_period_nos(
-            config.exam_period_nos,
-            config.daily_period_count,
-            strict="exam_period_nos" in fields,
-        )
-        for name in ("daily_period_count", "exam_period_nos"):
-            if name not in update_fields:
-                update_fields.append(name)
     config.save(update_fields=update_fields)
-    if CATALOG_FIELDS & set(update_fields):
-        sync_course_catalog()
     return config
 
 
 @transaction.atomic
 def mark_setup_completed() -> SchoolConfig:
-    """Kurulum sihirbazını tamamlanmış işaretler (satır yoksa oluşturur).
-
-    Katalog burada da senkronlanır: sihirbaz okul türünü 1. adımda yazar, ders
-    yılını 2. adımda aktifleştirir — tamamlama anında ikisi de bellidir.
-    """
+    """Kurulum sihirbazını tamamlanmış işaretler (satır yoksa oluşturur)."""
     config: SchoolConfig
     config, _created = SchoolConfig.objects.get_or_create(pk=SchoolConfig.SINGLETON_PK)
     config.setup_completed = True
     config.save(update_fields=["setup_completed", "updated_at"])
-    sync_course_catalog()
     return config
 
 
 def get_letterhead_identity() -> dict[str, str]:
-    """Resmî evrak antedi için kurum kimliği (evrak motoru F3'te bunu tüketir).
+    """Resmî evrak antedi için kurum kimliği.
 
     Döner: `school_name`, `district`, `province`, `principal_name` — hepsi düz
     metin. Okul adı boşsa OYS paritesiyle 'Okul' yer tutucusu; ilçe/müdür boş

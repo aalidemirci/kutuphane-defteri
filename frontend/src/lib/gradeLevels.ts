@@ -2,12 +2,10 @@
 // taşındı — OYS'nin sınıf çipi renk eşlemesi (`gradeColor`) burada çağıran
 // bulamadığı için alınmadı.
 
-// Öğrenim seviyeleri — UI seçicileri (onur kurulu üye seviyesi, md. 183/b).
-// `GET /api/v1/grade-levels/` listeyi ÖĞRENCİ SİCİLİNDEN türetir; sicil boşken
-// (kurulum öncesi) lise varsayılanını (9-12) döner. Program 9-12 değişmezi
-// taşıdığından (import normalize + StudentSerializer kapıları) uç Hazırlık (0)
-// ÖNERMEZ ve `prep_enabled` daima false'tur — `gradeLevelLabel`'ın 0 dalı yalnız
-// gelecekte iki yazma kapısı da gevşetilirse anlam kazanır.
+// Öğrenim seviyeleri — UI seçicileri (sınıf düzeyi süzgeci, şube ekleme).
+// `GET /api/v1/grade-levels/` okul içi sabit kümeyi döner: 1-12, okul
+// künyesinde hazırlık sınıfı açıksa başta Hazırlık (0) ve `prep_enabled=true`.
+// Aynı küme öğrenci/şube yazma kapılarında ve içe aktarmada denetlenir.
 
 import { api } from "./api";
 
@@ -24,8 +22,8 @@ export interface GradeLevelsResponse {
 export const getGradeLevels = () => api.get<GradeLevelsResponse>("/grade-levels/");
 
 // Sınıf düzeyi etiketi: 0 → "Hazırlık", n → "n. Sınıf", null/undefined → "—".
-// Backend `dersler.text.level_label` ile AYNI yazım (docs/sozluk.md): eskiden
-// burası "9. sınıf", backend "9. Sınıf" basıyor, aynı ekranda iki yazım çıkıyordu.
+// Tek yazım "n. Sınıf"tır: eskiden ekranda "9. sınıf" ile "9. Sınıf" yan yana
+// çıkıyordu.
 export function gradeLevelLabel(level: number | null | undefined): string {
   if (level == null) return "—";
   return level === 0 ? "Hazırlık" : `${level}. Sınıf`;

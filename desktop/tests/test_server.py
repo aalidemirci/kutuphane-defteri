@@ -1,4 +1,4 @@
-"""Gömülü sunucu testleri (tasarım §5.3 — 127.0.0.1 + boş port, erişim logu YOK)."""
+"""Gömülü sunucu testleri (tasarım §4.1 — 127.0.0.1 + boş port, erişim logu YOK)."""
 
 from __future__ import annotations
 

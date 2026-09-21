@@ -9,7 +9,6 @@ ve şube düz alanlardır; süzgeçleri DB tarafında kalır.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from typing import Any
 
 from django.db.models import QuerySet
@@ -18,7 +17,6 @@ from apps.okul import normalize
 from apps.okul.excel_ogrenci import normalize_header
 from apps.okul.models import (
     ClassSection,
-    ClassSectionGroup,
     ImportRun,
     Personnel,
     SchoolConfig,
@@ -26,7 +24,6 @@ from apps.okul.models import (
     SchoolYear,
     Student,
     StudentStatus,
-    SubjectDepartment,
 )
 
 
@@ -43,12 +40,12 @@ def school_terms(*, school_year_id: int) -> QuerySet[SchoolTerm]:
 
 
 def get_school_term(term_id: int) -> SchoolTerm | None:
-    """Tek dönem (canlı) — yoksa None. Sınav modülünün dönem köprüsü."""
+    """Tek dönem (canlı) — yoksa None. Diğer uygulamaların dönem okuma kanalı."""
     return SchoolTerm.objects.filter(pk=term_id).select_related("school_year").first()
 
 
 def active_student_counts_by_level() -> dict[int, int]:
-    """Seviye başına AKTİF öğrenci sayısı (sınav Adım 0 ön kontrol verisi; PII yok)."""
+    """Seviye başına AKTİF öğrenci sayısı (pano/ön kontrol verisi; PII yok)."""
     counts: dict[int, int] = {}
     qs = (
         Student.objects.filter(status=StudentStatus.ACTIVE)
@@ -60,53 +57,17 @@ def active_student_counts_by_level() -> dict[int, int]:
     return dict(sorted(counts.items()))
 
 
-def student_genders(student_ids: Iterable[int]) -> dict[int, str]:
-    """Öğrenci pk → cinsiyet ("K"/"E"); bilinmeyen/çözülemeyen kayıt SÖZLÜKTE YOK.
-
-    Kız/erkek ayrışması yerleştirme kuralının TEK okuma yoludur (20.09.2026).
-    Alan ŞİFRELİ olduğundan DB'de süzülemez/gruplanamaz — tek sorgu çekilir,
-    ayıklama Python'da yapılır (tasarım §5 deseni). Kilitli kasada (parola
-    açıkken kilit kapalı) değer çözülemez; o öğrenci JOKER olur, dağıtım
-    durmaz — K4 kullanıcı kararı.
-
-    Sayım/süzme İÇİN de burası kullanılır; cinsiyet hiçbir listeye, evraka ya
-    da dışa aktarıma BASILMAZ.
-    """
-    ids = list(student_ids)
-    if not ids:
-        return {}
-    out: dict[int, str] = {}
-    for pk, gender in Student.objects.filter(pk__in=ids).values_list("pk", "gender"):
-        if gender in ("K", "E"):
-            out[int(pk)] = str(gender)
-    return out
-
-
-def students_missing_gender_count() -> int:
-    """Cinsiyeti bilinmeyen AKTİF öğrenci sayısı (kural açıkken uyarı sayacı).
-
-    Şifreli alan: sayım Python'da. Sayı KİMLİK içermez — arayüzde "N öğrencinin
-    cinsiyet bilgisi yok" uyarısında kullanılır.
-    """
-    eksik = 0
-    for gender in Student.objects.filter(status=StudentStatus.ACTIVE).values_list(
-        "gender", flat=True
-    ):
-        if gender not in ("K", "E"):
-            eksik += 1
-    return eksik
-
-
 def last_student_import() -> ImportRun | None:
-    """Son TAMAMLANMIŞ öğrenci içe aktarması (Adım 0: 'liste ne kadar taze?')."""
+    """Son TAMAMLANMIŞ öğrenci içe aktarması ('liste ne kadar taze?')."""
     return ImportRun.objects.filter(source_type="STUDENTS", status="COMPLETED").first()
 
 
 def grade_levels() -> list[dict[str, Any]]:
-    """UI seçicileri için geçerli seviye listesi — okul türünden türetilir (U4)."""
+    """UI seçicileri için geçerli seviye listesi (1-12; hazırlık bayrağıyla 0)."""
     config = SchoolConfig.load()
     return [
-        {"value": lvl, "label": "Hazırlık" if lvl == 0 else str(lvl)} for lvl in config.grade_levels
+        {"value": lvl, "label": "Hazırlık" if lvl == normalize.PREP_LEVEL else str(lvl)}
+        for lvl in config.grade_levels
     ]
 
 
@@ -135,7 +96,7 @@ def personnel_list(
 
 
 def personnel_sorted(*, only_active: bool = False) -> list[Personnel]:
-    """Ada göre TR-katlamalı sıralı personel (gözetmen listeleri, seçiciler)."""
+    """Ada göre TR-katlamalı sıralı personel (listeler, seçiciler)."""
     rows = list(
         Personnel.objects.filter(is_active=True) if only_active else Personnel.objects.all()
     )
@@ -144,7 +105,7 @@ def personnel_sorted(*, only_active: bool = False) -> list[Personnel]:
 
 def class_sections(*, school_year_id: int | None = None) -> QuerySet[ClassSection]:
     """Şube kataloğu; yıl verilmezse aktif yıl kullanılır."""
-    qs = ClassSection.objects.select_related("school_year", "group")
+    qs = ClassSection.objects.select_related("school_year")
     if school_year_id is not None:
         return qs.filter(school_year_id=school_year_id)
     active = active_school_year()
@@ -172,52 +133,6 @@ def get_class_section(section_id: int) -> ClassSection | None:
     return ClassSection.objects.filter(pk=section_id).first()
 
 
-def class_section_groups() -> QuerySet[ClassSectionGroup]:
-    """Şube kümesi kataloğu (sıra + pk)."""
-    return ClassSectionGroup.objects.all()
-
-
-def class_section_groups_sorted() -> list[ClassSectionGroup]:
-    """Şube kümeleri: önce elle verilen sıra, eşitlikte TÜRK ALFABESİ.
-
-    SQLite karşılaştırması BINARY'dir (Ç/Ğ/İ/Ö/Ş/Ü kod noktası olarak Z'den
-    sonra düşer) — ada göre sıralama bu yüzden Python'da (ClassSection emsali).
-    """
-    return sorted(
-        class_section_groups(),
-        key=lambda g: (g.order, normalize.tr_sort_key(g.name)),
-    )
-
-
-def get_class_section_group(group_id: int) -> ClassSectionGroup | None:
-    return ClassSectionGroup.objects.filter(pk=group_id).first()
-
-
-def subject_departments(*, board_only: bool = False) -> QuerySet[SubjectDepartment]:
-    """Zümre kataloğu (başkan bağıyla)."""
-    qs = SubjectDepartment.objects.select_related("head")
-    if board_only:
-        qs = qs.filter(is_board_member=True)
-    return qs
-
-
-def subject_departments_sorted(*, board_only: bool = False) -> list[SubjectDepartment]:
-    """Zümre kataloğu, TÜRK ALFABESİ sırasıyla (liste ekranı + imza bloğu).
-
-    `Meta.ordering` pk'dir; zümre adı düz metin olsa da SQLite karşılaştırması
-    BINARY'dir (Ç/Ğ/İ/Ö/Ş/Ü kod noktası olarak Z'den sonra) — sıralama bu yüzden
-    Python'da, `normalize.tr_sort_key` ile (ClassSection emsali).
-    """
-    return sorted(
-        subject_departments(board_only=board_only),
-        key=lambda d: normalize.tr_sort_key(d.name),
-    )
-
-
-def get_subject_department(department_id: int) -> SubjectDepartment | None:
-    return SubjectDepartment.objects.filter(pk=department_id).first()
-
-
 def student_list(
     *,
     class_level: int | None = None,
@@ -227,7 +142,7 @@ def student_list(
 ) -> list[Student] | QuerySet[Student]:
     """Öğrenci listesi. `only_active` VARSAYILAN OLARAK KAPALIDIR.
 
-    Sicil ekranı ayrılmış öğrenciyi de göstermek zorundadır (geçmiş oturumların
+    Sicil ekranı ayrılmış öğrenciyi de göstermek zorundadır (geçmiş kayıtların
     öğrencisi kaybolmasın); süzgeci yalnız YENİ kayıt bağlayan seçiciler
     (autocomplete) açar.
     """
@@ -252,7 +167,7 @@ def student_list(
 
 
 def get_student(student_id: int) -> Student | None:
-    """Tek öğrenci (canlı) — yoksa None. Sınav modülünün okuma kanalı."""
+    """Tek öğrenci (canlı) — yoksa None. Diğer uygulamaların okuma kanalı."""
     return Student.objects.filter(pk=student_id).first()
 
 

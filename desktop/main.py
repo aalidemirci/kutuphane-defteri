@@ -1,4 +1,4 @@
-"""Kütüphane Defteri masaüstü başlatıcısı — açılış sırası (tasarım §5.3).
+"""Kütüphane Defteri masaüstü başlatıcısı — açılış sırası (tasarım §4.2).
 
     1. Veri dizinleri (exe DIŞINDA) + günlük yapılandırması
     2. Tek-instance kilidi ................. ikinci kopya pencere AÇMAZ
@@ -6,7 +6,7 @@
     4. Sürüm damgası ........................ eski program yeni veriyi AÇMAZ
     5. Bütünlük denetimi .................... bozuk veriyle pencere AÇILMAZ
     6. Günlük yedek + 14 gün rotasyonu ...... `Connection.backup()`; parolalıysa
-       şifreli, parolasızsa düz `.kdbak` — yedek her kipte ALINIR (K9)
+       şifreli, parolasızsa düz `.kdbak` — yedek her kipte ALINIR (KS K9)
     7. Göç öncesi yedek + `migrate --no-input`
     8. Gömülü sunucu (waitress, 127.0.0.1, boş port) + sağlık denetimi
     9. Pencere (pywebview) — `--autotest` kipinde AÇILMAZ
@@ -76,7 +76,7 @@ def build_parser() -> argparse.ArgumentParser:
     """Komut satırı arayüzü."""
     parser = argparse.ArgumentParser(
         prog="kutuphane-defteri",
-        description="Kütüphane Defteri — çevrimdışı sınav planlama masaüstü programı.",
+        description="Kütüphane Defteri — okul kütüphanesi için çevrimdışı masaüstü programı.",
     )
     parser.add_argument(
         "--autotest",

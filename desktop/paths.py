@@ -1,9 +1,9 @@
-"""Veri dizini çözümü — platform farkı TEK yerde, test edilebilir (tasarım §5.3).
+"""Veri dizini çözümü — platform farkı TEK yerde, test edilebilir (tasarım §4.5).
 
 Kural: **veri exe'nin DIŞINDA** durur. Windows'ta `%LOCALAPPDATA%` seçilir,
 `%APPDATA%` (Roaming) seçilMEZ: gezici profil/OneDrive senkronu açık bir SQLite
-dosyasını kopyalamaya kalkarsa veritabanı bozulur (risk kütüğü §9). Linux'ta XDG
-ayrımı korunur: veri `~/.local/share`, log `~/.local/state`, önbellek `~/.cache`.
+dosyasını kopyalamaya kalkarsa veritabanı bozulur. Linux'ta XDG ayrımı korunur:
+veri `~/.local/share`, log `~/.local/state`, önbellek `~/.cache`.
 
 Tüm çözüm saf `os.environ` okumasıyla yapılır (`platformdirs` KULLANILMADI):
 böylece Linux'taki testler Windows yerleşimini de doğrulayabilir ve paketlenmiş
@@ -19,8 +19,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 # Dizin adı — tasarım §2.3 kimlik sabitleri: veri dizini adı KutuphaneDefteri.
-# (Ad değişirse YALNIZ bu iki sabit değişir; DD şablonundaki karşılıklarıyla
-# çakışmaması F0 kapısında sınanır — iki uygulama aynı makinede veri karıştırmaz.)
+# (Ad değişirse YALNIZ bu iki sabit değişir; kardeş programların (KS, DD)
+# karşılıklarıyla çakışmaz — aynı makinedeki iki program veri karıştırmaz.)
 APP_DIR_NAME_WINDOWS = "KutuphaneDefteri"
 APP_DIR_NAME_XDG = "kutuphane-defteri"
 

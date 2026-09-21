@@ -15,7 +15,7 @@ from rest_framework.test import APIClient
 from apps.okul.services import app_password, encrypted_backup
 
 
-def test_veritabani_ramde_sifrelenerek_ksbak_uretilir(
+def test_veritabani_ramde_sifrelenerek_kdbak_uretilir(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     data_dir = tmp_path / "data"

@@ -1,8 +1,8 @@
-// Kurulum sihirbazı (DD kalıbından KS'ye) — programın İLK AÇILIŞ ekranı. Üç
-// adımda kurumu çalışır hale getirir: okul kimliği (evrak anteti + okul türü,
-// U4: ders havuzu ve seviye kümesi türe bağlıdır) → ders yılı + dönemler (şube
-// kataloğu ve sınav takvimi buna bağlanır) → kişi sicili yönlendirmesi.
-// DD'deki tatil adımı YOK: kelebek iş günü hesabı yapmaz (tasarım §11 ALMA).
+// Kurulum sihirbazı (DD kalıbı) — programın İLK AÇILIŞ ekranı. Üç adımda kurumu
+// çalışır hale getirir: okul kimliği (evrak antedi + hazırlık sınıfı) → ders
+// yılı + dönemler (şube kataloğu ve e-Okul aktarımı buna bağlanır) → kişi
+// sicili yönlendirmesi. Tatil adımı YOK; parola ilk adımı, kademe, kısa ad ve
+// demirbaş onayı F1'de gelir (tasarım §14.1 F1).
 //
 // Durum tek kaynaktan (`GET /setup/status/`) beslenir: sihirbaz yeniden
 // açıldığında tamamlanmış adımlar işaretli gelir ve ilk EKSİK adımdan başlar.
@@ -25,21 +25,8 @@ import { useSnackbar } from "../../ui/SnackbarProvider";
 import Stepper from "../../ui/Stepper";
 import type { StepperItem } from "../../ui/Stepper";
 import TextField from "../../ui/TextField";
-import CizelgeAtamaMatrisi from "../okul/CizelgeAtamaMatrisi";
-import {
-  MAKS_GUNLUK_DERS_SAATI,
-  MESLEKI_TURLER,
-  VARSAYILAN_GUNLUK_DERS_SAATI,
-  okulApi,
-  okulTuruSecenekleri,
-} from "../okul/api";
-import type {
-  LevelPrograms,
-  SchoolType,
-  SchoolTypeOption,
-  SchoolYear,
-  SetupStatus,
-} from "../okul/api";
+import { okulApi } from "../okul/api";
+import type { SchoolYear, SetupStatus } from "../okul/api";
 
 const ADIMLAR = [
   { key: "okul", label: "Okul bilgileri", icon: "school" },
@@ -102,12 +89,7 @@ export default function KurulumPage() {
   const [il, setIl] = useState("");
   const [ilce, setIlce] = useState("");
   const [mudur, setMudur] = useState("");
-  const [okulTuru, setOkulTuru] = useState<SchoolType>("ANADOLU_LISESI");
   const [hazirlikVar, setHazirlikVar] = useState(false);
-  const [levelPrograms, setLevelPrograms] = useState<LevelPrograms>({});
-  const [gunlukDersSaati, setGunlukDersSaati] = useState(VARSAYILAN_GUNLUK_DERS_SAATI);
-  const [sinavSaatleri, setSinavSaatleri] = useState<number[]>([]);
-  const [okulTurleri, setOkulTurleri] = useState<SchoolTypeOption[]>([]);
 
   const [busy, setBusy] = useState(false);
   const [adimHatasi, setAdimHatasi] = useState<string | null>(null);
@@ -132,11 +114,7 @@ export default function KurulumPage() {
         setIl(c.province);
         setIlce(c.district);
         setMudur(c.principal_name);
-        setOkulTuru(c.school_type);
         setHazirlikVar(c.has_prep_class);
-        setLevelPrograms(c.level_programs ?? {});
-        setGunlukDersSaati(c.daily_period_count || VARSAYILAN_GUNLUK_DERS_SAATI);
-        setSinavSaatleri(c.exam_period_nos ?? []);
         setAdim(ilkEksikAdim(s));
         setLoadError(null);
       })
@@ -145,15 +123,6 @@ export default function KurulumPage() {
       })
       .finally(() => {
         if (!iptal) setLoading(false);
-      });
-    // Okul türü listesi ayrı yüklenir: gelmezse sabit sözlükten düşülür.
-    okulApi
-      .listSchoolTypes()
-      .then((r) => {
-        if (!iptal) setOkulTurleri(r);
-      })
-      .catch(() => {
-        if (!iptal) setOkulTurleri([]);
       });
     return () => {
       iptal = true;
@@ -178,7 +147,7 @@ export default function KurulumPage() {
   }));
 
   const aktifYilVar = status?.has_active_school_year ?? false;
-  // Tek zorunlu kapı: aktif ders yılı olmadan şube kataloğu ve sınav takvimi çalışmaz.
+  // Tek zorunlu kapı: aktif ders yılı olmadan şube kataloğu ve e-Okul aktarımı çalışmaz.
   const ileriKapisiKapali = adim === 1 && !aktifYilVar;
 
   const okulBilgileriniKaydet = async () => {
@@ -195,12 +164,7 @@ export default function KurulumPage() {
         province: il.trim(),
         district: ilce.trim(),
         principal_name: mudur.trim(),
-        school_type: okulTuru,
-        daily_period_count: gunlukDersSaati,
-        // Gün kısaldıysa taşan saat gönderilmez (backend açık listeyi kırpmaz, reddeder).
-        exam_period_nos: sinavSaatleri.filter((no) => no <= gunlukDersSaati),
         has_prep_class: hazirlikVar,
-        level_programs: levelPrograms,
       });
       snackbar.success("Okul bilgileri kaydedildi.");
       await durumTazele();
@@ -283,22 +247,13 @@ export default function KurulumPage() {
                 il={il}
                 ilce={ilce}
                 mudur={mudur}
-                okulTuru={okulTuru}
                 hazirlikVar={hazirlikVar}
-                levelPrograms={levelPrograms}
-                okulTurleri={okulTurleri}
                 errors={errors}
                 onOkulAdi={setOkulAdi}
                 onIl={setIl}
                 onIlce={setIlce}
                 onMudur={setMudur}
-                onOkulTuru={setOkulTuru}
                 onHazirlikVar={setHazirlikVar}
-                onLevelPrograms={setLevelPrograms}
-                gunlukDersSaati={gunlukDersSaati}
-                sinavSaatleri={sinavSaatleri}
-                onGunlukDersSaati={setGunlukDersSaati}
-                onSinavSaatleri={setSinavSaatleri}
               />
             )}
             {adim === 1 && <DersYiliAdimi onChanged={durumTazele} />}
@@ -339,7 +294,7 @@ export default function KurulumPage() {
 }
 
 // ---------------------------------------------------------------------------
-// 1. adım — Okul bilgileri (evrak anteti + okul türü)
+// 1. adım — Okul bilgileri (evrak antedi + hazırlık sınıfı)
 // ---------------------------------------------------------------------------
 
 interface OkulBilgileriProps {
@@ -347,22 +302,13 @@ interface OkulBilgileriProps {
   il: string;
   ilce: string;
   mudur: string;
-  okulTuru: SchoolType;
   hazirlikVar: boolean;
-  levelPrograms: LevelPrograms;
-  gunlukDersSaati: number;
-  sinavSaatleri: number[];
-  okulTurleri: SchoolTypeOption[];
   errors: Partial<Record<string, string>>;
   onOkulAdi: (v: string) => void;
   onIl: (v: string) => void;
   onIlce: (v: string) => void;
   onMudur: (v: string) => void;
-  onOkulTuru: (v: SchoolType) => void;
   onHazirlikVar: (v: boolean) => void;
-  onLevelPrograms: (v: LevelPrograms) => void;
-  onGunlukDersSaati: (v: number) => void;
-  onSinavSaatleri: (v: number[]) => void;
 }
 
 function OkulBilgileriAdimi({
@@ -370,29 +316,20 @@ function OkulBilgileriAdimi({
   il,
   ilce,
   mudur,
-  okulTuru,
   hazirlikVar,
-  levelPrograms,
-  okulTurleri,
   errors,
   onOkulAdi,
   onIl,
   onIlce,
   onMudur,
-  onOkulTuru,
   onHazirlikVar,
-  onLevelPrograms,
-  gunlukDersSaati,
-  sinavSaatleri,
-  onGunlukDersSaati,
-  onSinavSaatleri,
 }: OkulBilgileriProps) {
   return (
     <Card elevation={1} className="p-6">
       <p className="text-title-medium text-on-surface">1. Okul bilgileri</p>
       <p className="mt-1 text-body-medium text-on-surface-variant">
-        Bu bilgiler salon evrakının antetinde kullanılır. Okul türü ve hazırlık sınıfı, ders
-        havuzunun hangi MEB çizelgesinden türetileceğini ve geçerli sınıf düzeylerini belirler.
+        Bu bilgiler programın bastığı evrakın antedinde kullanılır. Hazırlık sınıfı varsa sınıf
+        düzeylerine Hazırlık eklenir.
       </p>
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <TextField
@@ -418,19 +355,11 @@ function OkulBilgileriAdimi({
           error={errors.district}
         />
         <TextField
-          className="sm:col-span-2"
           label="Okul müdürü"
           value={mudur}
           onChange={(e) => onMudur(e.target.value)}
           error={errors.principal_name}
           helperText="Evrak imza bloğunda görünür; boş bırakılırsa şablon yer tutucu basar."
-        />
-        <Select
-          label="Okul türü"
-          value={okulTuru}
-          onChange={(e) => onOkulTuru(e.target.value as SchoolType)}
-          options={okulTuruSecenekleri(okulTurleri)}
-          helperText="Ders havuzu bu türün TTK haftalık ders çizelgesinden türetilir."
         />
         <Select
           label="Hazırlık sınıfı"
@@ -440,72 +369,16 @@ function OkulBilgileriAdimi({
             { value: "0", label: "Yok" },
             { value: "1", label: "Var" },
           ]}
-          helperText="Varsa “Hazırlık Sınıfı Bulunan …” çizelgesi uygulanır ve sınıf düzeylerine Hazırlık eklenir."
+          error={errors.has_prep_class}
+          helperText="Varsa sınıf düzeylerine Hazırlık eklenir; yoksa program hazırlık satırı üretmez."
         />
-        <Select
-          label="Günlük ders saati sayısı"
-          value={String(gunlukDersSaati)}
-          onChange={(e) => onGunlukDersSaati(Number(e.target.value))}
-          options={Array.from({ length: MAKS_GUNLUK_DERS_SAATI }, (_, i) => ({
-            value: String(i + 1),
-            label: `${i + 1} ders saati`,
-          }))}
-          helperText={
-            MESLEKI_TURLER.includes(okulTuru)
-              ? "Atölye ve işletmede beceri eğitimi günleriyle değişebilir — okulunuzun gününü girin."
-              : "Genel liselerde gün 8 ders saatidir."
-          }
-        />
-        <div className="sm:col-span-2">
-          <fieldset>
-            <legend className="text-label-large text-on-surface">
-              Sınav yapılabilecek ders saatleri
-            </legend>
-            <p className="mb-2 text-body-small text-on-surface-variant">
-              Sınav takvimini otomatik kurarken program yalnız işaretli saatleri kullanır. Boş
-              bırakılırsa tüm saatler sınava açıktır; sonradan Ayarlar → Okul Bilgileri'nden
-              değiştirilebilir.
-            </p>
-            <div className="grid grid-cols-3 gap-1 sm:grid-cols-4">
-              {Array.from({ length: gunlukDersSaati }, (_, i) => i + 1).map((no) => (
-                <label
-                  key={no}
-                  className="flex min-h-9 cursor-pointer items-center gap-2 rounded-shape-sm border border-outline px-3 text-body-medium text-on-surface"
-                >
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5 accent-primary"
-                    checked={sinavSaatleri.includes(no)}
-                    aria-label={`${no}. ders saati sınava açık`}
-                    onChange={() =>
-                      onSinavSaatleri(
-                        sinavSaatleri.includes(no)
-                          ? sinavSaatleri.filter((x) => x !== no)
-                          : [...sinavSaatleri, no].sort((a, b) => a - b),
-                      )
-                    }
-                  />
-                  {no}. ders
-                </label>
-              ))}
-            </div>
-          </fieldset>
-        </div>
-        <div className="sm:col-span-2">
-          <CizelgeAtamaMatrisi
-            schoolType={okulTuru}
-            hasPrepClass={hazirlikVar}
-            value={levelPrograms}
-            onChange={onLevelPrograms}
-          />
-        </div>
       </div>
     </Card>
   );
 }
 
 // ---------------------------------------------------------------------------
-// 2. adım — Ders yılı + dönemler (şube kataloğu ve sınav takvimi buna bağlı)
+// 2. adım — Ders yılı + dönemler (şube kataloğu ve e-Okul aktarımı buna bağlı)
 // ---------------------------------------------------------------------------
 
 /** Bugüne göre makul ders yılı önerisi: eylül ve sonrası yeni yılı başlatır. */
@@ -601,8 +474,8 @@ function DersYiliAdimi({ onChanged }: { onChanged: () => Promise<void> }) {
       <Card elevation={1} className="p-6">
         <p className="text-title-medium text-on-surface">2. Ders yılı</p>
         <p className="mt-1 text-body-medium text-on-surface-variant">
-          Şube kataloğu, sınav oturumları ve sınav takvimi AKTİF ders yılına bağlanır. Aynı anda
-          yalnız bir yıl aktif olabilir.
+          Şube kataloğu ve e-Okul aktarımı AKTİF ders yılına bağlanır. Aynı anda yalnız bir yıl
+          aktif olabilir.
         </p>
 
         {loading ? (
@@ -699,8 +572,7 @@ function DersYiliAdimi({ onChanged }: { onChanged: () => Promise<void> }) {
           />
         </div>
         <p className="mt-2 text-label-small text-on-surface-variant">
-          Yarıyıl tatili iki tarih arasında kalır. Sınav takviminin mevzuat pencereleri dönem
-          sınırlarına göre hesaplanır.
+          Yarıyıl tatili 1. dönemin bitişiyle 2. dönemin başlangıcı arasında kalır.
         </p>
         {error && (
           <div className="mt-4">

@@ -35,9 +35,9 @@ interface AutocompleteProps<T> {
   /** Liste anahtarı (genelde `id`). */
   getKey: (item: T) => string | number;
   /**
-   * Öğe seçilemezse NEDENİNİ döndürür (örn. "muaf", "aynı saatte görevli");
+   * Öğe seçilemezse NEDENİNİ döndürür (örn. "ayrıldı", "sınır dolu");
    * undefined = seçilebilir. Devre dışı öğe listede görünür ama tıklanamaz/
-   * Enter ile seçilemez (Tur 242 — gözetmen adayları deseni).
+   * Enter ile seçilemez (Tur 242).
    */
   getDisabled?: (item: T) => string | undefined;
   /** Seçili chip altında gösterilecek yardımcı metin (KVKK uyarısı vb.). */

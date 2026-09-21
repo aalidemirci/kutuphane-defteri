@@ -484,7 +484,7 @@ def test_surum_yaniti_varlik_ve_baglantilari_temizler() -> None:
                     "browser_download_url": "https://github.com/x/y.AppImage",
                 },
                 {
-                    "name": "KELEBEK-SINAV-2026.10.0-WIN64-SETUP.EXE",
+                    "name": "KUTUPHANE-DEFTERI-2026.10.0-WIN64-SETUP.EXE",
                     "browser_download_url": "https://github.com/x/setup.exe",
                     "size": "bilinmiyor",
                     "digest": f"SHA256:{'A' * 64}",
@@ -497,7 +497,7 @@ def test_surum_yaniti_varlik_ve_baglantilari_temizler() -> None:
     assert release.html_url == ""  # https değil → arayüze bağlantı verilmez
     assert release.checksums is None
     assert release.installer is not None
-    assert release.installer.name == "KELEBEK-SINAV-2026.10.0-WIN64-SETUP.EXE"
+    assert release.installer.name == "KUTUPHANE-DEFTERI-2026.10.0-WIN64-SETUP.EXE"
     assert release.installer.size == 0  # sayı olmayan boyut çökertmez
     assert release.installer.digest == f"sha256:{'a' * 64}"  # özet küçük harfe iner
 

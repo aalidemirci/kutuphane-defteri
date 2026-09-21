@@ -1,13 +1,9 @@
 """Öğrenci içe aktarımı için saf (DB'siz) normalize ediciler.
 
-DD `apps/okul/normalize.py` (OYS kökenli) dosyasından SADELEŞTİRİLEREK alındı:
-TCKN/telefon/doğum tarihi normalize edicileri KALDIRILDI — kelebek bu verileri
-hiç toplamaz (tasarım §5). Sınıf/şube ayrıştırması okul türünden gelen seviye
-kümesiyle PARAMETRİKTİR (U4 — sabit 9-12 yok; DD/OYS'den bilinçli sapma).
-
-`normalize_gender` 20.09.2026'da GERİ ALINDI (kullanıcı kararı): kız/erkek
-ayrışması yerleştirme kuralı cinsiyeti gerektiriyor ve veri zaten e-Okul sınıf
-listesinde. Kapsam dardır — yalnız o kural; hiçbir çıktıya basılmaz.
+KS'den alındı (KS bunu DD `apps/okul/normalize.py` dosyasından sadeleştirmişti):
+TCKN/telefon/doğum tarihi/cinsiyet normalize edicileri YOKTUR — program bu
+verileri hiç toplamaz (tasarım §6.1). Sınıf/şube ayrıştırması seviye kümesiyle
+PARAMETRİKTİR; varsayılan küme okul içi sabittir (`GRADE_LEVELS`).
 
 Saf fonksiyonlardır — kolay test edilir (tests/test_normalize). DB eşleştirme
 ve yazma `services/imports.py`'dadır.
@@ -19,6 +15,15 @@ import re
 from collections.abc import Collection
 
 from shared.text import tr_upper as _tr_upper
+
+#: Okulda geçerli sınıf seviyeleri — OKUL İÇİ SABİT (1-12: ilkokul, ortaokul,
+#: lise). Ders çizelgesine ya da okul türüne bağlı DEĞİLDİR; kademeye göre
+#: daraltma F1'de `SchoolConfig.kademe` ile gelir (tasarım §6.1).
+GRADE_LEVELS: tuple[int, ...] = tuple(range(1, 13))
+
+#: Hazırlık sınıfının seviye kodu (KS temsili: etiket 'Hz/A'). Yalnız
+#: `SchoolConfig.has_prep_class` açıkken geçerli kümeye girer.
+PREP_LEVEL = 0
 
 # Türkçe karakter → ASCII büyük. YALNIZ anahtar kelime eşlemesi içindir
 # ('HAZIRLIK' tanıma); şube harfine UYGULANMAZ — bkz. `_ascii_upper` / `tr_upper`.
@@ -80,10 +85,10 @@ _TR_SIRA = {harf: sira for sira, harf in enumerate(_TR_ALFABE)}
 def tr_sort_key(value: object) -> tuple[tuple[int, int], ...]:
     """Türk alfabesine göre sıralama anahtarı ('C' < 'Ç' < 'D', 'I' < 'İ' < 'J').
 
-    Yalnız şube harfi için değil, salon adı gibi ÇOK KELİMELİ metinler için de
-    kullanılır. Bu yüzden her karakter (öncelik, değer) ikilisine açılır:
-    alfabe dışı karakterler (boşluk, '/', '-') 0 önceliğiyle harflerden ÖNCE
-    gelir — ASCII sezgisiyle aynı ('A Salonu' < 'AB Salonu'), aksi hâlde ayraç
+    Yalnız şube harfi için değil, ÇOK KELİMELİ adlar için de kullanılabilir.
+    Bu yüzden her karakter (öncelik, değer) ikilisine açılır: alfabe dışı
+    karakterler (boşluk, '/', '-') 0 önceliğiyle harflerden ÖNCE gelir — ASCII
+    sezgisiyle aynı ('A Blok' < 'AB Blok'), aksi hâlde ayraç
     sınırındaki adlar birbirine karışırdı. Karşılaştırma büyük harf üzerinden
     yapılır (`tr_upper`).
     """
@@ -95,11 +100,11 @@ def tr_sort_key(value: object) -> tuple[tuple[int, int], ...]:
 
 
 def normalize_class_section(
-    value: object, *, valid_levels: Collection[int] = (9, 10, 11, 12)
+    value: object, *, valid_levels: Collection[int] = GRADE_LEVELS
 ) -> tuple[int, str] | None:
     """'10/A', '10-A', '10 A' → (10, 'A'); küme dışı seviye veya çözümsüz → None.
 
-    `valid_levels` okul türünden türetilir (`SchoolConfig.grade_levels`).
+    `valid_levels` okul yapılandırmasından gelir (`SchoolConfig.grade_levels`).
     0 (Hazırlık) kümede ise 'HAZIRLIK/A', 'HZ A' gibi metinler (0, 'A') çözülür.
     """
     if value is None:
@@ -109,7 +114,7 @@ def normalize_class_section(
         return None
     levels = frozenset(int(v) for v in valid_levels)
     folded = _ascii_upper(s)
-    prep = _PREP_RE.search(folded) if 0 in levels else None
+    prep = _PREP_RE.search(folded) if PREP_LEVEL in levels else None
     if prep is not None:
         # Anahtar kelime KATLANMIŞ metinde bulunur, şube harfi HAM metinden
         # alınır — 'Hazırlık/İ' şubesi 'I'ya çökmesin (tr_upper gerekçesi).
@@ -120,7 +125,7 @@ def normalize_class_section(
         harfler = re.sub(rf"[^{_SECTION_CHARS}]", " ", kalan).split()
         if not harfler:
             return None
-        return 0, tr_upper(harfler[-1])
+        return PREP_LEVEL, tr_upper(harfler[-1])
     level_m = re.search(r"\d{1,2}", s)
     section_m2 = re.search(rf"[{_SECTION_CHARS}]+", s)
     if level_m is None or section_m2 is None:
@@ -130,42 +135,6 @@ def normalize_class_section(
         return None
     section = tr_upper(section_m2.group())
     return level, section
-
-
-#: Katlanmış (ASCII büyük) metin → cinsiyet kodu. e-Okul "Kız"/"Erkek" yazar;
-#: geri kalanlar uygulama şablonuyla ya da elle girilen listelerle gelebilir.
-_GENDER_MAP = {
-    "K": "K",
-    "KIZ": "K",
-    "KADIN": "K",
-    "BAYAN": "K",
-    "F": "K",
-    "FEMALE": "K",
-    "E": "E",
-    "ERKEK": "E",
-    "BAY": "E",
-    "B": "E",
-    "M": "E",
-    "MALE": "E",
-}
-
-
-def normalize_gender(value: object) -> str:
-    """'Kız' → 'K', 'ERKEK' → 'E'; tanınmayan/boş değer → '' (joker).
-
-    Cinsiyet YALNIZ kız/erkek ayrışması yerleştirme kuralı için tutulur
-    (tasarım §5, 20.09.2026 kullanıcı kararı): hiçbir evraka, dışa aktarıma ya
-    da ekran rozetine basılmaz. Tanınmayan değer sessizce '' olur — kural
-    tarafında "joker" öğrenci olarak ele alınır ve idareciye sayısı uyarıyla
-    bildirilir; aktarımı DÜŞÜRMEZ (cinsiyet kritik sütun değildir).
-
-    Katlama `_ascii_upper` iledir: eşleştirme anahtarı üretilir, veri değil
-    (şube harfi tuzağı burada yok — 'K'/'E' ASCII harflerdir).
-    """
-    if value is None:
-        return ""
-    folded = _ascii_upper(str(value).strip())
-    return _GENDER_MAP.get(folded, "")
 
 
 def split_full_name(value: object) -> tuple[str, str]:

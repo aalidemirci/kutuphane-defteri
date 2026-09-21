@@ -15,7 +15,7 @@ import pytest
 
 SARMAL = Path(__file__).resolve().parents[1] / "linux" / "apt_dene.sh"
 # Tam yol: ruff/bandit S607 kısmi yolu uyarır. Testler yalnız Docker'da koşar
-# (CLAUDE.md §1.5), orada bash /bin/bash'tir; `which` yerel kabuğu da bulur.
+# (tasarım §1), orada bash /bin/bash'tir; `which` yerel kabuğu da bulur.
 BASH = shutil.which("bash") or "/bin/bash"
 
 # Verilen denemeden itibaren başarılı olan sahte apt-get. `update` her zaman
@@ -64,7 +64,7 @@ def test_ilk_denemede_gecen_komut_yeniden_denenmez(tmp_path: Path) -> None:
 
 
 def test_gecici_404_sonrasi_kurtarir(tmp_path: Path) -> None:
-    """Gerçek vaka: v2026.9.0-beta.5 koşusu 404 aldı, aynı commit sonra geçti."""
+    """KS'deki gerçek vaka: v2026.9.0-beta.5 koşusu 404 aldı, aynı commit sonra geçti."""
     sonuc = _kos(tmp_path, basarili_deneme=3)
 
     assert sonuc.returncode == 0

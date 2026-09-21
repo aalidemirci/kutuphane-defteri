@@ -1,12 +1,10 @@
 # =============================================================================
-# .github/workflows/paketleme.yml — Windows + Linux paket üretimi (tasarım §12 F9)
+# .github/workflows/paketleme.yml — Windows + Linux paket üretimi (tasarım §14 F12)
 # =============================================================================
-# KS'nin kendi ilk koşusu 29.08.2026'da uçtan uca YEŞİL (run 33257833345 —
-# docs/teknik-borc.md TB5): Linux .deb + debian:11/12 kurulum provası + Windows
-# setup.exe/portable.zip; iki platformda Türkçe PDF duman testi gömülü DejaVu
-# ile geçti. Zincirin üç kurucu düzeltmesi DD şablonundan devralındı (PS1
-# BOM'suzluğu, MSYS2 python'unun setup-python'ı gölgelemesi, paket içi
-# fontconfig).
+# Hat KS'den devralındı; orada 29.08.2026'da uçtan uca YEŞİLDİ (Linux .deb +
+# debian:11/12 kurulum provası + Windows setup.exe/portable.zip; iki platformda
+# Türkçe PDF duman testi gömülü DejaVu ile geçti). Kütüphane Defteri adıyla
+# henüz koşmadı; ilk koşunun çek-listesi packaging/windows/NOTLAR.md'de.
 #
 # Akış:
 #   arayuz          → frontend/dist artefaktı (bir kez derlenir, iki paket işi indirir)
@@ -27,9 +25,9 @@ on:
       - "packaging/**"
       - ".github/workflows/paketleme.yml"
       - "VERSION"
-      # K7 sigortası (CLAUDE.md §2): hiddenimports'u unutturan değişiklik sınıfı
-      # tam da backend/desktop tarafıdır — süzgeç onları dışarıda bırakırsa
-      # `--pdf-duman` kapısı sürüm etiketine dek hiç ateşlenmez (F9 bulgusu).
+      # hiddenimports sigortası: bağımlılığı unutturan değişiklik sınıfı tam da
+      # backend/desktop tarafıdır — süzgeç onları dışarıda bırakırsa duman
+      # kapıları sürüm etiketine dek hiç ateşlenmez (KS denetim bulgusu).
       - "backend/**"
       - "desktop/**"
   workflow_dispatch:
@@ -66,7 +64,7 @@ jobs:
     name: Linux paketi (.deb + .tar.gz)
     needs: arayuz
     runs-on: ubuntu-latest
-    # Tasarım §2.2 K6: glibc 2.31 = Pardus 21 tabanı. Daha yeni bir tabanda
+    # KS kararı (K6): glibc 2.31 = Pardus 21 tabanı. Daha yeni bir tabanda
     # derlenen paket Pardus 21'de açılmaz.
     container:
       image: python:3.12-bullseye
@@ -74,7 +72,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: Sürüm etiketi ↔ VERSION kapısı
         # Kurucu adı VERSION'dan, Release sürümü etiketten türer; ayrışırlarsa
-        # updates.py güncelleme afişi hiç kapanmaz (F9 bulgusu).
+        # güncelleme denetimi kurulu sürümü hiç "güncel" saymaz (KS denetim bulgusu).
         if: startsWith(github.ref, 'refs/tags/v')
         run: test "v$(tr -d '[:space:]' < VERSION)" = "${GITHUB_REF_NAME}"
       - uses: actions/download-artifact@v8
@@ -110,14 +108,14 @@ jobs:
       #
       # Sarmal BURADA İNLİNE olmak ZORUNDA: bu adım checkout'tan ÖNCE koşar,
       # `packaging/linux/apt_dene.sh` henüz diskte yoktur. Gerekçe ve davranış
-      # o dosyanın başlığında — 04.09.2026'da v2026.9.0-beta.5 etiket koşusu tam
-      # bu adımda `libperl5.32` için 404 alıp düştü (aynı commit yeniden
-      # denemede geçti); listeler her denemede silinir, çünkü asıl sorun kap
-      # imajındaki BAYAT apt indeksidir.
+      # o dosyanın başlığında — 04.09.2026'da KS'nin v2026.9.0-beta.5 etiket
+      # koşusu tam bu adımda `libperl5.32` için 404 alıp düştü (aynı commit
+      # yeniden denemede geçti); listeler her denemede silinir, çünkü asıl sorun
+      # kap imajındaki BAYAT apt indeksidir.
       #
       # 19.09.2026: Debian 11 LTS 31.08.2026'da bitti; `bullseye-security`
       # havuzu 03-05.09.2026 arasında boşaltıldı, dizini silinen paketlere işaret
-      # ediyor → KALICI 404 (v2026.9.0-beta.6 koşusu). Kaynak Debian'ın tarihli
+      # ediyor → KALICI 404 (KS v2026.9.0-beta.6 koşusu). Kaynak Debian'ın tarihli
       # arşivine sabitlenir (kapatmak yetmez: temel paketler güvenlik sürümünde
       # kurulu, `git` bağımlılıkları kırılır). Tarih apt_dene.sh içindeki
       # APT_BULLSEYE_GUVENLIK_ANLIK ile AYNI kalmalıdır (koruma testi var).
@@ -177,7 +175,7 @@ jobs:
           python-version: "3.12"
 
       # WeasyPrint'in çalışma anında açtığı pango/harfbuzz/fontconfig DLL'leri
-      # MSYS2'den gelir; ntldd bağımlılık kapanışını hesaplar (tasarım §5.1).
+      # MSYS2'den gelir; ntldd bağımlılık kapanışını hesaplar (dll_kapanisi.py).
       - uses: msys2/setup-msys2@v2
         id: msys2
         with:
@@ -255,7 +253,7 @@ jobs:
             [ -e "${paket}" ] || continue
             # Tilde TIRNAKLI olmak ZORUNDA: bash `${degisken//desen/…}` içindeki
             # deseni sözcük genişletmesinden geçirir, çıplak `~` `$HOME`a dönüşür
-            # ve hiçbir şey eşleşmez. İlk etiketli koşu (v2026.8.0-beta.1) tam
+            # ve hiçbir şey eşleşmez. KS'nin ilk etiketli koşusu (v2026.8.0-beta.1) tam
             # buradan `mv: … are the same file` ile kırıldı — `yayin` işi yalnız
             # `v*` etiketinde koştuğu için PR/dispatch kapıları bunu göremiyordu.
             mv -- "${paket}" "${paket//'~'/.}"
@@ -266,15 +264,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Ön-sürüm ekleri packaging/README.md "Sürüm" bölümündeki sırayla
+          # (alpha < beta < rc < kesin) — yeni bir ek türü buraya da eklenir.
           ON_SURUM=""
+          NOT_ONEKI=""
           case "${GITHUB_REF_NAME}" in
-            *-beta.*|*-rc.*|*-dev*) ON_SURUM="--prerelease" ;;
+            *-alpha.*|*-beta.*|*-rc.*|*-dev*)
+              ON_SURUM="--prerelease"
+              NOT_ONEKI="Ön sürümdür. "
+              ;;
           esac
           gh release create "${GITHUB_REF_NAME}" yayin/* \
             --repo "${GITHUB_REPOSITORY}" \
             ${ON_SURUM} \
             --title "Kütüphane Defteri ${GITHUB_REF_NAME}" \
-            --notes "Beta sürümüdür. Gerçek okul verisiyle kullanmadan önce şifreli yedek alın. Kurulum adımları: docs/kurulum.md — imzasız paketleri SHA256SUMS.txt ile doğrulayın."
+            --notes "${NOT_ONEKI}Gerçek okul verisiyle kullanmadan önce şifreli yedek alın. Kurulum adımları: docs/kurulum.md — imzasız paketleri SHA256SUMS.txt ile doğrulayın."
 
       # --- indir.okulapp.org (Cloudflare R2) --------------------------------
       # Neden GitHub Release'den SONRA: MEB ağında GitHub sık sık engellidir ve

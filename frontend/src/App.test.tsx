@@ -1,21 +1,24 @@
 // Kabuk + yönlendirme testi (DD App.test.tsx kalıbından).
 // Pinlenen davranışlar: (1) kurulum kapısı — `setup_completed=false` iken her rota
 // sihirbaza düşer, `true` iken Genel Bakış açılır, durum okunamazsa kapı FAIL-OPEN;
-// (2) kabuk gezinmesi (Genel Bakış/Kişiler/Ders Havuzu/Ayarlar); (3) M3 token bütünlüğü —
-// kaynakta kullanılan şekil/opaklık sınıflarının Tailwind çıktısında gerçekten
-// üretildiği (DD F4-D5 bulgu 14/15 dersi).
-// Auth yok: rol/oturum senaryosu YOKTUR (tek kullanıcılı masaüstü).
+// (2) kabuk gezinmesi (Genel Bakış/Kişiler/Ayarlar/Kılavuz + Hakkında) ve
+// kopyalanmayan modüllerin bağlantı ve rotalarının iskelete sızmaması;
+// (3) açılışta güncelleme denetimi YOK — kabuk açılırken `/updates/` isteği
+// çıkmaz (tasarım T11); (4) M3 token bütünlüğü — kaynakta kullanılan
+// şekil/opaklık sınıflarının Tailwind çıktısında gerçekten üretildiği (DD F4-D5
+// bulgu 14/15 dersi).
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import postcss from "postcss";
 import { MemoryRouter } from "react-router-dom";
 import tailwindcss from "tailwindcss";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { MockInstance } from "vitest";
 
 import { ConfirmProvider } from "./ui/ConfirmProvider";
 import { SnackbarProvider } from "./ui/SnackbarProvider";
@@ -26,15 +29,12 @@ const okulApiMock = vi.hoisted(() => ({
   getSchoolConfig: vi.fn(),
   updateSchoolConfig: vi.fn(),
   completeSetup: vi.fn(),
-  listSchoolTypes: vi.fn(() => Promise.resolve([])),
   getGradeLevels: vi.fn(),
   listSchoolYears: vi.fn(),
   listSchoolTerms: vi.fn(),
   listStudents: vi.fn(),
   listPersonnel: vi.fn(),
   listClassSections: vi.fn(),
-  // Kişiler sayfasındaki fotoğraf kartı açılışta sayımı sorar (19.09.2026).
-  photoStats: vi.fn(() => Promise.resolve({ with_photo: 0, active_students: 0, without_photo: 0 })),
 }));
 
 vi.mock("./modules/okul/api", async (importOriginal) => {
@@ -95,9 +95,7 @@ beforeEach(() => {
     province: "İstanbul",
     district: "Örnek",
     principal_name: "",
-    school_type: "ANADOLU_LISESI",
     has_prep_class: false,
-    level_programs: {},
     setup_completed: true,
   });
   okulApiMock.getGradeLevels.mockResolvedValue({
@@ -148,20 +146,22 @@ describe("App — kurulum kapısı", () => {
 });
 
 describe("App — kabuk gezinmesi", () => {
-  it("ana bölüm bağlantılarını gösterir", async () => {
+  it("gezinme tam olarak Genel Bakış, Kişiler, Ayarlar ve Kılavuz'dur (bu sırayla)", async () => {
     ekranaBas("/");
     await screen.findByRole("heading", { name: "Genel Bakış" });
-    for (const ad of [
-      "Genel Bakış",
-      "Mazeret Takibi",
-      "Salonlar",
-      "Kişiler",
-      "Ders Havuzu",
-      "Ayarlar",
-      "Kılavuz",
-    ]) {
-      expect(screen.getByRole("link", { name: ad })).toBeInTheDocument();
-    }
+    const gezinme = screen.getByRole("navigation", { name: "Ana gezinme" });
+    const baglantilar = within(gezinme).getAllByRole("link");
+    const beklenen: Array<[ad: string, yol: string]> = [
+      ["Genel Bakış", "/"],
+      ["Kişiler", "/kisiler"],
+      ["Ayarlar", "/ayarlar"],
+      ["Kılavuz", "/kilavuz"],
+    ];
+    expect(baglantilar).toHaveLength(beklenen.length);
+    beklenen.forEach(([ad, yol], i) => {
+      expect(baglantilar[i]).toHaveAccessibleName(ad);
+      expect(baglantilar[i]).toHaveAttribute("href", yol);
+    });
     expect(screen.getByRole("link", { name: "Hakkında ve Lisans" })).toHaveAttribute(
       "href",
       "/hakkinda",
@@ -171,8 +171,17 @@ describe("App — kabuk gezinmesi", () => {
   it("Kişiler bağlantısına tıklayınca sicil sayfası açılır", async () => {
     const user = userEvent.setup();
     ekranaBas("/");
-    await user.click(await screen.findByRole("link", { name: "Kişiler" }));
+    const gezinme = await screen.findByRole("navigation", { name: "Ana gezinme" });
+    await user.click(within(gezinme).getByRole("link", { name: "Kişiler" }));
     expect(await screen.findByRole("heading", { name: "Kişiler" })).toBeInTheDocument();
+  });
+
+  it("Ayarlar bağlantısına tıklayınca ayarlar sayfası açılır", async () => {
+    const user = userEvent.setup();
+    ekranaBas("/");
+    const gezinme = await screen.findByRole("navigation", { name: "Ana gezinme" });
+    await user.click(within(gezinme).getByRole("link", { name: "Ayarlar" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Ayarlar" })).toBeInTheDocument();
   });
 
   it("Hakkında ve Lisans bağlantısı geliştirici ve kullanım koşullarını gösterir", async () => {
@@ -184,7 +193,7 @@ describe("App — kabuk gezinmesi", () => {
     expect(screen.getByText(/PolyForm Noncommercial License 1.0.0/)).toBeInTheDocument();
   });
 
-  it("Kılavuz bağlantısı adım adım kullanım kılavuzunu açar", async () => {
+  it("Kılavuz bağlantısı kullanım kılavuzunu açar", async () => {
     const user = userEvent.setup();
     ekranaBas("/");
     await user.click(await screen.findByRole("link", { name: "Kılavuz" }));
@@ -194,9 +203,7 @@ describe("App — kabuk gezinmesi", () => {
   });
 
   // docs/sozluk.md §4: üst çubuktaki başlık sayfanın h1'iyle AYNIDIR. Eskiden
-  // üst çubuk "Genel bakış", sayfa "Panel", gezinme "Panel" diyordu. (Takvim/
-  // oturum/salon/ders sayfaları react-query ister; onların eşliği kendi
-  // testlerinde h1 üzerinden korunur.)
+  // üst çubuk "Genel bakış", sayfa "Panel", gezinme "Panel" diyordu.
   it.each([
     ["/", "Genel Bakış"],
     ["/kisiler", "Kişiler"],
@@ -219,12 +226,89 @@ describe("App — kabuk gezinmesi", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("DD'den gelen iş bağlantıları iskelete sızmadı", async () => {
+  it("kopyalanmayan modüllerin bağlantıları iskelete sızmadı (gezinme ve Genel Bakış)", async () => {
     ekranaBas("/");
     await screen.findByRole("heading", { name: "Genel Bakış" });
-    for (const ad of ["Disiplin", "Onur / Ödül", "Bilgi Notları"]) {
+    // Kaynak programların gezinme etiketleri — tam ad (ileride gelecek kütüphane
+    // ekranlarının adlarıyla yanlış eşleşmesin).
+    for (const ad of [
+      "Takvimler",
+      "Oturumlar",
+      "Mazeret Takibi",
+      "Salonlar",
+      "Ders Havuzu",
+      "BEP",
+      "Disiplin",
+      "Onur / Ödül",
+      "Bilgi Notları",
+    ]) {
       expect(screen.queryByRole("link", { name: ad })).not.toBeInTheDocument();
     }
+    const hedefler = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
+    for (const yol of ["/takvimler", "/oturumlar", "/mazeret", "/salonlar", "/dersler"]) {
+      expect(hedefler).not.toContain(yol);
+    }
+  });
+
+  it.each(["/takvimler", "/oturumlar", "/mazeret", "/salonlar", "/dersler"])(
+    "kaldırılan rota %s hiçbir sayfa açmaz; üst çubuk program adını gösterir",
+    async (yol) => {
+      // Yönlendiricinin "eşleşen rota yok" uyarısı beklenen sonuçtur: yakalanır
+      // ve kanıt olarak denetlenir (test çıktısını da kirletmez).
+      const uyari = vi.spyOn(console, "warn").mockImplementation(() => {});
+      try {
+        ekranaBas(yol);
+        // Kabuk yüklenir (gezinme durur); kilit ve kurulum kapıları geçilince
+        // iskelet kalkar ama rota eşleşmediği için sayfa başlığı yoktur.
+        await screen.findByRole("navigation", { name: "Ana gezinme" });
+        await waitFor(() => expect(okulApiMock.getSetupStatus).toHaveBeenCalled());
+        await waitFor(() => expect(screen.queryByText("Yükleniyor…")).not.toBeInTheDocument());
+        expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+        expect(within(ustCubuk()).getAllByText("Kütüphane Defteri").length).toBeGreaterThan(0);
+        expect(uyari).toHaveBeenCalledWith(
+          expect.stringContaining(`No routes matched location "${yol}"`),
+        );
+      } finally {
+        uyari.mockRestore();
+      }
+    },
+  );
+});
+
+describe("App — açılışta dış istek yok", () => {
+  let fetchCasusu: MockInstance<typeof fetch>;
+
+  beforeEach(() => {
+    // Ağ katmanı en alttan dinlenir: okulApi dışındaki her istek (güvenlik
+    // durumu, güncelleme…) buradan geçer. Çevrimdışı gibi davranır.
+    fetchCasusu = vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("çevrimdışı"));
+  });
+
+  afterEach(() => {
+    fetchCasusu.mockRestore();
+  });
+
+  it("kabuk açılırken /updates/ isteği çıkmaz (güncelleme yalnız elle denetlenir)", async () => {
+    ekranaBas("/");
+    await screen.findByRole("heading", { name: "Genel Bakış" });
+
+    const yollar = fetchCasusu.mock.calls.map(([girdi]) => String(girdi));
+    // Casus gerçekten ağ katmanını görüyor: kilit kapısı güvenlik durumunu sordu.
+    expect(yollar.some((y) => y.includes("/security/status/"))).toBe(true);
+    expect(yollar.filter((y) => y.includes("/updates/"))).toEqual([]);
+  });
+
+  it("gezinme boyunca da /updates/ isteği çıkmaz", async () => {
+    const user = userEvent.setup();
+    ekranaBas("/");
+    const gezinme = await screen.findByRole("navigation", { name: "Ana gezinme" });
+    for (const ad of ["Kişiler", "Kılavuz", "Genel Bakış"]) {
+      await user.click(within(gezinme).getByRole("link", { name: ad }));
+    }
+    await screen.findByRole("heading", { level: 1, name: "Genel Bakış" });
+
+    const yollar = fetchCasusu.mock.calls.map(([girdi]) => String(girdi));
+    expect(yollar.filter((y) => y.includes("/updates/"))).toEqual([]);
   });
 });
 

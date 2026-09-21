@@ -1,4 +1,4 @@
-"""Yerel oturum belirteci testleri (tasarım §5.3 son madde — KRİTİK).
+"""Yerel oturum belirteci testleri (tasarım §4.3 — KRİTİK).
 
 Program authsuz olduğundan, gömülü sunucu ayakta olduğu sürece aynı makinedeki
 BAŞKA bir işlem 127.0.0.1'e istek atıp öğrenci verisini okuyabilir. Belirteç bunu

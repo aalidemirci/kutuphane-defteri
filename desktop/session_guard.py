@@ -1,9 +1,10 @@
-"""Yerel oturum belirteci — authsuz programın tek ağ sigortası (tasarım §5.3).
+"""Yerel oturum belirteci — authsuz programın tek ağ sigortası (tasarım §4.3).
 
 **Tehdit:** Program 127.0.0.1'de kimlik doğrulamasız bir HTTP sunucusu çalıştırır.
 Aynı makinedeki başka bir işlem (başka bir kullanıcı oturumu, bir tarayıcı sekmesi,
 kötü niyetli bir betik) portu tarayıp `GET /api/v1/students/` isteyebilir ve
-öğrenci/veli verisini okuyabilir. Yerel olması "erişilemez" demek değildir.
+öğrenci, personel ve ödünç verisini okuyabilir. Yerel olması "erişilemez" demek
+değildir.
 
 **Sigorta:** Program her açılışta rastgele bir belirteç üretir. Belirteç yalnız
 pencerenin açılış URL'sinde taşınır; middleware belirteçsiz her isteği 403 ile

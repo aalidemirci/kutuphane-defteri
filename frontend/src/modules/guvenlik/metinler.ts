@@ -7,14 +7,14 @@
 /** Ayarlar ve kilit ekranında gösterilen kapsam açıklaması. */
 export const KAPSAM_METNI =
   "Bu koruma, kayıtlardaki kişisel veri alanlarını (öğrenci ve öğretmen " +
-  "ad-soyadları, öğrenci fotoğrafları) parolanızdan türetilen bir anahtarla şifreler. TAM DİSK " +
+  "ad-soyadları) parolanızdan türetilen bir anahtarla şifreler. TAM DİSK " +
   "ŞİFRELEME DEĞİLDİR: bilgisayarın tamamını korumak için Windows'ta " +
   "BitLocker, Pardus/Linux'ta LUKS kullanın.";
 
 /** Şifrelenmeyen alanlar açıkça söylenir — sürpriz olmasın. */
 export const KAPSAM_DISI_METNI =
-  "Okul numarası, sınıf/şube ve oturma düzeni bilgisi şifrelenmez (dağıtım, " +
-  "sıralama ve süzgeçler bunlara dayanır). Soru belgesi PDF'leri de şifrelenmez.";
+  "Okul numarası ve sınıf/şube bilgisi şifrelenmez (sıralama, arama ve " +
+  "süzgeçler bunlara dayanır).";
 
 /** Kurtarma anahtarı diyaloğunun uyarısı. */
 export const KURTARMA_UYARISI =

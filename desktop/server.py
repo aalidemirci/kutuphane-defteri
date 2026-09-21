@@ -1,12 +1,18 @@
 """Gömülü WSGI sunucusu — waitress, arka plan thread'i, 127.0.0.1 + boş port.
 
-Tasarım §5.3: sunucu **sabit port kullanmaz**. Okul bilgisayarında 8000/8080
+Bu modül YÖNETİM sunucusudur (tasarım §4.1 `kd-wsgi`: tam API + SPA).
+
+Tasarım §4.1: sunucu **sabit port kullanmaz**. Okul bilgisayarında 8000/8080
 başka bir program tarafından tutuluyor olabilir; `port=0` ile işletim sistemine
 boş port seçtirilir ve gerçek port `effective_port`'tan okunur (önce boş port
 arayıp sonra ona bağlanmak yarış koşulu yaratırdı).
 
-`host="127.0.0.1"`: LAN'dan erişilemez. Yerel erişim sigortası ayrıca
-`session_guard.SessionTokenMiddleware`'dedir.
+`host="127.0.0.1"`: yönetim sunucusu LAN'dan erişilemez. Yerel erişim sigortası
+ayrıca `session_guard.SessionTokenMiddleware`'dedir.
+
+Yerel ağ kataloğu ayrı bir dinleyicidir (desktop/katalog_server.py, F5): kendi
+waitress örneği ve Django'dan bağımsız WSGI uygulamasıyla çalışır; yönetim
+API'si hiçbir koşulda ağa açılmaz (tasarım §2.2 T3, §4.1 değişmezleri).
 
 waitress istek (erişim) logu üretmez; `logging_setup` bunu ayrıca susturur.
 """

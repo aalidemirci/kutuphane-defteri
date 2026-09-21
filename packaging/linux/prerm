@@ -1,5 +1,5 @@
 #!/bin/sh
-# Kelebek Sinav - kaldirma oncesi.
+# Kutuphane Defteri - kaldirma oncesi.
 # KULLANICI VERISI SILINMEZ: veritabani, yedekler ve gunlukler
 # ~/.local/share/kutuphane-defteri altindadir; paket yalnizca program
 # dosyalarini kaldirir. (ASCII: bkz. postinst basindaki not.)

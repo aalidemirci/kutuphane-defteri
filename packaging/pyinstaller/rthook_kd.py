@@ -16,7 +16,7 @@ konulamaz:
    `weasyprint` import edilmeden ÖNCE dolu olmalıdır.
 
 2. **Fontconfig yapılandırması (yalnız Windows).** Windows'ta sistem fontconfig
-   yapılandırması yoktur; ayrıca sistem fontlarına güvenilmez (tasarım §5.1:
+   yapılandırması yoktur; ayrıca sistem fontlarına güvenilmez ("fontconfig tuzağı":
    yalnız gömülü DejaVu). Paketteki `fonts.conf.tmpl` şablonu, YAZILABİLİR bir
    önbellek dizini (`%LOCALAPPDATA%\\KutuphaneDefteri\\cache\\fontconfig`) ve
    gömülü font dizini işlenerek kullanıcı veri dizinine yazılır;
@@ -28,7 +28,7 @@ konulamaz:
    değişkeninden okur.
 
 Kancadaki hiçbir hata programı durdurmaz: eksik font yapılandırması PDF'i
-bozar ama sınav kayıtlarına erişimi engellememeli. Sorunlar günlüğe değil
+bozar ama kütüphane kayıtlarına erişimi engellememeli. Sorunlar günlüğe değil
 (günlük henüz kurulmadı) `KD_RTHOOK_UYARI` değişkenine yazılır.
 """
 

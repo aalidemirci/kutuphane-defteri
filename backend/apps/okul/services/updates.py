@@ -28,7 +28,7 @@ GITHUB_REPOSITORY = os.environ.get("KD_UPDATE_REPOSITORY", "aalidemirci/kutuphan
 GITHUB_API_VERSION = "2026-03-10"
 LATEST_RELEASE_URL = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/releases/latest"
 RELEASE_LIST_URL = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/releases?per_page=10"
-USER_AGENT = "Kelebek-Sinav-Updater"
+USER_AGENT = "Kutuphane-Defteri-Updater"
 INSTALLER_PATTERN = re.compile(r"^kutuphane-defteri-.+-win64-setup\.exe$", re.IGNORECASE)
 MAX_INSTALLER_BYTES = 250 * 1024 * 1024
 CACHE_SECONDS = 15 * 60

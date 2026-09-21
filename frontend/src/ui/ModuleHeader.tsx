@@ -8,11 +8,11 @@ import { Link } from "react-router-dom";
 import Icon from "./Icon";
 
 interface ModuleHeaderProps {
-  /** Modül kökü rotası (ör. "/zumre"). */
+  /** Modül kökü rotası (ör. "/katalog"). */
   backTo: string;
-  /** Modül adı (ör. "Zümre") — geri linkinde ve erişilebilir adda kullanılır. */
+  /** Modül adı (ör. "Katalog") — geri linkinde ve erişilebilir adda kullanılır. */
   moduleLabel: string;
-  /** Sayfa başlığı (ör. "Takip Matrisi"). */
+  /** Sayfa başlığı (ör. "Eser Ayrıntısı"). */
   title: string;
   /** Sağda opsiyonel eylemler (yıl seçici, "Yeni …" butonu vb.). */
   actions?: ReactNode;
@@ -35,7 +35,7 @@ export default function ModuleHeader({ backTo, moduleLabel, title, actions }: Mo
         </span>
         <h1 className="kd-page-title">{title}</h1>
       </div>
-      {/* flex-wrap: üç eylemli başlıklar (oturum detayı — DAĞITILDI) dar pencerede taşmasın. */}
+      {/* flex-wrap: çok eylemli başlıklar dar pencerede taşmasın. */}
       {actions ? <div className="flex flex-wrap items-end gap-3">{actions}</div> : null}
     </div>
   );

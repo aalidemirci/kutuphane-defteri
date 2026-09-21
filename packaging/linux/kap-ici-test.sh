@@ -3,14 +3,14 @@
 # kap-ici-test.sh — TEMİZ bir Debian kabında .deb kurulum provası
 # =============================================================================
 # `test-kurulum.sh` tarafından debian:11 ve debian:12 kaplarının İÇİNDE
-# çalıştırılır (tasarım §12 F9: "kap-ici-test debian 11+12" — Pardus 21 bullseye,
+# çalıştırılır (tasarım §14 F12 "Pardus'ta aynı zincir" — Pardus 21 bullseye,
 # Pardus 23 bookworm tabanlıdır).
 #
 # Sınananlar:
 #   1. dpkg -i + apt-get -f install ile bağımlılıkların gerçekten çözülmesi
 #   2. `--autotest` → ÇIKIŞ KODU 0 (açılış zinciri: kilit, yedek, göç, sunucu)
-#   3. `--bagimlilik-duman` → üçüncü taraf modüller pakette mi (K7)
-#   4. `--pdf-duman` → Türkçe metinli PDF üretimi + pypdf ile geri okuma
+#   3. `--bagimlilik-duman` → üçüncü taraf modüller pakette mi (hiddenimports)
+#   4. `--pdf-duman` → evrak taban şablonundan Türkçe PDF + pypdf ile geri okuma
 #   5. Dosya yerleşimi (menü kaydı, ikon, /usr/bin bağlantısı)
 #   6. Temiz kaldırma
 # =============================================================================
@@ -46,15 +46,11 @@ test -x /opt/kutuphane-defteri/kutuphane-defteri
 test -L /usr/bin/kutuphane-defteri
 test -f /usr/share/applications/kutuphane-defteri.desktop
 test -f /usr/share/icons/hicolor/48x48/apps/kutuphane-defteri.png
-# MEB çizelge verisi (K5): spec Tree yolu bozulursa tohum SESSİZCE boş kalırdı
-# (TB2 düşüşü) — dosyanın varlığı ve boş olmadığı burada sabitlenir.
-test -s /opt/kutuphane-defteri/_internal/data/ders-cizelgeleri/anadolu-lisesi-2025.md
-test -s /opt/kutuphane-defteri/_internal/data/ders-cizelgeleri/ders-adi-takma-adlari.md
 
-echo "== --bagimlilik-duman (K7: üçüncü taraf modüller pakette mi)"
+echo "== --bagimlilik-duman (üçüncü taraf modüller pakette mi)"
 kutuphane-defteri --bagimlilik-duman
 
-echo "== --pdf-duman (Türkçe PDF + font doğrulaması)"
+echo "== --pdf-duman (evrak şablonu + Türkçe PDF + font doğrulaması)"
 kutuphane-defteri --pdf-duman /tmp/duman.pdf
 test -s /tmp/duman.pdf
 

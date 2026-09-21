@@ -1,13 +1,10 @@
-// Kişiler sayfası testi (F4-D4): sekmeli liste, KVKK gereği TCKN'nin listede
+// Kişiler sayfası testi: sekmeli liste, KVKK gereği TCKN'nin listede
 // GÖRÜNMEMESİ, gecikmeli arama, elle ekleme/düzenleme/silme akışı (alan hataları
 // backend `fields`'tan), boş/hata durumları ve içe aktarma paneli (önizle → aktar,
-// already_imported uyarısı, şablon indirme).
-//
-// 20.09.2026: üçüncü sekme "BEP" (BEP kapsamındaki öğrenciler — ayrıntısı
-// bep/BepListesiPaneli.test.tsx'te). Sekme URL'de tutulur (`?tab=bep`), bu yüzden
-// sayfa yönlendirici içinde kurulur.
+// already_imported uyarısı, şablon indirme). Cinsiyet, fotoğraf ve BEP bu
+// programda yoktur; geri gelmesinler diye ayrıca sabitlenir. Sekme URL'de
+// tutulur (`?tab=personel`), bu yüzden sayfa yönlendirici içinde kurulur.
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
@@ -17,7 +14,13 @@ import { ApiError } from "../../lib/api";
 import { saveBlob } from "../../lib/download";
 import { ConfirmProvider } from "../../ui/ConfirmProvider";
 import { SnackbarProvider } from "../../ui/SnackbarProvider";
-import type { Personnel, Student, StudentImportReport, StudentListParams } from "../okul/api";
+import type {
+  Personnel,
+  PersonnelImportReport,
+  Student,
+  StudentImportReport,
+  StudentListParams,
+} from "../okul/api";
 
 const okulApiMock = vi.hoisted(() => ({
   getGradeLevels: vi.fn(),
@@ -35,11 +38,6 @@ const okulApiMock = vi.hoisted(() => ({
   commitPersonnelImport: vi.fn(),
   studentTemplate: vi.fn(),
   personnelTemplate: vi.fn(),
-  // Fotoğraf paneli (19.09.2026) — ayrıntısı FotografPaneli.test.tsx'te.
-  photoStats: vi.fn(() => Promise.resolve({ with_photo: 0, active_students: 0, without_photo: 0 })),
-  previewPhotoImport: vi.fn(),
-  commitPhotoImport: vi.fn(),
-  deleteAllPhotos: vi.fn(),
 }));
 
 // Yalnız `okulApi` taklit edilir; etiket sabitleri + importCounts gerçek kalır
@@ -50,24 +48,6 @@ vi.mock("../okul/api", async (importOriginal) => {
 });
 
 vi.mock("../../lib/download", () => ({ saveBlob: vi.fn() }));
-
-// BEP sekmesi (20.09.2026): liste ucu + parola uyarısının sorduğu güvenlik durumu.
-const iepApiMock = vi.hoisted(() => ({
-  list: vi.fn(),
-  add: vi.fn(),
-  remove: vi.fn(),
-  deleteAll: vi.fn(),
-}));
-const guvenlikApiMock = vi.hoisted(() => ({ durum: vi.fn() }));
-
-vi.mock("../bep/api", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../bep/api")>();
-  return { ...actual, iepApi: iepApiMock };
-});
-vi.mock("../guvenlik/api", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../guvenlik/api")>();
-  return { ...actual, guvenlikApi: { ...actual.guvenlikApi, ...guvenlikApiMock } };
-});
 
 import KisilerPage from "./KisilerPage";
 
@@ -80,7 +60,6 @@ const STUDENT: Student = {
   class_level: 10,
   class_section: "A",
   class_label: "10/A",
-  gender: "",
   status: "ACTIVE",
 };
 
@@ -90,7 +69,6 @@ const PERSONNEL: Personnel = {
   last_name: "Demirci",
   title: "Öğretmen",
   branch: "Coğrafya",
-  branch_key: "cografya",
   is_active: true,
   full_name: "Mehmet Demirci",
 };
@@ -115,16 +93,13 @@ function page<T>(results: T[], count = results.length) {
 
 /** `route` derin bağlantıyı sınar: sekme URL'deki `tab` parametresinden okunur. */
 function renderPage(route = "/kisiler") {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <MemoryRouter initialEntries={[route]}>
-      <QueryClientProvider client={qc}>
-        <SnackbarProvider>
-          <ConfirmProvider>
-            <KisilerPage />
-          </ConfirmProvider>
-        </SnackbarProvider>
-      </QueryClientProvider>
+      <SnackbarProvider>
+        <ConfirmProvider>
+          <KisilerPage />
+        </ConfirmProvider>
+      </SnackbarProvider>
     </MemoryRouter>,
   );
 }
@@ -139,24 +114,6 @@ beforeEach(() => {
   });
   okulApiMock.listStudents.mockResolvedValue(page([STUDENT]));
   okulApiMock.listPersonnel.mockResolvedValue(page([PERSONNEL]));
-  iepApiMock.list.mockResolvedValue({
-    results: [
-      {
-        id: 7,
-        student_id: 1,
-        student_number: "123",
-        full_name: "Ayşe Yılmaz",
-        class_label: "10/A",
-      },
-    ],
-  });
-  guvenlikApiMock.durum.mockResolvedValue({
-    password_set: true,
-    locked: false,
-    transition_pending: false,
-    transition: "",
-    protected_fields: [],
-  });
 });
 
 afterEach(() => {
@@ -254,29 +211,47 @@ describe("KisilerPage — öğrenci ekleme/düzenleme/silme", () => {
     );
   });
 
-  it("cinsiyet elle girilebilir ama listede sütun olarak gösterilmez", async () => {
+  it("cinsiyet ne listede ne formda vardır; gövdede gender alanı gönderilmez", async () => {
     okulApiMock.createStudent.mockResolvedValue({ ...STUDENT, id: 3 });
     const user = userEvent.setup();
     renderPage();
     await screen.findByText("Ayşe Yılmaz");
 
-    // Liste: cinsiyet sütunu YOKTUR (yalnız yerleştirme kuralı için tutulur).
     expect(screen.queryByRole("columnheader", { name: /Cinsiyet/ })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Öğrenci ekle" }));
     const dialog = await screen.findByRole("dialog", { name: "Yeni öğrenci" });
+    expect(within(dialog).queryByLabelText("Cinsiyet")).toBeNull();
     await user.type(within(dialog).getByLabelText(/^Ad \*$/), "Zeynep");
     await user.type(within(dialog).getByLabelText(/^Soyad \*$/), "Kaya");
-    const cinsiyet = within(dialog).getByLabelText("Cinsiyet");
-    expect(within(dialog).getByRole("option", { name: "Belirtilmemiş" })).toBeInTheDocument();
-    await user.selectOptions(cinsiyet, "K");
+    await user.click(within(dialog).getByRole("button", { name: "Kaydet" }));
+
+    await waitFor(() => expect(okulApiMock.createStudent).toHaveBeenCalledTimes(1));
+    expect(okulApiMock.createStudent.mock.calls[0][0]).not.toHaveProperty("gender");
+  });
+
+  it("düzenlemede değişiklik updateStudent'a gider ve liste tazelenir", async () => {
+    okulApiMock.updateStudent.mockResolvedValue({ ...STUDENT, class_section: "B" });
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Ayşe Yılmaz");
+
+    await user.click(screen.getByRole("button", { name: "Ayşe Yılmaz kaydını düzenle" }));
+    const dialog = await screen.findByRole("dialog", { name: "Öğrenciyi düzenle" });
+    const sube = within(dialog).getByLabelText("Şube");
+    await user.clear(sube);
+    await user.type(sube, "b");
+    const onceki = okulApiMock.listStudents.mock.calls.length;
     await user.click(within(dialog).getByRole("button", { name: "Kaydet" }));
 
     await waitFor(() =>
-      expect(okulApiMock.createStudent).toHaveBeenCalledWith(
-        expect.objectContaining({ gender: "K" }),
+      expect(okulApiMock.updateStudent).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ class_level: 10, class_section: "b", status: "ACTIVE" }),
       ),
     );
+    expect(await screen.findByText("Öğrenci güncellendi.")).toBeInTheDocument();
+    await waitFor(() => expect(okulApiMock.listStudents.mock.calls.length).toBeGreaterThan(onceki));
   });
 
   it("backend alan hatası (fields) ilgili alanın altına yazılır", async () => {
@@ -367,11 +342,9 @@ describe("KisilerPage — öğrenci ekleme/düzenleme/silme", () => {
     const confirmDialog = await screen.findByRole("dialog", {
       name: "Öğrenci sicilden silinsin mi?",
     });
-    expect(
-      within(confirmDialog).getByText(
-        /Kayıt silinmez, gizlenir: geçmiş oturumların evrakı değişmez\./,
-      ),
-    ).toBeInTheDocument();
+    expect(within(confirmDialog).getByText(/Kayıt silinmez, gizlenir\./)).toBeInTheDocument();
+    // Kaldırılan sınav modülüne atıf kalmadı.
+    expect(within(confirmDialog).queryByText(/oturum|sınav/i)).not.toBeInTheDocument();
     expect(within(confirmDialog).queryByText(/soft delete/i)).not.toBeInTheDocument();
     await user.click(within(confirmDialog).getByRole("button", { name: "Sil" }));
 
@@ -427,7 +400,8 @@ describe("KisilerPage — öğretmen sekmesi", () => {
     await user.click(within(dialog).getByRole("button", { name: "Sil" }));
 
     const onay = await screen.findByRole("dialog", { name: "Öğretmen sicilden silinsin mi?" });
-    expect(within(onay).getByText(/gözetmen aday havuzundan kalkar/)).toBeInTheDocument();
+    expect(within(onay).getByText(/listelerden kalkar\. Kayıt silinmez/)).toBeInTheDocument();
+    expect(within(onay).queryByText(/gözetmen|görevlendirme/)).not.toBeInTheDocument();
     await user.click(within(onay).getByRole("button", { name: "Sil" }));
 
     await waitFor(() => expect(okulApiMock.deletePersonnel).toHaveBeenCalledWith(5));
@@ -435,37 +409,29 @@ describe("KisilerPage — öğretmen sekmesi", () => {
   });
 });
 
-describe("KisilerPage — BEP sekmesi", () => {
-  it("üçüncü sekme BEP'tir; liste yalnız sekme açılınca istenir ve tam başlığıyla çizilir", async () => {
-    const user = userEvent.setup();
+describe("KisilerPage — sekmeler", () => {
+  it("iki sekme vardır: Öğrenciler ve Öğretmenler (BEP ve fotoğraf yok)", async () => {
     renderPage();
     await screen.findByText("Ayşe Yılmaz");
 
-    expect(screen.getAllByRole("tab")).toHaveLength(3);
-    // BEP verisi sekme açılmadan istenmez (özel nitelikli veri — gereksiz okuma yok).
-    expect(iepApiMock.list).not.toHaveBeenCalled();
-
-    await user.click(screen.getByRole("tab", { name: /BEP/ }));
-
-    // Sekme etiketi kısa ("BEP"), panel başlığı tam addır.
-    expect(await screen.findByText("BEP kapsamındaki öğrenciler")).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "Çıkar" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /BEP/ })).toHaveAttribute("aria-selected", "true");
-    expect(iepApiMock.list).toHaveBeenCalledTimes(1);
-    // Sicil sekmesinin parçaları kalktı.
-    expect(screen.queryByText("Öğrenci sicili")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("tab")).toHaveLength(2);
+    expect(screen.queryByRole("tab", { name: /BEP/ })).toBeNull();
+    expect(screen.queryByText(/fotoğraf/i)).toBeNull();
   });
 
-  it("derin bağlantı: /kisiler?tab=bep doğrudan BEP sekmesini açar (kılavuz buraya bağlanır)", async () => {
-    renderPage("/kisiler?tab=bep");
+  it("derin bağlantı: /kisiler?tab=personel doğrudan Öğretmenler sekmesini açar", async () => {
+    renderPage("/kisiler?tab=personel");
 
-    expect(await screen.findByText("BEP kapsamındaki öğrenciler")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /BEP/ })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByText("Mehmet Demirci")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Öğretmenler/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     expect(okulApiMock.listStudents).not.toHaveBeenCalled();
   });
 
-  it("geçersiz sekme parametresi sessizce Öğrenciler sekmesine düşer", async () => {
-    renderPage("/kisiler?tab=yok-boyle-sekme");
+  it("geçersiz ya da kaldırılmış sekme parametresi sessizce Öğrenciler sekmesine düşer", async () => {
+    renderPage("/kisiler?tab=bep");
 
     expect(await screen.findByText("Öğrenci sicili")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Öğrenciler/ })).toHaveAttribute(
@@ -524,8 +490,15 @@ describe("KisilerPage — içe aktarma paneli", () => {
     );
   });
 
-  it("öğretmen aktarımı: branşlardan üretilen zümreler sonuçta bildirilir ve Ayarlar'a bağlanır", async () => {
-    const rapor = {
+  it("öğrenci aktarım yardımı cinsiyet ve pansiyon sütunlarının okunmadığını söyler", async () => {
+    renderPage();
+    await screen.findByText("Ayşe Yılmaz");
+    expect(screen.getByText(/Cinsiyet ve pansiyon sütunları okunmaz\./)).toBeInTheDocument();
+    expect(screen.queryByText(/ayrışma/)).toBeNull();
+  });
+
+  it("öğretmen aktarımı: sonuç sayaçları gösterilir, zümre bandı yoktur", async () => {
+    const rapor: PersonnelImportReport = {
       file_hash: "xyz",
       file_name: "",
       total_rows: 2,
@@ -539,28 +512,21 @@ describe("KisilerPage — içe aktarma paneli", () => {
       skipped: [],
     };
     okulApiMock.previewPersonnelImport.mockResolvedValue(rapor);
-    okulApiMock.commitPersonnelImport.mockResolvedValue({
-      ...rapor,
-      dry_run: false,
-      departments_created: ["Coğrafya", "Fizik"],
-    });
+    okulApiMock.commitPersonnelImport.mockResolvedValue({ ...rapor, dry_run: false });
     const user = userEvent.setup();
     renderPage("/kisiler?tab=personel");
 
     await user.type(await screen.findByLabelText("Ya da tabloyu yapıştırın"), "ad\tsoyad");
     await user.click(screen.getByRole("button", { name: /Önizle/ }));
-    // Önizleme zümre ÜRETMEZ — bant yalnız aktarım sonucunda görünür.
     await screen.findByText("Önizleme — hiçbir kayıt yazılmadı");
-    expect(screen.queryByText(/zümre oluşturuldu/)).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "Aktar" }));
-    expect(
-      await screen.findByText(/Öğretmenlerin branşlarından 2 zümre oluşturuldu: Coğrafya, Fizik/),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ayarlar → Zümreler" })).toHaveAttribute(
-      "href",
-      "/ayarlar?tab=zumreler",
+    expect(await screen.findByText("İçe aktarma sonucu")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(okulApiMock.commitPersonnelImport).toHaveBeenCalledWith({ text: "ad\tsoyad" }),
     );
+    expect(screen.queryByText(/zümre/i)).toBeNull();
+    expect(screen.queryByRole("link", { name: /Zümreler/ })).toBeNull();
   });
 
   it("önizleme hatası: backend mesajı bantta görünür, Aktar kapalı kalır", async () => {

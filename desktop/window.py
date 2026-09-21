@@ -1,4 +1,4 @@
-"""pywebview penceresi + pencere motoru denetimi (tasarım §5.1/§5.2).
+"""pywebview penceresi + pencere motoru denetimi (tasarım §1, §4.5).
 
 **MSHTML düşüşü KODLA ENGELLİDİR.** pywebview, Windows'ta EdgeChromium (WebView2)
 bulamazsa sessizce eski MSHTML (Internet Explorer) motoruna düşer; React 18 orada
@@ -84,7 +84,7 @@ def gui_backend_for(platform: str) -> str:
         return "edgechromium"  # asla "mshtml"
     if platform == "darwin":
         return "cocoa"
-    return "qt"  # Pardus/Linux: PyQt5 + QtWebEngine (tasarım §5.2)
+    return "qt"  # Pardus/Linux: PyQt5 + QtWebEngine
 
 
 def require_window_runtime(

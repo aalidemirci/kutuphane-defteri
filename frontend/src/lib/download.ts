@@ -14,10 +14,10 @@ export function saveBlob(blob: Blob, filename: string): void {
 }
 
 /**
- * İndirilen dosyanın adı: belge adı + oturum/takvim adı + tarih (docs/sozluk.md §3).
- * `dosyaAdi(["Salon Sınav Evrakı", "1. Ortak Sınav", "16.11.2026"], "pdf")`
- * → `Salon-Sınav-Evrakı_1-Ortak-Sınav_16.11.2026.pdf`. Kimlik numaralı eski
- * adlar (`r7_oturum_3.pdf`) masaüstünde hangi sınava ait olduğunu söylemiyordu.
+ * İndirilen dosyanın adı: belge adı + kapsam + tarih (docs/sozluk.md §3).
+ * `dosyaAdi(["Sayım Tutanağı", "2026-2027", "16.11.2026"], "pdf")`
+ * → `Sayım-Tutanağı_2026-2027_16.11.2026.pdf`. Kimlik numaralı adlar
+ * (`belge_3.pdf`) masaüstünde neye ait olduklarını söylemez.
  * Türkçe harfler korunur; yalnız dosya sistemlerinin yasakladığı karakterler
  * atılır, boşluklar tireye döner, boş parça düşer.
  */

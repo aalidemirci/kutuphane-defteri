@@ -3,11 +3,13 @@
 # scripts/gates.sh — Kütüphane Defteri kapı koşusu
 # =============================================================================
 # Test + lint + biçim + tip kontrolünü sırayla Docker konteynerinde çalıştırır.
-# Herhangi biri kırmızı olursa betik durur (`set -e`).
+# Herhangi biri kırmızı olursa betik durur (`set -e`). Her faz sonunda yeşil
+# olmalıdır (tasarım §14.1); CI'da .github/workflows/kapilar.yml aynen koşar.
+# Betik KS'den devralındı; kapı sırası ve nöbetçi deseni aynen korunur.
 #
-# Kanıt deseni (F4, 29.08.2026): bu makinede `docker compose run` zincirinin
-# çıkış kodunu aralıklı olarak yuttuğu gözlendi (vitest, mypy ve prettier
-# adımlarında birer kez). Bu yüzden her adım çıkış koduna EK olarak pozitif
+# Kanıt deseni (KS, 29.08.2026): geliştirme makinesinde `docker compose run`
+# zincirinin çıkış kodunu aralıklı olarak yuttuğu gözlendi (vitest, mypy ve
+# prettier adımlarında birer kez). Bu yüzden her adım çıkış koduna EK olarak pozitif
 # kanıt üretir: komut konteyner İÇİNDE başarılıysa nöbetçi satırı
 # (KAPI_OK_<ad>) basılır ve host tarafında aranır — nöbetçi yoksa kapı
 # kırmızıdır (fail-closed). Çıkış kodu denetimi de yerinde durur (pipefail);

@@ -1,21 +1,19 @@
 """`okul` serializer doğrulamalarının başka dosyada sınanmayan dalları.
 
-Kişi/şube/küme/zümre doğrulamaları kendi test dosyalarındadır (`test_persons`,
-`test_class_sections`, `test_section_groups`, `test_departments`). Burada kalanlar:
+Kişi/şube doğrulamaları kendi test dosyalarındadır (`test_persons`,
+`test_class_sections`). Burada kalanlar:
 
-- `SchoolConfigSerializer.level_programs` — kademeli dönüşüm/çok programlı okulun
-  seviye → çizelge ataması. Bozuk gövde katalog senkronuna ULAŞMADAN, hangi
-  kısmının yanlış olduğunu söyleyen Türkçe mesajla reddedilmelidir (bilinmeyen
-  anahtar/geçersiz seviye/teklenme `dersler/tests/test_catalog_programs.py`'da).
+- Serializer alan kümeleri — ön yüz tiplerinin sözleşmesi (anlık görüntü, T13).
+  Kaldırılan KS alanlarının (zil, vardiya, şube kümesi, zümre, cinsiyet, okul
+  türü/çizelge) geri sızması burada yakalanır.
 - `SchoolYearSerializer` — tarih sırası ve ad tekliği.
 - `ImportRequestSerializer` — dosya ile pano metni BİRBİRİNİ DIŞLAR.
 
-Çizelge verisi sentetiktir (`tmp_path`); kişisel veri yoktur.
+Kişisel veri yoktur.
 """
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -23,25 +21,18 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 
 from apps.okul.models import ImportRun, SchoolConfig, SchoolYear
-from apps.okul.serializers import ImportRequestSerializer
+from apps.okul.serializers import (
+    ClassSectionSerializer,
+    ImportRequestSerializer,
+    PersonnelSerializer,
+    SchoolConfigSerializer,
+    StudentSerializer,
+)
 
 pytestmark = pytest.mark.django_db
 
 AYAR_URL = "/api/v1/setup/school-config/"
 YIL_URL = "/api/v1/school-years/"
-
-AL_MD = """
-- program_key: al-test
-- ad: AL test
-- okul_turu: ANADOLU_LISESI
-- hazirlik: hayır
-- yururluk: 2025-2026
-- kademeli: hayır
-
-| Ders | Seviyeler | Tür | Sınav |
-|---|---|---|---|
-| Coğrafya | 9, 10 | ORTAK | YAZILI |
-"""
 
 
 @pytest.fixture
@@ -49,72 +40,78 @@ def client() -> APIClient:
     return APIClient()
 
 
-@pytest.fixture
-def cizelge(settings: Any, tmp_path: Path) -> str:
-    """Tek programlı sentetik çizelge dizini → bilinen program anahtarı."""
-    kok = tmp_path / "cizelge"
-    kok.mkdir()
-    (kok / "al.md").write_text(AL_MD, encoding="utf-8")
-    settings.CATALOG_DIR = kok
-    return "al-test"
-
-
 # ---------------------------------------------------------------------------
-# Seviye → çizelge programı ataması
+# Alan kümeleri (ön yüz sözleşmesi)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
-    ("govde", "beklenen"),
+    ("serializer", "alanlar"),
     [
-        (["al-test"], "sözlük olmalıdır"),
-        ({"dokuz": ["al-test"]}, "sayısal olmalıdır"),
-        ({"9": "al-test"}, "program listesi bekleniyor"),
-        ({"9": [7]}, "Bilinmeyen çizelge programı"),
+        (
+            SchoolConfigSerializer,
+            {
+                "school_name",
+                "province",
+                "district",
+                "principal_name",
+                "has_prep_class",
+                "setup_completed",
+            },
+        ),
+        (
+            StudentSerializer,
+            {
+                "id",
+                "first_name",
+                "last_name",
+                "full_name",
+                "student_number",
+                "class_level",
+                "class_section",
+                "class_label",
+                "status",
+            },
+        ),
+        (
+            PersonnelSerializer,
+            {"id", "first_name", "last_name", "title", "branch", "is_active", "full_name"},
+        ),
+        (
+            ClassSectionSerializer,
+            {
+                "id",
+                "school_year",
+                "school_year_name",
+                "class_level",
+                "class_section",
+                "class_label",
+            },
+        ),
     ],
 )
-def test_bozuk_seviye_atamasi_gerekcesiyle_reddedilir(
-    client: APIClient, cizelge: str, govde: Any, beklenen: str
-) -> None:
-    """Gövdenin HANGİ kısmı yanlışsa mesaj onu söyler; ayar satırı yazılmaz."""
-    yanit = client.put(
-        AYAR_URL, {"school_name": "Örnek AL", "level_programs": govde}, format="json"
-    )
-
-    assert yanit.status_code == 400
-    assert beklenen in str(yanit.json()["fields"]["level_programs"])
-    assert SchoolConfig.load().school_name == ""
+def test_serializer_alan_kumesi_sabittir(serializer: Any, alanlar: set[str]) -> None:
+    assert set(serializer().fields) == alanlar
 
 
-def test_bos_seviye_atamasi_varsayilana_donus_demektir(client: APIClient, cizelge: str) -> None:
-    """Boş değer hata değil "varsayılan atamaya dön"dür: kayıtlı atama silinir."""
-    client.put(
-        AYAR_URL,
-        {"school_name": "Örnek AL", "level_programs": {"9": [cizelge]}},
-        format="json",
-    )
-    assert SchoolConfig.load().level_programs == {"9": [cizelge]}
-
-    yanit = client.put(AYAR_URL, {"school_name": "Örnek AL", "level_programs": ""}, format="json")
-
-    assert yanit.status_code == 200
-    assert yanit.json()["level_programs"] == {}
-    assert SchoolConfig.load().level_programs == {}
-
-
-def test_okulun_seviye_kumesi_disindaki_gecerli_seviye_kabul_edilir(
-    client: APIClient, cizelge: str
-) -> None:
-    """Hazırlıksız okulda Hazırlık (0) ataması REDDEDİLMEZ: plan onu yok sayar,
-    hazırlık sonradan açılırsa atama hazır durur. Anahtar dizgeye normalize edilir."""
+def test_okul_ayarinda_kaldirilan_alanlar_yok_sayilir(client: APIClient) -> None:
+    """Eski ön yüzün gönderebileceği KS alanları 400 üretmez, hiçbir yere de yazılmaz."""
     yanit = client.put(
         AYAR_URL,
-        {"school_name": "Örnek AL", "has_prep_class": False, "level_programs": {0: [cizelge]}},
+        {
+            "school_name": "Örnek Okul",
+            "has_prep_class": True,
+            "school_type": "ANADOLU_LISESI",
+            "bell_schedule": [],
+            "default_separation_mode": "ROOM",
+        },
         format="json",
     )
 
     assert yanit.status_code == 200
-    assert yanit.json()["level_programs"] == {"0": [cizelge]}
+    assert set(yanit.json()) == set(SchoolConfigSerializer().fields)
+    ayar = SchoolConfig.load()
+    assert (ayar.school_name, ayar.has_prep_class) == ("Örnek Okul", True)
 
 
 # ---------------------------------------------------------------------------

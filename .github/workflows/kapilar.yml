@@ -1,12 +1,12 @@
 # =============================================================================
 # .github/workflows/kapilar.yml — kalite kapıları (test + lint + tip + KVKK)
 # =============================================================================
-# 18.09.2026 değerlendirmesinin bulgusu: depoda yalnız paketleme iş akışı vardı;
-# test/lint kapısı tümüyle yerel `scripts/gates.sh` koşusuna bağlıydı ve
-# `frontend/src` değişikliği HİÇBİR koşuyu tetiklemiyordu. Bu iş akışı yerel
-# kapı betiğini OLDUĞU GİBİ koşar — ikinci bir komut listesi tutulmaz (iki
-# doğruluk kaynağı zamanla ayrışır). Betik Docker ister; GitHub'ın Ubuntu
-# koşucusunda `docker compose` hazırdır.
+# KS'den devralındı ve F0'dan itibaren koşar (tasarım §1). KS'de 18.09.2026'ya
+# dek yalnız paketleme iş akışı vardı; test/lint kapısı tümüyle yerel
+# `scripts/gates.sh` koşusuna bağlıydı ve `frontend/src` değişikliği HİÇBİR
+# koşuyu tetiklemiyordu. Bu iş akışı yerel kapı betiğini OLDUĞU GİBİ koşar —
+# ikinci bir komut listesi tutulmaz (iki doğruluk kaynağı zamanla ayrışır).
+# Betik Docker ister; GitHub'ın Ubuntu koşucusunda `docker compose` hazırdır.
 #
 # Kapsam: KVKK depo denetimi → backend pytest (kapsam eşiği) → ruff → mypy →
 # masaüstü/paketleme testleri → frontend tsc/eslint/prettier/vitest.

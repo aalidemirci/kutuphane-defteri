@@ -1,7 +1,7 @@
 // Kalıcı, kapatılabilir UYARI bandı. Snackbar GEÇİCİ bildirimdir (4-6 sn,
 // kuyruklu, tek satır): işlemi ENGELLEMEYEN ama okunması gereken uyarılar orada
-// akıp kayboluyordu (değerlendirme §3.2 — takvim yerleştirme uyarıları kırmızı
-// hata kuyruğunda görünüyor, idareci okuyamadan siliniyordu). Bu bant uyarıları
+// akıp kayboluyordu (uyarılar kırmızı hata kuyruğunda görünüyor, kullanıcı
+// okuyamadan siliniyordu). Bu bant uyarıları
 // ekranda TUTAR; kullanıcı "Kapat" diyene dek kalır.
 //
 // - `role="status"` (kibar canlı bölge): uyarı işlemi durdurmaz, ekran

@@ -6,10 +6,8 @@ güvenli büyük harfe çevirmedir (eşleştirme için `apps.okul.normalize`
 yardımcıları kullanılır). Diğer Türkçe harfler (ğ→Ğ, ş→Ş, ö→Ö, ü→Ü, ç→Ç,
 ı→I) Python upper()'ında zaten doğrudur; tek istisna 'i'dir.
 
-`tr_lower` / `tr_title` (20.09.2026): başlık biçimi `apps.dersler.text`'te
-yaşıyordu; zümre adları da (branştan üretim — `okul.services.departments`)
-aynı kurala ihtiyaç duyunca TEK uygulama buraya taşındı — okul, dersler'i
-import etmez (bağımlılık yönü dersler → okul).
+`tr_lower` / `tr_title` (KS, 20.09.2026): Türkçe küçük harf ve başlık biçiminin
+TEK uygulamasıdır; uygulamalar kendi kopyasını yazmaz.
 """
 
 from __future__ import annotations

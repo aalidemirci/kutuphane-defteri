@@ -7,18 +7,20 @@ import { describe, expect, it, vi } from "vitest";
 
 import Select from "./Select";
 
-const DUZENLER = [
-  { value: "BUTTERFLY", label: "Kelebek (karışık dağıtım)" },
-  { value: "HOME_CLASSROOM", label: "Kendi dersliğinde" },
+const DURUMLAR = [
+  { value: "AVAILABLE", label: "Rafta" },
+  { value: "ON_LOAN", label: "Ödünçte" },
 ];
 
 describe("Select", () => {
   it("seçenekleri listeler ve seçim onChange'e ulaşır", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    render(<Select label="Düzen" options={DUZENLER} value="BUTTERFLY" onChange={onChange} />);
+    render(
+      <Select label="Nüsha durumu" options={DURUMLAR} value="AVAILABLE" onChange={onChange} />,
+    );
 
-    await user.selectOptions(screen.getByLabelText("Düzen"), "HOME_CLASSROOM");
+    await user.selectOptions(screen.getByLabelText("Nüsha durumu"), "ON_LOAN");
 
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(screen.getAllByRole("option")).toHaveLength(2);
@@ -26,19 +28,19 @@ describe("Select", () => {
 
   it("yer tutucu boş değerli ilk seçenektir; verilmezse basılmaz", () => {
     const { rerender } = render(
-      <Select label="Salon" options={DUZENLER} placeholder="Seçin" defaultValue="" />,
+      <Select label="Durum" options={DURUMLAR} placeholder="Seçin" defaultValue="" />,
     );
 
     const secenekler = screen.getAllByRole("option") as HTMLOptionElement[];
     expect(secenekler[0]).toHaveTextContent("Seçin");
     expect(secenekler[0].value).toBe("");
 
-    rerender(<Select label="Salon" options={DUZENLER} defaultValue="BUTTERFLY" />);
+    rerender(<Select label="Durum" options={DURUMLAR} defaultValue="AVAILABLE" />);
     expect(screen.getAllByRole("option")).toHaveLength(2);
   });
 
   it("hata metni alert olarak duyurulur ve alana bağlanır", () => {
-    render(<Select label="Dönem" options={DUZENLER} error="Dönem seçin." defaultValue="" />);
+    render(<Select label="Dönem" options={DURUMLAR} error="Dönem seçin." defaultValue="" />);
 
     const alan = screen.getByLabelText("Dönem");
     const hata = screen.getByRole("alert");
@@ -49,7 +51,7 @@ describe("Select", () => {
 
   it("yardımcı metin duyurulmaz", () => {
     render(
-      <Select label="Tür" options={DUZENLER} helperText="Sonradan değişmez." defaultValue="" />,
+      <Select label="Tür" options={DURUMLAR} helperText="Sonradan değişmez." defaultValue="" />,
     );
 
     expect(screen.getByText("Sonradan değişmez.")).toBeInTheDocument();

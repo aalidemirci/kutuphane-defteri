@@ -31,7 +31,7 @@ it("parola yokken şifreli yedek indirmesini kapalı tutar", () => {
   expect(screen.getByText(/önce uygulama parolası kurmalısınız/)).toBeInTheDocument();
 });
 
-it("yalnız şifreli ksbak dosyasını kullanıcıya indirir", async () => {
+it("yalnız şifreli kdbak dosyasını kullanıcıya indirir", async () => {
   const blob = new Blob(["KDBAK-encrypted"]);
   mocks.postBlob.mockResolvedValue(blob);
   render(

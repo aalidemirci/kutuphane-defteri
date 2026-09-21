@@ -23,7 +23,6 @@ const download = vi.hoisted(() => ({ saveBlob: vi.fn() }));
 vi.mock("./api", () => ({ guvenlikApi: guvenlik }));
 vi.mock("./SifreliYedekleme", () => ({ default: () => null }));
 vi.mock("./YedektenGeriYukleme", () => ({ default: () => null }));
-vi.mock("./OgrenciFotograflari", () => ({ default: () => null }));
 vi.mock("../../lib/download", () => ({ saveBlob: download.saveBlob }));
 
 import GuvenlikAyarlari from "./GuvenlikAyarlari";
@@ -58,7 +57,12 @@ describe("GuvenlikAyarlari", () => {
     expect(screen.getByText(/LUKS/)).toBeInTheDocument();
     expect(screen.getByText(/ad, soyad/)).toBeInTheDocument();
     // Şifrelenmeyen alanlar da açıkça söylenir.
-    expect(screen.getByText(/Okul numarası, sınıf\/şube ve oturma düzeni/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Okul numarası ve sınıf\/şube bilgisi şifrelenmez/),
+    ).toBeInTheDocument();
+    // Fotoğraf ve sınav belgeleri bu programda yoktur; metin onlardan söz etmez.
+    expect(screen.queryByText(/fotoğraf|oturma düzeni|Soru belgesi/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Öğrenci fotoğrafları" })).toBeNull();
   });
 
   it("parola koyar ve kurtarma anahtarını onay alınmadan kapatmaz", async () => {
