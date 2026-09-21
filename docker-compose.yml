@@ -1,0 +1,37 @@
+# =============================================================================
+# docker-compose.yml — Kütüphane Defteri geliştirme ortamı
+# =============================================================================
+# `backend`/`frontend` servisleri yalnız test/geliştirme amaçlıdır; compose port
+# AÇMAZ, komutlar `docker compose run --rm backend|frontend ...` ile çalıştırılır.
+# Not: paketli program yerel ağa salt-okur bir KATALOG dinleyicisi sunar (tasarım
+# §5); o dinleyici masaüstü kabuğunda açılır, geliştirme konteynerinde değil.
+# =============================================================================
+
+name: kutuphane-defteri
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/backend.Dockerfile
+    volumes:
+      - ./backend:/app
+      # Masaüstü kabuğu (desktop/) backend paketlerini import eder; testleri depo
+      # kökünden koşulur (`-w /repo`).
+      - .:/repo
+    environment:
+      # DEBUG varsayılanı güvenli tarafta (False); geliştirme burada açar.
+      KD_DEBUG: "1"
+      # `apps.okul.services.app_password` masaüstü yedek katmanını
+      # (`desktop.backup*`) import eder; paketli çalışmada desktop donmuş
+      # modüldür, geliştirmede /repo bağlamından çözülür. (Satır olmazsa
+      # backend API testleri konteynerde ModuleNotFoundError ile kırılır.)
+      PYTHONPATH: /repo
+    command: sleep infinity
+
+  frontend:
+    image: node:20-slim
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    command: sleep infinity

@@ -1,0 +1,57 @@
+# =============================================================================
+# Kütüphane Defteri — Backend Python bağımlılıkları
+# Python 3.12+ / Django 5.x
+# =============================================================================
+# Pinler OYS'nin (Okul Yönetim Sistemi) backend/requirements.txt dosyasından
+# türetildi (görev brifi) — ortak parçalar (Django, DRF, WeasyPrint, cryptography,
+# argon2-cffi, openpyxl, Pillow, pypdf) AYNI sürümde tutuldu. Tek kullanıcılı
+# masaüstü uygulama olduğundan OYS'nin sunucu/ağ-merkezli bağımlılıkları (Postgres,
+# Redis, Celery, Sentry, Google OAuth, SimpleJWT, django-axes/cors/csp, structlog,
+# django-environ, python-magic) BİLİNÇLİ OLARAK alınmadı.
+
+# ---------- Çekirdek ----------
+Django==5.1.15
+djangorestframework==3.15.2
+
+# ---------- Güvenlik ----------
+argon2-cffi==23.1.0            # yerel kullanıcı şifre hashing (Argon2id)
+cryptography==48.0.1           # Fernet alan-seviyesi şifreleme (varsa hassas alanlar)
+
+# ---------- Belge / Tablo Üretimi ----------
+openpyxl==3.1.5                # Excel içe/dışa aktarma (.xlsx — üretim + okuma)
+# e-Okul'un "Excel" düğmesi .xlsx DEĞİL, Excel 97-2003 (.xls / BIFF8) üretir;
+# openpyxl bu kabı hiç açamaz. xlrd 2.x yalnız .xls okur (saf Python, ek sistem
+# kütüphanesi yok) — ikisi birlikte gerçek girdilerin tamamını kapsar.
+xlrd==2.0.1                    # e-Okul .xls ihraçlarını okuma
+
+# ---------- Görüntü İşleme ----------
+Pillow==12.3.0                 # ek/fotoğraf normalize (thumbnail, EXIF)
+
+# ---------- PDF Üretimi ----------
+# WeasyPrint 63 cairo/gdk-pixbuf KULLANMAZ (53+ saf-Python render motoru) — Docker
+# imajındaki sistem paketleri buna göre minimal tutuldu (docker/backend.Dockerfile).
+weasyprint==68.0
+
+# ---------- PDF Okuma / Bölme ----------
+pypdf==6.14.2
+
+# ---------- Barkod / QR ----------
+# segno: etiketteki isteğe bağlı QR (tasarım §7.2; içerik URL değil rakamdır).
+# Saf Python, kendi bağımlılığı yok; sürüm OYS ile aynı. 1D barkod için dış paket
+# YOKTUR: Code128-C bağımlılıksız `shared/barcode128.py`'dedir (T8).
+# Paket zinciri (dört halka, CLAUDE.md §2-10): spec `collect_submodules("segno")`
+# + `giris.py::RUNTIME_MODULES` + `test_spec_kapsami.py::DAGITIM_IMPORT_ESLEME`.
+segno==1.6.1
+
+# ---------- Masaüstü Uygulama Altyapısı ----------
+# NOT (F9 temizliği): `filetype` ve `platformdirs` F0 brifinden geldi ama hiç
+# bağlanmadı — soru PDF doğrulaması %PDF imzası + A4 ölçüsüyle (services.py),
+# dizin çözümü saf os.environ ile (desktop/paths.py) yapılıyor. K7 hiddenimports
+# listesi gerçek bağımlılık kümesiyle senkron kalsın diye ikisi de düşürüldü;
+# MIME doğrulaması gerekirse `filetype` kullanıldığı fazda spec'le birlikte döner.
+# whitenoise: statik dosyaları ayrı bir web sunucusu olmadan servis eder (masaüstü
+# uygulamada nginx yok).
+whitenoise==6.12.0
+# waitress: üretim WSGI sunucusu — gunicorn'un yerini alır (saf-Python, Windows
+# masaüstü paketlemesiyle uyumlu; gunicorn Unix-only fork modeli kullanır).
+waitress==3.0.2

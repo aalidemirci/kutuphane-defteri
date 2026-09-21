@@ -1,0 +1,43 @@
+# =============================================================================
+# packaging/requirements-paketleme.txt — YALNIZ paket üretimi için bağımlılıklar
+# =============================================================================
+# Bu dosya `backend/requirements.txt`'e EK olarak kurulur; geliştirme/test
+# koşusunda kurulmaz (masaüstü kabuğunun testleri pywebview olmadan yeşildir).
+#
+# Kurulum:
+#   pip install -r backend/requirements.txt -r packaging/requirements-paketleme.txt
+#
+# Sürüm pinleri bilinçlidir: paket üretimi tekrarlanabilir olmalı, "en son sürüm"
+# sessizce davranış değiştirmemeli.
+# =============================================================================
+
+# ---------- Paketleyici ----------
+pyinstaller==6.11.1
+
+# ---------- Pencere motoru sarmalayıcısı ----------
+# Windows'ta WebView2 (EdgeChromium), Linux'ta Qt WebEngine kullanır.
+pywebview==5.3.2
+
+# ---------- Windows: WebView2 köprüsü ----------
+# pywebview'ın edgechromium arka ucu .NET birlikte çalışabilirliği üzerinden
+# gider; pythonnet olmadan Windows'ta pencere AÇILMAZ (MSHTML düşüşü kodla
+# engelli olduğundan program hata verip durur).
+pythonnet==3.0.5 ; sys_platform == "win32"
+
+# ---------- Windows: sistem tepsisi (tasarım §4.5, denetim UY-6) ----------
+# pystray Windows'ta Win32 API'sini ctypes ile kullanır; Pillow zaten backend
+# bağımlılığıdır, six pystray'in uyumluluk katmanıdır (`six.moves`). Linux'ta
+# tepsi Qt'dir (QSystemTrayIcon), bu yüzden işaret yalnız win32.
+# LİSANS: pystray LGPLv3'tür — lisans metni VE kaynağı pakete girer (F12;
+# packaging/README.md "Masaüstü zinciri"). six MIT'tir.
+# Masaüstü zinciri: bu satırlar ↔ spec `if WINDOWS:` bloğu ↔
+# `giris.py::DESKTOP_RUNTIME_MODULES`; eşitliği test_spec_kapsami.py denetler.
+pystray==0.19.5 ; sys_platform == "win32"
+six==1.17.0 ; sys_platform == "win32"
+
+# ---------- Linux/Pardus: Qt WebEngine ----------
+# KS kararı (K17): WebKitGTK/PyGObject yolu ELENDİ (typelib paketleme + Pardus
+# 21/23 ABI oynaklığı). PyQt5 tekerlekleri manylinux2014 (glibc 2.17) olduğu
+# için bullseye'da (glibc 2.31) üretilen paket Pardus 21'de de çalışır.
+PyQt5==5.15.11 ; sys_platform == "linux"
+PyQtWebEngine==5.15.7 ; sys_platform == "linux"
