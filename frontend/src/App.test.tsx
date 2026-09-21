@@ -1,0 +1,295 @@
+// Kabuk + yönlendirme testi (DD App.test.tsx kalıbından).
+// Pinlenen davranışlar: (1) kurulum kapısı — `setup_completed=false` iken her rota
+// sihirbaza düşer, `true` iken Genel Bakış açılır, durum okunamazsa kapı FAIL-OPEN;
+// (2) kabuk gezinmesi (Genel Bakış/Kişiler/Ders Havuzu/Ayarlar); (3) M3 token bütünlüğü —
+// kaynakta kullanılan şekil/opaklık sınıflarının Tailwind çıktısında gerçekten
+// üretildiği (DD F4-D5 bulgu 14/15 dersi).
+// Auth yok: rol/oturum senaryosu YOKTUR (tek kullanıcılı masaüstü).
+
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
+
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import postcss from "postcss";
+import { MemoryRouter } from "react-router-dom";
+import tailwindcss from "tailwindcss";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { ConfirmProvider } from "./ui/ConfirmProvider";
+import { SnackbarProvider } from "./ui/SnackbarProvider";
+import type { SetupStatus } from "./modules/okul/api";
+
+const okulApiMock = vi.hoisted(() => ({
+  getSetupStatus: vi.fn(),
+  getSchoolConfig: vi.fn(),
+  updateSchoolConfig: vi.fn(),
+  completeSetup: vi.fn(),
+  listSchoolTypes: vi.fn(() => Promise.resolve([])),
+  getGradeLevels: vi.fn(),
+  listSchoolYears: vi.fn(),
+  listSchoolTerms: vi.fn(),
+  listStudents: vi.fn(),
+  listPersonnel: vi.fn(),
+  listClassSections: vi.fn(),
+  // Kişiler sayfasındaki fotoğraf kartı açılışta sayımı sorar (19.09.2026).
+  photoStats: vi.fn(() => Promise.resolve({ with_photo: 0, active_students: 0, without_photo: 0 })),
+}));
+
+vi.mock("./modules/okul/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./modules/okul/api")>();
+  return { ...actual, okulApi: okulApiMock };
+});
+
+import App from "./App";
+
+const KURULU: SetupStatus = {
+  setup_completed: true,
+  school_name: "Örnek Anadolu Lisesi",
+  has_active_school_year: true,
+  student_count: 482,
+  personnel_count: 37,
+  class_section_count: 18,
+};
+
+const KURULMAMIS: SetupStatus = {
+  ...KURULU,
+  setup_completed: false,
+  school_name: "",
+  has_active_school_year: false,
+  student_count: 0,
+  personnel_count: 0,
+};
+
+/** main.tsx ile aynı sağlayıcı zinciri — sayfalar react-query, snackbar ve confirm
+ *  bekliyor. Her ekran taze önbellekle açılır; başarısız sorgu yeniden denenmez. */
+function ekranaBas(yol = "/") {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[yol]}>
+        <SnackbarProvider>
+          <ConfirmProvider>
+            <App />
+          </ConfirmProvider>
+        </SnackbarProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+/**
+ * Kabuğun üst çubuğu. Testing Library her `<header>`i "banner" sayar (sayfa
+ * içi `<header>` için ARIA istisnasını uygulamaz); kabuğunki DOM'da İLKİDİR.
+ */
+function ustCubuk(): HTMLElement {
+  return screen.getAllByRole("banner")[0];
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  okulApiMock.getSetupStatus.mockResolvedValue(KURULU);
+  okulApiMock.getSchoolConfig.mockResolvedValue({
+    school_name: "Örnek Anadolu Lisesi",
+    province: "İstanbul",
+    district: "Örnek",
+    principal_name: "",
+    school_type: "ANADOLU_LISESI",
+    has_prep_class: false,
+    level_programs: {},
+    setup_completed: true,
+  });
+  okulApiMock.getGradeLevels.mockResolvedValue({
+    levels: [
+      { value: 9, label: "9" },
+      { value: 10, label: "10" },
+    ],
+    prep_enabled: false,
+  });
+  okulApiMock.listSchoolYears.mockResolvedValue([]);
+  okulApiMock.listSchoolTerms.mockResolvedValue([]);
+  okulApiMock.listClassSections.mockResolvedValue([]);
+  const bosSayfa = { count: 0, next: null, previous: null, results: [] };
+  okulApiMock.listStudents.mockResolvedValue(bosSayfa);
+  okulApiMock.listPersonnel.mockResolvedValue(bosSayfa);
+});
+
+describe("App — kurulum kapısı", () => {
+  it("kurulum tamamlanmadıysa kök rotadan sihirbaza yönlendirir", async () => {
+    okulApiMock.getSetupStatus.mockResolvedValue(KURULMAMIS);
+    ekranaBas("/");
+    expect(await screen.findByRole("heading", { name: "Kurulum Sihirbazı" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Genel Bakış" })).not.toBeInTheDocument();
+  });
+
+  it("kurulum tamamlanmadıysa iç rotalardan da sihirbaza yönlendirir", async () => {
+    okulApiMock.getSetupStatus.mockResolvedValue(KURULMAMIS);
+    ekranaBas("/kisiler");
+    expect(await screen.findByRole("heading", { name: "Kurulum Sihirbazı" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Kişiler" })).not.toBeInTheDocument();
+  });
+
+  it("kurulum tamamlandıysa kök rotada Genel Bakış açılır", async () => {
+    ekranaBas("/");
+    expect(await screen.findByRole("heading", { name: "Genel Bakış" })).toBeInTheDocument();
+  });
+
+  it("kurulum tamamlandıktan sonra sihirbaz elle açılabilir kalır", async () => {
+    ekranaBas("/kurulum");
+    expect(await screen.findByRole("heading", { name: "Kurulum Sihirbazı" })).toBeInTheDocument();
+  });
+
+  it("durum okunamazsa kapı açılır (fail-open) — program kilitlenmez", async () => {
+    okulApiMock.getSetupStatus.mockRejectedValue(new Error("ağ yok"));
+    ekranaBas("/");
+    expect(await screen.findByRole("heading", { name: "Genel Bakış" })).toBeInTheDocument();
+  });
+});
+
+describe("App — kabuk gezinmesi", () => {
+  it("ana bölüm bağlantılarını gösterir", async () => {
+    ekranaBas("/");
+    await screen.findByRole("heading", { name: "Genel Bakış" });
+    for (const ad of [
+      "Genel Bakış",
+      "Mazeret Takibi",
+      "Salonlar",
+      "Kişiler",
+      "Ders Havuzu",
+      "Ayarlar",
+      "Kılavuz",
+    ]) {
+      expect(screen.getByRole("link", { name: ad })).toBeInTheDocument();
+    }
+    expect(screen.getByRole("link", { name: "Hakkında ve Lisans" })).toHaveAttribute(
+      "href",
+      "/hakkinda",
+    );
+  });
+
+  it("Kişiler bağlantısına tıklayınca sicil sayfası açılır", async () => {
+    const user = userEvent.setup();
+    ekranaBas("/");
+    await user.click(await screen.findByRole("link", { name: "Kişiler" }));
+    expect(await screen.findByRole("heading", { name: "Kişiler" })).toBeInTheDocument();
+  });
+
+  it("Hakkında ve Lisans bağlantısı geliştirici ve kullanım koşullarını gösterir", async () => {
+    const user = userEvent.setup();
+    ekranaBas("/");
+    await user.click(await screen.findByRole("link", { name: "Hakkında ve Lisans" }));
+    expect(await screen.findByRole("heading", { name: "Hakkında ve Lisans" })).toBeInTheDocument();
+    expect(screen.getByText("Ahmet Ali DEMİRCİ")).toBeInTheDocument();
+    expect(screen.getByText(/PolyForm Noncommercial License 1.0.0/)).toBeInTheDocument();
+  });
+
+  it("Kılavuz bağlantısı adım adım kullanım kılavuzunu açar", async () => {
+    const user = userEvent.setup();
+    ekranaBas("/");
+    await user.click(await screen.findByRole("link", { name: "Kılavuz" }));
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Kullanım Kılavuzu" }),
+    ).toBeInTheDocument();
+  });
+
+  // docs/sozluk.md §4: üst çubuktaki başlık sayfanın h1'iyle AYNIDIR. Eskiden
+  // üst çubuk "Genel bakış", sayfa "Panel", gezinme "Panel" diyordu. (Takvim/
+  // oturum/salon/ders sayfaları react-query ister; onların eşliği kendi
+  // testlerinde h1 üzerinden korunur.)
+  it.each([
+    ["/", "Genel Bakış"],
+    ["/kisiler", "Kişiler"],
+    ["/ayarlar", "Ayarlar"],
+    ["/kilavuz", "Kullanım Kılavuzu"],
+    ["/hakkinda", "Hakkında ve Lisans"],
+    ["/kurulum", "Kurulum Sihirbazı"],
+  ])("üst çubuk başlığı sayfanın h1'iyle aynıdır: %s", async (yol, baslik) => {
+    ekranaBas(yol);
+    expect(await screen.findByRole("heading", { level: 1, name: baslik })).toBeInTheDocument();
+    expect(within(ustCubuk()).getByText(baslik)).toBeInTheDocument();
+  });
+
+  it("tema anahtarı tek yerdedir (kenar çubuğu) — üst çubukta ikinci kopya yok", async () => {
+    ekranaBas("/");
+    await screen.findByRole("heading", { name: "Genel Bakış" });
+    expect(screen.getAllByRole("button", { name: /temaya geç/ })).toHaveLength(1);
+    expect(
+      within(ustCubuk()).queryByRole("button", { name: /temaya geç/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("DD'den gelen iş bağlantıları iskelete sızmadı", async () => {
+    ekranaBas("/");
+    await screen.findByRole("heading", { name: "Genel Bakış" });
+    for (const ad of ["Disiplin", "Onur / Ödül", "Bilgi Notları"]) {
+      expect(screen.queryByRole("link", { name: ad })).not.toBeInTheDocument();
+    }
+  });
+});
+
+// --- M3 token bütünlüğü ------------------------------------------------------
+// Tailwind JIT, ölçekte KARŞILIĞI OLMAYAN bir token için sessizce hiç kural
+// üretmez: `rounded-shape-full` ya da `bg-on-surface/8` yazılınca derleme
+// patlamaz, sınıf yok sayılır ve kusur ancak gözle fark edilir (DD F4-D5 bulgu
+// 14: köşeli gezinme sekmeleri, bulgu 15: hover geri bildirimi hiç oluşmaması).
+// Bu test gerçek Tailwind çıktısını üretip kaynakta kullanılan her şekil ve
+// opaklık token'ının CSS'te GERÇEKTEN yer aldığını doğrular.
+
+// Vitest'in çalışma dizini proje kökü (`frontend/`) — `import.meta.url` burada
+// dosya URL'i değil (vite-node sanal yolu), o yüzden cwd tabanlı çözülür.
+const KOK = process.cwd();
+const SRC_DIR = path.join(KOK, "src");
+
+/** `src/` altındaki tüm ürün kaynağı (test dosyaları hariç). */
+function kaynakDosyalari(dizin: string): string[] {
+  const cikti: string[] = [];
+  for (const girdi of readdirSync(dizin, { withFileTypes: true })) {
+    const yol = path.join(dizin, girdi.name);
+    if (girdi.isDirectory()) cikti.push(...kaynakDosyalari(yol));
+    else if (/\.tsx?$/.test(girdi.name) && !/\.test\.tsx?$/.test(girdi.name)) cikti.push(yol);
+  }
+  return cikti;
+}
+
+// Şekil ölçeği: `rounded-shape-*`. Opaklık modifiyesi: yalnız SAYISAL olanlar —
+// `bg-scrim/[0.32]` gibi keyfi değerler ölçeğe bakmadan üretildiği için kapsam dışı.
+const SEKIL_DESENI = /\brounded-shape-[a-z0-9]+/g;
+const OPAKLIK_DESENI =
+  /\b(?:bg|text|border|ring|outline|fill|stroke|divide|from|via|to)-[a-z][a-z0-9-]*\/\d+\b/g;
+
+/** Sınıf adının CSS'te üretilmiş bir seçici olarak var olup olmadığı.
+ *
+ * CSS çıktısında `/` kaçışlıdır (`.bg-primary\/8`). Sınıf bir varyantın ardından
+ * da gelebilir (`hover:`, `placeholder:` → `.hover\:bg-primary\/8`), o yüzden
+ * önünde `.` ya da kaçışlı `:` aranır.
+ */
+function uretildiMi(css: string, sinif: string): boolean {
+  const desen = sinif
+    .replace(/\//g, "\\/") // CSS kaçışı
+    .replace(/[.\\/]/g, "\\$&"); // regex kaçışı
+  return new RegExp(`(?:\\.|\\\\:)${desen}(?![\\w-])`).test(css);
+}
+
+describe("M3 token bütünlüğü", () => {
+  it("kaynakta kullanılan şekil ve opaklık token'ları Tailwind çıktısında üretilir", async () => {
+    const kullanilan = new Map<string, string>(); // sınıf → ilk görüldüğü dosya
+    for (const dosya of kaynakDosyalari(SRC_DIR)) {
+      const metin = readFileSync(dosya, "utf8");
+      for (const desen of [SEKIL_DESENI, OPAKLIK_DESENI]) {
+        for (const eslesme of metin.matchAll(desen)) {
+          if (!kullanilan.has(eslesme[0]))
+            kullanilan.set(eslesme[0], path.relative(SRC_DIR, dosya));
+        }
+      }
+    }
+    expect(kullanilan.size).toBeGreaterThan(0); // tarama gerçekten bir şey buldu
+
+    const { css } = await postcss([
+      tailwindcss({ config: path.join(KOK, "tailwind.config.js") }),
+    ]).process("@tailwind utilities;", { from: undefined });
+
+    const tanimsiz = [...kullanilan].filter(([sinif]) => !uretildiMi(css, sinif));
+    expect(tanimsiz.map(([sinif, dosya]) => `${sinif} (${dosya})`)).toEqual([]);
+  }, 60_000);
+});
