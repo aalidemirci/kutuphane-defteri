@@ -28,7 +28,7 @@ it("parola yokken şifreli yedek indirmesini kapalı tutar", () => {
   );
 
   expect(screen.getByRole("button", { name: /Şifreli yedeği indir/ })).toBeDisabled();
-  expect(screen.getByText(/önce uygulama parolası kurmalısınız/)).toBeInTheDocument();
+  expect(screen.getByText(/önce yönetici parolası kurmalısınız/)).toBeInTheDocument();
 });
 
 it("yalnız şifreli kdbak dosyasını kullanıcıya indirir", async () => {

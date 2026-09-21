@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "apps.okul",
+    "apps.kutuphane",
 ]
 
 MIDDLEWARE = [
@@ -76,10 +77,16 @@ MIDDLEWARE = [
     # tarif etmez; tüm API 503 restart_required ile kesilir. Kilit kapısından
     # ÖNCE durur — geri yükleme kilit durumunu da bayatlatır.
     "apps.okul.restart_gate.RestartRequiredMiddleware",
-    # Opsiyonel açılış parolası kapısı (tasarım §5): parola kuruluysa ve kilit
-    # açılmadıysa veri uçlarını 423 Locked ile keser. Parola kurulu değilse
-    # hiçbir şey yapmaz.
+    # Kilit kapısı (tasarım §4.3, §6.3): güvenlik dosyası kayıpken (423
+    # guvenlik_dosyasi_kayip) ve kilit açılmadıysa (423 locked) veri uçlarını
+    # keser. Parola hiç kurulmamışsa kapı geçirir; kişi yazan uçları izin
+    # sınıfı 409 parola_gerekli ile keser.
     "apps.okul.lock_middleware.AppLockMiddleware",
+    # Kip kapısı (U5, tasarım §4.4): kilit açık ve kip görevliyken izin listesi
+    # dışındaki /api/ isteklerini 403 kip_yetkisiz ile keser; X-KD-Etkinlik
+    # başlıklı istekte yönetici kipinin boşta sayacını tazeler. Kilit
+    # kapısından SONRA durur: kilitliyken (423) istek buraya gelmez.
+    "apps.okul.kip_middleware.KipMiddleware",
 ]
 
 # Yerel oturum belirteci koruması (tasarım §5.3 son madde). Program authsuz
@@ -125,11 +132,15 @@ DATABASES = {
             # tutarlıdır ama elektrik kesintisinde son işlemleri geri alabilir;
             # dolaşım masasında bu "kitap çıktı, kaydı yok" demektir. Dolaşımın
             # yazma hacmi düşük olduğundan her commit diske senkronlanır.
+            # secure_delete=ON (tasarım §6.3-5): silinen ve güncellenen içerik
+            # serbest sayfalarda okunur biçimde kalmaz, sıfırla ezilir (ör.
+            # anonimleştirilen gerekçe metni, silinen kişinin eski satırı).
             "init_command": (
                 "PRAGMA journal_mode=WAL;"
                 "PRAGMA foreign_keys=ON;"
                 "PRAGMA busy_timeout=5000;"
                 "PRAGMA synchronous=FULL;"
+                "PRAGMA secure_delete=ON;"
             ),
             "transaction_mode": "IMMEDIATE",
         },

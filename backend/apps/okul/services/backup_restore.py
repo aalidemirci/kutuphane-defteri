@@ -1,11 +1,14 @@
-"""Yedekten geri yükleme — düz ve şifreli `.kdbak` (tasarım §5, K9 iki kip).
+"""Yedekten geri yükleme — yalnız şifreli `.kdbak` (tasarım §4.3, §6.3).
 
-DD şablonundan miras boşluk burada kapanır: bütünlük hatası ekranı bugüne dek
-parolasız kipte "yedeği db.sqlite3 adıyla kopyalayın" diyordu; parolalı kipte
-ise kullanıcıyı okul bilişim sorumlusuna yönlendiriyordu ama kod tarafında bir
-akış YOKTU. Bu çekirdek iki giriş kapısından çağrılır:
+Yönetici parolası zorunludur ve bütün yedekler X25519 + AES-256-GCM
+kapsayıcısıdır; KS'deki düz SQLite yedek dalı F1'de söküldü (§6.3-6). Düz bir
+SQLite dosyası "yedek" olarak verilirse açık bir Türkçe hatayla reddedilir:
+şifresiz bir kopyayı geri yüklemek, kişi alanları düz metin olan ve parmak
+izi taşımayan bir veritabanı getirirdi. Bu çekirdek üç giriş kapısından
+çağrılır:
 
     * son kullanıcı: `kutuphane-defteri --geri-yukle` (desktop/restore.py)
+    * çalışan program: Güvenlik sekmesi (`live_restore`, `POST backups/restore/`)
     * destek/geliştirme: `python manage.py restore_backup`
 
 VERİTABANINA HİÇ DOKUNULMAZ: geri yüklemenin varlık sebebi bozuk bir
@@ -27,6 +30,12 @@ olan `guvenlik.json` gömülüdür (`backup_crypto.recovery_metadata`). Çözerk
 AES-GCM kimlik doğrulaması nihai hakemdir: yanlış DEK açık hata verir,
 sessizce bozuk çıktı üretilemez.
 
+GÜVENLİK DOSYASI KAYIP KİLİDİNDEN ÇIKIŞ (GA-2): güncel `guvenlik.json` yoksa
+aday listesinde yalnız gömülü başlık kalır; çözüm onunla başarılırsa başlık
+`guvenlik.json` olarak YAZILIR (`_ensure_state_file`). Böylece geri yüklemeden
+çıkan (veritabanı, durum dosyası) çifti aynı DEK'i anlatır ve program yeniden
+açıldığında olağan kilit ekranına döner.
+
 KVKK: çözülen içerik diske YALNIZ hedef veritabanı dosyası olarak yazılır
 (aynı dizinde .tmp → atomik yer değiştirme; hata hâlinde .tmp silinir).
 Ayrı bir düz kopya bırakılmaz. Mevcut (bozuk) veritabanı da SİLİNMEZ:
@@ -36,11 +45,10 @@ için tek nüsha oydu.
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from desktop.backup_crypto import (
     MAGIC,
@@ -48,6 +56,8 @@ from desktop.backup_crypto import (
     decrypt_bytes,
     embedded_recovery_metadata,
     ensure_public_config,
+    is_usable_security_state,
+    parse_security_state,
 )
 from desktop.paths import VERSION_STAMP_FILE_NAME
 from django.utils import timezone
@@ -70,16 +80,14 @@ class BackupRestoreError(ValueError):
 
 @dataclass(frozen=True)
 class BackupInfo:
-    """`.kdbak` dosyasının kimliği: kip + varsa gömülü kurtarma başlığı."""
+    """`.kdbak` kapsayıcısının gömülü kurtarma başlığı (varsa)."""
 
-    encrypted: bool
     embedded_state: dict[str, Any] | None = None
     embedded_raw: bytes = field(default=b"", repr=False)
 
 
 @dataclass(frozen=True)
 class RestoreResult:
-    encrypted: bool
     db_path: Path
     # Kenara alınan önceki veritabanı (hedef yoksa None).
     old_db_path: Path | None
@@ -88,18 +96,22 @@ class RestoreResult:
 
 
 def inspect_backup(container: bytes) -> BackupInfo:
-    """Dosyanın düz mü şifreli mi olduğunu ve gömülü başlığı belirler."""
+    """Dosyanın şifreli yedek kapsayıcısı olduğunu doğrular, gömülü başlığı çıkarır."""
     if container.startswith(MAGIC):
         try:
             ham = embedded_recovery_metadata(container)
         except BackupCryptoError as exc:
             raise BackupRestoreError(str(exc)) from exc
-        return BackupInfo(encrypted=True, embedded_state=_parse_state(ham), embedded_raw=ham)
+        return BackupInfo(embedded_state=_parse_state(ham), embedded_raw=ham)
+    # Kullanıcı metni: dosya uzantısı ve kapsayıcı gibi teknik adlar geçmez
+    # (docs/sozluk.md "Yedek" satırı — teknik adlar yalnız Hakkında sayfasında).
     if container.startswith(SQLITE_MAGIC):
-        return BackupInfo(encrypted=False)
+        raise BackupRestoreError(
+            "Bu dosya şifrelenmemiş bir veritabanı kopyası. Kütüphane Defteri yalnız "
+            "kendi şifreli yedeklerini geri yükler."
+        )
     raise BackupRestoreError(
-        "Dosya geçerli bir Kütüphane Defteri yedeği değil (şifreli .kdbak kapsayıcısı "
-        "ya da SQLite veritabanı bekleniyordu)."
+        "Dosya geçerli bir Kütüphane Defteri yedeği değil (şifreli yedek dosyası bekleniyordu)."
     )
 
 
@@ -119,43 +131,31 @@ def restore_database(
         raise BackupRestoreError(f"Yedek dosyası okunamadı: {backup_path}") from exc
 
     info = inspect_backup(container)
-    kaynak = ""
-    icerik = container
-    if info.encrypted:
-        if not parola and not anahtar:
-            raise BackupRestoreError(
-                "Bu yedek şifreli; açmak için uygulama parolası ya da kurtarma " "anahtarı gerekli."
-            )
-        icerik, kaynak, dek = _decrypt_container(
-            container, info, password=parola, recovery_key=anahtar
+    if not parola and not anahtar:
+        raise BackupRestoreError(
+            "Bu yedek şifreli; açmak için yönetici parolası ya da kurtarma anahtarı gerekli."
         )
-        if not icerik.startswith(SQLITE_MAGIC):
-            raise BackupRestoreError(
-                "Yedek çözüldü ama içeriği SQLite veritabanı çıkmadı; dosya bozulmuş olabilir."
-            )
+    icerik, kaynak, dek = _decrypt_container(container, info, password=parola, recovery_key=anahtar)
+    if not icerik.startswith(SQLITE_MAGIC):
+        raise BackupRestoreError(
+            "Yedek çözüldü ama içeriği SQLite veritabanı çıkmadı; dosya bozulmuş olabilir."
+        )
 
     eski = _swap_database_files(db_path, icerik)
-    yazildi = False
-    if info.encrypted:
-        yazildi = _ensure_state_file(info, kaynak)
-        # KARDEŞ DOSYA da eşitlenir (birleşme incelemesi bulgusu): yedekleme.json
-        # bayat kalırsa (a) `_adopt_key` her kilit açılışında "anahtar eşleşmiyor"
-        # hatası verir; (b) daha kötüsü, açılıştaki günlük yedek İÇERİĞİ eski açık
-        # anahtarla mühürleyip başlığına yeni guvenlik.json'ı gömer — o yedek
-        # hiçbir adayla açılamaz ve rotasyon sağlam eskileri süpürür. replace=True
-        # güvenli: DEK az önce AES-GCM doğrulamasıyla bu veriye ait olduğunu kanıtladı.
-        ensure_public_config(app_password.state_path().parent, dek, replace=True)
+    yazildi = _ensure_state_file(info, kaynak)
+    # KARDEŞ DOSYA da eşitlenir (birleşme incelemesi bulgusu): yedekleme.json
+    # bayat kalırsa (a) `_adopt_key` her kilit açılışında "anahtar eşleşmiyor"
+    # hatası verir; (b) daha kötüsü, açılıştaki günlük yedek İÇERİĞİ eski açık
+    # anahtarla mühürleyip başlığına yeni guvenlik.json'ı gömer — o yedek
+    # hiçbir adayla açılamaz ve rotasyon sağlam eskileri süpürür. replace=True
+    # güvenli: DEK az önce AES-GCM doğrulamasıyla bu veriye ait olduğunu kanıtladı.
+    ensure_public_config(app_password.state_path().parent, dek, replace=True)
     # Sürüm damgası artık geri yüklenen veriyi tarif etmiyor (yedeğin hangi
     # sürümle yazıldığı bilinmez). Eksik damga açılışa engel DEĞİLDİR
     # (desktop/version.py); ilk başarılı migrate damgayı yeniden yazar.
     (db_path.parent / VERSION_STAMP_FILE_NAME).unlink(missing_ok=True)
-    logger.info(
-        "Yedekten geri yükleme tamamlandı: %s (%s kip).",
-        backup_path.name,
-        "şifreli" if info.encrypted else "düz",
-    )
+    logger.info("Yedekten geri yükleme tamamlandı: %s.", backup_path.name)
     return RestoreResult(
-        encrypted=info.encrypted,
         db_path=db_path,
         old_db_path=eski,
         state_written=yazildi,
@@ -166,14 +166,14 @@ def restore_database(
 # İç yardımcılar
 # ---------------------------------------------------------------------------
 def _parse_state(raw: bytes) -> dict[str, Any] | None:
-    """Gömülü başlığı ayrıştırır; bozuksa None (aday listesinden düşer, hata değil)."""
+    """Gömülü başlığı ayrıştırır; kullanılamazsa None (aday listesinden düşer, hata değil).
+
+    Kural tektir (`backup_crypto.is_usable_security_state`): günlük yedek aynı
+    kuralla başlık gömer, kayıp kilidi aynı kuralla dosyayı "kayıp" sayar.
+    """
     if not raw:
         return None
-    try:
-        veri: Any = json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError):
-        return None
-    return veri if isinstance(veri, dict) else None
+    return cast("dict[str, Any] | None", parse_security_state(raw))
 
 
 def _candidate_states(info: BackupInfo) -> list[tuple[str, dict[str, Any]]]:
@@ -183,6 +183,8 @@ def _candidate_states(info: BackupInfo) -> list[tuple[str, dict[str, Any]]]:
         guncel = app_password.read_state()
     except app_password.AppPasswordError:
         guncel = None  # bozuk güncel dosya gömülü başlıkla çözümü engellemesin
+    if guncel is not None and not is_usable_security_state(guncel):
+        guncel = None  # bölümleri eksik dosya aday değildir (kayıp kilidiyle aynı kural)
     if guncel is not None:
         adaylar.append((_SOURCE_CURRENT, guncel))
     if info.embedded_state is not None and info.embedded_state != guncel:
@@ -202,8 +204,9 @@ def _decrypt_container(
     if not adaylar:
         raise BackupRestoreError(
             "Yedeğin kurtarma başlığı yok ve veri klasöründe guvenlik.json bulunamadı. "
-            "Yedeğin alındığı dönemin guvenlik.json (veya guvenlik-arsiv-*.json) "
-            "dosyasını veri klasörüne koyup yeniden deneyin."
+            "Kurtarma başlığı taşıyan başka bir yedek seçin ya da yedeğin alındığı "
+            "dönemin guvenlik.json (veya guvenlik-arsiv-*.json) dosyasını veri klasörüne "
+            "koyup yeniden deneyin."
         )
     for kaynak, durum in adaylar:
         try:
@@ -218,9 +221,9 @@ def _decrypt_container(
         except BackupCryptoError:
             continue  # sarmal açıldı ama DEK bu yedeğe ait değil (başka kurulum)
     raise BackupRestoreError(
-        "Yedek açılamadı: parola/kurtarma anahtarı hatalı ya da yedek bu kuruluma "
-        "ait değil. Parola sonradan değiştiyse yedeğin alındığı dönemdeki parolayı "
-        "da deneyin."
+        "Yedek açılamadı: yönetici parolası ya da kurtarma anahtarı hatalı veya yedek "
+        "bu kuruluma ait değil. Parola sonradan değiştiyse yedeğin alındığı dönemdeki "
+        "parolayı da deneyin."
     )
 
 
@@ -269,7 +272,7 @@ def _ensure_state_file(info: BackupInfo, kaynak: str) -> bool:
     Çözüm GÜNCEL dosyayla başarıldıysa o dosya doğru DEK'i sarmalıyor demektir
     (parola değiştiyse en yeni sarmalı taşıyan da odur) → DOKUNULMAZ. Çözüm
     GÖMÜLÜ başlıkla başarıldıysa güncel dosya ya yok ya da bu veriye ait değil:
-    varsa arşivlenir (silinmez — `_archive_state` deseni), gömülü başlık
+    varsa arşivlenir (silinmez: eski yedekleri açan tek sarmal olabilir), gömülü başlık
     olduğu gibi guvenlik.json olarak yazılır. Böylece geri yüklemeden çıkan
     (veritabanı, durum dosyası) çifti DAİMA aynı DEK'i anlatır ve açılıştaki
     parmak izi denetimi (`_adopt_key`) geçer.

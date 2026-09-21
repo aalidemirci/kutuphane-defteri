@@ -1,5 +1,5 @@
 // `okul` modülü API istemcisi — kurum künyesi/kurulum, ders yılı + dönemler,
-// kişi sicilleri (öğrenci + personel), şube kataloğu, toplu içe aktarma ve
+// kapalı günler, kişi sicilleri (öğrenci + personel), şube kataloğu, toplu içe aktarma ve
 // şablon indirme uçları. Backend `apps/okul/{urls,views,serializers}.py` ile
 // BİREBİR. TCKN, veli, cinsiyet ve fotoğraf alanları YOKTUR — o veriler hiç
 // toplanmaz (tasarım §6.1).
@@ -43,6 +43,54 @@ export interface SchoolTerm {
 export interface SchoolTermConfigurationBody {
   first_term_end: string;
   second_term_start: string;
+}
+
+// ---------------------------------------------------------------------------
+// Kapalı günler (resmî tatil, dini bayram, öğrenciye kapalı gün, idari izin)
+// ---------------------------------------------------------------------------
+
+/** Backend `HolidayKind` ile birebir. */
+export type HolidayKind = "OFFICIAL" | "RELIGIOUS" | "SCHOOL_BREAK" | "OTHER";
+
+/**
+ * Tür adları (sözlük): ara tatil ve yarıyıl kanunen tatil DEĞİLDİR — "öğrenciye
+ * kapalı gün" diye ayrı adlandırılır, tek başına "tatil" denmez.
+ */
+export const HOLIDAY_KIND_TR: Record<HolidayKind, string> = {
+  SCHOOL_BREAK: "Öğrenciye kapalı gün",
+  OFFICIAL: "Resmî tatil",
+  RELIGIOUS: "Dini bayram",
+  OTHER: "İdari izin / diğer",
+};
+
+/** Kapalı gün kaydı — HolidaySerializer ile birebir. Tek günde başlangıç = bitiş. */
+export interface Holiday {
+  id: number;
+  name: string;
+  start_date: string;
+  end_date: string;
+  kind: HolidayKind;
+  /** Dini bayram tarihi hesapla bulunmuş, Diyanet takvimiyle henüz kesinleşmemiş. */
+  is_estimated: boolean;
+}
+
+/** Elle ekleme gövdesi — `is_estimated` gönderilmez (elle girilen tarih kesindir). */
+export interface HolidayCreateBody {
+  name: string;
+  start_date: string;
+  end_date: string;
+  kind: HolidayKind;
+}
+
+/** `POST /holidays/seed/` sonucu. */
+export interface HolidaySeedResult {
+  year: number;
+  /** Yeni eklenen kayıt sayısı. */
+  created: number;
+  /** Zaten var olduğu için atlanan kayıt sayısı. */
+  skipped: number;
+  /** false → programda bu yılın dini bayram tarihleri yok; elle girilmeli. */
+  religious_available: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -293,6 +341,21 @@ export const okulApi = {
     schoolYearId: number,
     body: SchoolTermConfigurationBody,
   ): Promise<SchoolTerm[]> => api.put<SchoolTerm[]>(`/school-years/${schoolYearId}/terms/`, body),
+
+  // --- Kapalı günler ---
+
+  /** Takvim yılıyla KESİŞEN kayıtlar, tarih sırasıyla (yıl verilmezse hepsi). */
+  listHolidays: (year?: number): Promise<Holiday[]> =>
+    api.get<Holiday[]>(year === undefined ? "/holidays/" : `/holidays/?year=${year}`),
+
+  createHoliday: (body: HolidayCreateBody): Promise<Holiday> =>
+    api.post<Holiday>("/holidays/", body),
+
+  deleteHoliday: (id: number): Promise<void> => api.del<void>(`/holidays/${id}/`),
+
+  /** Yılın sabit resmî tatilleri + dini bayramlar; tekrar çağrılınca kopya üretmez. */
+  seedHolidays: (year: number): Promise<HolidaySeedResult> =>
+    api.post<HolidaySeedResult>("/holidays/seed/", { year }),
 
   // --- Öğrenciler ---
 

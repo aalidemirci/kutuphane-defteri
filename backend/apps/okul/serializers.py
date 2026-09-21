@@ -15,12 +15,15 @@ from rest_framework import serializers
 from apps.okul import normalize, selectors
 from apps.okul.models import (
     ClassSection,
+    Holiday,
+    HolidayKind,
     Personnel,
     SchoolConfig,
     SchoolTerm,
     SchoolYear,
     Student,
 )
+from apps.okul.services import calendar as calendar_service
 
 
 def _validate_level(value: int) -> int:
@@ -78,6 +81,91 @@ class SchoolTermSerializer(serializers.ModelSerializer[SchoolTerm]):
 class SchoolTermConfigurationSerializer(serializers.Serializer[dict[str, Any]]):
     first_term_end = serializers.DateField()
     second_term_start = serializers.DateField()
+
+
+# ---------------------------------------------------------------------------
+# Kapalı günler (F1-D; tasarım §6.1 Holiday, §9-5)
+# ---------------------------------------------------------------------------
+
+# `Any` değerli: DRF stub'ı `str | _StrPromise` ister, `dict` değişmez (invariant) türdür.
+_DATE_ERRORS: dict[str, Any] = {
+    "invalid": "Geçerli bir tarih girin.",
+    "required": "Tarih seçilmelidir.",
+    "null": "Tarih seçilmelidir.",
+}
+
+_YEAR_RANGE_MESSAGE = (
+    f"Yıl {calendar_service.MIN_YEAR} ile {calendar_service.MAX_YEAR} arasında olmalıdır."
+)
+_YEAR_ERRORS: dict[str, Any] = {
+    "invalid": "Yıl dört haneli bir sayı olmalıdır.",
+    "min_value": _YEAR_RANGE_MESSAGE,
+    "max_value": _YEAR_RANGE_MESSAGE,
+}
+
+
+def _year_field(*, required: bool) -> serializers.IntegerField:
+    return serializers.IntegerField(
+        required=required,
+        min_value=calendar_service.MIN_YEAR,
+        max_value=calendar_service.MAX_YEAR,
+        error_messages=_YEAR_ERRORS,
+    )
+
+
+class HolidaySerializer(serializers.ModelSerializer[Holiday]):
+    """Kapalı gün kaydı. `is_estimated` salt okunurdur: yalnız tohumlama yazar,
+    elle girilen kayıt kesin tarih sayılır.
+
+    Teklik (ad + başlangıç) servistedir ve Türkçe reddeder; DRF'nin koşullu
+    kısıttan türettiği İngilizce alan adlı doğrulayıcı `validators = []` ile kapalıdır.
+    """
+
+    name = serializers.CharField(
+        max_length=128,
+        error_messages={
+            "blank": "Ad yazılmalıdır.",
+            "required": "Ad yazılmalıdır.",
+            "max_length": "Ad en çok 128 karakter olabilir.",
+        },
+    )
+    start_date = serializers.DateField(error_messages=_DATE_ERRORS)
+    end_date = serializers.DateField(error_messages=_DATE_ERRORS)
+    kind = serializers.ChoiceField(
+        choices=HolidayKind.choices,
+        default=HolidayKind.SCHOOL_BREAK,
+        error_messages={"invalid_choice": "Geçerli bir tür seçin."},
+    )
+
+    class Meta:
+        model = Holiday
+        fields = ["id", "name", "start_date", "end_date", "kind", "is_estimated"]
+        read_only_fields = ["is_estimated"]
+        validators: list[Any] = []
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        start = attrs.get("start_date")
+        end = attrs.get("end_date")
+        if start and end:
+            if end < start:
+                raise serializers.ValidationError(
+                    {"end_date": "Bitiş tarihi başlangıçtan önce olamaz."}
+                )
+            if (end - start).days + 1 > calendar_service.MAX_SPAN_DAYS:
+                raise serializers.ValidationError({"end_date": calendar_service.span_message()})
+        return attrs
+
+
+class HolidayListQuerySerializer(serializers.Serializer[dict[str, Any]]):
+    """`GET holidays/?year=` — yıl verilmezse bütün kayıtlar."""
+
+    year = _year_field(required=False)
+
+
+class HolidaySeedRequestSerializer(serializers.Serializer[dict[str, Any]]):
+    """`POST holidays/seed/` — yıl verilmezse bugünün takvim yılı (`localdate`)."""
+
+    year = _year_field(required=False)
 
 
 class PersonnelSerializer(serializers.ModelSerializer[Personnel]):

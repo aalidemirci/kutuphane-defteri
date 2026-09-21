@@ -7,8 +7,9 @@
     4. Oturum belirteci ..................... ayarlar okunmadan ÖNCE üretilir
     5. Sürüm damgası ........................ eski program yeni veriyi AÇMAZ
     6. Bütünlük denetimi .................... bozuk veriyle pencere AÇILMAZ
-    7. Günlük yedek + 14 gün rotasyonu ...... `Connection.backup()`; parolalıysa
-       şifreli, parolasızsa düz `.kdbak` — yedek her kipte ALINIR (KS K9)
+    7. Günlük yedek + 14 gün rotasyonu ...... `Connection.backup()`; yalnız şifreli
+       `.kdbak`. Yönetici parolası kurulmadan (ilk açılış) yedek atlanır; bugünün
+       yedeği alınmadıysa rotasyon da koşmaz (tasarım §6.3-6)
     8. Göç öncesi yedek + `migrate --no-input`
     9. Gömülü sunucu (waitress, 127.0.0.1, boş port) + sağlık denetimi
        → Ağ Kataloğu (ikinci waitress, 127.0.0.1:8765, öz sınamalı); hatası
@@ -128,7 +129,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--parola",
         default=None,
-        help="Geri yükleme: uygulama parolası (otomasyon içindir; komut geçmişine düşer).",
+        help="Geri yükleme: yönetici parolası (otomasyon içindir; komut geçmişine düşer).",
     )
     parser.add_argument(
         "--kurtarma-anahtari",
@@ -167,8 +168,11 @@ def prepare_data(paths: AppPaths, app_version: str) -> None:
     check_database_integrity(paths.db_path, backup_dir=paths.backups)
 
     encrypt_legacy_backups(paths.backups, paths.data)
-    daily_backup(paths.db_path, paths.backups)
-    rotate_backups(paths.backups)
+    # Rotasyon yalnız bugünün yedeği elde varken koşar: yedek atlandıysa
+    # (parola henüz kurulmadı, yedek anahtarı bozuk, guvenlik.json kayıp) eski
+    # yedekler silinmez — kayıp kilidinden çıkış yolu onlardır (GA-2).
+    if daily_backup(paths.db_path, paths.backups) is not None:
+        rotate_backups(paths.backups)
 
     prepare_django(resolve_backend_dir(), paths.data)
     if has_pending_migrations():

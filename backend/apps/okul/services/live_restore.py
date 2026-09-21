@@ -19,8 +19,11 @@ Dosya değişimini `backup_restore` çekirdeği yapar; bu modül ÇALIŞAN sunuc
 
 Masaüstü kardeşi `desktop/restore.py` bozuk-veritabanı senaryosudur (pencere
 hiç açılmadan `--geri-yukle`); bu modül programın AÇILABİLDİĞİ senaryo içindir
-(yanlış veri girişi sonrası eski güne dönme). Parola/kurtarma anahtarı yalnız
-parametre olarak akar; hiçbir günlük satırına ve hata metnine yazılmaz.
+(yanlış veri girişi sonrası eski güne dönme; güvenlik dosyası kayıp kilidinden
+çıkış — iki uç da o kilitte açıktır, `lock_middleware`). Yedekler daima
+şifrelidir (düz yedek dalı yok, §6.3-6); parola ya da kurtarma anahtarı
+gerekir. Parola/kurtarma anahtarı yalnız parametre olarak akar; hiçbir günlük
+satırına ve hata metnine yazılmaz.
 """
 
 from __future__ import annotations
@@ -31,7 +34,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from desktop.backup_crypto import BACKUP_SUFFIX, MAGIC
+from desktop.backup_crypto import BACKUP_SUFFIX
 from django.conf import settings
 from django.db import connections
 from django.utils import timezone
@@ -67,7 +70,6 @@ def list_backups() -> dict[str, Any]:
                     "modified_at": timezone.localtime(
                         datetime.fromtimestamp(bilgi.st_mtime, tz=UTC)
                     ).isoformat(),
-                    "encrypted": _is_encrypted(yol),
                     "_mtime": bilgi.st_mtime,
                 }
             )
@@ -120,12 +122,10 @@ def restore_and_require_restart(
     app_password.lock()
     restart_gate.mark_restart_required()
     logger.info(
-        "API'den geri yükleme uygulandı: %s (%s kip); yeniden başlatma bekleniyor.",
+        "API'den geri yükleme uygulandı: %s; yeniden başlatma bekleniyor.",
         kaynak.name if content is None else "yüklenen dosya",
-        "şifreli" if sonuc.encrypted else "düz",
     )
     return {
-        "encrypted": sonuc.encrypted,
         "old_db_name": sonuc.old_db_path.name if sonuc.old_db_path is not None else "",
         "state_written": sonuc.state_written,
         "restart_required": True,
@@ -135,15 +135,6 @@ def restore_and_require_restart(
 # ---------------------------------------------------------------------------
 # İç yardımcılar
 # ---------------------------------------------------------------------------
-def _is_encrypted(path: Path) -> bool:
-    try:
-        with path.open("rb") as dosya:
-            # bool(): desktop.* backend mypy koşusunda Any çözümlenir (test_backup_restore notu).
-            return bool(dosya.read(len(MAGIC)) == MAGIC)
-    except OSError:
-        return False
-
-
 def _resolve_named(name: str) -> Path:
     """Yedek klasöründeki adı yola çevirir; klasör dışına çıkışı reddeder."""
     duz_ad = name.strip()
@@ -157,7 +148,8 @@ def _resolve_named(name: str) -> Path:
         or "\\" in duz_ad
         or duz_ad != Path(duz_ad).name
     ):
-        raise LiveRestoreError(f"Geçerli bir yedek dosyası adı verin ({BACKUP_SUFFIX}).")
+        # Kullanıcı metninde uzantı geçmez (docs/sozluk.md "Yedek" satırı).
+        raise LiveRestoreError("Geçerli bir yedek dosyası adı verin (yedek klasöründeki listeden).")
     yol = app_password.backup_dir() / duz_ad
     if not yol.is_file():
         raise LiveRestoreError(f"Yedek klasöründe böyle bir dosya yok: {duz_ad}")

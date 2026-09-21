@@ -39,6 +39,7 @@ iç kavramları (karar, faz, evrak kodları) yüzeye çıkmaz.
 | Ödünç geçmişi | **ödünç kaydı**, **ödünç geçmişi** | **okuduğu kitaplar**, okuma karnesi, okuma puanı, okuma geçmişi | **Ödünç ≠ okuduğu kitap.** Öğrenci bazlı ödünç sayısı öğretmene ya da e-Okul'a aktarılmaz (tasarım §3) |
 | İade tarihi | **iade tarihi**; gecikmişte **gecikme**, **"… gün gecikti"** | son teslim tarihi, ceza, harç, uzatma | Programda uzatma, ceza ve harç yoktur. Kaydırılmış tarih "Md. 18 gereği" diye sunulmaz |
 | `Holiday.SCHOOL_BREAK` | **öğrenciye kapalı gün** (ara tatil, yarıyıl) | tatil (tek başına) | Kanunen tatil değildir; resmî ve dini tatil ayrı türdür |
+| `Holiday` diğer türler | **resmî tatil**, **dini bayram**, **idari izin / diğer**; hepsinin üst adı **kapalı gün** (sayfa: "Kapalı Günler") | tatil günü (genel anlamda) | İdari izin kütüphanenin de kapalı olduğu gündür; iade tarihi hesabında resmî tatil gibi sayılır. Tahmini bayram tarihinde **"tahmini"** rozeti |
 | `Delivery` (U11) | **teslim**: "sınıf kitaplığına teslim", "öğretmene teslim"; geri dönüşü **geri alma** | ödünç, emanet, zimmet | **Teslim ödünç değildir**, Md. 18 sayı sınırı uygulanmaz |
 | İlişik | **"Kütüphaneden ilişiği yoktur" belgesi**, **ilişik listesi** | borç, ilişik kesme | Karne ya da diplomanın ön koşulu diye SUNULMAZ; dayanağı yok |
 | `LossDamageCase` | **kayıp**, **hasar**, **onarım**; belge "Kayıp/hasar tutanağı" | zayi, telef | Bedel seçenekleri yalnız ortaöğretimde (Md. 19). Program tahsilat yapmaz |

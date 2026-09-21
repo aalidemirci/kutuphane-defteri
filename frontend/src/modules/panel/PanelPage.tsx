@@ -1,9 +1,11 @@
 // Genel Bakış (hub) — modül kartları. Sayfanın TEK adı "Genel Bakış"tır
 // (gezinme + üst çubuk + h1 — docs/sozluk.md §4); kart başlıkları gittikleri
 // sayfanın h1'iyle aynıdır. Pano kartları (başlangıç yol haritası, temiz
-// kapanış uyarısı…) kendi fazlarında gelir (tasarım §12, §14.1).
+// kapanış uyarısı…) kendi fazlarında gelir (tasarım §12, §14.1). "Katalog Excel
+// Şablonu" kartı bir sayfaya gitmez, şablonu indirir (tasarım §8.1).
 
 import HubFeatureCard from "../../ui/HubFeatureCard";
+import KatalogSablonuKarti from "../kutuphane/KatalogSablonuKarti";
 
 export default function PanelPage() {
   return (
@@ -30,6 +32,7 @@ export default function PanelPage() {
           description="Ders yılı, şubeler, okul bilgileri, güvenlik, yedek ve güncelleme."
         />
       </div>
+      <KatalogSablonuKarti />
     </div>
   );
 }

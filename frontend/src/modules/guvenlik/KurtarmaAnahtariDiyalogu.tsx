@@ -50,7 +50,7 @@ function metinCiktisi(anahtar: string, okulAdi: string): string {
     "",
     anahtar,
     "",
-    "Bu anahtar, uygulama parolası unutulduğunda kayıtlara erişmenin tek yoludur.",
+    "Bu anahtar, yönetici parolası unutulduğunda kayıtlara erişmenin tek yoludur.",
     "Yazıcı çıktısını kilitli bir dolapta saklayın; bilgisayarda tutmayın.",
   ]
     .filter(Boolean)

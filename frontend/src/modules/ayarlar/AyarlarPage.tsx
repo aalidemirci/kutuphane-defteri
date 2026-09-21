@@ -1,7 +1,7 @@
-// Ayarlar sayfası (DD kalıbı) — beş sekme: ders yılları (dönemlerle), şube
-// kataloğu, okul bilgileri (evrak antedi + hazırlık sınıfı), güvenlik
-// (uygulama parolası, yedek) ve güncelleme (yalnız elle denetim, tasarım T11).
-// Tatil sekmesi YOK: kapalı günler takvimi F1'de gelir (tasarım §6.1 Holiday).
+// Ayarlar sayfası (DD kalıbı) — altı sekme: ders yılları (dönemlerle), kapalı
+// günler (resmî/dini tatil, öğrenciye kapalı gün; tasarım §6.1 Holiday), şube
+// kataloğu, okul bilgileri (evrak antedi + hazırlık sınıfı), güvenlik (yönetici
+// parolası, yedek) ve güncelleme (yalnız elle denetim, tasarım T11).
 
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
@@ -27,13 +27,22 @@ import UpdatePanel from "../guncelleme/UpdatePanel";
 import GuvenlikAyarlari from "../guvenlik/GuvenlikAyarlari";
 import { okulApi } from "../okul/api";
 import type { ClassSection, GradeLevelOption, SchoolTerm, SchoolYear } from "../okul/api";
+import KapaliGunlerPaneli from "../takvim/KapaliGunlerPaneli";
 
 // TABS[0] varsayılan sekmedir (useTabParam fallback) — başa yeni anahtar EKLEME.
-const TABS = ["ders-yillari", "subeler", "okul", "guvenlik", "guncelleme"] as const;
+const TABS = [
+  "ders-yillari",
+  "kapali-gunler",
+  "subeler",
+  "okul",
+  "guvenlik",
+  "guncelleme",
+] as const;
 type TabKey = (typeof TABS)[number];
 
 const TAB_ITEMS: TabItem[] = [
   { key: "ders-yillari", label: "Ders Yılları", icon: "calendar_month" },
+  { key: "kapali-gunler", label: "Kapalı Günler", icon: "event_busy" },
   { key: "subeler", label: "Şubeler", icon: "meeting_room" },
   { key: "okul", label: "Okul Bilgileri", icon: "apartment" },
   { key: "guvenlik", label: "Güvenlik", icon: "lock" },
@@ -112,8 +121,9 @@ export default function AyarlarPage() {
         <div>
           <h1 className="kd-page-title">Ayarlar</h1>
           <p className="kd-page-description">
-            Ders yılı, şube kataloğu, okul künyesi, uygulama parolası, yedekler ve güncelleme burada
-            yönetilir. Okul künyesi programın bastığı evrakın antedinde kullanılır.
+            Ders yılı, kapalı günler, şube kataloğu, okul künyesi, yönetici parolası, yedekler ve
+            güncelleme burada yönetilir. Okul künyesi programın bastığı evrakın antedinde
+            kullanılır.
           </p>
         </div>
       </div>
@@ -135,6 +145,7 @@ export default function AyarlarPage() {
             onReload={loadYears}
           />
         )}
+        {tab === "kapali-gunler" && <KapaliGunlerPaneli />}
         {tab === "subeler" && <SubelerPanel years={years} yearsLoading={yearsLoading} />}
         {tab === "okul" && <OkulBilgileriPanel />}
         {tab === "guvenlik" && <GuvenlikAyarlari okulAdi={okulAdi} />}
@@ -323,7 +334,8 @@ function SchoolTermEditor({ year }: { year: SchoolYear }) {
     <div className="rounded-shape-sm bg-surface-container-low p-4">
       <p className="text-body-small text-on-surface-variant">
         1. dönem ders yılı başlangıcında, 2. dönem ders yılı bitişinde sonlanır. Aradaki boşluk
-        yarıyıl tatilidir.
+        yarıyıldır; iade tarihlerinin hesabına girmesi için Kapalı Günler sekmesinde öğrenciye
+        kapalı gün olarak ekleyin.
       </p>
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <TextField

@@ -1,9 +1,10 @@
-// Güvenlik ayarları bölümü (F5-D5) — Ayarlar sayfasına bir sekme/kart olarak
-// takılır (rota ve menü bağlama iş sahibinindir; bkz. teslim raporu).
+// Güvenlik ayarları bölümü — Ayarlar sayfasına bir sekme/kart olarak takılır.
 //
-// Üç eylem: parola koy / parola değiştir / parolayı kaldır (+ "şimdi kilitle").
-// Metinler `metinler.ts`'ten gelir ve DÜRÜSTTÜR: bu koruma alan şifrelemesidir,
-// tam disk şifrelemesi değildir.
+// Eylemler: yönetici parolasını kur (yalnız ilk kurulumda; asıl yeri kurulum
+// sihirbazının ilk adımıdır) / parolayı değiştir / "Kilitle". Yönetici parolası
+// zorunludur: "Parolayı kaldır" eylemi YOKTUR (tasarım §6.3). Metinler
+// `metinler.ts`'ten gelir ve DÜRÜSTTÜR: bu koruma alan şifrelemesidir, tam disk
+// şifrelemesi değildir.
 
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
@@ -21,15 +22,9 @@ import YedektenGeriYukleme from "./YedektenGeriYukleme";
 import { guvenlikApi } from "./api";
 import type { GuvenlikDurumu } from "./api";
 import { kilitOlayiYayinla } from "./GuvenlikKapisi";
-import {
-  KALDIRMA_UYARISI,
-  KAPSAM_DISI_METNI,
-  KAPSAM_METNI,
-  KURMA_UYARISI,
-  YARIM_GECIS_METNI,
-} from "./metinler";
+import { KAPSAM_DISI_METNI, KAPSAM_METNI, KURMA_UYARISI, YARIM_GECIS_METNI } from "./metinler";
 
-type Kip = "yok" | "kur" | "degistir" | "kaldir";
+type Kip = "yok" | "kur" | "degistir";
 
 function hataMesaji(err: unknown, varsayilan: string): string {
   return err instanceof Error && err.message ? err.message : varsayilan;
@@ -71,7 +66,7 @@ export default function GuvenlikAyarlari({ okulAdi = "" }: GuvenlikAyarlariProps
   async function gonder(e: FormEvent) {
     e.preventDefault();
     setHata(null);
-    if (kip !== "kaldir" && parolaTekrar !== (kip === "kur" ? parola : yeniParola)) {
+    if (parolaTekrar !== (kip === "kur" ? parola : yeniParola)) {
       setHata("Parolalar eşleşmedi.");
       return;
     }
@@ -80,13 +75,10 @@ export default function GuvenlikAyarlari({ okulAdi = "" }: GuvenlikAyarlariProps
       if (kip === "kur") {
         const sonuc = await guvenlikApi.kur(parola);
         setKurtarmaAnahtari(sonuc.recovery_key);
-        snackbar.success("Parola kuruldu; kişisel veri alanları şifrelendi.");
-      } else if (kip === "degistir") {
-        await guvenlikApi.parolaDegistir(parola, yeniParola);
-        snackbar.success("Parola değiştirildi.");
+        snackbar.success("Yönetici parolası kuruldu.");
       } else {
-        await guvenlikApi.kaldir(parola);
-        snackbar.success("Parola kaldırıldı; alanlar düz metne döndürüldü.");
+        await guvenlikApi.parolaDegistir(parola, yeniParola);
+        snackbar.success("Yönetici parolası değiştirildi.");
       }
       kapat();
       oku();
@@ -109,12 +101,7 @@ export default function GuvenlikAyarlari({ okulAdi = "" }: GuvenlikAyarlariProps
   if (durum === null) return <SkeletonList rows={2} />;
 
   const baslikIkonu = durum.password_set ? "lock" : "lock_open";
-  const dialogBasligi =
-    kip === "kur"
-      ? "Uygulama parolası koy"
-      : kip === "degistir"
-        ? "Parolayı değiştir"
-        : "Parolayı kaldır";
+  const dialogBasligi = kip === "kur" ? "Yönetici parolasını kur" : "Parolayı değiştir";
 
   return (
     <div className="flex flex-col gap-4">
@@ -122,7 +109,7 @@ export default function GuvenlikAyarlari({ okulAdi = "" }: GuvenlikAyarlariProps
         <div className="mb-2 flex items-center gap-3">
           <Icon name={baslikIkonu} className="text-primary" />
           <h2 className="text-title-large text-on-surface">
-            {durum.password_set ? "Kişisel veri alanları şifreli" : "Kişisel veri alanları açık"}
+            {durum.password_set ? "Kişisel veri alanları şifreli" : "Yönetici parolası kurulmadı"}
           </h2>
         </div>
 
@@ -149,15 +136,12 @@ export default function GuvenlikAyarlari({ okulAdi = "" }: GuvenlikAyarlariProps
                 Parolayı değiştir
               </Button>
               <Button variant="outlined" icon="lock" onClick={kilitle}>
-                Şimdi kilitle
-              </Button>
-              <Button variant="text" icon="lock_open" onClick={() => setKip("kaldir")}>
-                Parolayı kaldır
+                Kilitle
               </Button>
             </>
           ) : (
             <Button icon="lock" onClick={() => setKip("kur")}>
-              Parola koy
+              Yönetici parolasını kur
             </Button>
           )}
         </div>
@@ -169,9 +153,9 @@ export default function GuvenlikAyarlari({ okulAdi = "" }: GuvenlikAyarlariProps
 
       <Dialog open={kip !== "yok"} onClose={kapat} title={dialogBasligi}>
         <form onSubmit={gonder} className="flex flex-col gap-4">
-          <p className="text-body-small text-on-surface-variant">
-            {kip === "kur" ? KURMA_UYARISI : kip === "kaldir" ? KALDIRMA_UYARISI : ""}
-          </p>
+          {kip === "kur" && (
+            <p className="text-body-small text-on-surface-variant">{KURMA_UYARISI}</p>
+          )}
 
           <TextField
             label={kip === "kur" ? "Yeni parola" : "Mevcut parola"}
@@ -195,25 +179,17 @@ export default function GuvenlikAyarlari({ okulAdi = "" }: GuvenlikAyarlariProps
             />
           )}
 
-          {kip !== "kaldir" && (
-            <TextField
-              // Etiket "Yeni parola (tekrar)" DEĞİL: iki alanın adı aynı ön ekle
-              // başladığında hem ekran okuyucuda hem testte ayrışmıyor.
-              label="Parola (tekrar)"
-              type="password"
-              value={parolaTekrar}
-              onChange={(e) => setParolaTekrar(e.target.value)}
-              autoComplete="new-password"
-              error={hata ?? undefined}
-              required
-            />
-          )}
-
-          {kip === "kaldir" && hata && (
-            <p role="alert" className="text-body-small text-error">
-              {hata}
-            </p>
-          )}
+          <TextField
+            // Etiket "Yeni parola (tekrar)" DEĞİL: iki alanın adı aynı ön ekle
+            // başladığında hem ekran okuyucuda hem testte ayrışmıyor.
+            label="Parola (tekrar)"
+            type="password"
+            value={parolaTekrar}
+            onChange={(e) => setParolaTekrar(e.target.value)}
+            autoComplete="new-password"
+            error={hata ?? undefined}
+            required
+          />
 
           <div className="flex justify-end gap-2">
             <Button variant="text" type="button" onClick={kapat}>

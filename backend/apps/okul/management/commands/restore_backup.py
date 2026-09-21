@@ -4,7 +4,7 @@ Paketlenmiş kurulumda `manage.py` yoktur; son kullanıcı aynı çekirdeği
 `kutuphane-defteri --geri-yukle` ile çalıştırır (desktop/restore.py). Bu komut
 geliştirme ortamı ve uzaktan destek senaryosu içindir:
 
-    python manage.py restore_backup <yedek.kdbak>              # şifreliyse parola sorar
+    python manage.py restore_backup <yedek.kdbak>              # yönetici parolasını sorar
     python manage.py restore_backup <yedek> --recovery-key ...
     python manage.py restore_backup <yedek> --yes              # onay sorusu atlanır
 
@@ -30,12 +30,12 @@ from apps.okul.services import backup_restore
 
 
 class Command(BaseCommand):
-    help = "Bir .kdbak yedeğini veritabanının yerine geri yükler (düz veya şifreli)."
+    help = "Bir şifreli .kdbak yedeğini veritabanının yerine geri yükler."
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument("backup", help="Geri yüklenecek yedek dosyası (.kdbak).")
         parser.add_argument(
-            "--password", default=None, help="Uygulama parolası (otomasyon; risklidir)."
+            "--password", default=None, help="Yönetici parolası (otomasyon; risklidir)."
         )
         parser.add_argument("--recovery-key", default=None, help="Kurtarma anahtarı (otomasyon).")
         parser.add_argument("--yes", action="store_true", help="Onay sorusunu atlar.")
@@ -47,12 +47,12 @@ class Command(BaseCommand):
         except OSError as exc:
             raise CommandError(f"Yedek dosyası okunamadı: {yedek}") from exc
         try:
-            bilgi = backup_restore.inspect_backup(icerik)
+            backup_restore.inspect_backup(icerik)
         except backup_restore.BackupRestoreError as exc:
             raise CommandError(str(exc)) from exc
 
         hedef = self._database_path()
-        self.stdout.write(f"Yedek : {yedek} ({'şifreli' if bilgi.encrypted else 'düz'})")
+        self.stdout.write(f"Yedek : {yedek}")
         self.stdout.write(f"Hedef : {hedef}")
         self.stdout.write(
             f"Mevcut veritabanı silinmez; '{backup_restore.OLD_DB_PREFIX}-*' adıyla kenara alınır."
@@ -65,8 +65,8 @@ class Command(BaseCommand):
 
         parola = options.get("password")
         anahtar = options.get("recovery_key")
-        if bilgi.encrypted and not parola and not anahtar:
-            parola = getpass("Uygulama parolası (kurtarma anahtarıyla açmak için boş bırakın): ")
+        if not parola and not anahtar:
+            parola = getpass("Yönetici parolası (kurtarma anahtarıyla açmak için boş bırakın): ")
             if not parola:
                 anahtar = input("Kurtarma anahtarı: ")
 

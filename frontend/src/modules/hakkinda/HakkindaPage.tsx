@@ -115,13 +115,12 @@ export default function HakkindaPage() {
                 bastığınızda yayımlanan son sürümü soran anonim denetimdir.
               </li>
               <li>
-                Parola kurulduğunda öğrenci ve öğretmen ad-soyadları Fernet (AES-128-CBC +
-                HMAC-SHA256) ile şifrelenir; şifreleme anahtarı, parolanızdan Argon2id ile türetilen
-                anahtarla korunur.
+                Öğrenci ve öğretmen ad-soyadları Fernet (AES-128-CBC + HMAC-SHA256) ile şifrelenir;
+                şifreleme anahtarı, yönetici parolasından Argon2id ile türetilen anahtarla korunur.
               </li>
               <li>
                 Şifreli yedekler (<span className="font-mono">.kdbak</span>) X25519 ve AES-256-GCM
-                ile şifrelenir; yedek, uygulama parolası ya da kurtarma anahtarıyla açılır.
+                ile şifrelenir; yedek, yönetici parolası ya da kurtarma anahtarıyla açılır.
               </li>
             </ul>
           </div>

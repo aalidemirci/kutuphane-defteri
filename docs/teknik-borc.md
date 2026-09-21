@@ -113,9 +113,13 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   F12 saha provasında doğrulanacak.
 
 - **TB15 — F1'e devreden F0 kalıntıları:** `Personnel.title/branch` hâlâ
-  modelde ve arayüzde (tasarım §6.1 V2-01: alınmaz); arayüz "uygulama parolası"
-  diyor (sözlük: "yönetici parolası"); "Parolayı kaldır" akışı ve parolasız
-  dal duruyor (§6.3-6); sihirbazda parola ilk adım değil. Hepsi F1 iş kalemi.
+  modelde ve arayüzde (tasarım §6.1 V2-01: alınmaz); sihirbazda parola ilk adım
+  değil. İkisi de F1 iş kalemi (kişi verisi kolu ve kurulum sihirbazı kolu).
+  *F1 eki (22.09.2026):* arayüz ve backend iletilerindeki "uygulama parolası"
+  metni, "Parolayı kaldır" akışı ve parolasız dal söküldü (§6.3-6). Kalan tek
+  iz `SchoolConfig.app_password_hash` alanının `verbose_name`'idir ("uygulama
+  parolası özeti"; kullanıcıya görünmez); değişmesi migration ister, kişi verisi
+  kolunun migration'ına bırakıldı.
 
 ## Kapanan
 

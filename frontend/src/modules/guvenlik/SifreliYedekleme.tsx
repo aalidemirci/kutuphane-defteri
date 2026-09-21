@@ -48,17 +48,17 @@ export default function SifreliYedekleme({ parolaKurulu }: { parolaKurulu: boole
           <h2 className="text-title-large text-on-surface">Şifreli veritabanı yedeği</h2>
           <p className="mt-2 text-body-medium text-on-surface-variant">
             Kayıtlarınızın tutarlı bir kopyası bu bilgisayarda hazırlanır ve güçlü şifrelemeyle
-            korunur, ardından <span className="font-mono">.kdbak</span> dosyası olarak indirilir.
-            Şifresiz kopya üretilmez; dosya hiçbir yere kendiliğinden gönderilmez.
+            korunur, ardından yedek dosyası olarak indirilir. Şifresiz kopya üretilmez; dosya hiçbir
+            yere kendiliğinden gönderilmez.
           </p>
           <p className="mt-2 text-body-small text-on-surface-variant">
             İndirdiğiniz dosyayı USB belleğe, ağ diskine veya tercih ettiğiniz bulut klasörüne
-            kendiniz kopyalayın. Yedeği açmak için uygulama parolanız ya da kurtarma anahtarınız
+            kendiniz kopyalayın. Yedeği açmak için yönetici parolanız ya da kurtarma anahtarınız
             gerekir; ikisini de güvenli biçimde saklayın.
           </p>
           {!parolaKurulu && (
             <p className="mt-3 rounded-shape-md bg-error-container p-3 text-body-small text-on-error-container">
-              Şifreli yedek oluşturabilmek için önce uygulama parolası kurmalısınız.
+              Şifreli yedek oluşturabilmek için önce yönetici parolası kurmalısınız.
             </p>
           )}
           <div className="mt-5">

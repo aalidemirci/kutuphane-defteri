@@ -4,10 +4,15 @@
 // (Başlat menüsü: "Yedekten Geri Yükle"); metin kullanıcıyı oraya yönlendirir.
 //
 // Akış: günlük yedek listesinden seçim YA DA elden getirilen .kdbak dosyası →
-// (şifreliyse parola veya kurtarma anahtarı) → onay → POST /backups/restore/.
-// Başarıda backend "yeniden başlat" kapısını kurar (tüm API 503 döner); kart
-// olayı yayınlar ve YenidenBaslatEkrani arayüzü örter. Parola/kurtarma anahtarı
-// yalnız istek gövdesinde taşınır, hiçbir yere yazılmaz.
+// yönetici parolası veya kurtarma anahtarı (yedekler DAİMA şifrelidir; düz yedek
+// dalı yok, tasarım §6.3) → onay → POST /backups/restore/. Başarıda backend
+// "yeniden başlat" kapısını kurar (tüm API 503 döner); kart olayı yayınlar ve
+// YenidenBaslatEkrani arayüzü örter. Parola/kurtarma anahtarı yalnız istek
+// gövdesinde taşınır, hiçbir yere yazılmaz.
+//
+// `kayipKipi`: güvenlik dosyası kayıp ekranında (GuvenlikDosyasiKayip) çıkış
+// yolu olarak gösterilir; giriş metni o duruma göre yazılır. Backend bu iki ucu
+// kayıp kilidinde de açık tutar.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -31,7 +36,12 @@ function boyutMetni(bayt: number): string {
   return `${formatNumber(Math.max(1, Math.round(bayt / 1024)))} KB`;
 }
 
-export default function YedektenGeriYukleme() {
+interface YedektenGeriYuklemeProps {
+  /** Güvenlik dosyası kayıp ekranında mı gösteriliyor? (giriş metni değişir) */
+  kayipKipi?: boolean;
+}
+
+export default function YedektenGeriYukleme({ kayipKipi = false }: YedektenGeriYuklemeProps) {
   const confirm = useConfirm();
   const [liste, setListe] = useState<YedekListesi | null>(null);
   const [listeHata, setListeHata] = useState<string | null>(null);
@@ -56,11 +66,6 @@ export default function YedektenGeriYukleme() {
   }, []);
   useEffect(yukle, [yukle]);
 
-  const seciliYedek = liste?.backups.find((yedek) => yedek.name === secili) ?? null;
-  // Elden yüklenen dosyanın şifreli olup olmadığı istemcide bilinmez; alanlar
-  // gösterilir, zorunluluk denetimini backend yapar (Türkçe mesajla).
-  const sifreAlanlariGorunur = dosya !== null || (seciliYedek?.encrypted ?? false);
-
   function dosyaSecimineGec(yeni: File | null) {
     setDosya(yeni);
     setHata(null);
@@ -78,8 +83,8 @@ export default function YedektenGeriYukleme() {
     setHata(null);
     const kaynakAdi = dosya ? dosya.name : secili;
     if (!kaynakAdi) return;
-    if (seciliYedek?.encrypted && !parola && !anahtar) {
-      setHata("Bu yedek şifreli; uygulama parolasını ya da kurtarma anahtarını girin.");
+    if (!parola && !anahtar) {
+      setHata("Yedekler şifrelidir; yönetici parolasını ya da kurtarma anahtarını girin.");
       return;
     }
     // Başlık soru, gövde sonuç (docs/sozluk.md §3) — soru gövdede yinelenmez.
@@ -117,13 +122,20 @@ export default function YedektenGeriYukleme() {
         <Icon name="settings_backup_restore" className="mt-0.5 text-primary" />
         <div className="min-w-0 flex-1">
           <h2 className="text-title-large text-on-surface">Yedekten geri yükle</h2>
-          <p className="mt-2 text-body-medium text-on-surface-variant">
-            Yanlış veri girişinden sonra eski bir güne dönmek için günlük yedeklerden birini seçin
-            ya da elinizdeki <span className="font-mono">.kdbak</span> dosyasını yükleyin. Mevcut
-            veritabanı silinmez; veri klasöründe <span className="font-mono">db-onceki-…</span>{" "}
-            adıyla kenara alınır. Geri yükleme uygulandıktan sonra program kapatılıp yeniden
-            açılmalıdır.
-          </p>
+          {kayipKipi ? (
+            <p className="mt-2 text-body-medium text-on-surface-variant">
+              En yeni yedeği seçin ya da elinizdeki yedek dosyasını yükleyin. Mevcut veritabanı
+              silinmez; veri klasöründe <span className="font-mono">db-onceki-…</span> adıyla kenara
+              alınır. Geri yükleme uygulandıktan sonra program kapatılıp yeniden açılmalıdır.
+            </p>
+          ) : (
+            <p className="mt-2 text-body-medium text-on-surface-variant">
+              Yanlış veri girişinden sonra eski bir güne dönmek için günlük yedeklerden birini seçin
+              ya da elinizdeki yedek dosyasını yükleyin. Mevcut veritabanı silinmez; veri klasöründe{" "}
+              <span className="font-mono">db-onceki-…</span> adıyla kenara alınır. Geri yükleme
+              uygulandıktan sonra program kapatılıp yeniden açılmalıdır.
+            </p>
+          )}
           <p className="mt-2 text-body-small text-on-surface-variant">
             Program hiç açılmıyorsa (bozuk veritabanı) bu ekrana ulaşamazsınız; o durumda Windows’ta
             Başlat menüsündeki “Kütüphane Defteri — Yedekten Geri Yükle” kısayolunu, Pardus/Linux’ta
@@ -140,7 +152,8 @@ export default function YedektenGeriYukleme() {
           ) : liste !== null && liste.backups.length === 0 ? (
             <p className="mt-4 text-body-medium text-on-surface-variant">
               Yedek klasöründe geri yüklenebilir dosya yok. Program her gün ilk açılışta günlük
-              yedek alır; elinizde bir yedek varsa aşağıdan dosya olarak yükleyebilirsiniz.
+              yedek alır (yönetici parolası kurulduktan sonra); elinizde bir yedek varsa aşağıdan
+              dosya olarak yükleyebilirsiniz.
             </p>
           ) : (
             liste !== null && (
@@ -164,8 +177,7 @@ export default function YedektenGeriYukleme() {
                             {yedek.name}
                           </span>
                           <span className="block text-label-small text-on-surface-variant">
-                            {formatDateTime(yedek.modified_at)} · {boyutMetni(yedek.size)} ·{" "}
-                            {yedek.encrypted ? "şifreli" : "şifresiz"}
+                            {formatDateTime(yedek.modified_at)} · {boyutMetni(yedek.size)}
                           </span>
                         </span>
                       </label>
@@ -187,7 +199,7 @@ export default function YedektenGeriYukleme() {
               htmlFor="geri-yukleme-dosyasi"
               className="mb-1 block text-label-large text-on-surface-variant"
             >
-              Ya da elinizdeki yedek dosyası (.kdbak)
+              Ya da elinizdeki yedek dosyası
             </label>
             <input
               id="geri-yukleme-dosyasi"
@@ -199,25 +211,23 @@ export default function YedektenGeriYukleme() {
             />
           </div>
 
-          {sifreAlanlariGorunur && (
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <TextField
-                label="Uygulama parolası"
-                type="password"
-                value={parola}
-                onChange={(e) => setParola(e.target.value)}
-                autoComplete="current-password"
-                helperText="Şifreli yedek için ikisinden birini girin."
-              />
-              <TextField
-                label="Kurtarma anahtarı"
-                value={anahtar}
-                onChange={(e) => setAnahtar(e.target.value)}
-                autoComplete="off"
-                helperText="Parola bilinmiyorsa yazdırdığınız anahtar."
-              />
-            </div>
-          )}
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <TextField
+              label="Yönetici parolası"
+              type="password"
+              value={parola}
+              onChange={(e) => setParola(e.target.value)}
+              autoComplete="current-password"
+              helperText="Yedeğin alındığı dönemdeki parola; ikisinden birini girin."
+            />
+            <TextField
+              label="Kurtarma anahtarı"
+              value={anahtar}
+              onChange={(e) => setAnahtar(e.target.value)}
+              autoComplete="off"
+              helperText="Parola bilinmiyorsa yazdırdığınız anahtar."
+            />
+          </div>
 
           {hata && (
             <p role="alert" className="mt-3 text-body-small text-error">

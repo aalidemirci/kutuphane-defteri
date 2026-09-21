@@ -1,4 +1,4 @@
-"""Otomatik İKİ KİPLİ yedekleme — SQLite çevrimiçi görüntü + 14 gün rotasyonu.
+"""Otomatik şifreli yedekleme — SQLite çevrimiçi görüntü + 14 gün rotasyonu.
 
 **Dosya kopyalama YAPILMAZ.** WAL kipinde işlenmiş sayfaların bir bölümü hâlâ
 `-wal` dosyasındadır; `db.sqlite3`'ü tek başına kopyalamak tutarsız (hatta bozuk)
@@ -6,14 +6,26 @@ bir yedek üretir. `Connection.backup()` ise SQLite'ın kendi çevrimiçi yedek 
 kullanır: kaynak veritabanını sayfa sayfa RAM'e okur, WAL dahil tutarlı bir görüntü
 çıkarır.
 
-**Kip, yedek anahtarı dosyasından (`yedekleme.json`) belirlenir (KS K9 düzeltmesi):**
-uygulama parolası kuruluysa görüntü diske X25519 şifreli `.kdbak` kapsayıcısı
-olarak yazılır; parolasız kipte DÜZ SQLite baytları (yine `.kdbak` adıyla) yazılır.
-DD şablonundaki "parolasız kipte günlük yedek atlanır" dalı burada bilinçle
-düzeltildi — yedek her gün ALINIR. (Kütüphane Defteri'nde yönetici parolası
-zorunludur; düz dal F1'de sökülür — tasarım §12 UYARLA `backup.py`.) Anahtar dosyası VAR ama bozuksa düz yedek
-YAZILMAZ (şifreli kurulumdan düz kopya sızdırmak olurdu): uyarı loglanıp atlanır;
-kilit bir kez açıldığında `ensure_public_config` dosyayı onarır.
+**Yedek YALNIZ şifreli yazılır** (tasarım §6.3-6; KS'nin "parolasız kipte düz
+`.kdbak`" dalı F1'de söküldü). Görüntü, yedek açık anahtarıyla (`yedekleme.json`)
+X25519 + AES-256-GCM kapsayıcısına mühürlenir ve başlığına o anki
+`guvenlik.json` (kurtarma başlığı) gömülür. Yedek ATLANIR (uyarı loglanır,
+düz kopya asla yazılmaz):
+
+* `yedekleme.json` yoksa: yönetici parolası henüz kurulmamıştır (ilk açılış).
+  Kişi verisi de yoktur (parola kurulmadan kişi yazılamaz); ilk yedek parola
+  kurulduktan sonraki açılışta alınır. Bu davranış testle sabitlenir.
+* `yedekleme.json` bozuksa: kilit bir kez açıldığında `ensure_public_config`
+  dosyayı onarır.
+* Kurtarma başlığı kullanılamıyorsa (`guvenlik.json` kayıp, okunamıyor, boş ya
+  da biçimsiz — GA-2): böyle bir başlıkla alınan yedek ancak kaybolan dosyayla
+  açılabilirdi; üretmek yerine atlanır. "Kullanılabilir" kuralı tektir ve
+  `backup_crypto.is_usable_security_state`'tedir (kayıp kilidi ve geri yükleme
+  de onu kullanır). Yalnız dosyanın VARLIĞINA bakmak yetmez: içi boşaltılmış
+  bir dosyayla başlıksız yedekler birikir, rotasyon da sağlam başlıklı eskileri
+  süpürürdü. Açılış akışı (`desktop/main.py`) bugünün yedeği alınmadıkça
+  rotasyonu da koşmaz: kayıp kilidinden çıkış yolu olan eski başlıklı yedekler
+  silinmez.
 
 Yedek adları tarihlidir ve deterministiktir: aynı gün ikinci kez açılan program o
 günün yedeğini yeniden ÜRETMEZ (sabah alınan yedek, akşam bozulan veriyle ezilmez).
@@ -37,6 +49,7 @@ from desktop.backup_crypto import (
     encrypt_to_path,
     load_public_key,
     recovery_metadata,
+    usable_recovery_header,
 )
 
 DAILY_PREFIX = "gunluk"
@@ -85,42 +98,39 @@ def database_snapshot(source_path: Path) -> bytes:
             return snapshot_path.read_bytes()
 
 
-def _write_plain(content: bytes, target: Path) -> None:
-    """Düz baytları atomik yazar (`encrypt_to_path` ile aynı .tmp→replace deseni)."""
-    target.parent.mkdir(parents=True, exist_ok=True)
-    temp = target.with_name(target.name + ".tmp")
-    temp.unlink(missing_ok=True)
-    try:
-        temp.write_bytes(content)
-        temp.replace(target)
-    finally:
-        temp.unlink(missing_ok=True)
-
-
 def _copy_database(source_path: Path, target_path: Path) -> bool:
-    """Tutarlı SQLite görüntüsünü KİPE GÖRE yazar; yazıldıysa True döner.
+    """Tutarlı SQLite görüntüsünü ŞİFRELİ yazar; yazıldıysa True döner.
 
-    Kip anahtarı `yedekleme.json`un VARLIĞIdır: dosya hiç yoksa parolasız kip →
-    düz yedek (KS K9); dosya var ama okunamıyorsa şifreli kurulum bozulmuş demektir →
-    düz kopya SIZINTI olurdu, yedek atlanır (False).
+    Düz kopya hiçbir durumda yazılmaz. Yedek anahtarı (`yedekleme.json`) yoksa,
+    bozuksa ya da kurtarma başlığı (`guvenlik.json`) kullanılamıyorsa (yok,
+    boş, bozuk, bölümleri eksik) yedek atlanır (False; gerekçeler modül başlığında).
     """
     data_dir = source_path.parent
     if not config_path(data_dir).is_file():
-        _write_plain(database_snapshot(source_path), target_path)
-        return True
+        logger.info("Yönetici parolası henüz kurulmadı; yedek alınmadı.")
+        return False
     try:
         public_key = load_public_key(data_dir)
     except BackupCryptoError:
         logger.warning(
             "Şifreli yedekleme anahtarı bozuk; yedek alınamadı (düz kopya yazılmadı). "
-            "Uygulama parolasıyla kilidi açmak dosyayı onarır."
+            "Yönetici parolasıyla kilidi açmak dosyayı onarır."
+        )
+        return False
+    # Başlık DOĞRULANMIŞ baytlardan gömülür (varlık denetimi + ayrı okuma arasında
+    # dosya değişse bile gömülen, denetlenenle aynıdır).
+    header = usable_recovery_header(data_dir)
+    if header is None:
+        logger.warning(
+            "Güvenlik dosyası (guvenlik.json) bulunamadı ya da okunamıyor; kurtarma "
+            "başlığı olmadan yedek alınmadı. Eski yedekler korunuyor."
         )
         return False
     encrypt_to_path(
         database_snapshot(source_path),
         target_path,
         public_key,
-        recovery_header=recovery_metadata(data_dir),
+        recovery_header=header,
     )
     return True
 
@@ -131,11 +141,12 @@ def _is_encrypted_container(path: Path) -> bool:
 
 
 def encrypt_legacy_backups(backup_dir: Path, data_dir: Path) -> list[Path]:
-    """Düz yedekleri atomik olarak şifreli `.kdbak` biçimine çevirir.
+    """Eski düz yedekleri atomik olarak şifreli `.kdbak` biçimine çevirir.
 
-    İki kaynak vardır: DD dönemi kalıbındaki `*.sqlite3` adlı düz yedekler ve
-    parolasız kipte alınmış düz `.kdbak` yedekleri (KS K9). Parola kurulduğunda /
-    kilit her açıldığında çağrılır — kaynak şifreliyken diskte düz kopya kalmaz.
+    Program artık düz yedek yazmaz; bu yordam, parolasız dal sökülmeden önceki
+    geliştirme sürümlerinden kalmış olabilecek düz dosyalar içindir (`*.sqlite3`
+    adlı ya da düz baytlı `.kdbak`). Parola kurulduğunda ve kilit her
+    açıldığında çağrılır — diskte düz kopya kalmaz.
     """
     if not backup_dir.is_dir():
         return []

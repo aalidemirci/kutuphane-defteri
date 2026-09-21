@@ -13,6 +13,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.http import Http404
 from rest_framework.exceptions import ErrorDetail, NotFound, ValidationError
 
+from shared.crypto import KeyMissingError
 from shared.exceptions import kd_exception_handler
 
 
@@ -80,6 +81,30 @@ def test_cevrilmemis_django_dogrulama_hatasi_400_olur() -> None:
         "message": "Günlük ders saati 1-12 olmalı.",
         "fields": {},
     }
+
+
+def test_anahtar_eksik_hatasi_409_parola_gerekli_olur() -> None:
+    """Fail-closed (§6.3-2/3): izin sınıfı unutulsa bile anahtarsız kişi yazımı 409'dur.
+    İç ayrıntı (hatanın kendi metni) yankılanmaz; sözleşme metni gider."""
+    yanit = kd_exception_handler(KeyMissingError("iç ayrıntı"), _ctx())
+
+    assert yanit is not None and yanit.status_code == 409
+    assert yanit.data == {
+        "code": "parola_gerekli",
+        "message": (
+            "Kişi kaydı için önce yönetici parolasını kurun (Kurulum Sihirbazı'nın ilk adımı)."
+        ),
+        "fields": {},
+    }
+
+
+def test_parola_gerekli_istisnasi_da_409_olur() -> None:
+    from apps.okul.services.app_password import PasswordRequired
+
+    yanit = kd_exception_handler(PasswordRequired(), _ctx())
+
+    assert yanit is not None and yanit.status_code == 409
+    assert yanit.data["code"] == "parola_gerekli"
 
 
 def test_servis_alan_sozlugu_hatasinda_mesaj_gerekceyi_tasir() -> None:

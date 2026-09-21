@@ -1,7 +1,7 @@
-// Kilit ekranı (F5-D5) — uygulama parolası kuruluyken programın ilk yüzü.
-// OYS'de karşılığı YOK (orada Google/JWT girişi vardır); bu ekran authsuz tek
-// kullanıcılı programın TEK kapısıdır: kimlik doğrulamaz, yalnız kayıtların
-// şifresini çözecek anahtarı belleğe aldırır.
+// Kilit ekranı — yönetici parolası kuruluyken programın ilk yüzü (tasarım §4.4).
+// OYS'de karşılığı YOK (orada Google/JWT girişi vardır); bu ekran hesapsız
+// programın kilit kapısıdır: kimlik doğrulamaz, yalnız kayıtların şifresini
+// çözecek anahtarı belleğe aldırır. Açılış yönetici kipine götürür.
 //
 // İki yol sunar: parola VE (parola unutulduysa) kurtarma anahtarı. İkincisi
 // yeni parola belirlemeyi de zorunlu kılar — kurtarma bir kerelik giriş değil,
@@ -95,7 +95,7 @@ export default function KilitEkrani({ onAcildi, yarimGecis = false }: KilitEkran
             </>
           ) : (
             <TextField
-              label="Uygulama parolası"
+              label="Yönetici parolası"
               type="password"
               value={parola}
               onChange={(e) => setParola(e.target.value)}

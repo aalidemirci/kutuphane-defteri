@@ -1,4 +1,4 @@
-"""`okul` modelleri — kurum künyesi, ders yılı/dönemler, kişi sicilleri, şube kataloğu, içe aktarma.
+"""`okul` modelleri — kurum künyesi, ders yılı/dönemler, kapalı günler, kişi sicilleri, şube kataloğu, içe aktarma.
 
 KS'den alındı (KS bunu DD'nin `apps/okul/models.py` kalıbından türetmişti);
 Kütüphane Defteri için sadeleştirildi (tasarım §6.1, §12):
@@ -10,6 +10,9 @@ Kütüphane Defteri için sadeleştirildi (tasarım §6.1, §12):
 - `Personnel`: DD kalıbı + `is_active` + şifreli ad-soyad.
 - `ClassSection`: şube kataloğu — ders yılı içinde görülen (seviye, şube)
   çiftleri; içe aktarma sonrası tohumlanır.
+- `Holiday`: DD'nin tatil tablosu, UYARLANARAK — + `SCHOOL_BREAK` türü
+  ("öğrenciye kapalı gün"); iade tarihi kaydırmasının veri kaynağıdır
+  (`shared.working_days`, tasarım §9-5).
 - Sınıf seviyeleri OKUL İÇİ SABİTTİR (`normalize.GRADE_LEVELS`, 1-12); hazırlık
   sınıfı KS'deki gibi 0 koduyla temsil edilir ve `SchoolConfig.has_prep_class`
   açıkken geçerli kümeye girer.
@@ -155,6 +158,74 @@ class SchoolTerm(BaseModel):
 
     def __str__(self) -> str:
         return f"{self.school_year.name} · {self.name}"
+
+
+class HolidayKind(models.TextChoices):
+    """Kapalı gün türü — DD `HolidayKind` + `SCHOOL_BREAK` (tasarım §6.1, §9-5).
+
+    İade tarihi kaydırmasında türler İKİ ayrı kurala ayrılır; dayanakları farklıdır
+    (`shared.working_days` modül yorumu):
+
+    - `OFFICIAL`, `RELIGIOUS`, `OTHER` her zaman kapalıdır (hafta sonu gibi).
+    - `SCHOOL_BREAK` ("öğrenciye kapalı gün": ara tatil, yarıyıl) kanunen tatil
+      DEĞİLDİR, mesai sürer; bu günlerde kaydırma okulun tercihidir ve ayarla
+      kapanır. DD bu günleri Holiday'e hiç almıyordu (disiplin süreleri işler);
+      kütüphanede öğrenci okulda olmadığı için ayrı türle tutulur (UY-13, SU-6).
+    """
+
+    OFFICIAL = "OFFICIAL", "Resmî tatil"
+    RELIGIOUS = "RELIGIOUS", "Dini bayram"
+    SCHOOL_BREAK = "SCHOOL_BREAK", "Öğrenciye kapalı gün"
+    OTHER = "OTHER", "İdari izin / diğer"
+
+
+class Holiday(BaseModel):
+    """Kapalı gün aralığı (DD `Holiday` — UYARLA; tasarım §6.1).
+
+    Ders yılına BAĞLANMAZ (DD kalıbı): kapalı gün sorusu tarih kapsamasıyla
+    cevaplanır. Tek günlük kayıtta başlangıç ve bitiş aynı gündür.
+
+    `is_estimated`: hicri takvime bağlı dini bayramlar Diyanet takvimi
+    kesinleşmeden önce TAHMİNİDİR (2027 ve sonrası); arayüz "tahmini" rozetiyle
+    gösterir. Yalnız tohumlama yazar; elle girilen kayıt kesin tarih sayılır.
+    """
+
+    name = models.CharField("ad", max_length=128)
+    start_date = models.DateField("başlangıç", db_index=True)
+    end_date = models.DateField("bitiş")
+    kind = models.CharField(
+        "tür", max_length=16, choices=HolidayKind.choices, default=HolidayKind.OFFICIAL
+    )
+    is_estimated = models.BooleanField("tahmini", default=False)
+
+    class Meta:
+        verbose_name = "kapalı gün"
+        verbose_name_plural = "kapalı günler"
+        ordering = ["start_date", "end_date", "pk"]
+        constraints = [
+            # Tohumlama fikirdeşliğinin DB sigortası: aynı (ad, başlangıç) canlı satır tekil.
+            models.UniqueConstraint(
+                fields=["name", "start_date"],
+                condition=models.Q(deleted_at__isnull=True),
+                name="uq_holiday_name_start_alive",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(end_date__gte=models.F("start_date")),
+                name="ck_holiday_date_order",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(kind__in=HolidayKind.values),
+                name="ck_holiday_kind",
+            ),
+            # "Tahmini" yalnız hicri takvime bağlı dini bayramda anlamlıdır.
+            models.CheckConstraint(
+                condition=models.Q(is_estimated=False) | models.Q(kind=HolidayKind.RELIGIOUS),
+                name="ck_holiday_estimated_religious",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.start_date})"
 
 
 class Personnel(BaseModel):

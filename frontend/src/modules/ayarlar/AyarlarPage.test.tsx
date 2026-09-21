@@ -1,6 +1,7 @@
-// AyarlarPage testi: ders yılları + şube kataloğu + okul bilgileri (hazırlık
-// sınıfı dahil) + güvenlik sekmesinin varlığı. Güvenlik panelinin kendi davranışı
-// modules/guvenlik testlerinde; burada yalnız sekme kablolaması doğrulanır.
+// AyarlarPage testi: ders yılları + kapalı günler + şube kataloğu + okul bilgileri
+// (hazırlık sınıfı dahil) + güvenlik sekmesinin varlığı. Güvenlik ve kapalı gün
+// panellerinin kendi davranışı modules/guvenlik ve modules/takvim testlerinde;
+// burada yalnız sekme kablolaması doğrulanır.
 // Kaldırılan sekmeler (ders saatleri, zümreler, şube kümeleri) ve okul türü/
 // çizelge/ayrışma alanları geri gelmesin diye ayrıca sabitlenir.
 
@@ -37,6 +38,11 @@ vi.mock("../okul/api", async (importOriginal) => {
 // Güvenlik paneli kendi API'sine gider; bu testte içeriği önemsizdir.
 vi.mock("../guvenlik/GuvenlikAyarlari", () => ({
   default: () => <div>GÜVENLİK PANELİ</div>,
+}));
+
+// Kapalı gün paneli kendi testinde; burada yalnız sekmeye bağlandığı doğrulanır.
+vi.mock("../takvim/KapaliGunlerPaneli", () => ({
+  default: () => <div>KAPALI GÜNLER PANELİ</div>,
 }));
 
 import AyarlarPage from "./AyarlarPage";
@@ -104,11 +110,12 @@ afterEach(() => {
 });
 
 describe("AyarlarPage — sekmeler", () => {
-  it("beş sekme vardır; kaldırılan sekmeler geri gelmez", async () => {
+  it("altı sekme vardır; kaldırılan sekmeler geri gelmez", async () => {
     renderPage();
     await screen.findByText("2026-2027");
     expect(screen.getAllByRole("tab").map((t) => t.textContent?.trim())).toEqual([
       expect.stringContaining("Ders Yılları"),
+      expect.stringContaining("Kapalı Günler"),
       expect.stringContaining("Şubeler"),
       expect.stringContaining("Okul Bilgileri"),
       expect.stringContaining("Güvenlik"),
@@ -299,6 +306,34 @@ describe("AyarlarPage — okul bilgileri", () => {
     await user.click(screen.getByRole("button", { name: "Kaydet" }));
 
     expect(await screen.findByText("Okul adı zorunludur.")).toBeInTheDocument();
+  });
+});
+
+describe("AyarlarPage — kapalı günler", () => {
+  it("“Kapalı Günler” sekmesi paneli gösterir", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("tab", { name: /Kapalı Günler/ }));
+    expect(await screen.findByText("KAPALI GÜNLER PANELİ")).toBeInTheDocument();
+  });
+
+  it("?tab=kapali-gunler adresi sekmeyi seçili açar", async () => {
+    renderPage("/ayarlar?tab=kapali-gunler");
+    expect(await screen.findByText("KAPALI GÜNLER PANELİ")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Kapalı Günler/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("dönem düzenleyicisi yarıyılın kapalı gün olarak girilmesini söyler", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("2026-2027");
+    await user.click(screen.getAllByRole("button", { name: /Dönemler/ })[0]);
+    expect(
+      await screen.findByText(/Kapalı Günler sekmesinde öğrenciye kapalı gün olarak ekleyin/),
+    ).toBeInTheDocument();
   });
 });
 

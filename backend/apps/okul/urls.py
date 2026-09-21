@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from django.urls import path
 
-from apps.okul import views
+from apps.okul import views, views_calendar, views_mode
 
 urlpatterns = [
     # Kurulum sihirbazı
@@ -30,6 +30,14 @@ urlpatterns = [
         "school-years/<int:pk>/activate/",
         views.SchoolYearActivateView.as_view(),
         name="school-year-activate",
+    ),
+    # Kapalı günler: resmî/dini tatil, öğrenciye kapalı gün, idari izin (tasarım §6.1)
+    path("holidays/", views_calendar.HolidayListCreateView.as_view(), name="holiday-list"),
+    path("holidays/seed/", views_calendar.HolidaySeedView.as_view(), name="holiday-seed"),
+    path(
+        "holidays/<int:pk>/",
+        views_calendar.HolidayDetailView.as_view(),
+        name="holiday-detail",
     ),
     # Öğrenciler / Personel / Şubeler
     path("students/", views.StudentListCreateView.as_view(), name="student-list"),
@@ -66,7 +74,7 @@ urlpatterns = [
     # Şablon indirme
     path("templates/students/", views.StudentTemplateView.as_view(), name="template-students"),
     path("templates/personnel/", views.PersonnelTemplateView.as_view(), name="template-personnel"),
-    # Uygulama parolası / kilit (tasarım §5)
+    # Yönetici parolası / kilit (tasarım §4.3, §6.3; parolayı kaldırma ucu yok)
     path("security/status/", views.SecurityStatusView.as_view(), name="security-status"),
     path("security/enable/", views.SecurityEnableView.as_view(), name="security-enable"),
     path("security/unlock/", views.SecurityUnlockView.as_view(), name="security-unlock"),
@@ -77,7 +85,19 @@ urlpatterns = [
         views.SecurityChangePasswordView.as_view(),
         name="security-change-password",
     ),
-    path("security/disable/", views.SecurityDisableView.as_view(), name="security-disable"),
+    # Kip: görevli kipi / yönetici kipi (U5, tasarım §4.4). `security/mode/`
+    # hiçbir kipte kesilmez; `staff/` görevli kipinde kapalıdır (kip_izinleri).
+    path("security/mode/", views_mode.KipDurumView.as_view(), name="security-mode"),
+    path(
+        "security/mode/staff/",
+        views_mode.GorevliKipineGecView.as_view(),
+        name="security-mode-staff",
+    ),
+    path(
+        "security/mode/admin/",
+        views_mode.YoneticiKipineGecView.as_view(),
+        name="security-mode-admin",
+    ),
     path(
         "backups/encrypted/",
         views.EncryptedBackupDownloadView.as_view(),

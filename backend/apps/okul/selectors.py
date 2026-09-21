@@ -9,6 +9,7 @@ ve şube düz alanlardır; süzgeçleri DB tarafında kalır.
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 from django.db.models import QuerySet
@@ -17,6 +18,7 @@ from apps.okul import normalize
 from apps.okul.excel_ogrenci import normalize_header
 from apps.okul.models import (
     ClassSection,
+    Holiday,
     ImportRun,
     Personnel,
     SchoolConfig,
@@ -221,3 +223,29 @@ def distinct_class_levels() -> list[int]:
     """Sicilde fiilen kayıtlı sınıf seviyeleri (artan, tekilleştirilmiş)."""
     values = Student.objects.exclude(class_level=None).values_list("class_level", flat=True)
     return sorted({int(v) for v in values})
+
+
+# ---------------------------------------------------------------------------
+# Kapalı günler (F1-D; kişisel veri yok)
+# ---------------------------------------------------------------------------
+
+
+def holidays(*, year: int | None = None) -> QuerySet[Holiday]:
+    """Canlı kapalı günler; `year` verilirse o takvim yılıyla KESİŞENLER (yıl sınırını
+    aşan aralık iki yılda da görünür)."""
+    qs = Holiday.objects.all()
+    if year is not None:
+        qs = qs.filter(start_date__lte=date(year, 12, 31), end_date__gte=date(year, 1, 1))
+    return qs
+
+
+def holidays_sorted(*, year: int | None = None) -> list[Holiday]:
+    """Kullanıcıya gösterilen liste: tarih sırası, eşitlikte TR ad sırası."""
+    return sorted(
+        holidays(year=year),
+        key=lambda h: (h.start_date, h.end_date, normalize.tr_sort_key(h.name)),
+    )
+
+
+def get_holiday(holiday_id: int) -> Holiday | None:
+    return Holiday.objects.filter(pk=holiday_id).first()

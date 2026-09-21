@@ -186,7 +186,9 @@ Program her gün bir otomatik yedek alır (`gunluk-<tarih>.kdbak`) ve 14 gün
 saklar; her sürüm güncellemesinden önce ayrıca bir yedek bırakır
 (`pre-migrate-<sürüm>-<tarih>.kdbak`, son 5 adet). Program tepside günlerce
 açık kalsa da günlük yedek her gün alınır. Yedekler şifrelidir ve ancak
-yönetici parolası ya da kurtarma anahtarıyla açılır.
+yönetici parolası ya da kurtarma anahtarıyla açılır. Yönetici parolası
+kurulmadan (ilk açılış) yedek alınmaz; ilk yedek parola kurulduktan sonraki
+açılışta alınır.
 
 Yedekler bilgisayarın kendisindedir: disk bozulursa onlar da gider. Ayda bir
 Ayarlar → Güvenlik'ten **şifreli yedek indirip** USB belleğe alın ve USB'yi
@@ -208,6 +210,24 @@ dönemdeki parola) ya da kurtarma anahtarı sorulur. Mevcut veritabanı
 SİLİNMEZ; `db-onceki-<tarih>` adıyla `data` klasöründe saklanır. İşlem bitince
 programı normal açın.
 
+### 6.2 "Güvenlik dosyası bulunamadı ya da okunamıyor" ekranı
+
+Kayıtların anahtarı `data` klasöründeki `guvenlik.json` dosyasında durur.
+Dosya silinir, adı değişir ya da içi boşalır/bozulursa (ör. Not Defteri'nde
+açılıp yanlışlıkla kaydedilirse) program kayıtları açmaz ve bu ekranı
+gösterir; yeni parola da kurulamaz. İki çıkış yolu vardır:
+
+1. Dosyanın sağlam bir kopyası varsa (taşıma sırasında alınan veri klasörü,
+   USB bellek) `guvenlik.json`'u `data` klasörüne geri koyun (bozuk dosyanın
+   yerine) ve ekrandaki **Yeniden denetle** düğmesine basın. Kilit ekranı gelir.
+2. Kopya yoksa aynı ekrandan (ya da §6.1'deki araçla) bir yedeği geri
+   yükleyin. Her yedek güvenlik dosyasını da içinde taşır; geri yükleme dosyayı
+   yeniden oluşturur. O yedekten sonra girilen kayıtlar kalkar.
+
+Dosya kayıpken ya da bozukken program eski yedekleri silmez ve güvenlik
+dosyası olmayan yeni yedek almaz. Geri yükleme bozuk dosyayı silmez,
+`guvenlik-arsiv-<tarih>.json` adıyla kenara alır.
+
 ## 7. Yeni bilgisayara taşıma — kontrol listesi
 
 Bilgisayar değişirse, yeniden kurulursa ya da disk değişirse sırayla:
@@ -220,7 +240,7 @@ Bilgisayar değişirse, yeniden kurulursa ya da disk değişirse sırayla:
        (§1.3).
 3. [ ] Programı masa hesabında, BTR'nin UAC kimliğiyle **kurun** (§3.1).
        "Yerel ağdan katalog taramasına izin ver" seçeneğini işaretleyin.
-4. [ ] `.kdbak` yedeğini **geri yükleyin** (§6.1).
+4. [ ] İndirdiğiniz şifreli yedeği **geri yükleyin** (§6.1).
 5. [ ] Programı açın; kitap, üye ve açık ödünç sayılarını eski bilgisayardaki
        son durumla karşılaştırın.
 6. [ ] Ağ Kataloğu kullanılıyorsa: Ağ Doktoru'nda **güvenlik duvarı**
