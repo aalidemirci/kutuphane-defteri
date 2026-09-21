@@ -29,13 +29,16 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   `REMOTE_ADDR` başına token-bucket. **Kalan risk yalnız katalogun erişilemez
   olmasıdır**; veri riski yoktur, yönetim sunucusu ayrı dinleyicidedir.
 
-- **TB3 — `PRAGMA synchronous=FULL` maliyeti ölçülmedi (T15, A18):** WAL +
-  `NORMAL` elektrik kesintisinde son işlemleri geri alabilir; dolaşımda bu
-  sessiz kayıptır (SU-18). Bu yüzden `FULL` seçildi; her commit fsync bekler.
-  Dolaşımın yazma hacmi düşük olduğu için maliyetin hissedilmeyeceği
-  varsayılıyor. **F0'da ölçülüp sonuç buraya yazılacak** (okutma başına süre,
-  toplu içe aktarımda toplam süre; HDD'li eski masaüstünde ayrıca). Toplu
-  içe aktarım yavaşsa işlem tek transaction'da tutulur, `synchronous` gevşetilmez.
+- **TB3 — `PRAGMA synchronous=FULL` maliyeti (T15, A18):** WAL + `NORMAL`
+  elektrik kesintisinde son işlemleri geri alabilir; dolaşımda bu sessiz
+  kayıptır (SU-18). Bu yüzden `FULL` seçildi; her commit fsync bekler.
+  **F0 ölçümü (21.09.2026, Docker/WSL2 ext4, 500 tek-satırlı işlem, her biri
+  ayrı `BEGIN IMMEDIATE…COMMIT`):** NORMAL 0,009 ms/işlem, FULL 1,215 ms/işlem.
+  Okutma başına ~1 ms insan hızındaki dolaşımda hissedilmez; toplu içe aktarım
+  tek transaction'da olduğu için tek fsync öder. **Açık:** HDD'li eski
+  Windows masaüstünde (NTFS fsync 5-20 ms beklenir) F12 saha provasında
+  yeniden ölçülecek; yavaşlık çıkarsa `synchronous` gevşetilmez, yazma
+  işlemleri toplanır.
 
 - **TB4 — Logo geçici: kelebek çizimi (F0 kopyası):** `packaging/ikonlar/
   logo_uret.py` kardeş projenin koltuk-karesi kelebeğini üretiyor; açıklaması
