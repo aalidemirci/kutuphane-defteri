@@ -22,6 +22,26 @@ function Harness({ onResult }: { onResult: (ok: boolean) => void }) {
   );
 }
 
+// İkinci doğrulama isteyen çağrı (TB18): geri alınamayan birleştirme.
+function AckHarness({ onResult }: { onResult: (ok: boolean) => void }) {
+  const confirm = useConfirm();
+  return (
+    <button
+      onClick={async () =>
+        onResult(
+          await confirm({
+            message: "Kayıtlar birleşsin mi?",
+            confirmLabel: "Birleştir",
+            acknowledgeLabel: "Aynı kişi olduğunu doğruladım",
+          }),
+        )
+      }
+    >
+      tetikle
+    </button>
+  );
+}
+
 function renderWithProvider(onResult: (ok: boolean) => void = () => {}) {
   return render(
     <ConfirmProvider>
@@ -71,6 +91,41 @@ describe("ConfirmProvider", () => {
     await user.click(await screen.findByRole("button", { name: "Vazgeç" }));
     await waitFor(() => expect(onResult).toHaveBeenCalledWith(false));
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("ikinci doğrulama istenirse onay düğmesi kutu işaretlenmeden kapalıdır", async () => {
+    const user = userEvent.setup();
+    const onResult = vi.fn();
+    render(
+      <ConfirmProvider>
+        <AckHarness onResult={onResult} />
+      </ConfirmProvider>,
+    );
+    await user.click(screen.getByText("tetikle"));
+
+    const dugme = await screen.findByRole("button", { name: "Birleştir" });
+    expect(dugme).toBeDisabled();
+    await user.click(screen.getByRole("checkbox", { name: "Aynı kişi olduğunu doğruladım" }));
+    expect(dugme).toBeEnabled();
+    await user.click(dugme);
+    await waitFor(() => expect(onResult).toHaveBeenCalledWith(true));
+  });
+
+  it("kutu bir sonraki onaya devredilmez", async () => {
+    const user = userEvent.setup();
+    render(
+      <ConfirmProvider>
+        <AckHarness onResult={() => {}} />
+      </ConfirmProvider>,
+    );
+    await user.click(screen.getByText("tetikle"));
+    await user.click(await screen.findByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: "Vazgeç" }));
+
+    await user.click(screen.getByText("tetikle"));
+
+    expect(await screen.findByRole("checkbox")).not.toBeChecked();
+    expect(screen.getByRole("button", { name: "Birleştir" })).toBeDisabled();
   });
 
   it("ESC tuşu Promise'i false çözer", async () => {

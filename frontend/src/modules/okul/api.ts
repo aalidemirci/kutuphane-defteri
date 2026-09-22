@@ -288,10 +288,32 @@ export interface LeavePoolStudent {
   run: LeavePoolRun | null;
 }
 
+/**
+ * Eşleşme gerekçesi — backend `name_match.MatchReason` ile birebir (TB18).
+ * "Adı aynı" adaşı da yakalar; kullanıcı bunu ancak gerekçeyi görürse anlar.
+ */
+export type SimilarReason = "ayni_ad_soyad" | "ad_ayni_soyad_farkli" | "yazim_farki";
+
+/** Aday satırında ve onay diyaloğunda yazılan gerekçe (eksik kod derlemede yakalanır). */
+export const SIMILAR_REASON_TR: Record<SimilarReason, string> = {
+  ayni_ad_soyad: "ad ve soyadı birebir aynı",
+  ad_ayni_soyad_farkli: "adı aynı, soyadı farklı",
+  yazim_farki: "ad-soyadında küçük yazım farkı",
+};
+
+/** Bilinmeyen kod (eski yanıt) ekranı boş bırakmasın: kısa ve dürüst karşılık. */
+export function benzerlikGerekcesi(reason: string): string {
+  return SIMILAR_REASON_TR[reason as SimilarReason] ?? "ad benzerliği";
+}
+
 /** Havuzdaki kişiyle "olası aynı kişi" olan, sonradan açılmış kayıt. */
 export interface LeavePoolSimilar {
   id: number;
   full_name: string;
+  member_kind: MemberKind;
+  /** Adayın sicile eklendiği gün (ISO) — onay diyaloğunda ayırt edici bilgi. */
+  created_on: string;
+  reason: SimilarReason;
 }
 
 /** Havuzdaki öğretmen / diğer personel — LeavePoolPersonnelSerializer ile birebir. */
@@ -450,6 +472,8 @@ export interface SimilarPair {
   existing_id: number;
   existing_name: string;
   new_id: number | null;
+  /** Çiftin neden kurulduğu (TB18); eski raporlarda boş olabilir. */
+  reason: SimilarReason | "";
 }
 
 /** Aktarım kimseyi ayırmaz: listede olmayan aktif personel ayrılış havuzuna girer. */

@@ -166,6 +166,8 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     expect(metin).toContain("Yönetici parolası zorunludur ve bu adım atlanamaz");
     // F1 eki, karar 2: kurulum anahtar doğrulanmadan tamamlanmaz; iki çıkış yolu.
     expect(metin).toContain("kurulum bu doğrulama yapılmadan tamamlanmaz");
+    // TB19: gözetimsiz ekranda kurtarma anahtarı gizlenir (kip askısı korunur).
+    expect(metin).toContain("Beş dakika hiçbir işlem yapılmazsa anahtar ekranda gizlenir");
     expect(metin).toContain("Kurtarma Anahtarını Doğrula:");
     expect(metin).toContain("Kurtarma Anahtarını Yenile:");
     expect(metin).toContain("müdürlükte kilitli dolapta saklayın");
@@ -268,6 +270,9 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     expect(metin).toContain("o satırdaki okul numarasına sahip öğrenci havuza eklenmez");
     expect(metin).toContain("aynı numara ve aynı adla");
     expect(metin).toContain("Olası aynı kişi");
+    // TB18: aday satırı gerekçeyi yazar, birleştirme ikinci doğrulama ister.
+    expect(metin).toContain("neden aday olduğunu");
+    expect(metin).toContain("onay kutusunu işaretlemeden düğme açılmaz");
     expect(metin).toContain("görev sütunu yalnız üye türünü");
     // Kişisel veri notu (tasarım §4.5): liste dosyası aktarımdan sonra silinir.
     expect(metin).toContain("aktarım biter bitmez silin");

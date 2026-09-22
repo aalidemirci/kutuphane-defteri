@@ -223,7 +223,9 @@ export default function KilavuzPage() {
           kipine döndüğünüzde sihirbaz anahtarı yeniden gösterir ve doğrulamayı yeniden ister.
           Kurulum bitene kadar program kendiliğinden görevli kipine geçmez (boşta ve mutlak süre
           kurulum tamamlanınca işlemeye başlar), ama programı kapatırsanız anahtar gider: kapanan
-          programda anahtar yeniden gösterilemez.
+          programda anahtar yeniden gösterilemez. Beş dakika hiçbir işlem yapılmazsa anahtar ekranda
+          gizlenir (“Anahtarı göster” ile geri gelir): masadan kalktığınızda ekranda açık kalmasın
+          diyedir, anahtar kaybolmaz.
         </p>
         <p>
           Anahtar ekranda değilken (ör. program kapandı ya da kurtarma anahtarını kaydedemediniz)
@@ -492,8 +494,11 @@ export default function KilavuzPage() {
             işaretlemeyin; aktardıktan sonra “Birleştir” düğmesine basın (aynı düğme “Ayrılış
             Havuzu” sekmesinde de vardır). Eski kaydın kütüphane bağları yeni kayda taşınır ve eski
             kayıt silinir. Benzerlik yalnız addan hesaplanır: okula yeni gelen bir adaş da eş olarak
-            görünebilir. Birleştirmeden önce gerçekten aynı kişi olduğunu doğrulayın; birleştirme
-            geri alınamaz.
+            görünebilir. Her satır <strong>neden aday olduğunu</strong> yazar (“adı aynı, soyadı
+            farklı”, “ad-soyadında küçük yazım farkı” gibi); havuzda ayrıca adayın üye türü ve
+            sicile eklendiği gün görünür. Birleştirme geri alınamadığı için onay kutusunu
+            işaretlemeden düğme açılmaz: kutuyu yalnız iki kaydın aynı kişiye ait olduğundan
+            eminseniz işaretleyin.
           </li>
         </ul>
 

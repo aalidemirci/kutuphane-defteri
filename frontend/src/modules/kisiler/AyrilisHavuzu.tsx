@@ -7,7 +7,9 @@
 //     SİLİNMEZ (iade etmediği kitap izlenebilsin), "Ayrıldı · gg.aa.yyyy" rozetiyle kalır.
 //   - "Aktif kalsın": yalnız havuzdan çıkar; sonraki listede yine yoksa geri gelir.
 // Yıl sonu mezunları sınıf süzgeciyle seçilip toplu ayrılır. Personelde "olası aynı
-// kişi" (ör. soyadı değişimi) adayları gösterilir, onaylı "Birleştir" buradan da yapılır.
+// kişi" (ör. soyadı değişimi) adayları EŞLEŞME GEREKÇESİYLE gösterilir (TB18: aday ad
+// benzerliğiyle bulunur, adaş olabilir); "Birleştir" geri alınamadığı için onay
+// diyaloğu iki kaydı ayırt eden bilgiyi yazar ve ikinci bir doğrulama kutusu ister.
 //
 // Karar tek işlemdir: seçilenlerden biri başka pencerede çözülmüşse backend hiçbir
 // kararı uygulamaz (400) — liste yenilenir, kullanıcı yeniden seçer. Adlar yalnız bu
@@ -24,7 +26,7 @@ import Icon from "../../ui/Icon";
 import Select from "../../ui/Select";
 import { SkeletonList } from "../../ui/Skeleton";
 import { useSnackbar } from "../../ui/SnackbarProvider";
-import { MEMBER_KIND_TR, okulApi } from "../okul/api";
+import { MEMBER_KIND_TR, benzerlikGerekcesi, okulApi } from "../okul/api";
 import type {
   LeavePool,
   LeavePoolPersonnel,
@@ -176,11 +178,19 @@ export default function AyrilisHavuzu({ onDegisti }: { onDegisti?: () => void })
     await uygula(tur, "keep", kimlikler);
   };
 
+  // Birleştirme GERİ ALINAMAZ ve aday yalnız ad benzerliğiyle bulunur (TB18):
+  // diyalog iki kaydı ayırt eden bilgiyi ve eşleşme gerekçesini yazar, onay
+  // düğmesi kullanıcı "aynı kişi" kutusunu işaretlemeden açılmaz.
   const birlestir = async (kisi: LeavePoolPersonnel, aday: LeavePoolSimilar) => {
     const ok = await confirm({
-      title: "Kayıtlar birleştirilsin mi?",
-      message: `“${kisi.full_name}” kaydının kütüphane bağları “${aday.full_name}” kaydına taşınır ve eski kayıt silinir. Bu işlem geri alınamaz.`,
+      title: "Bu iki kayıt aynı kişi mi?",
+      message:
+        `Havuzdaki kayıt: “${kisi.full_name}” — ${MEMBER_KIND_TR[kisi.member_kind]}, havuza giriş ${formatDate(kisi.leave_candidate_since)}. ` +
+        `Kalacak kayıt: “${aday.full_name}” — ${MEMBER_KIND_TR[aday.member_kind]}, sicile eklendi ${formatDate(aday.created_on)}. ` +
+        `Aday yalnız ad benzerliğiyle bulundu (${benzerlikGerekcesi(aday.reason)}); okula yeni gelen bir adaş da olabilir. ` +
+        `Onaylarsanız havuzdaki kaydın kütüphane bağları kalacak kayda taşınır ve havuzdaki kayıt silinir. Bu işlem geri alınamaz.`,
       confirmLabel: "Birleştir",
+      acknowledgeLabel: "Bu iki kaydın aynı kişi olduğunu doğruladım",
     });
     if (!ok) return;
     setMesgul(true);
@@ -468,9 +478,10 @@ function PersonelBolumu({
             <span>
               “Olası aynı kişi” sütunundaki kayıt listede yeni adla görünen aynı kişi olabilir (ör.
               soyadı değişimi). Öyleyse ayrıldı diye işaretlemeyin; “Birleştir” ile eski kaydın
-              kütüphane bağlarını yeni kayda taşıyın. Adaylar yalnız ad benzerliğine göre
-              listelenir: okula yeni gelen bir adaş da burada görünebilir. Birleştirmeden önce aynı
-              kişi olduğunu doğrulayın; birleştirme geri alınamaz.
+              kütüphane bağlarını yeni kayda taşıyın. Adaylar yalnız ad benzerliğine göre listelenir
+              — her satır neden aday olduğunu yazar; okula yeni gelen bir adaş da burada
+              görünebilir. Birleştirmeden önce aynı kişi olduğunu doğrulayın; birleştirme geri
+              alınamaz.
             </span>
           </p>
         )}
@@ -523,19 +534,27 @@ function PersonelBolumu({
                     {k.similar.length === 0 ? (
                       "—"
                     ) : (
-                      <ul className="space-y-1">
+                      <ul className="space-y-2">
                         {k.similar.map((aday) => (
-                          <li key={aday.id} className="flex flex-wrap items-center gap-2">
-                            <span>{aday.full_name}</span>
-                            <Button
-                              variant="text"
-                              icon="merge"
-                              disabled={mesgul}
-                              onClick={() => onBirlestir(k, aday)}
-                              aria-label={`${k.full_name} kaydını ${aday.full_name} kaydıyla birleştir`}
-                            >
-                              Birleştir
-                            </Button>
+                          <li key={aday.id} className="space-y-0.5">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span>{aday.full_name}</span>
+                              <Button
+                                variant="text"
+                                icon="merge"
+                                disabled={mesgul}
+                                onClick={() => onBirlestir(k, aday)}
+                                aria-label={`${k.full_name} kaydını ${aday.full_name} kaydıyla birleştir`}
+                              >
+                                Birleştir
+                              </Button>
+                            </div>
+                            {/* Neden aday? Kural adı yeterli sayar; adaş da buraya düşer (TB18). */}
+                            <p className="text-body-small text-on-surface-variant">
+                              Neden aday: {benzerlikGerekcesi(aday.reason)} ·{" "}
+                              {MEMBER_KIND_TR[aday.member_kind]}, sicile eklendi{" "}
+                              {formatDate(aday.created_on)}
+                            </p>
                           </li>
                         ))}
                       </ul>

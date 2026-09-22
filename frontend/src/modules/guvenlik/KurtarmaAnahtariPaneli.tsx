@@ -18,6 +18,19 @@
 // damgası yazar (F1 eki, karar 2; kurulum damgasız tamamlanmaz). `onDogrulama(true)`
 // ancak sunucu damgayı yazınca bildirilir; hata olursa ileti ve "Yeniden dene" çıkar.
 //
+// GÖZETİMSİZ EKRAN (TB19): kurulum bitene kadar kip süreyle düşmez (kullanıcı kararı
+// 2-1) — anahtar bellekte kalır, program kendiliğinden kilitlenmez. Bedeli anahtarın
+// ekranda süresiz durmasıydı; panel 5 dakika hiç etkileşim olmazsa anahtarı YERİNDE
+// gizler ("Anahtarı göster" ile geri gelir). Sayaç yalnız görseldir: kipi düşürmez,
+// sunucuya bir şey sormaz, anahtarı bellekten silmez — masadan kalkıldığında omuz
+// üstünden okunmasını zorlaştıran kaza önleyicidir (§4.2-4'teki Çık parolası gibi).
+// Etkileşim saati `lib/api.ts` içinde ZATEN tutulur (kip boşta sayacı için, yakalama
+// evresinde pointerdown + keydown): panel kendi küresel dinleyicisini kurmaz, o saati
+// okur — ikinci bir dinleyici aynı olayı iki kez izler ve iki ölçü birbirinden
+// kayardı. Panele ait olan yalnız yoklama zamanlayıcısıdır. Gizliyken anahtar DOM'da
+// da değildir: yazdırma alanı da onu göstermez. PDF yolu etkilenmez (bellekteki
+// anahtarla çalışır), düğmeler anahtarla birlikte geri gelir.
+//
 // Yazdırma notu: program bir masaüstü penceresinde (pywebview) koştuğu için
 // `window.print()` bütün kabuğu basardı. Panel görünürken devreye giren küçük
 // yazdırma stili sayfadaki her şeyi gizleyip yalnız anahtar alanını bırakır.
@@ -27,7 +40,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { ApiError } from "../../lib/api";
+import { ApiError, sonEtkilesimAni } from "../../lib/api";
 import Button from "../../ui/Button";
 import Card from "../../ui/Card";
 import Icon from "../../ui/Icon";
@@ -43,6 +56,11 @@ import {
 import { ELLE_YAZ_METNI, KURTARMA_UYARISI, dogrulamaMetni } from "./metinler";
 
 const YAZDIRMA_ALANI_ID = "kurtarma-anahtari-yazdirma-alani";
+
+/** Anahtarın ekranda gizleneceği boşta süre (TB19; yalnız görsel önlem). */
+export const BOSTA_GIZLEME_MS = 5 * 60_000;
+/** Boşta süresinin yoklanma aralığı — saniye hassasiyeti gerekmez. */
+const YOKLAMA_ARALIGI_MS = 15_000;
 
 const YAZDIRMA_STILI = `
   @media print {
@@ -87,6 +105,10 @@ export default function KurtarmaAnahtariPaneli({
   const [yanitlar, setYanitlar] = useState<[string, string]>(["", ""]);
   const [onay, setOnay] = useState<Onay>("bekliyor");
   const [onayHatasi, setOnayHatasi] = useState<string | null>(null);
+  // Boşta gizleme (TB19): `gorunurlukAni` anahtarın en son gösterildiği andır;
+  // etkileşim saati lib/api.ts'ten okunur (panelin kendi dinleyicisi yok).
+  const [gizli, setGizli] = useState(false);
+  const [gorunurlukAni, setGorunurlukAni] = useState(() => Date.now());
   // Her yeni istek (ya da iptal) sayacı artırır; bayat yanıt durumu değiştirmez.
   const istekNo = useRef(0);
   const { indir, indiriliyor, hata: pdfHatasi } = useKurtarmaCiktisi();
@@ -99,6 +121,21 @@ export default function KurtarmaAnahtariPaneli({
   useEffect(() => {
     onDogrulama(dogrulandi);
   }, [dogrulandi, onDogrulama]);
+
+  // Anahtar ekrandayken boşta süreyi yoklar; doğrulama kipinde zaten ekranda değildir.
+  useEffect(() => {
+    if (asama !== "goster" || gizli) return;
+    const zamanlayici = window.setInterval(() => {
+      const sonHareket = Math.max(gorunurlukAni, sonEtkilesimAni());
+      if (Date.now() - sonHareket >= BOSTA_GIZLEME_MS) setGizli(true);
+    }, YOKLAMA_ARALIGI_MS);
+    return () => window.clearInterval(zamanlayici);
+  }, [asama, gizli, gorunurlukAni]);
+
+  function anahtariGoster() {
+    setGorunurlukAni(Date.now()); // sayaç sıfırlanır
+    setGizli(false);
+  }
 
   function onayiBirak() {
     istekNo.current += 1;
@@ -143,6 +180,7 @@ export default function KurtarmaAnahtariPaneli({
 
   function anahtariYenidenGoster() {
     onayiBirak();
+    anahtariGoster();
     setAsama("goster");
   }
 
@@ -165,7 +203,23 @@ export default function KurtarmaAnahtariPaneli({
       </div>
       <p className="mt-2 text-body-medium text-on-surface-variant">{KURTARMA_UYARISI}</p>
 
-      {asama === "goster" ? (
+      {asama === "goster" && gizli ? (
+        <div className="mt-4 rounded-shape-md bg-surface-container-high p-4">
+          <p className="flex items-center gap-2 text-body-medium text-on-surface">
+            <Icon name="visibility_off" className="text-on-surface-variant" />
+            Anahtar güvenlik için gizlendi. Beş dakikadır bu pencerede işlem yapılmadı; anahtar
+            bellekte duruyor, kaybolmadı.
+          </p>
+          <div className="mt-3 flex flex-wrap justify-between gap-2">
+            <Button variant="tonal" icon="visibility" type="button" onClick={anahtariGoster}>
+              Anahtarı göster
+            </Button>
+            <Button icon="fact_check" type="button" onClick={dogrulamayaGec}>
+              Sakladım, doğrula
+            </Button>
+          </div>
+        </div>
+      ) : asama === "goster" ? (
         <>
           <style>{YAZDIRMA_STILI}</style>
           <div id={YAZDIRMA_ALANI_ID} className="mt-4">

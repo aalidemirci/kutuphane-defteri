@@ -63,7 +63,15 @@ const HAVUZ: LeavePool = {
       member_kind: "TEACHER",
       leave_candidate_since: "2026-09-22",
       run: null,
-      similar: [{ id: 21, full_name: "AYŞE BEYAZ" }],
+      similar: [
+        {
+          id: 21,
+          full_name: "AYŞE BEYAZ",
+          member_kind: "TEACHER",
+          created_on: "2026-09-22",
+          reason: "ad_ayni_soyad_farkli",
+        },
+      ],
     },
     {
       id: 12,
@@ -312,12 +320,53 @@ describe("AyrilisHavuzu — olası aynı kişi", () => {
         name: "AYŞE KARA kaydını AYŞE BEYAZ kaydıyla birleştir",
       }),
     );
-    const onay = await screen.findByRole("dialog", { name: "Kayıtlar birleştirilsin mi?" });
-    expect(within(onay).getByText(/eski kayıt silinir/)).toBeInTheDocument();
-    await user.click(within(onay).getByRole("button", { name: "Birleştir" }));
+    const onay = await screen.findByRole("dialog", { name: "Bu iki kayıt aynı kişi mi?" });
+    expect(within(onay).getByText(/havuzdaki kayıt silinir/)).toBeInTheDocument();
+    // Diyalog iki kaydı ayırt eden bilgiyi ve gerekçeyi yazar (TB18).
+    expect(within(onay).getByText(/adı aynı, soyadı farklı/)).toBeInTheDocument();
+    expect(within(onay).getByText(/sicile eklendi 22\.09\.2026/)).toBeInTheDocument();
+
+    const dugme = within(onay).getByRole("button", { name: "Birleştir" });
+    expect(dugme).toBeDisabled();
+    await user.click(
+      within(onay).getByRole("checkbox", {
+        name: "Bu iki kaydın aynı kişi olduğunu doğruladım",
+      }),
+    );
+    expect(dugme).toBeEnabled();
+    await user.click(dugme);
 
     await waitFor(() => expect(okulApiMock.mergePersonnel).toHaveBeenCalledWith(11, 21));
     expect(await screen.findByText("Kayıtlar birleştirildi.")).toBeInTheDocument();
     expect(onDegisti).toHaveBeenCalledTimes(1);
+  });
+
+  it("aday satırı neden aday olduğunu yazar (ad benzerliği adaşı da yakalar)", async () => {
+    kur();
+    await screen.findByRole("heading", { name: "Öğrenciler (3)" });
+
+    expect(
+      within(personelBolumu()).getByText(
+        "Neden aday: adı aynı, soyadı farklı · Öğretmen, sicile eklendi 22.09.2026",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/her satır neden aday olduğunu yazar/)).toBeInTheDocument();
+  });
+
+  it("doğrulama kutusu işaretlenmeden birleştirme çağrılmaz", async () => {
+    const user = userEvent.setup();
+    kur();
+    await screen.findByRole("heading", { name: "Öğrenciler (3)" });
+    await user.click(
+      within(personelBolumu()).getByRole("button", {
+        name: "AYŞE KARA kaydını AYŞE BEYAZ kaydıyla birleştir",
+      }),
+    );
+
+    const onay = await screen.findByRole("dialog", { name: "Bu iki kayıt aynı kişi mi?" });
+    await user.click(within(onay).getByRole("button", { name: "Birleştir" }));
+
+    expect(okulApiMock.mergePersonnel).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "Bu iki kayıt aynı kişi mi?" })).toBeInTheDocument();
   });
 });

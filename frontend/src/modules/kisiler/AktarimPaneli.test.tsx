@@ -105,6 +105,7 @@ const PERSONEL_ONIZLEME: PersonnelImportReport = {
       existing_id: 11,
       existing_name: "AYŞE KARA",
       new_id: null,
+      reason: "ad_ayni_soyad_farkli",
     },
   ],
   warnings: [
@@ -382,9 +383,18 @@ describe("AktarimPaneli — personel mutabakatı ve ayrılış havuzu", () => {
       name: "AYŞE KARA kaydını AYŞE BEYAZ kaydıyla birleştir",
     });
     await user.click(birlestir);
-    const onay = await screen.findByRole("dialog", { name: "Kayıtlar birleştirilsin mi?" });
+    const onay = await screen.findByRole("dialog", { name: "Bu iki kayıt aynı kişi mi?" });
     expect(within(onay).getByText(/eski kayıt silinir/)).toBeInTheDocument();
-    await user.click(within(onay).getByRole("button", { name: "Birleştir" }));
+    // Gerekçe + ikinci doğrulama (TB18): kutu işaretlenmeden düğme kapalıdır.
+    expect(within(onay).getByText(/adı aynı, soyadı farklı/)).toBeInTheDocument();
+    const dugme = within(onay).getByRole("button", { name: "Birleştir" });
+    expect(dugme).toBeDisabled();
+    await user.click(
+      within(onay).getByRole("checkbox", {
+        name: "Bu iki kaydın aynı kişi olduğunu doğruladım",
+      }),
+    );
+    await user.click(dugme);
 
     await waitFor(() => expect(okulApiMock.mergePersonnel).toHaveBeenCalledWith(11, 21));
     await waitFor(() => expect(screen.queryByText(/Satır 3: AYŞE BEYAZ/)).toBeNull());
@@ -412,7 +422,7 @@ describe("AktarimPaneli — personel mutabakatı ve ayrılış havuzu", () => {
     const birlestir = await screen.findByRole("button", { name: /kaydıyla birleştir/ });
     await user.click(birlestir);
     await user.click(
-      within(await screen.findByRole("dialog", { name: "Kayıtlar birleştirilsin mi?" })).getByRole(
+      within(await screen.findByRole("dialog", { name: "Bu iki kayıt aynı kişi mi?" })).getByRole(
         "button",
         { name: "Vazgeç" },
       ),
@@ -420,12 +430,12 @@ describe("AktarimPaneli — personel mutabakatı ve ayrılış havuzu", () => {
     expect(okulApiMock.mergePersonnel).not.toHaveBeenCalled();
 
     await user.click(birlestir);
+    const onay = await screen.findByRole("dialog", { name: "Bu iki kayıt aynı kişi mi?" });
+    // Kutu vazgeçilen onaydan devralınmaz: her açılışta yeniden işaretlenir.
     await user.click(
-      within(await screen.findByRole("dialog", { name: "Kayıtlar birleştirilsin mi?" })).getByRole(
-        "button",
-        { name: "Birleştir" },
-      ),
+      within(onay).getByRole("checkbox", { name: "Bu iki kaydın aynı kişi olduğunu doğruladım" }),
     );
+    await user.click(within(onay).getByRole("button", { name: "Birleştir" }));
     expect(await screen.findByText("Bir kişi kendisiyle birleştirilemez.")).toBeInTheDocument();
   });
 

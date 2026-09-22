@@ -136,7 +136,8 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   mühürlenmesi) F11 bakım fazına bırakıldı.
 
 - **TB18 — "Olası aynı kişi" adayı ad benzerliğiyle bulunur; adaşı eleyemez (F1 eki 7,
-  §8.3):** kural (`name_match.probably_same_person`) adın aynı olmasını TEK BAŞINA yeterli
+  §8.3)** *(daraltıldı: 22.09.2026 — gerekçe gösterimi + ikinci doğrulama)*: kural
+  (`name_match.match_reason` / `probably_same_person`) adın aynı olmasını TEK BAŞINA yeterli
   sayar, çünkü kuralın asıl işi **soyadı değişimidir** ve orada soyadlar tamamen farklıdır
   ("AYŞE YILMAZ" → "AYŞE KARA"); soyad yakınlığı aramak kuralı işlevsiz bırakırdı. Bedeli:
   aynı aktarımda okula yeni gelen bir adaş (Ayşe, Fatma, Mehmet gibi yaygın adlarda) havuzda
@@ -145,11 +146,20 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   istenmez: soyadı değişimi tam olarak o kayıttır). Yanlış birleştirme geri alınamaz
   (`persons.merge_personnel` kaynağı katı siler). Azaltma: aday yalnız ÖNERİDİR, hiçbir şey
   kendiliğinden olmaz; havuz ekranı adayların yalnız ad benzerliğiyle bulunduğunu ve adaş
-  olabileceğini söyler, birleştirme iki adı da yazan onay diyaloğundan geçer. Daha iyisi
-  (aday satırında eşleşme gerekçesi + ikinci doğrulama, ya da e-Okul'da kişiyi ada bağlamayan
-  bir anahtar) kullanıcı kararı ister; F6'da üyelik bağları gelince yeniden değerlendirilir.
+  olabileceğini söyler. Kullanıcı kararıyla (22.09.2026) iki önlem eklendi: **(1)** kural
+  gerekçeyi de döndürür (`MatchReason`: ad ve soyadı birebir aynı / adı aynı, soyadı farklı /
+  yazım farkı); selector ve serializer taşır, aday satırı "Neden aday: …" diye yazar ve
+  adayın üye türü ile sicile eklendiği günü gösterir (aktarım önizlemesinde de aynı gerekçe
+  yazılır). **(2)** Birleştirme onayı ikinci bir doğrulama ister: diyalog (başlık "Bu iki
+  kayıt aynı kişi mi?") iki kaydı ayırt eden bilgiyi ve işlemin geri alınamadığını yazar,
+  "Birleştir" düğmesi "Bu iki kaydın aynı kişi olduğunu doğruladım" kutusu işaretlenmeden
+  açılmaz (`ConfirmProvider.acknowledgeLabel`; kutu bir sonraki onaya devredilmez).
+  **Kalan risk:** önlemler kullanıcının dikkatine dayanır — program hâlâ iki adaşı
+  ayırt edemez, yanlış birleştirme hâlâ geri alınamaz. Gerçek çözüm (e-Okul'da kişiyi ada
+  bağlamayan bir anahtar) veride yoktur; F6'da üyelik bağları gelince yeniden değerlendirilir.
 
-- **TB19 — Kurulum bitmeden yönetici kipi süreyle kapanmaz (F1 eki 8, §4.4):** kullanıcı
+- **TB19 — Kurulum bitmeden yönetici kipi süreyle kapanmaz (F1 eki 8, §4.4)**
+  *(daraltıldı: 22.09.2026 — anahtar gözetimsiz ekranda gizleniyor)*: kullanıcı
   kararı 2-1 gereği `setup_completed` yanlışken boşta (3 dk) ve mutlak (30 dk) süreler kipi
   düşürmez ve süre dolduğunda sayaçlar yeniden başlar — zaman üst sınırı yoktur. Bedeli:
   sihirbazın 1. adımında "Sakladım, doğrula"ya basılmadan bırakılan ekranda kurtarma anahtarı
@@ -157,8 +167,16 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   tasarım §4.5'e göre tepside günlerce açık kalabilir. Karar bilinçlidir (süre dolup kipin
   düşmesi kullanıcıyı anahtarı saklamadan ekrandan atıyordu). Azaltma: "Kilitle" ve "Görevli
   kipine geç" kurulum sırasında da elle çalışır; kılavuz kurulumun tek oturumda bitirilmesini
-  ve anahtar saklanmadan masadan kalkılmamasını söyler. Askıyı yalnız bekleyen anahtar varken
-  uygulamak ölçüyü daraltırdı ama kullanıcı kararını değiştirir; ertelendi.
+  ve anahtar saklanmadan masadan kalkılmamasını söyler. Kullanıcı kararıyla (22.09.2026)
+  **kip askısı aynen korunarak** panelin kendisi önlem alır: 5 dakika hiç etkileşim olmazsa
+  kurtarma anahtarı ekranda gizlenir ("Anahtar güvenlik için gizlendi" + "Anahtarı göster"),
+  gösterince sayaç sıfırlanır. Gizliyken anahtar DOM'da değildir, yazdırma alanı da onu
+  taşımaz; PDF yolu etkilenmez. Sayaç YALNIZ GÖRSELDİR ve istemcide durur (`lib/api.ts`in
+  kip için zaten tuttuğu etkileşim saati okunur, yeni küresel dinleyici eklenmez): kipi
+  düşürmez, anahtarı bellekten silmez — ekrana bakan üçüncü kişiye karşı kaza önleyicidir,
+  makineye erişen birine karşı değil. **Kalan risk:** program kurulum bitene kadar hâlâ
+  kendiliğinden kilitlenmez ve anahtar bellekte durur; askıyı yalnız bekleyen anahtar varken
+  uygulamak ölçüyü daraltırdı ama kullanıcı kararını değiştirir, ertelendi.
 
 ## Kapanan
 

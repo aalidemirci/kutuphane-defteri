@@ -790,9 +790,9 @@ class TestPersonelMutabakati:
 
         onizleme = import_service.preview_personnel_text(text=metin)
         assert [
-            (c.row_number, c.row_name, c.existing_id, c.existing_name, c.new_id)
+            (c.row_number, c.row_name, c.existing_id, c.existing_name, c.new_id, c.reason)
             for c in onizleme.similar_pairs
-        ] == [(3, "AYŞE BEYAZ", eski.pk, "AYŞE KARA", None)]
+        ] == [(3, "AYŞE BEYAZ", eski.pk, "AYŞE KARA", None, "ad_ayni_soyad_farkli")]
 
         uygulama = import_service.commit_personnel_text(text=metin)
         (cift,) = uygulama.similar_pairs
@@ -815,7 +815,10 @@ class TestPersonelMutabakati:
             text=_personel_metni("SELİM\tÖZTÜRK\tÖğretmen\t")
         )
 
-        assert [c.existing_id for c in rapor.similar_pairs] == [eski.pk]
+        # Gerekçe çiftle birlikte taşınır: kullanıcı neden eşleştiğini görsün (TB18).
+        assert [(c.existing_id, c.reason) for c in rapor.similar_pairs] == [
+            (eski.pk, "yazim_farki")
+        ]
 
     def test_benzemeyen_kisiler_cift_olusturmaz(self) -> None:
         _personel("AYŞE", "KARA")

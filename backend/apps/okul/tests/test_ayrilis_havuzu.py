@@ -9,7 +9,8 @@ listede bulunmayan aktif kişi havuza girer, karar burada verilir:
   tarih, kancalar; KAYIT SİLİNMEZ) ve "Aktif kalsın" (yalnız havuzdan çıkar).
   Tek işlemdir: seçilenlerden biri havuzda değilse hiçbir karar uygulanmaz.
 - Karar ucu kişi yazar: parola kurulmadan 409; iki uç da görevli kipinde 403.
-- Havuzdaki personel için "olası aynı kişi" adayları ve havuzdan birleştirme.
+- Havuzdaki personel için "olası aynı kişi" adayları (eşleşme GEREKÇESİYLE —
+  TB18) ve havuzdan birleştirme.
 - Günlüğe ad yazılmaz.
 
 Bütün ad ve numaralar uydurmadır (KVKK).
@@ -27,7 +28,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from apps.okul import selectors
+from apps.okul import name_match, selectors
 from apps.okul.kip import KIP
 from apps.okul.models import (
     ImportRun,
@@ -364,8 +365,20 @@ def test_havuzdaki_personel_icin_olasi_ayni_kisi_ve_havuzdan_birlestirme(
 
     veri = client.get(HAVUZ_URL).json()
 
+    # Aday satırı NEDEN aday olduğunu ve ayırt edici bilgisini taşır (TB18).
     assert [(p["id"], p["similar"]) for p in veri["personnel"]] == [
-        (eski.pk, [{"id": yeni.pk, "full_name": "AYŞE BEYAZ"}])
+        (
+            eski.pk,
+            [
+                {
+                    "id": yeni.pk,
+                    "full_name": "AYŞE BEYAZ",
+                    "member_kind": "TEACHER",
+                    "created_on": timezone.localdate().isoformat(),
+                    "reason": "ad_ayni_soyad_farkli",
+                }
+            ],
+        )
     ]
     birlestir = client.post(
         f"/api/v1/personnel/{eski.pk}/merge/", {"into_id": yeni.pk}, format="json"
@@ -387,4 +400,32 @@ def test_olasi_ayni_kisi_havuza_giristen_once_acilmis_kayitlarda_aranmaz() -> No
 
     adaylar = selectors.leave_pool_similar_personnel(selectors.leave_pool_personnel())
 
-    assert [p.pk for p in adaylar[havuzdaki.pk]] == [yeni_ayse.pk]
+    assert [a.person.pk for a in adaylar[havuzdaki.pk]] == [yeni_ayse.pk]
+
+
+def test_aday_gerekcesi_ucta_dondurulur(client: APIClient) -> None:
+    """Her aday satırı neden aday olduğunu söyler: ad eşitliği mi, yazım farkı mı (TB18)."""
+    havuzdaki = _personel("SELİN", "ÖZTÜRK")
+    ad_ayni = _personel("SELİN", "BEYAZ")
+    yazim = _personel("SELİM", "ÖZTÜRK")
+    _havuza(havuzdaki)
+
+    (kisi,) = client.get(HAVUZ_URL).json()["personnel"]
+
+    assert {a["id"]: a["reason"] for a in kisi["similar"]} == {
+        ad_ayni.pk: "ad_ayni_soyad_farkli",
+        yazim.pk: "yazim_farki",
+    }
+
+
+def test_ayni_ad_soyad_adayi_ad_ayni_soyad_farkli_diye_sunulmaz() -> None:
+    """Birebir aynı ad-soyad taşıyan aday kendi gerekçesiyle gelir (yanıltmasın)."""
+    havuzdaki = _personel("DENİZ", "YILDIZ")
+    adas = _personel("DENİZ", "YILDIZ")
+    _havuza(havuzdaki)
+
+    adaylar = selectors.leave_pool_similar_personnel(selectors.leave_pool_personnel())
+
+    assert [(a.person.pk, a.reason) for a in adaylar[havuzdaki.pk]] == [
+        (adas.pk, name_match.MatchReason.SAME_FULL_NAME)
+    ]

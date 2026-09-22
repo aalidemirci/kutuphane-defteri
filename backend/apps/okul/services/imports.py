@@ -30,7 +30,8 @@ mutabakatla genişletildi (tasarım §8.3, EK-20, EK-21):
   şifreli). Listede olmayan aktif personel havuza girer (eski `mark_left_ids`
   seçimi kalktı; karar havuzda verilir). Ada göre eşleşmeyen yeni satırla
   listede olmayan kişi arasında "olası aynı kişi" çifti üretilir (soyadı
-  değişimi); birleştirme ayrı uçtandır (`persons.merge_personnel`) ve havuzdan
+  değişimi) — çift eşleşme GEREKÇESİNİ taşır (TB18: "adı aynı" adaşı da
+  yakalar); birleştirme ayrı uçtandır (`persons.merge_personnel`) ve havuzdan
   da yapılabilir. Havuza ekleme personelde de yalnız KANITLADIR: kimlik anahtarı
   ad olduğu için ad-soyadı boş bir satır (kaymış sütun) ya da hiç satırı
   işlenemeyen bir dosya hiç kimseyi havuza eklemez — öğrencideki şube kapsamının
@@ -249,6 +250,8 @@ class SimilarPair:
     AD İÇERİR: yalnız API yanıtında. `new_id` yalnız uygulamada dolar (önizlemede
     yeni kayıt geri alındığı için None'dır); birleştirme `personnel/<existing_id>/merge/`
     ucuna `{into_id: new_id}` ile yapılır (aktarım sonucundan ya da ayrılış havuzundan).
+    `reason` çiftin NEDEN kurulduğudur (`MatchReason` kodu): "adı aynı" adaşı da
+    yakalar, kullanıcı bunu ancak gerekçeyi görürse anlar (TB18).
     """
 
     row_number: int
@@ -256,6 +259,7 @@ class SimilarPair:
     existing_id: int
     existing_name: str
     new_id: int | None = None
+    reason: str = ""
 
 
 @dataclass
@@ -683,9 +687,9 @@ def _ensure_class_sections() -> None:
 # ---------------------------------------------------------------------------
 # Personel içe aktarma + mutabakat
 # ---------------------------------------------------------------------------
-def _probably_same(row: ParsedPersonnelRow, person: Personnel) -> bool:
-    """ "Olası aynı kişi" (tek kural `name_match`): ad aynı ya da ad-soyad uzaklığı ≤ 2."""
-    return name_match.probably_same_person(
+def _match_reason(row: ParsedPersonnelRow, person: Personnel) -> name_match.MatchReason | None:
+    """ "Olası aynı kişi" gerekçesi (tek kural `name_match`); çift değilse None."""
+    return name_match.match_reason(
         first_a=row.first_name,
         full_a=row.raw_full_name,
         first_b=person.first_name,
@@ -758,10 +762,11 @@ def _ingest_personnel(
             existing_id=person.pk,
             existing_name=person.full_name,
             new_id=new_person.pk,
+            reason=str(gerekce),
         )
         for row, new_person in kosu.created
         for person in listede_yok
-        if _probably_same(row, person)
+        if (gerekce := _match_reason(row, person)) is not None
     ]
     report.similar_pair_count = len(report.similar_pairs)
 

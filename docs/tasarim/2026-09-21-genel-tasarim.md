@@ -1639,6 +1639,30 @@ kararlar. İlgili bölümlerde bu listeye gönderme vardır.
     - Kayda geçen kalan riskler: **TB18** ("olası aynı kişi" adayı ad benzerliğiyle
       bulunur, adaşı eleyemez — kural soyadı değişimi için böyle seçildi) ve **TB19**
       (kurulum bitene kadar yönetici kipinin süreyle kapanmaması).
+11. **§8.3, §4.4, §6.3 — TB18 ve TB19'un daraltılması (kullanıcı kararı 22.09.2026).**
+    İki kalemin de KURALI aynen kaldı; eklenen, kullanıcının doğru kararı verebilmesi
+    için gereken bilgi ve bir adım daha.
+    - **TB18 — "olası aynı kişi" dürüst ve iki adımlı.** `name_match.match_reason`
+      eşleşmenin gerekçesini de döndürür (`MatchReason`: `ayni_ad_soyad`,
+      `ad_ayni_soyad_farkli`, `yazim_farki`); `probably_same_person` bu kuralın boolean
+      sarmalıdır (davranış değişmedi). Gerekçe `selectors.SimilarCandidate` ile taşınır,
+      `LeavePoolPersonnelSerializer` her adayda `reason`, `member_kind` ve `created_on`
+      (adayın sicile eklendiği yerel gün) döndürür; aktarım önizlemesinin `SimilarPair`
+      kaydı da `reason` taşır (kalıcı `ImportRun.report`'a girmez — ad listeleriyle
+      birlikte düşer). Ekranlar "Neden aday: …" satırını yazar. Birleştirme onayı ikinci
+      bir doğrulama ister: diyalog başlığı "Bu iki kayıt aynı kişi mi?", gövdede iki
+      kaydın ayırt edici bilgisi ve "geri alınamaz" cümlesi; "Birleştir" düğmesi
+      `ConfirmProvider`'ın yeni `acknowledgeLabel` kutusu ("Bu iki kaydın aynı kişi
+      olduğunu doğruladım") işaretlenmeden açılmaz, kutu her açılışta boşalır. Kalan
+      risk TB18'de daraltılmış olarak durur (program hâlâ iki adaşı ayırt edemez).
+    - **TB19 — gözetimsiz ekranda anahtar gizlenir.** Kip askısı (yukarıda, madde 8)
+      AYNEN korunur ve anahtar bellekte kalır; `KurtarmaAnahtariPaneli` 5 dakika hiç
+      etkileşim olmazsa anahtarı ekranda gizler ("Anahtar güvenlik için gizlendi" +
+      "Anahtarı göster"; göster sayacı sıfırlar). Gizliyken anahtar DOM'da değildir, bu
+      yüzden yazdırma alanı da onu taşımaz; PDF yolu ve doğrulama akışı değişmez. Sayaç
+      YALNIZ GÖRSELDİR ve istemcide durur: kipi düşürmez, sunucuya sorulmaz. Ölçü
+      `lib/api.ts`in kip için zaten tuttuğu etkileşim saatinden okunur (yeni küresel
+      dinleyici yok, panele ait olan yalnız yoklama zamanlayıcısıdır).
 
 ### 14.2 Saha hazırlık hattı (kod dışı — F0 ile başlar)
 

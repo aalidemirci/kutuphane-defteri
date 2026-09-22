@@ -490,8 +490,11 @@ class LeavePoolStudentSerializer(serializers.ModelSerializer[Student]):
 class LeavePoolPersonnelSerializer(serializers.ModelSerializer[Personnel]):
     """Havuzdaki öğretmen / diğer personel + "olası aynı kişi" adayları.
 
-    Adaylar `context["similar"]`'dan (kimlik → kayıtlar) okunur; birleştirme
+    Adaylar `context["similar"]`'dan (kimlik → `SimilarCandidate`) okunur; birleştirme
     `personnel/<id>/merge/ {into_id: aday}` ile yapılır (havuzdaki kişi kaynaktır).
+    Her aday `reason` (eşleşme gerekçesi, `MatchReason` kodu), `member_kind` ve
+    `created_on` (sicile eklendiği gün) taşır: ekran adayın NEDEN aday olduğunu
+    yazar, onay diyaloğu iki kaydı ayırt eden bilgiyi gösterir (TB18).
     """
 
     full_name = serializers.CharField(read_only=True)
@@ -514,8 +517,17 @@ class LeavePoolPersonnelSerializer(serializers.ModelSerializer[Personnel]):
         return _pool_run(obj)
 
     def get_similar(self, obj: Personnel) -> list[dict[str, Any]]:
-        adaylar: dict[int, list[Personnel]] = self.context.get("similar", {})
-        return [{"id": p.pk, "full_name": p.full_name} for p in adaylar.get(obj.pk, [])]
+        adaylar: dict[int, list[selectors.SimilarCandidate]] = self.context.get("similar", {})
+        return [
+            {
+                "id": aday.person.pk,
+                "full_name": aday.person.full_name,
+                "member_kind": aday.person.member_kind,
+                "created_on": aday.created_on.isoformat(),
+                "reason": str(aday.reason),
+            }
+            for aday in adaylar.get(obj.pk, [])
+        ]
 
 
 _POOL_IDS_ERRORS: dict[str, Any] = {

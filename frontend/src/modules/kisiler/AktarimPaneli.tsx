@@ -30,6 +30,7 @@ import EmptyState from "../../ui/EmptyState";
 import Icon from "../../ui/Icon";
 import { useSnackbar } from "../../ui/SnackbarProvider";
 import {
+  benzerlikGerekcesi,
   importCounts,
   okulApi,
   PERSONNEL_TEMPLATE_FILENAME,
@@ -172,10 +173,16 @@ export default function AktarimPaneli({
 
   const birlestir = async (pair: SimilarPair) => {
     if (pair.new_id === null || report === null || isStudentReport(report)) return;
+    // Geri alınamaz işlem + yalnız ad benzerliğiyle bulunmuş aday (TB18):
+    // gerekçe yazılır ve onay düğmesi doğrulama kutusuyla açılır.
     const ok = await confirm({
-      title: "Kayıtlar birleştirilsin mi?",
-      message: `“${pair.existing_name}” kaydının kütüphane bağları “${pair.row_name}” kaydına taşınır ve eski kayıt silinir. Bu işlem geri alınamaz.`,
+      title: "Bu iki kayıt aynı kişi mi?",
+      message:
+        `Kayıttaki kişi: “${pair.existing_name}” (listede bulunamadı). Listedeki ${pair.row_number}. satır: “${pair.row_name}”. ` +
+        `Çift yalnız ad benzerliğiyle kuruldu (${benzerlikGerekcesi(pair.reason)}); okula yeni gelen bir adaş da olabilir. ` +
+        `Onaylarsanız “${pair.existing_name}” kaydının kütüphane bağları “${pair.row_name}” kaydına taşınır ve eski kayıt silinir. Bu işlem geri alınamaz.`,
       confirmLabel: "Birleştir",
+      acknowledgeLabel: "Bu iki kaydın aynı kişi olduğunu doğruladım",
     });
     if (!ok) return;
     setBusy(true);
@@ -576,6 +583,10 @@ function PersonelMutabakati({
               >
                 <span className="text-body-medium text-on-surface">
                   Satır {p.row_number}: {p.row_name} ↔ kayıttaki {p.existing_name}
+                  {/* Neden çift? Kural adı yeterli sayar; adaş da buraya düşer (TB18). */}
+                  <span className="block text-body-small text-on-surface-variant">
+                    Neden aday: {benzerlikGerekcesi(p.reason)}
+                  </span>
                 </span>
                 {!report.dry_run && p.new_id !== null && (
                   <Button

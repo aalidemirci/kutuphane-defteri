@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
@@ -330,14 +331,28 @@ def leave_pool_run(person: Student | Personnel) -> ImportRun | None:
     return run
 
 
-def leave_pool_similar_personnel(pool: Iterable[Personnel]) -> dict[int, list[Personnel]]:
+@dataclass(frozen=True)
+class SimilarCandidate:
+    """Havuzdaki kişiyle eşleşen aday + eşleşmenin GEREKÇESİ (TB18).
+
+    `created_on` adayın sicile eklendiği gündür (yerel gün; UTC'den türetilmez):
+    onay diyaloğunda iki kaydı ayırt eden bilgidir.
+    """
+
+    person: Personnel
+    reason: name_match.MatchReason
+    created_on: date
+
+
+def leave_pool_similar_personnel(pool: Iterable[Personnel]) -> dict[int, list[SimilarCandidate]]:
     """Havuzdaki her personel için "olası aynı kişi" adayları (kimlik → adaylar, TR sıralı).
 
     Aday: aktif, havuzda OLMAYAN ve sicile kişinin havuza girdiği gün ya da sonra
     girmiş kayıt — tipik olarak aynı aktarımın yeni adla açtığı kayıt (soyadı
     değişimi). Eski kayıtlar aday sayılmaz: okulda aynı adı taşıyan başka
     öğretmenler her havuz kişisine "benzer" görünürdü. Kural aktarım
-    önizlemesindekiyle aynıdır (`name_match.probably_same_person`).
+    önizlemesindekiyle aynıdır (`name_match.match_reason`) ve GEREKÇESİYLE
+    birlikte taşınır: ekran adayın neden aday olduğunu yazar (TB18).
     """
     kisiler = list(pool)
     if not kisiler:
@@ -345,22 +360,25 @@ def leave_pool_similar_personnel(pool: Iterable[Personnel]) -> dict[int, list[Pe
     adaylar = personnel_sorted(
         Personnel.objects.filter(is_active=True, leave_candidate_since__isnull=True)
     )
-    sonuc: dict[int, list[Personnel]] = {}
+    sonuc: dict[int, list[SimilarCandidate]] = {}
     for kisi in kisiler:
         giris = kisi.leave_candidate_since
         if giris is None:
             continue
-        sonuc[kisi.pk] = [
-            aday
-            for aday in adaylar
-            if timezone.localdate(aday.created_at) >= giris
-            and name_match.probably_same_person(
+        eslesenler: list[SimilarCandidate] = []
+        for aday in adaylar:
+            acilis = timezone.localdate(aday.created_at)
+            if acilis < giris:
+                continue
+            gerekce = name_match.match_reason(
                 first_a=kisi.first_name,
                 full_a=kisi.full_name,
                 first_b=aday.first_name,
                 full_b=aday.full_name,
             )
-        ]
+            if gerekce is not None:
+                eslesenler.append(SimilarCandidate(person=aday, reason=gerekce, created_on=acilis))
+        sonuc[kisi.pk] = eslesenler
     return sonuc
 
 

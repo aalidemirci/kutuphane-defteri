@@ -5,11 +5,11 @@
 // yazılır (F1 eki, karar 2) ve `onDogrulama(true)` ancak o zaman gelir. Anahtar
 // ve okul adı uydurmadır.
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError } from "../../lib/api";
+import { ApiError, etkinlikSaatleriniSifirla } from "../../lib/api";
 import { SnackbarProvider } from "../../ui/SnackbarProvider";
 
 const guvenlik = vi.hoisted(() => ({
@@ -24,7 +24,7 @@ vi.mock("../../lib/download", async (importOriginal) => {
   return { ...gercek, saveBlob: indirme.saveBlob };
 });
 
-import KurtarmaAnahtariPaneli from "./KurtarmaAnahtariPaneli";
+import KurtarmaAnahtariPaneli, { BOSTA_GIZLEME_MS } from "./KurtarmaAnahtariPaneli";
 import {
   kurtarmaAnahtariniNormallestir,
   kurtarmaCiktisiDosyaAdi,
@@ -227,6 +227,56 @@ describe("KurtarmaAnahtariPaneli", () => {
 
     expect(onDogrulama).toHaveBeenLastCalledWith(false);
     expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("gözetimsiz ekranda (5 dk) anahtar gizlenir, “Anahtarı göster” geri getirir", () => {
+    // TB19: kurulum bitene kadar kip süreyle düşmez; anahtar ekranda süresiz durmasın.
+    // Sahte zamanlayıcı kullanıldığı için tıklama `fireEvent` ile yapılır (userEvent'in
+    // kendi gecikme zamanlayıcısı sahte saatle kilitleniyor).
+    etkinlikSaatleriniSifirla();
+    vi.useFakeTimers();
+    try {
+      bas();
+      expect(screen.getByTestId("kurtarma-anahtari")).toBeInTheDocument();
+
+      act(() => vi.advanceTimersByTime(BOSTA_GIZLEME_MS));
+
+      expect(screen.queryByTestId("kurtarma-anahtari")).toBeNull();
+      // Gruplar da (yazdırma alanının tamamı) DOM'dan kalkar.
+      expect(screen.queryByLabelText("Kurtarma anahtarının grupları")).toBeNull();
+      expect(screen.getByText(/Anahtar güvenlik için gizlendi/)).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Anahtarı göster" }));
+      expect(screen.getByTestId("kurtarma-anahtari")).toHaveTextContent(ANAHTAR);
+      expect(screen.getByRole("button", { name: "PDF olarak kaydet" })).toBeInTheDocument();
+
+      // Sayaç sıfırlandı: dört dakika yetmez, beş dakika yeniden gizler.
+      act(() => vi.advanceTimersByTime(4 * 60_000));
+      expect(screen.getByTestId("kurtarma-anahtari")).toBeInTheDocument();
+      act(() => vi.advanceTimersByTime(BOSTA_GIZLEME_MS));
+      expect(screen.queryByTestId("kurtarma-anahtari")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("etkileşim sürdükçe anahtar gizlenmez", () => {
+    etkinlikSaatleriniSifirla();
+    vi.useFakeTimers();
+    try {
+      bas();
+      act(() => vi.advanceTimersByTime(4 * 60_000));
+      // Etkileşim saati lib/api.ts'in küresel dinleyicisinde tutulur (panelin kendi
+      // dinleyicisi yok): tuşa basmak sayacı tazeler.
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }));
+      });
+      act(() => vi.advanceTimersByTime(4 * 60_000));
+
+      expect(screen.getByTestId("kurtarma-anahtari")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("anahtar yeniden gösterilince doğrulama düşer", async () => {
