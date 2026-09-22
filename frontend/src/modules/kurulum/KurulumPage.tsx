@@ -2,7 +2,11 @@
 // Üç adım, bu sırayla:
 //   1. Yönetici parolası + kurtarma anahtarı — ATLANAMAZ. Parola kurulunca anahtar
 //      bir kez gösterilir (yazdır / PDF olarak kaydet / elle yaz); devam için
-//      sakladığı kopyadan iki grup geri yazılır (istemci tarafı doğrulama).
+//      sakladığı kopyadan iki grup geri yazılır, sonra TAM anahtar sunucuda
+//      doğrulanıp güvenlik dosyasına damgalanır (F1 eki, 22.09.2026 kararı 2).
+//      Anahtar ekranda değilken (pencere kapandı, program çöktü) adım iki yol
+//      sunar: kâğıttaki anahtarı yazıp doğrulamak ya da yönetici parolasıyla
+//      YENİ anahtar üretmek (eski anahtar geçersizleşir, kayıtlar değişmez).
 //   2. Okul bilgileri — okul adı, il, ilçe, müdür, hazırlık sınıfı, kademe, kısa
 //      ad, "bu bilgisayar okul demirbaşıdır" onayı (zorunlu) ve demirbaş no.
 //   3. Ders yılı, dönemler ve kapalı günler — ders yılı kaydedilip aktifleşince
@@ -13,8 +17,10 @@
 //
 // Durum tek kaynaktan (`GET /setup/status/`) beslenir: adım durumları ve eksik
 // adımlar (`missing_steps`) backend'in `setup/complete/` kapısıyla AYNI hesaptır;
-// sihirbaz ilk EKSİK adımdan açılır. Parola kurulmadan ilerlenemez (İleri kapalı,
-// adım rayı tıklanmaz); kapı backend'de de vardır (eksik adımda 400 `kurulum_eksik`).
+// sihirbaz ilk EKSİK adımdan açılır. Parola kurulmadan ve kurtarma anahtarı
+// doğrulanmadan ilerlenemez (İleri kapalı, adım rayı tıklanmaz); kapı backend'de de
+// vardır (eksik adımda 400 `kurulum_eksik`). Kurulumu bu karardan önce tamamlanmış
+// (damgasız) programda ray kilitlenmez; 1. adım yalnız uyarır.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
@@ -34,6 +40,8 @@ import Stepper from "../../ui/Stepper";
 import type { StepperItem } from "../../ui/Stepper";
 import TextField from "../../ui/TextField";
 import KurtarmaAnahtariPaneli from "../guvenlik/KurtarmaAnahtariPaneli";
+import KurtarmaAnahtariniDogrulaKarti from "../guvenlik/KurtarmaAnahtariniDogrulaKarti";
+import KurtarmaAnahtariniYenileKarti from "../guvenlik/KurtarmaAnahtariniYenileKarti";
 import KurtarmaCiktisiKarti from "../guvenlik/KurtarmaCiktisiKarti";
 import { guvenlikApi } from "../guvenlik/api";
 import {
@@ -41,7 +49,12 @@ import {
   bekleyenKurtarmaAnahtariniYaz,
   useBekleyenKurtarmaAnahtari,
 } from "../guvenlik/bekleyenAnahtar";
-import { KURMA_UYARISI } from "../guvenlik/metinler";
+import {
+  DOGRULANMADI_BASLIGI,
+  DOGRULANMADI_METNI,
+  KURMA_UYARISI,
+  YENILEME_METNI,
+} from "../guvenlik/metinler";
 import DemirbasAlanlari from "../okul/DemirbasAlanlari";
 import { KISA_AD_EN_COK, SCHOOL_LEVEL_TR, SETUP_STEPS, okulApi } from "../okul/api";
 import type { SchoolLevel, SchoolYear, SetupStatus, SetupStep } from "../okul/api";
@@ -49,9 +62,9 @@ import { okulBilgileriHatalari } from "../okul/okulBilgileri";
 import KapaliGunlerPaneli from "../takvim/KapaliGunlerPaneli";
 
 const ADIMLAR: readonly { key: SetupStep; label: string; icon: string }[] = [
-  { key: "password", label: "Yönetici parolası", icon: "key" },
-  { key: "school", label: "Okul bilgileri", icon: "school" },
-  { key: "calendar", label: "Ders yılı ve kapalı günler", icon: "calendar_month" },
+  { key: "password", label: "Yönetici Parolası", icon: "key" },
+  { key: "school", label: "Okul Bilgileri", icon: "school" },
+  { key: "calendar", label: "Ders Yılı ve Kapalı Günler", icon: "calendar_month" },
 ];
 
 const SON_ADIM = ADIMLAR.length - 1;
@@ -128,13 +141,14 @@ export default function KurulumPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [okul, setOkul] = useState<OkulFormu>(BOS_OKUL_FORMU);
 
-  // Parola kurulur kurulmaz gelen kurtarma anahtarı YALNIZ bellekte, 1. adımda
-  // durur; kullanıcı doğrulayıp devam edince bırakılır (sunucuda saklanmaz).
-  // Anahtar bu bileşenin durumunda DEĞİL, rota ağacının dışındaki modül
-  // belleğindedir (`guvenlik/bekleyenAnahtar`): sayfa görevli kipine düşme,
-  // Kilitle ya da menü gezinmesiyle sökülse de anahtar kaybolmaz ve sihirbaz
-  // yeniden açılınca 1. adımda yeniden gösterilir. Doğrulama durumu ise
-  // bileşendedir: yeniden açılan sihirbaz iki grubu yeniden sorar.
+  // Parola kurulur kurulmaz (ya da anahtar yenilenince) gelen kurtarma anahtarı
+  // YALNIZ bellekte, 1. adımda durur; kullanıcı doğrulayıp devam edince bırakılır
+  // (sunucuda saklanmaz). Anahtar bu bileşenin durumunda DEĞİL, rota ağacının
+  // dışındaki modül belleğindedir (`guvenlik/bekleyenAnahtar`): sayfa görevli
+  // kipine geçiş, Kilitle ya da menü gezinmesiyle sökülse de anahtar kaybolmaz ve
+  // sihirbaz yeniden açılınca 1. adımda yeniden gösterilir. Doğrulama durumu ise
+  // bileşendedir: yeniden açılan sihirbaz iki grubu yeniden sorar (sunucu damgası
+  // zaten yazıldıysa anahtar bırakılır).
   const kurtarmaAnahtari = useBekleyenKurtarmaAnahtari();
   const [anahtarDogrulandi, setAnahtarDogrulandi] = useState(false);
 
@@ -158,8 +172,8 @@ export default function KurulumPage() {
         if (iptal) return;
         setStatus(s);
         // Parola kurulu değilse bekleyen anahtarın karşılığı yoktur (ör. güvenlik
-        // dosyası sıfırlandı): bırakılır.
-        if (!s.password_set) bekleyenKurtarmaAnahtariniYaz(null);
+        // dosyası sıfırlandı); anahtar sunucuda doğrulandıysa bellekte tutulmaz.
+        if (!s.password_set || s.recovery_key_confirmed) bekleyenKurtarmaAnahtariniYaz(null);
         setOkul({
           okulAdi: c.school_name,
           il: c.province,
@@ -187,22 +201,26 @@ export default function KurulumPage() {
   }, []);
 
   const parolaKurulu = status?.password_set ?? false;
+  // Sunucu damgası: anahtarın saklandığı doğrulandı mı? (kurulum kapısının 2. koşulu)
+  const anahtarSaklandi = status?.recovery_key_confirmed ?? false;
   // Anahtar gösterildi ama saklandığı henüz doğrulanmadı: 1. adımdan çıkılmaz.
   const anahtarBekliyor = kurtarmaAnahtari !== null && !anahtarDogrulandi;
 
   // Adım rozetleri: her adımın "tamam" ölçütü backend durumundan türetilir.
   const tamam = useMemo(
     () => [
-      parolaKurulu && !anahtarBekliyor,
+      parolaKurulu && anahtarSaklandi && !anahtarBekliyor,
       status?.school_info_complete ?? false,
       status?.active_school_year?.terms_ready ?? false,
     ],
-    [status, parolaKurulu, anahtarBekliyor],
+    [status, parolaKurulu, anahtarSaklandi, anahtarBekliyor],
   );
 
   // Parola adımı kapısı (kod kapısı): parola kurulmadan ya da anahtar doğrulanmadan
-  // hiçbir adıma geçilmez — ne İleri ile ne de adım rayından.
-  const parolaKapisiKapali = !parolaKurulu || anahtarBekliyor;
+  // hiçbir adıma geçilmez — ne İleri ile ne de adım rayından. Kurulumu önceden
+  // tamamlanmış (damgasız) programda ray kilitlenmez; 1. adım uyarı gösterir.
+  const parolaKapisiKapali =
+    !parolaKurulu || anahtarBekliyor || (!anahtarSaklandi && !status?.setup_completed);
 
   const stepperItems: StepperItem[] = ADIMLAR.map((a, i) => ({
     key: a.key,
@@ -228,7 +246,31 @@ export default function KurulumPage() {
     await durumTazele();
   };
 
-  const onDogrulama = useCallback((dogru: boolean) => setAnahtarDogrulandi(dogru), []);
+  // Panel `true`yu ancak sunucu damgayı yazınca bildirir: durum hemen güncellenir
+  // (İleri beklemeden açılır), ardından sunucudan tazelenir.
+  const onDogrulama = useCallback(
+    (dogru: boolean) => {
+      setAnahtarDogrulandi(dogru);
+      if (!dogru) return;
+      setStatus((s) =>
+        s === null
+          ? s
+          : {
+              ...s,
+              recovery_key_confirmed: true,
+              missing_steps: s.missing_steps.filter((a) => a !== "password"),
+            },
+      );
+      void durumTazele();
+    },
+    [durumTazele],
+  );
+
+  const yenilendi = () => {
+    // Yeni anahtar bekleyen belleğe yazıldı (kart yazar); panel onu gösterir.
+    setAnahtarDogrulandi(false);
+    void durumTazele();
+  };
 
   const okulBilgileriniKaydet = async () => {
     clearErrors();
@@ -284,6 +326,8 @@ export default function KurulumPage() {
   if (adim === 0 && !parolaKurulu) ileriIpucu = "Devam etmek için yönetici parolasını kurun.";
   else if (adim === 0 && anahtarBekliyor)
     ileriIpucu = "Devam etmek için kurtarma anahtarını sakladığınızı doğrulayın.";
+  else if (adim === 0 && parolaKapisiKapali)
+    ileriIpucu = "Devam etmek için kurtarma anahtarını doğrulayın ya da yenisini üretin.";
   else if (adim === SON_ADIM && eksikAdimVar)
     ileriIpucu = "Kurulumu tamamlamak için eksik adımları bitirin.";
 
@@ -337,6 +381,8 @@ export default function KurulumPage() {
                 okulAdi={okul.okulAdi}
                 onKuruldu={parolaKuruldu}
                 onDogrulama={onDogrulama}
+                onKagittanDogrulandi={() => void durumTazele()}
+                onYenilendi={yenilendi}
               />
             )}
             {adim === 1 && (
@@ -409,7 +455,14 @@ interface ParolaAdimiProps {
   okulAdi: string;
   onKuruldu: (anahtar: string) => Promise<void>;
   onDogrulama: (dogru: boolean) => void;
+  /** Kâğıttaki anahtar yazılıp sunucuda doğrulandı (durum tazelenir). */
+  onKagittanDogrulandi: () => void;
+  /** Yeni anahtar üretildi ve bekleyen belleğe yazıldı (panel onu gösterir). */
+  onYenilendi: () => void;
 }
+
+/** Sihirbazdaki yenileme kartının vurgusu (sözleşme: "kaydedemediyseniz yenisini üretin"). */
+const SIHIRBAZ_YENILEME_METNI = `Anahtarı kaydedemediyseniz yenisini üretin. ${YENILEME_METNI}`;
 
 function ParolaAdimi({
   status,
@@ -417,6 +470,8 @@ function ParolaAdimi({
   okulAdi,
   onKuruldu,
   onDogrulama,
+  onKagittanDogrulandi,
+  onYenilendi,
 }: ParolaAdimiProps) {
   const snackbar = useSnackbar();
   const [parola, setParola] = useState("");
@@ -434,18 +489,37 @@ function ParolaAdimi({
     );
   }
 
+  if (status.password_set && !status.recovery_key_confirmed) {
+    // Anahtar ekranda değil (pencere kapandı, program çöktü) ve saklandığı doğrulanmadı.
+    return (
+      <div className="space-y-4">
+        <div className="flex items-start gap-2 rounded-shape-sm bg-error-container px-4 py-3 text-body-medium text-on-error-container">
+          <Icon name="key_off" size="lg" />
+          <span>
+            <strong>{DOGRULANMADI_BASLIGI}.</strong> {DOGRULANMADI_METNI}
+          </span>
+        </div>
+        <KurtarmaAnahtariniDogrulaKarti onDogrulandi={onKagittanDogrulandi} />
+        <KurtarmaAnahtariniYenileKarti
+          aciklama={SIHIRBAZ_YENILEME_METNI}
+          onYenilendi={onYenilendi}
+        />
+      </div>
+    );
+  }
+
   if (status.password_set) {
     return (
       <div className="space-y-4">
         <Card elevation={1} className="p-6">
           <div className="flex items-center gap-3">
             <Icon name="verified_user" className="text-primary" />
-            <p className="text-title-medium text-on-surface">1. Yönetici parolası kurulu</p>
+            <p className="text-title-medium text-on-surface">1. Yönetici Parolası</p>
           </div>
           <p className="mt-2 text-body-medium text-on-surface-variant">
-            Kurtarma anahtarı yalnız parola kurulurken bir kez gösterilir. Anahtarı müdürlükte
-            kapalı zarfta sakladığınızdan emin olun. Parolayı Ayarlar → Güvenlik bölümünden
-            değiştirebilirsiniz; parola kaldırılamaz.
+            Parola kurulu, kurtarma anahtarının saklandığı doğrulandı. Anahtarı müdürlükte kapalı
+            zarfta saklayın. Parolayı Ayarlar → Güvenlik bölümünden değiştirebilirsiniz; parola
+            kaldırılamaz. Anahtar kaybolursa aynı bölümden yenisini üretebilirsiniz.
           </p>
         </Card>
         <KurtarmaCiktisiKarti />
@@ -476,7 +550,7 @@ function ParolaAdimi({
 
   return (
     <Card elevation={1} className="p-6">
-      <p className="text-title-medium text-on-surface">1. Yönetici parolası</p>
+      <p className="text-title-medium text-on-surface">1. Yönetici Parolası</p>
       <p className="mt-1 text-body-medium text-on-surface-variant">{KURMA_UYARISI}</p>
       <p className="mt-2 text-body-medium text-on-surface-variant">
         Parola kurulunca bir kurtarma anahtarı gösterilir. Parola unutulursa kayıtlara erişmenin tek
@@ -529,7 +603,7 @@ const KADEME_SECENEKLERI = (Object.keys(SCHOOL_LEVEL_TR) as SchoolLevel[]).map((
 function OkulBilgileriAdimi({ form, errors, onChange }: OkulBilgileriProps) {
   return (
     <Card elevation={1} className="p-6">
-      <p className="text-title-medium text-on-surface">2. Okul bilgileri</p>
+      <p className="text-title-medium text-on-surface">2. Okul Bilgileri</p>
       <p className="mt-1 text-body-medium text-on-surface-variant">
         Bu bilgiler programın bastığı evrakın antedinde, etiketlerde ve üye kartlarında kullanılır.
         Hazırlık sınıfı varsa sınıf düzeylerine Hazırlık eklenir.
@@ -660,7 +734,7 @@ function TakvimAdimi({
 
       {aktif && yil !== undefined && (
         <Card elevation={1} className="p-6">
-          <p className="text-title-medium text-on-surface">Kapalı günler</p>
+          <p className="text-title-medium text-on-surface">Kapalı Günler</p>
           <p className="mt-1 text-body-medium text-on-surface-variant">
             Ders yılı kaydedilince iki takvim yılının resmî ve dini tatilleri kendiliğinden eklenir.
             Ara tatil ve yarıyılı “öğrenciye kapalı gün” olarak girin; iade tarihi kapalı bir güne
@@ -782,7 +856,7 @@ function DersYiliAdimi({
   return (
     <div className="space-y-4">
       <Card elevation={1} className="p-6">
-        <p className="text-title-medium text-on-surface">3. Ders yılı</p>
+        <p className="text-title-medium text-on-surface">3. Ders Yılı</p>
         <p className="mt-1 text-body-medium text-on-surface-variant">
           Şube kataloğu ve e-Okul aktarımı aktif ders yılına bağlanır. Aynı anda yalnız bir yıl
           aktif olabilir; kurulumun tamamlanması için aktif yılın iki döneminin tarihleri tanımlı
@@ -843,7 +917,7 @@ function DersYiliAdimi({
       )}
 
       <Card elevation={1} className="p-6">
-        <p className="text-title-medium text-on-surface">Yeni ders yılı</p>
+        <p className="text-title-medium text-on-surface">Yeni Ders Yılı</p>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <TextField
             label="Ad"
@@ -963,7 +1037,7 @@ function DonemFormu({
 
   return (
     <Card elevation={1} className="p-6">
-      <p className="text-title-medium text-on-surface">{yilAdi} dönemleri</p>
+      <p className="text-title-medium text-on-surface">{yilAdi} Dönemleri</p>
       <p className="mt-1 text-body-medium text-on-surface-variant">
         Aktif ders yılının dönem tarihleri tanımlı değil. Kurulumu tamamlamak için iki dönemin
         tarihlerini girin.

@@ -30,7 +30,8 @@ açılmamışken hassas alanlar zaten okunamaz (şifreli token döner) ve yazıl
    Açık kalanlar:
    - `/api/v1/security/` ön eki — durum, kilit açma, kurtarma anahtarı, kip
      durumu (kilidi açmanın tek yolu bunlar). İstisna `LOCKED_DENIED_PATHS`:
-     kurtarma anahtarı çıktısı kilitliyken kesilir (kilit açma yolu değildir);
+     kurtarma anahtarı çıktısı, saklandı damgası ve anahtar yenileme kilitliyken
+     kesilir (kilit açma yolu değildirler);
    - `GET setup/status/` — açılış sağlık denetimi; yanıtı kişisel veri içermez
      ve istek zaten oturum belirteci gerektirir. Kurulum sihirbazının YAZMA
      uçları kapalı kalır;
@@ -67,10 +68,18 @@ ALLOWED_PREFIXES = (
     "/api/v1/updates/",
 )
 # `security/` ön ekinde olup kilitliyken YİNE DE kesilen uçlar (TAM yol). Kurtarma
-# anahtarı çıktısı (E14) bellekteki anahtara karşı doğrular ve kilit açmanın bir
-# yolu değildir: kilitliyken açık kalsaydı kurtarma anahtarı için ikinci bir
-# deneme kapısı olurdu. Kurulum sihirbazında anahtar zaten açıktır.
-LOCKED_DENIED_PATHS = frozenset({"/api/v1/security/recovery-key/pdf/"})
+# anahtarı çıktısı (E14), saklandı damgası ve anahtar yenileme (F1 eki, karar 2)
+# bellekteki anahtara karşı doğrular ve kilit açmanın bir yolu değildir:
+# kilitliyken açık kalsalardı kurtarma anahtarı ya da parola için ikinci bir
+# deneme kapısı olurlardı. Kurulum sihirbazında ve Ayarlar → Güvenlik'te kilit
+# zaten açıktır.
+LOCKED_DENIED_PATHS = frozenset(
+    {
+        "/api/v1/security/recovery-key/pdf/",
+        "/api/v1/security/recovery-key/confirm/",
+        "/api/v1/security/recovery-key/renew/",
+    }
+)
 # Güvenlik dosyası kayıpken izin verilen uçlar (TAM yol eşleşmesi, sözleşme §3).
 # `security/state/reset/`: kayıp ekranındaki "sıfırla ve kuruluma dön" yolu; uç
 # kendi koşullarını (parmak izi boş + şifreli tablolar boş) denetler, aksi 409.

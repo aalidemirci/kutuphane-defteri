@@ -1,9 +1,12 @@
 // Güvenlik ayarları bölümü — Ayarlar sayfasına bir sekme/kart olarak takılır.
 //
-// Eylemler: yönetici parolasını değiştir / "Kilitle" / kurtarma anahtarı çıktısını
-// yeniden al. Yönetici parolası zorunludur ve YALNIZ kurulum sihirbazının ilk
-// adımında kurulur (kurtarma anahtarı orada gösterilir ve saklandığı doğrulanır);
+// Eylemler: yönetici parolasını değiştir / "Kilitle" / kurtarma anahtarını doğrula
+// (yalnız doğrulanmamışsa) / kurtarma anahtarını yenile / kurtarma anahtarı
+// çıktısını yeniden al. Yönetici parolası zorunludur ve YALNIZ kurulum sihirbazının
+// ilk adımında kurulur (kurtarma anahtarı orada gösterilir ve saklandığı doğrulanır);
 // bu ekranda "parolayı kur" ya da "parolayı kaldır" eylemi YOKTUR (tasarım §6.3).
+// Yenilenen anahtar modül belleğinde bekler (`bekleyenAnahtar`) ve bu ekranda
+// `KurtarmaAnahtariPaneli` ile saklatılıp doğrulatılır; doğrulanınca bırakılır.
 // Parola kurulmamışsa (kurulum kapısı bunu zaten sihirbaza yönlendirir) yalnız
 // sihirbaza giden bağlantı gösterilir. Metinler `metinler.ts`'ten gelir ve
 // DÜRÜSTTÜR: bu koruma alan şifrelemesidir, tam disk şifrelemesi değildir.
@@ -19,13 +22,23 @@ import Icon from "../../ui/Icon";
 import { SkeletonList } from "../../ui/Skeleton";
 import { useSnackbar } from "../../ui/SnackbarProvider";
 import TextField from "../../ui/TextField";
+import KurtarmaAnahtariPaneli from "./KurtarmaAnahtariPaneli";
+import KurtarmaAnahtariniDogrulaKarti from "./KurtarmaAnahtariniDogrulaKarti";
+import KurtarmaAnahtariniYenileKarti from "./KurtarmaAnahtariniYenileKarti";
 import KurtarmaCiktisiKarti from "./KurtarmaCiktisiKarti";
 import SifreliYedekleme from "./SifreliYedekleme";
 import YedektenGeriYukleme from "./YedektenGeriYukleme";
 import { guvenlikApi } from "./api";
 import type { GuvenlikDurumu } from "./api";
+import { bekleyenKurtarmaAnahtariniYaz, useBekleyenKurtarmaAnahtari } from "./bekleyenAnahtar";
 import { kilitOlayiYayinla } from "./GuvenlikKapisi";
-import { KAPSAM_DISI_METNI, KAPSAM_METNI, YARIM_GECIS_METNI } from "./metinler";
+import {
+  DOGRULANMADI_BASLIGI,
+  DOGRULANMADI_METNI,
+  KAPSAM_DISI_METNI,
+  KAPSAM_METNI,
+  YARIM_GECIS_METNI,
+} from "./metinler";
 
 function hataMesaji(err: unknown, varsayilan: string): string {
   return err instanceof Error && err.message ? err.message : varsayilan;
@@ -40,6 +53,8 @@ export default function GuvenlikAyarlari() {
   const [yeniParola, setYeniParola] = useState("");
   const [hata, setHata] = useState<string | null>(null);
   const [calisiyor, setCalisiyor] = useState(false);
+  // Yenilenmiş (ya da sihirbazda gösterilmiş) ve henüz doğrulanmamış anahtar.
+  const bekleyenAnahtar = useBekleyenKurtarmaAnahtari();
 
   const oku = useCallback(() => {
     guvenlikApi
@@ -49,6 +64,17 @@ export default function GuvenlikAyarlari() {
   }, [snackbar]);
 
   useEffect(() => oku(), [oku]);
+
+  // Panel `true`yu sunucu damgayı yazınca bildirir: anahtar bellekten bırakılır.
+  const yeniAnahtarDogrulandi = useCallback(
+    (dogru: boolean) => {
+      if (!dogru) return;
+      bekleyenKurtarmaAnahtariniYaz(null);
+      snackbar.success("Yeni kurtarma anahtarının saklandığı doğrulandı.");
+      oku();
+    },
+    [oku, snackbar],
+  );
 
   function kapat() {
     setDegistirAcik(false);
@@ -92,14 +118,18 @@ export default function GuvenlikAyarlari() {
   return (
     <div className="flex flex-col gap-4">
       <Card className="p-6">
+        {/* Kart başlığı SABİT bir addır (sözlük §3, §4.6): kullanıcıya
+            "Ayarlar → Güvenlik → Yönetici Parolası ve Şifreleme" diye yol
+            tarif edilebilsin. Durum cümlesi başlığın altındadır. */}
         <div className="mb-2 flex items-center gap-3">
           <Icon name={durum.password_set ? "lock" : "lock_open"} className="text-primary" />
-          <h2 className="text-title-large text-on-surface">
-            {durum.password_set ? "Kişisel veri alanları şifreli" : "Yönetici parolası kurulmadı"}
-          </h2>
+          <h2 className="text-title-large text-on-surface">Yönetici Parolası ve Şifreleme</h2>
         </div>
 
-        <p className="text-body-medium text-on-surface-variant">{KAPSAM_METNI}</p>
+        <p className="text-body-medium text-on-surface">
+          {durum.password_set ? "Kişisel veri alanları şifreli." : "Yönetici parolası kurulmadı."}
+        </p>
+        <p className="mt-2 text-body-medium text-on-surface-variant">{KAPSAM_METNI}</p>
         <p className="mt-2 text-body-small text-on-surface-variant">{KAPSAM_DISI_METNI}</p>
 
         {durum.protected_fields.length > 0 && (
@@ -142,6 +172,30 @@ export default function GuvenlikAyarlari() {
           )}
         </div>
       </Card>
+
+      {durum.password_set && bekleyenAnahtar !== null && (
+        <KurtarmaAnahtariPaneli
+          anahtar={bekleyenAnahtar}
+          onDogrulama={yeniAnahtarDogrulandi}
+          dogrulandiMetni="Doğrulandı."
+        />
+      )}
+
+      {durum.password_set && bekleyenAnahtar === null && !durum.recovery_key_confirmed && (
+        <>
+          <div className="flex items-start gap-2 rounded-shape-sm bg-error-container px-4 py-3 text-body-medium text-on-error-container">
+            <Icon name="key_off" size="lg" />
+            <span>
+              <strong>{DOGRULANMADI_BASLIGI}.</strong> {DOGRULANMADI_METNI}
+            </span>
+          </div>
+          <KurtarmaAnahtariniDogrulaKarti onDogrulandi={setDurum} />
+        </>
+      )}
+
+      {durum.password_set && bekleyenAnahtar === null && (
+        <KurtarmaAnahtariniYenileKarti onYenilendi={oku} />
+      )}
 
       {durum.password_set && <KurtarmaCiktisiKarti />}
 

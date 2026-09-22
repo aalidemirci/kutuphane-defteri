@@ -13,7 +13,12 @@ from rest_framework.test import APIClient
 
 from apps.okul.kip import KIP
 from apps.okul.services import app_password
-from apps.okul.tests.kip_ortak import DOGRU_PAROLA, YANLIS_PAROLA, sahte_dogrulayici
+from apps.okul.tests.kip_ortak import (
+    DOGRU_PAROLA,
+    YANLIS_PAROLA,
+    kurulum_durumunu_yaz,
+    sahte_dogrulayici,
+)
 from conftest import TEST_PAROLA  # kök conftest: varsayılan ortamın yönetici parolası
 
 pytestmark = pytest.mark.django_db
@@ -21,6 +26,12 @@ pytestmark = pytest.mark.django_db
 MOD = "/api/v1/security/mode/"
 GOREVLI = "/api/v1/security/mode/staff/"
 YONETICI = "/api/v1/security/mode/admin/"
+
+
+@pytest.fixture(autouse=True)
+def kurulum_tamamlanmis(db: None) -> None:
+    """Kalan süreler yalnız kurulum tamamlanmışken doludur (kurulumda süre işlemez, karar 2-1)."""
+    kurulum_durumunu_yaz(tamam=True)
 
 
 @pytest.fixture

@@ -56,13 +56,32 @@ küçük bir şubede kişi tahmin edilebilir. Tam koruma için bilgisayarın dis
   öğretmen ve kütüphanede görevli memur ya da sorumlu müdür yardımcısı.
 - Sihirbaz tek seferlik bir **kurtarma anahtarı** verir. Anahtarı yazdırın,
   PDF olarak USB belleğe kaydedin ya da elle yazın; program anahtarın iki
-  grubunu sakladığınız kopyadan geri yazdırarak doğrular. Anahtar müdürlükte
-  kapalı zarfta saklanır. Parola da anahtar da kaybolursa şifreli veri
-  açılamaz.
+  grubunu sakladığınız kopyadan geri yazdırarak doğrular. **Kurulum bu
+  doğrulama yapılmadan tamamlanmaz.** Anahtar müdürlükte kapalı zarfta
+  saklanır. Parola da anahtar da kaybolursa şifreli veri açılamaz.
+- Anahtar ekranda değilken (program kapandı, anahtar kaydedilemedi) sihirbazın
+  1. adımı iki yol sunar: kâğıttaki anahtarın tamamını yazıp doğrulamak ya da
+  yönetici parolasıyla **yeni bir anahtar üretmek**. Aynı iki yol Ayarlar →
+  Güvenlik'te de vardır ("Kurtarma Anahtarını Doğrula", "Kurtarma Anahtarını
+  Yenile").
+- **Yenileme eski kâğıdı hemen gereksiz kılmaz.** Kayıtların anahtarı değişmez;
+  yalnız kurtarma kilidi yenilenir. Her yedek, alındığı günün güvenlik
+  dosyasını içinde taşır: yenilemeden önce alınmış bir yedek bu bilgisayarda
+  (güvenlik dosyası yerindeyken) yeni anahtarla ya da güncel parolayla açılır,
+  ama başka bir bilgisayarda ya da güvenlik dosyası kaybolduğunda yalnız eski
+  anahtarla (ya da o dönemin parolasıyla) açılır. USB'deki eski yedekler
+  duruyorsa eski kâğıdı "Eski anahtar — <tarih> öncesi yedekler için" diye
+  işaretleyip ayrı saklayın. Bu bilgisayarda eski bir yedeği geri yüklerken
+  güncel parolayı ya da yeni anahtarı kullanın: eski anahtarla geri yükleme
+  güvenlik dosyasını da yedeğin dönemine döndürür.
+- Yenileme, **ele geçmiş** bir anahtara karşı koruma değildir: eski yedekler ve
+  veri klasöründe `guvenlik-arsiv-<tarih>.json` adıyla saklanan önceki güvenlik
+  dosyası eski anahtarla açılabilir. Böyle bir durumda yönetici parolasını da
+  değiştirin.
 - Elinizdeki anahtarın temiz bir çıktısını sonradan Ayarlar → Güvenlik →
   "Kurtarma anahtarı çıktısı"ndan alabilirsiniz; program anahtarı doğrular,
   yanlış yazılmış anahtarı basmaz. Anahtar programda saklanmaz: kaybolduysa
-  yeniden üretilemez.
+  yeniden gösterilemez, yalnız yenisi üretilebilir.
 
 ### 1.5 Elektrik kesintisi
 
@@ -160,13 +179,16 @@ Program içinden indirme yalnız Windows kurulum dosyası içindir.
 
 ## 5. İlk açılış ve günlük kullanım
 
-1. Sihirbaz sırayla sorar: **yönetici parolası ve kurtarma anahtarı** (§1.4),
+1. Sihirbaz sırayla sorar: **yönetici parolası ve kurtarma anahtarı** (§1.4;
+   anahtarın saklandığı doğrulanmadan kurulum tamamlanmaz),
    okul bilgileri (kademe, kısa ad, demirbaş onayı), ders yılı, dönemler ve
    öğrenciye kapalı günler (ara tatil, yarıyıl).
    Kurulum bitince Genel Bakış'taki **Başlangıç Yol Haritası** sıradaki
    işleri (e-Okul aktarımları, kapalı günler, katalog şablonu, anahtarın
    saklanması, parolanın paylaşılması, BTR görüşmesi) gösterir.
-2. Kütüphane aydınlatma metni **e-Okul aktarımından önce** duyurulur.
+2. *(Sonraki sürümde.)* Program bir **Kütüphane aydınlatma metni** üretecek; bu
+   metnin e-Okul aktarımından önce duyurulması gerekir. Bugünkü sürümde metin
+   programda yoktur; okulun kendi aydınlatma metnini kullanın.
 3. Öğrenci ve personel listelerini e-Okul'un Excel raporlarından aktarırsınız
    (TCKN istenmez ve tutulmaz): öğrenci için *OOG01001R020 — Sınıf/Şube
    Öğrenci Listesi*, personel için *OOK01001R1 — Personel Listesi*. e-Okul
@@ -176,8 +198,9 @@ Program içinden indirme yalnız Windows kurulum dosyası içindir.
 
 **Pencere ve tepsi.** Pencerenin çarpı düğmesi programı kapatmaz, pencereyi
 gizler; program saatin yanındaki simge alanında (tepside) çalışmaya devam
-eder. Programı kapatmak için tepsideki simgeden **Çık**'ı seçin. Görevli
-kipinde Çık yönetici parolası ister.
+eder. Programı kapatmak için tepsideki simgeden **Çık**'ı seçin. *(Sonraki
+sürümde:* görevli kipinde Çık yönetici parolası isteyecek; bugünkü sürümde
+tepsi menüsü kip okumaz ve Çık parolasızdır.*)*
 
 **Oturum açılmadan program çalışmaz.** Windows oturumu açılmadan ne program ne
 Ağ Kataloğu kalkar. Bilgisayar sabah açıldığında masa hesabında oturum açın.
@@ -190,13 +213,19 @@ Ağ Kataloğu kalkar. Bilgisayar sabah açıldığında masa hesabında oturum a
 | Otomatik yedekler | `%LOCALAPPDATA%\KutuphaneDefteri\backups` | `~/.local/share/kutuphane-defteri/backups` |
 | Günlükler | `%LOCALAPPDATA%\KutuphaneDefteri\logs` | `~/.local/state/kutuphane-defteri/logs` |
 
-Program her gün bir otomatik yedek alır (`gunluk-<tarih>.kdbak`) ve 14 gün
-saklar; her sürüm güncellemesinden önce ayrıca bir yedek bırakır
-(`pre-migrate-<sürüm>-<tarih>.kdbak`, son 5 adet). Program tepside günlerce
-açık kalsa da günlük yedek her gün alınır. Yedekler şifrelidir ve ancak
+Program **her açılışta** o güne ait bir otomatik yedek alır
+(`gunluk-<tarih>.kdbak`; aynı gün yeniden açılırsa ikinci yedek almaz) ve 14
+gün saklar; her sürüm güncellemesinden önce ayrıca bir yedek bırakır
+(`pre-migrate-<sürüm>-<tarih>.kdbak`, son 5 adet). Yedekler şifrelidir ve ancak
 yönetici parolası ya da kurtarma anahtarıyla açılır. Yönetici parolası
 kurulmadan (ilk açılış) yedek alınmaz; ilk yedek parola kurulduktan sonraki
 açılışta alınır.
+
+> **Bugünkü sürümde yedek açılışa bağlıdır.** Program tepside günlerce açık
+> kalırsa o günlerin yedeği alınmaz; gün değişiminde kendiliğinden yedek alan
+> günlük kapı sonraki sürümde gelecek. O zamana kadar bilgisayarı her sabah
+> kapatıp açın ya da haftada bir programı tepsiden Çık'la kapatıp yeniden
+> açın.
 
 Yedekler bilgisayarın kendisindedir: disk bozulursa onlar da gider. Ayda bir
 Ayarlar → Güvenlik'ten **şifreli yedek indirip** USB belleğe alın ve USB'yi
@@ -214,9 +243,12 @@ Tepsideki simgeden Çık'ı seçip yeniden deneyin." iletisini verir.
 
 Araç yedekleri en yeniden eskiye listeler; seçtiğiniz yedek veritabanının
 yerine konur. Yönetici parolası (parola sonradan değiştiyse yedeğin alındığı
-dönemdeki parola) ya da kurtarma anahtarı sorulur. Mevcut veritabanı
-SİLİNMEZ; `db-onceki-<tarih>` adıyla `data` klasöründe saklanır. İşlem bitince
-programı normal açın.
+dönemdeki parola) ya da kurtarma anahtarı sorulur. Kurtarma anahtarı sonradan
+yenilendiyse: bu bilgisayarda güvenlik dosyası yerindeyken **yeni** anahtar
+eski yedekleri de açar; dosya yoksa (ya da yedek başka bilgisayarda açılıyorsa)
+yedeğin alındığı dönemin anahtarı gerekir (§1.4). Mevcut veritabanı SİLİNMEZ;
+`db-onceki-<tarih>` adıyla `data` klasöründe saklanır. İşlem bitince programı
+normal açın.
 
 ### 6.2 "Güvenlik dosyası bulunamadı ya da okunamıyor" ekranı
 

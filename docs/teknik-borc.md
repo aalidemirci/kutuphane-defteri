@@ -112,6 +112,54 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   checkpoint yapar. Kurucunun kapatma olayında dosyaların tutarlı kaldığı
   F12 saha provasında doğrulanacak.
 
+- **TB16 — Ayrılmış kişi kayıtları F11'e kadar süresiz duruyor (F1 eki 7, §6.4):**
+  kullanıcı kararıyla (22.09.2026) ayrılış artık hiçbir kaydı silmiyor; "hiç üye
+  olmamış ve yükümlülüksüz kişi ayrılışta katı silinir" dalı kalktı, çünkü ayrılanın
+  iade etmediği kitabı olabilir ve kaydı kaybolmamalı. Bedeli: okuldan ayrılmış
+  kişilerin ad, okul no (şifreli) ve sınıf/şube (düz) kayıtları saklama taraması
+  gelene kadar programda kalıyor — §6.4'ün "hemen sil" satırı artık boş. Azaltma:
+  kayıtlar şifreli ve yerel; kullanıcı gereksiz bir kaydı "Sil" ile kaldırabilir.
+  **Kapanışı F11'dedir:** saklama taraması ayrılmış kişileri aday gösterir, süre
+  (varsayılan öneri: ayrılıştan 2 yıl sonra) ve yönetici onayı orada kararlaşır;
+  aydınlatma metni (E13, F6) bu kapsamı aynen söyler.
+
+- **TB17 — Kurtarma anahtarı yenileme ele geçmiş anahtarı geçersiz kılmaz (F1 eki 8,
+  §6.3):** "Kurtarma anahtarını yenile" aynı DEK'i yeni anahtarla sarmalar; veri
+  yeniden şifrelenmez (yeniden şifreleme bütün kayıtları yeniden yazmak, eski yedekleri
+  okunamaz kılmak ve yedek anahtarını değiştirmek demekti). Bedeli: yenilemeden önce
+  alınmış yedekler ve veri klasöründe saklanan `guvenlik-arsiv-<damga>.json` ESKİ
+  anahtarla açılmaya devam eder. Yani yenileme "kaybolan/kaydedilemeyen kâğıdın yerine
+  yenisini koymak" içindir, **ele geçmiş anahtara karşı koruma değildir**. Azaltma:
+  arayüz, kılavuz ve `docs/kurulum.md` bunu açıkça söyler ve böyle bir durumda yönetici
+  parolasının da değiştirilmesini, eski yedeklerin gözden geçirilmesini önerir. Gerçek
+  çözüm (DEK döndürme + bütün kayıtların yeniden şifrelenmesi + yedeklerin yeniden
+  mühürlenmesi) F11 bakım fazına bırakıldı.
+
+- **TB18 — "Olası aynı kişi" adayı ad benzerliğiyle bulunur; adaşı eleyemez (F1 eki 7,
+  §8.3):** kural (`name_match.probably_same_person`) adın aynı olmasını TEK BAŞINA yeterli
+  sayar, çünkü kuralın asıl işi **soyadı değişimidir** ve orada soyadlar tamamen farklıdır
+  ("AYŞE YILMAZ" → "AYŞE KARA"); soyad yakınlığı aramak kuralı işlevsiz bırakırdı. Bedeli:
+  aynı aktarımda okula yeni gelen bir adaş (Ayşe, Fatma, Mehmet gibi yaygın adlarda) havuzda
+  bekleyen kişinin aday sütununda görünebilir; `selectors.leave_pool_similar_personnel`in
+  tarih süzgeci yalnız ESKİ kayıtları eler, aynı aktarımda açılan adaşı elemez (elemesi de
+  istenmez: soyadı değişimi tam olarak o kayıttır). Yanlış birleştirme geri alınamaz
+  (`persons.merge_personnel` kaynağı katı siler). Azaltma: aday yalnız ÖNERİDİR, hiçbir şey
+  kendiliğinden olmaz; havuz ekranı adayların yalnız ad benzerliğiyle bulunduğunu ve adaş
+  olabileceğini söyler, birleştirme iki adı da yazan onay diyaloğundan geçer. Daha iyisi
+  (aday satırında eşleşme gerekçesi + ikinci doğrulama, ya da e-Okul'da kişiyi ada bağlamayan
+  bir anahtar) kullanıcı kararı ister; F6'da üyelik bağları gelince yeniden değerlendirilir.
+
+- **TB19 — Kurulum bitmeden yönetici kipi süreyle kapanmaz (F1 eki 8, §4.4):** kullanıcı
+  kararı 2-1 gereği `setup_completed` yanlışken boşta (3 dk) ve mutlak (30 dk) süreler kipi
+  düşürmez ve süre dolduğunda sayaçlar yeniden başlar — zaman üst sınırı yoktur. Bedeli:
+  sihirbazın 1. adımında "Sakladım, doğrula"ya basılmadan bırakılan ekranda kurtarma anahtarı
+  düz metin olarak durur; program kendiliğinden ne görevli kipine iner ne kilitlenir ve
+  tasarım §4.5'e göre tepside günlerce açık kalabilir. Karar bilinçlidir (süre dolup kipin
+  düşmesi kullanıcıyı anahtarı saklamadan ekrandan atıyordu). Azaltma: "Kilitle" ve "Görevli
+  kipine geç" kurulum sırasında da elle çalışır; kılavuz kurulumun tek oturumda bitirilmesini
+  ve anahtar saklanmadan masadan kalkılmamasını söyler. Askıyı yalnız bekleyen anahtar varken
+  uygulamak ölçüyü daraltırdı ama kullanıcı kararını değiştirir; ertelendi.
+
 ## Kapanan
 
 - **TB15 — F1'e devreden F0 kalıntıları** *(kapandı: 22.09.2026 — F1 dalga

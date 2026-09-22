@@ -36,7 +36,12 @@ from apps.okul.kip_middleware import (
     KipMiddleware,
 )
 from apps.okul.services import app_password
-from apps.okul.tests.kip_ortak import DOGRU_PAROLA, SahteSaat, sahte_dogrulayici
+from apps.okul.tests.kip_ortak import (
+    DOGRU_PAROLA,
+    SahteSaat,
+    kurulum_durumunu_yaz,
+    sahte_dogrulayici,
+)
 from katalog.tests.test_koruma import SAGLIK_YOLU, _api_desenleri
 
 pytestmark = pytest.mark.django_db
@@ -301,6 +306,12 @@ def test_ad_alanli_uc_adi_cozulur() -> None:
 
 @pytest.fixture
 def saat() -> SahteSaat:
+    """§5.10-14 testleri kurulumu TAMAMLANMIŞ ortamda koşar.
+
+    Kurulum bitene kadar süreler kipi düşürmez (F1 eki, karar 2-1); o davranış
+    `test_kurulum_surerken_basliksiz_istekler_yonetici_kipini_dusurmez`'dedir.
+    """
+    kurulum_durumunu_yaz(tamam=True)
     saat = SahteSaat()
     KIP._reset_for_tests(saat=saat)
     return saat
@@ -380,6 +391,28 @@ def test_mutlak_sure_dolunca_gorevliye_iner_ve_parola_istenir(
     assert resp.status_code == 200
     assert _kip(client) == "yonetici"
     assert client.get(VERI_UCU).status_code == 200
+
+
+def test_kurulum_surerken_basliksiz_istekler_yonetici_kipini_dusurmez(saat: SahteSaat) -> None:
+    """Sihirbazda kurtarma anahtarı ekrandayken süre dolup görevliye inilmez (karar 2-1).
+
+    Kurulum tamamlanınca (`setup/complete/`) aynı §5.10-14 kuralı işlemeye başlar.
+    """
+    kurulum_durumunu_yaz(tamam=False)
+    client = Client()
+    assert _kip(client) == "yonetici"
+    for _ in range(40):  # 40 dk boyunca yalnız başlıksız durum ve pano sorguları
+        saat.ilerlet(60)
+        client.get(MOD)
+        client.get(HEALTH_PATH)
+        assert client.get(VERI_UCU).status_code == 200
+    assert _kip(client) == "yonetici"
+    assert client.get(MOD).json()["bosta_kalan_sn"] is None  # geri sayım gösterilmez
+
+    kurulum_durumunu_yaz(tamam=True)
+    saat.ilerlet(3 * 60)
+    assert client.get(VERI_UCU).status_code == 403
+    assert _kip(client) == "gorevli"
 
 
 def test_kisa_sureli_ayarla_da_ayni_kural(saat: SahteSaat) -> None:

@@ -135,6 +135,12 @@ export interface SetupStatus {
   setup_completed: boolean;
   /** Yönetici parolası kurulu mu? Kurulu değilse sihirbaz ilk adımdan açılır. */
   password_set: boolean;
+  /**
+   * Kurtarma anahtarının saklandığı doğrulandı mı? 1. adım ancak parola kurulu VE anahtar
+   * doğrulanmışsa tamamdır; kurulumu önceden tamamlanmış programda yanlışsa yol haritası ve
+   * Güvenlik ekranı uyarır.
+   */
+  recovery_key_confirmed: boolean;
   school_name: string;
   /** Okul adı, kademe, kısa ad ve demirbaş onayı tamam mı? */
   school_info_complete: boolean;
@@ -197,7 +203,8 @@ export const STUDENT_STATUS_TR: Record<StudentStatus, string> = {
 /**
  * Öğrenci sicili — StudentSerializer ile birebir (`full_name`/`class_label` türetilmiş).
  * Okul no şifreli saklanır; arama ve eşleştirme numaranın tamamıyla yapılır.
- * `status` ve `left_at` salt okunurdur: ayrılış `leaveStudent` ile yapılır.
+ * `status`, `left_at` ve `leave_candidate_since` salt okunurdur: ayrılış `leaveStudent`
+ * ya da Ayrılış Havuzu kararıyla yapılır; kayıt silinmez.
  */
 export interface Student {
   id: number;
@@ -211,6 +218,8 @@ export interface Student {
   status: StudentStatus;
   /** Ayrılış tarihi (ISO); aktif öğrencide null. */
   left_at: string | null;
+  /** Ayrılış havuzuna giriş tarihi (ISO); doluysa ayrılış kararı bekliyor. */
+  leave_candidate_since: string | null;
 }
 
 /** Öğrenci yazma gövdesi — türetilmiş ve salt okunur alanlar gönderilmez. */
@@ -234,7 +243,8 @@ export const MEMBER_KIND_TR: Record<MemberKind, string> = {
 /**
  * Personel sicili — PersonnelSerializer ile birebir (`full_name` türetilmiş).
  * Unvan ve branş bu programda YOKTUR (branş, küçük okulda öğretmeni kişiye bağlar).
- * `is_active` ve `left_at` salt okunurdur: ayrılış `leavePersonnel` ile yapılır.
+ * `is_active`, `left_at` ve `leave_candidate_since` salt okunurdur: ayrılış
+ * `leavePersonnel` ya da Ayrılış Havuzu kararıyla yapılır; kayıt silinmez.
  */
 export interface Personnel {
   id: number;
@@ -245,6 +255,8 @@ export interface Personnel {
   is_active: boolean;
   /** Ayrılış tarihi (ISO); aktif kişide null. */
   left_at: string | null;
+  /** Ayrılış havuzuna giriş tarihi (ISO); doluysa ayrılış kararı bekliyor. */
+  leave_candidate_since: string | null;
 }
 
 export interface PersonnelWriteBody {
@@ -253,18 +265,75 @@ export interface PersonnelWriteBody {
   member_kind?: MemberKind;
 }
 
-/**
- * Ayrılış sonucu: hiç üye olmamış ve açık işlemi olmayan kişi o anda silinir
- * (`deleted: true`, kayıt null); aksi hâlde ayrılmış kayıt döner.
- */
-export interface StudentLeaveResult {
-  deleted: boolean;
-  student: Student | null;
+// ---------------------------------------------------------------------------
+// Ayrılış Havuzu — e-Okul aktarımı kimseyi ayırmaz ve silmez; listede bulunmayan
+// aktif kişi burada karar bekler (backend `views_pool.py`).
+// ---------------------------------------------------------------------------
+
+/** Kişiyi havuza ekleyen aktarım: dosya adı (yapıştırılan listede boş) ve gün (ISO). */
+export interface LeavePoolRun {
+  id: number;
+  file_name: string;
+  date: string;
 }
 
-export interface PersonnelLeaveResult {
-  deleted: boolean;
-  personnel: Personnel | null;
+/** Havuzdaki öğrenci — LeavePoolStudentSerializer ile birebir. */
+export interface LeavePoolStudent {
+  id: number;
+  full_name: string;
+  student_number: string;
+  class_label: string;
+  /** Havuza giriş tarihi (ISO). */
+  leave_candidate_since: string;
+  run: LeavePoolRun | null;
+}
+
+/** Havuzdaki kişiyle "olası aynı kişi" olan, sonradan açılmış kayıt. */
+export interface LeavePoolSimilar {
+  id: number;
+  full_name: string;
+}
+
+/** Havuzdaki öğretmen / diğer personel — LeavePoolPersonnelSerializer ile birebir. */
+export interface LeavePoolPersonnel {
+  id: number;
+  full_name: string;
+  member_kind: MemberKind;
+  leave_candidate_since: string;
+  run: LeavePoolRun | null;
+  /** Birleştirme adayları: havuzdaki kişi kaynak, aday hedef (`mergePersonnel`). */
+  similar: LeavePoolSimilar[];
+}
+
+/** `GET /leave-pool/?summary=true` — yalnız sayılar (Genel Bakış kartı). */
+export interface LeavePoolSummary {
+  student_count: number;
+  personnel_count: number;
+}
+
+/** `GET /leave-pool/` — ayrı listeler, TR sıralı. */
+export interface LeavePool extends LeavePoolSummary {
+  students: LeavePoolStudent[];
+  personnel: LeavePoolPersonnel[];
+}
+
+/** Bir kişi türü için karar: ayrıldı olarak işaretle / aktif kalsın (kimlikler). */
+export interface LeavePoolDecision {
+  leave?: number[];
+  keep?: number[];
+}
+
+export interface LeavePoolResolveBody {
+  students?: LeavePoolDecision;
+  personnel?: LeavePoolDecision;
+}
+
+/** Karar sonucu: uygulanan sayılar + havuzda kalan sayılar. */
+export interface LeavePoolResolveResult extends LeavePoolSummary {
+  students_left: number;
+  students_kept: number;
+  personnel_left: number;
+  personnel_kept: number;
 }
 
 /** Şube kataloğu satırı — ClassSectionSerializer ile birebir. */
@@ -333,33 +402,39 @@ export interface ClassImpact {
   created: number;
   updated: number;
   unchanged: number;
-  /** Dosyada olmadığı için ayrılmış sayılacak öğrenci sayısı. */
-  leaving: number;
+  /** Dosyada olmadığı için ayrılış havuzuna YENİ eklenen öğrenci sayısı. */
+  to_pool: number;
 }
 
-/** Ayrılacak öğrenci — ad yalnız bu yanıtta gelir, kalıcı rapora yazılmaz. */
-export interface LeavingStudent {
+/** Havuza eklenecek öğrenci — ad yalnız bu yanıtta gelir, kalıcı rapora yazılmaz. */
+export interface PoolStudent {
   id: number;
   full_name: string;
   student_number: string;
   class_label: string;
 }
 
+/**
+ * Aktarım kimseyi ayırmaz: dosyada olmayan aktif öğrenci ayrılış havuzuna girer
+ * (`pool_added_students`, zaten havuzda olan sayılmaz), dosyada bulunan havuzdaki
+ * öğrenci çıkar (`pool_removed_students`).
+ */
 export interface StudentImportReport extends ImportReportBase {
   created_students: number;
   updated_students: number;
   unchanged_students: number;
   /** Güncellenenlerin içinde: ayrılmışken aynı numarayla dönenler. */
   reactivated_students: number;
-  leaving_students: number;
+  pool_added_students: number;
+  pool_removed_students: number;
   /** "Bu dosya okulun tam listesidir" onayıyla mı çalıştı? */
   full_list: boolean;
   classes: ClassImpact[];
-  leaving: LeavingStudent[];
+  pool_added: PoolStudent[];
 }
 
-/** Listede olmayan aktif kişi (ad yalnız bu yanıtta gelir). */
-export interface MissingPersonnel {
+/** Havuza eklenecek (listede olmayan) aktif kişi — ad yalnız bu yanıtta gelir. */
+export interface PoolPersonnel {
   id: number;
   full_name: string;
 }
@@ -367,7 +442,7 @@ export interface MissingPersonnel {
 /**
  * "Olası aynı kişi": ada göre eşleşmeyen yeni satır ↔ listede olmayan kayıt.
  * `new_id` yalnız aktarımdan sonra dolar (önizlemede null); birleştirme
- * `mergePersonnel(existing_id, new_id)` ile yapılır.
+ * `mergePersonnel(existing_id, new_id)` ile yapılır (ya da Ayrılış Havuzu'ndan).
  */
 export interface SimilarPair {
   row_number: number;
@@ -377,15 +452,16 @@ export interface SimilarPair {
   new_id: number | null;
 }
 
+/** Aktarım kimseyi ayırmaz: listede olmayan aktif personel ayrılış havuzuna girer. */
 export interface PersonnelImportReport extends ImportReportBase {
   created_personnel: number;
   updated_personnel: number;
   unchanged_personnel: number;
   reactivated_personnel: number;
-  missing_count: number;
-  left_personnel: number;
+  pool_added_personnel: number;
+  pool_removed_personnel: number;
   similar_pair_count: number;
-  missing: MissingPersonnel[];
+  pool_added: PoolPersonnel[];
   similar_pairs: SimilarPair[];
 }
 
@@ -399,11 +475,6 @@ export interface StudentImportOptions {
   fullList?: boolean;
 }
 
-/** Personel mutabakatı seçeneği: listede olmayanlardan ayrılacak sayılanlar. */
-export interface PersonnelImportOptions {
-  markLeftIds?: number[];
-}
-
 /**
  * Öğrenci/personel raporlarının farklı adlandırılmış sayaçlarını (created_students
  * ↔ created_personnel) tek şekle indirger — rapor bileşeni türden bağımsız kalır.
@@ -412,18 +483,24 @@ export function importCounts(report: ImportReport): {
   created: number;
   updated: number;
   unchanged: number;
+  poolAdded: number;
+  poolRemoved: number;
 } {
   if ("created_students" in report) {
     return {
       created: report.created_students,
       updated: report.updated_students,
       unchanged: report.unchanged_students,
+      poolAdded: report.pool_added_students,
+      poolRemoved: report.pool_removed_students,
     };
   }
   return {
     created: report.created_personnel,
     updated: report.updated_personnel,
     unchanged: report.unchanged_personnel,
+    poolAdded: report.pool_added_personnel,
+    poolRemoved: report.pool_removed_personnel,
   };
 }
 
@@ -447,21 +524,18 @@ function asPage<T>(data: Paginated<T> | T[]): Paginated<T> {
     : data;
 }
 
-type ImportExtra = Record<string, boolean | number[]>;
+type ImportExtra = Record<string, boolean>;
 
 /**
  * Dosya yolu multipart (`file`), metin yolu JSON (`text`) — backend tam olarak birini
- * bekler. Mutabakat seçenekleri (`full_list`, `mark_left_ids`) iki yolda da gider:
- * çok parçalı gövdede liste alanı tekrarlanarak eklenir (DRF `ListField`).
+ * bekler. Mutabakat seçeneği (`full_list`) iki yolda da gider. Personelde seçenek
+ * yoktur: listede olmayanlar Ayrılış Havuzu'na girer, karar orada verilir.
  */
 function importRequest<R>(path: string, input: ImportInput, extra: ImportExtra = {}): Promise<R> {
   if ("file" in input) {
     const form = new FormData();
     form.append("file", input.file);
-    for (const [key, value] of Object.entries(extra)) {
-      if (Array.isArray(value)) value.forEach((v) => form.append(key, String(v)));
-      else form.append(key, String(value));
-    }
+    for (const [key, value] of Object.entries(extra)) form.append(key, String(value));
     return api.postForm<R>(path, form);
   }
   return api.post<R>(path, { text: input.text, ...extra });
@@ -470,12 +544,6 @@ function importRequest<R>(path: string, input: ImportInput, extra: ImportExtra =
 /** Yalnız anlamlı seçenekler gönderilir (varsayılanlar backend'dedir). */
 function studentExtra(options: StudentImportOptions): ImportExtra {
   return options.fullList ? { full_list: true } : {};
-}
-
-function personnelExtra(options: PersonnelImportOptions): ImportExtra {
-  return options.markLeftIds && options.markLeftIds.length > 0
-    ? { mark_left_ids: options.markLeftIds }
-    : {};
 }
 
 export const okulApi = {
@@ -572,9 +640,8 @@ export const okulApi = {
   /** Hiç üye olmamış ve açık işlemi olmayan öğrencinin kaydını siler (yoksa 400). */
   deleteStudent: (id: number): Promise<void> => api.del<void>(`/students/${id}/`),
 
-  /** "Ayrıldı olarak işaretle" — ayrılış yolu; kayıt silinebilir (bkz. `deleted`). */
-  leaveStudent: (id: number): Promise<StudentLeaveResult> =>
-    api.post<StudentLeaveResult>(`/students/${id}/leave/`),
+  /** "Ayrıldı olarak işaretle" — ayrılış yolu; kayıt SİLİNMEZ, ayrılmış kayıt döner. */
+  leaveStudent: (id: number): Promise<Student> => api.post<Student>(`/students/${id}/leave/`),
 
   // --- Personel ---
 
@@ -598,12 +665,30 @@ export const okulApi = {
 
   deletePersonnel: (id: number): Promise<void> => api.del<void>(`/personnel/${id}/`),
 
-  leavePersonnel: (id: number): Promise<PersonnelLeaveResult> =>
-    api.post<PersonnelLeaveResult>(`/personnel/${id}/leave/`),
+  /** "Ayrıldı olarak işaretle" — kayıt SİLİNMEZ, ayrılmış kayıt döner. */
+  leavePersonnel: (id: number): Promise<Personnel> =>
+    api.post<Personnel>(`/personnel/${id}/leave/`),
 
   /** "Olası aynı kişi": `sourceId` (eski kayıt) `intoId` (yeni kayıt) kaydına birleşir. */
   mergePersonnel: (sourceId: number, intoId: number): Promise<Personnel> =>
     api.post<Personnel>(`/personnel/${sourceId}/merge/`, { into_id: intoId }),
+
+  // --- Ayrılış Havuzu ---
+
+  /** Ayrılış kararı bekleyen öğrenci ve personel (ayrı listeler, TR sıralı). */
+  getLeavePool: (): Promise<LeavePool> => api.get<LeavePool>("/leave-pool/"),
+
+  /** Yalnız sayılar — Genel Bakış kartı (kişisel veri gelmez). */
+  getLeavePoolSummary: (): Promise<LeavePoolSummary> =>
+    api.get<LeavePoolSummary>("/leave-pool/?summary=true"),
+
+  /**
+   * Toplu karar (tek işlem): `leave` → ayrıldı olarak işaretle (kayıt kalır),
+   * `keep` → aktif kalsın (havuzdan çıkar). Seçilenlerden biri artık havuzda
+   * değilse hiçbir karar uygulanmaz (400).
+   */
+  resolveLeavePool: (body: LeavePoolResolveBody): Promise<LeavePoolResolveResult> =>
+    api.post<LeavePoolResolveResult>("/leave-pool/resolve/", body),
 
   // --- Şube kataloğu ---
 
@@ -635,25 +720,11 @@ export const okulApi = {
   ): Promise<StudentImportReport> =>
     importRequest<StudentImportReport>("/imports/students/commit/", input, studentExtra(options)),
 
-  previewPersonnelImport: (
-    input: ImportInput,
-    options: PersonnelImportOptions = {},
-  ): Promise<PersonnelImportReport> =>
-    importRequest<PersonnelImportReport>(
-      "/imports/personnel/preview/",
-      input,
-      personnelExtra(options),
-    ),
+  previewPersonnelImport: (input: ImportInput): Promise<PersonnelImportReport> =>
+    importRequest<PersonnelImportReport>("/imports/personnel/preview/", input),
 
-  commitPersonnelImport: (
-    input: ImportInput,
-    options: PersonnelImportOptions = {},
-  ): Promise<PersonnelImportReport> =>
-    importRequest<PersonnelImportReport>(
-      "/imports/personnel/commit/",
-      input,
-      personnelExtra(options),
-    ),
+  commitPersonnelImport: (input: ImportInput): Promise<PersonnelImportReport> =>
+    importRequest<PersonnelImportReport>("/imports/personnel/commit/", input),
 
   // --- Şablon indirme (xlsx blob) ---
 

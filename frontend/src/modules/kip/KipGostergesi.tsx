@@ -93,9 +93,14 @@ export default function KipGostergesi() {
   if (durum !== "yonetici" && durum !== "gorevli") return null;
 
   const yonetici = durum === "yonetici";
-  const ipucu = ozet
-    ? `Yönetici kipi ${ozet.bosta_dk} dakika işlem yapılmazsa ya da en geç ${ozet.mutlak_dk} dakika sonra kapanır; program görevli kipine geçer.`
-    : "";
+  // Yönetici kipinde kalan süre boşsa kurulum sürüyordur: süreler işlemez (backend
+  // `kip.py`, F1 eki karar 2-1) ve geri sayım gösterilmez.
+  const sureAskida = yonetici && ozet?.bosta_kalan_sn === null;
+  const ipucu = !ozet
+    ? ""
+    : sureAskida
+      ? "Kurulum tamamlanana kadar yönetici kipi süreyle kapanmaz. Görevli kipine geçiş ve Kilitle her zaman çalışır."
+      : `Yönetici kipi ${ozet.bosta_dk} dakika işlem yapılmazsa ya da en geç ${ozet.mutlak_dk} dakika sonra kapanır; program görevli kipine geçer.`;
 
   return (
     <div className="flex items-center gap-1 sm:gap-2" aria-label="Kip" role="group">

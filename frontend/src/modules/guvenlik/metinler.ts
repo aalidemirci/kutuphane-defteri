@@ -47,9 +47,51 @@ export const KURMA_UYARISI =
 
 /** Kurtarma anahtarı çıktısını yeniden alma kartı (Ayarlar → Güvenlik). */
 export const CIKTI_YENIDEN_METNI =
-  "Kurtarma anahtarı programda saklanmaz; yalnız parola kurulurken bir kez gösterilir. " +
-  "Elinizdeki anahtarı yazın: anahtar doğruysa yazdırılabilir çıktısı PDF olarak " +
-  "hazırlanır (ör. elle yazılmış kâğıdın temiz kopyası için).";
+  "Kurtarma anahtarı programda saklanmaz; yalnız parola kurulurken ya da anahtar " +
+  "yenilenirken bir kez gösterilir. Elinizdeki anahtarı yazın: anahtar doğruysa " +
+  "yazdırılabilir çıktısı PDF olarak hazırlanır (ör. elle yazılmış kâğıdın temiz kopyası için).";
+
+/** Anahtarın saklandığı sunucuda doğrulanmadıysa (kurulum sihirbazı, Güvenlik, yol haritası). */
+export const DOGRULANMADI_BASLIGI = "Kurtarma anahtarı doğrulanmadı";
+
+export const DOGRULANMADI_METNI =
+  "Kurtarma anahtarının saklandığı henüz doğrulanmadı. Yönetici parolası unutulursa " +
+  "kayıtlara yalnız bu anahtarla ulaşılır. Anahtarı sakladıysanız aşağıya yazıp " +
+  "doğrulayın; kaydedemediyseniz yenisini üretin.";
+
+/** "Kurtarma anahtarını doğrula" kartı: kâğıttaki anahtarın tamamı yazılır. */
+export const DOGRULA_KARTI_METNI =
+  "Sakladığınız kâğıttaki ya da PDF'teki anahtarı olduğu gibi yazın. Anahtar doğruysa " +
+  "saklandığı kaydedilir; program anahtarı saklamaz.";
+
+/** "Kurtarma anahtarını yenile" kartının açıklaması. */
+export const YENILEME_METNI =
+  "Anahtar kaybolduysa ya da kurulumda kaydedilemediyse yenisini üretin. Yeni anahtar bir " +
+  "kez gösterilir; saklayıp doğrulamadan programı kapatmayın. Yönetici parolası değişmez, " +
+  "kayıtlar yeniden şifrelenmez.";
+
+/** Yenileme onay diyaloğu: sonuç (başlık soru, gövde sonuç — sözlük §3). */
+export const YENILEME_SONUCU_METNI =
+  "Yeni bir kurtarma anahtarı üretilir ve bir kez gösterilir. Zarftaki eski anahtar bu " +
+  "bilgisayarda kilidi artık açmaz.";
+
+/**
+ * Eski yedekler (backend `backup_restore`: yedek, alındığı günün güvenlik dosyasını
+ * taşır; güncel dosya yerindeyken yeni anahtar da açar). Testle kanıtlı:
+ * `apps/okul/tests/test_kurtarma_yenileme.py::TestYedekler`.
+ */
+export const ESKI_YEDEK_METNI =
+  "Her yedek, alındığı günün güvenlik dosyasını içinde taşır. Bugünden önce alınmış " +
+  "yedekler bu bilgisayarda yeni anahtarla da açılır; ama başka bir bilgisayarda ya da " +
+  "güvenlik dosyası kaybolduğunda yalnız eski kurtarma anahtarıyla (ya da o dönemin " +
+  "yönetici parolasıyla) açılır. O yedekler (USB bellektekiler dahil) duruyorsa eski " +
+  "kâğıdı atmayın: “Eski anahtar — bugünden önceki yedekler için” diye işaretleyip ayrı saklayın.";
+
+/** Dürüst sınır: yenileme ele geçmiş anahtara karşı koruma değildir (DEK değişmez). */
+export const ELE_GECMIS_ANAHTAR_METNI =
+  "Yenileme, başkasının eline geçmiş bir anahtara karşı koruma değildir: kayıtların " +
+  "anahtarı değişmez; eski yedekler ve veri klasöründe “guvenlik-arsiv” adıyla saklanan " +
+  "önceki güvenlik dosyası eski anahtarla açılabilir.";
 
 /** Yarım kalan kurulum uyarısı (elektrik kesintisi vb.). */
 export const YARIM_GECIS_METNI =

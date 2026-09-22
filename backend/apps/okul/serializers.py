@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from django.utils import timezone
 from rest_framework import serializers
 
 from apps.okul import normalize, selectors
@@ -128,10 +129,12 @@ class RoadmapUpdateSerializer(serializers.Serializer[dict[str, Any]]):
         return attrs
 
 
-class RecoveryKeyPdfRequestSerializer(serializers.Serializer[dict[str, Any]]):
-    """`POST security/recovery-key/pdf/` gövdesi. Anahtar yalnız gövdede taşınır.
+class RecoveryKeyRequestSerializer(serializers.Serializer[dict[str, Any]]):
+    """Gövdesinde kurtarma anahtarı taşıyan güvenlik uçlarının ortak gövdesi.
 
-    Üst sınır bir savunmadır (anahtar 32 karakter + 7 tire); sınır aşımı iletisi
+    `security/recovery-key/pdf/` (E14 çıktısı) ve `security/recovery-key/confirm/`
+    (saklandığının doğrulanması) kullanır. Anahtar yalnız gövdede taşınır. Üst
+    sınır bir savunmadır (anahtar 32 karakter + 7 tire); sınır aşımı iletisi
     değeri yankılamaz.
     """
 
@@ -144,6 +147,10 @@ class RecoveryKeyPdfRequestSerializer(serializers.Serializer[dict[str, Any]]):
             "max_length": "Kurtarma anahtarı hatalı.",
         },
     )
+
+
+class RecoveryKeyPdfRequestSerializer(RecoveryKeyRequestSerializer):
+    """`POST security/recovery-key/pdf/` gövdesi (`RecoveryKeyRequestSerializer`)."""
 
 
 class SchoolYearSerializer(serializers.ModelSerializer[SchoolYear]):
@@ -265,8 +272,10 @@ class PersonnelSerializer(serializers.ModelSerializer[Personnel]):
     """Personel sicili. Unvan ve branş YOKTUR (V2-01).
 
     `is_active` ve `left_at` salt okunurdur: ayrılış yalnız `personnel/<pk>/leave/`
-    ayrılış yolundan geçer (kancalar + katı silme kararı, tasarım §6.1); gövdeyle
-    gönderilen değer yok sayılır.
+    ayrılış yolundan ya da ayrılış havuzu kararından geçer (kancalar; kayıt
+    silinmez — tasarım §6.1, F1 eki 7); gövdeyle gönderilen değer yok sayılır.
+    `leave_candidate_since` salt okunurdur: doluysa kişi ayrılış havuzunda karar
+    bekliyor demektir (yalnız e-Okul aktarımı yazar).
     """
 
     full_name = serializers.CharField(read_only=True)
@@ -288,8 +297,9 @@ class PersonnelSerializer(serializers.ModelSerializer[Personnel]):
             "member_kind",
             "is_active",
             "left_at",
+            "leave_candidate_since",
         ]
-        read_only_fields = ["is_active", "left_at"]
+        read_only_fields = ["is_active", "left_at", "leave_candidate_since"]
 
 
 class ClassSectionSerializer(serializers.ModelSerializer[ClassSection]):
@@ -347,7 +357,9 @@ class StudentSerializer(serializers.ModelSerializer[Student]):
     çalışmazdı).
 
     `status` ve `left_at` salt okunurdur: ayrılış `students/<pk>/leave/`
-    ayrılış yolundan, yeniden aktifleşme e-Okul aktarımından geçer.
+    ayrılış yolundan ya da ayrılış havuzu kararından, yeniden aktifleşme e-Okul
+    aktarımından geçer. `leave_candidate_since` salt okunurdur: doluysa öğrenci
+    ayrılış havuzunda karar bekliyor demektir (F1 eki 7).
     """
 
     full_name = serializers.CharField(read_only=True)
@@ -374,8 +386,9 @@ class StudentSerializer(serializers.ModelSerializer[Student]):
             "class_label",
             "status",
             "left_at",
+            "leave_candidate_since",
         ]
-        read_only_fields = ["status", "left_at"]
+        read_only_fields = ["status", "left_at", "leave_candidate_since"]
         validators: list[Any] = []
 
     def validate_student_number(self, value: str) -> str:
@@ -396,22 +409,20 @@ class StudentSerializer(serializers.ModelSerializer[Student]):
 class ImportRequestSerializer(serializers.Serializer[dict[str, Any]]):
     """İçe aktarma girdisi: Excel dosyası (e-Okul .xls / şablon .xlsx) VEYA pano metni.
 
-    Mutabakat seçenekleri (tasarım §8.3; önizleme ve uygulama AYNI kodu koşar,
+    Mutabakat seçeneği (tasarım §8.3; önizleme ve uygulama AYNI kodu koşar,
     ikisi de kabul eder):
 
     - `full_list` (öğrenci): "Bu dosya okulun tam listesidir" onayı. Verilmezse
       karşılaştırma YALNIZ dosyada bulunan şubelerle yapılır (EK-21).
-    - `mark_left_ids` (personel): listede olmayan aktif personelden ayrıldı
-      sayılacaklar; varsayılan hiçbiri (EK-20). Çok parçalı gövdede alan
-      tekrarlanarak gönderilir.
+
+    Aktarım kimseyi ayırmaz (F1 eki 7): listede olmayanlar ayrılış havuzuna
+    girer, karar `leave-pool/resolve/` ile verilir. Eski personel seçeneği
+    `mark_left_ids` KALDIRILDI; gönderilirse yok sayılır.
     """
 
     file = serializers.FileField(required=False)
     text = serializers.CharField(required=False, allow_blank=True, trim_whitespace=False)
     full_list = serializers.BooleanField(required=False, default=False)
-    mark_left_ids = serializers.ListField(
-        child=serializers.IntegerField(min_value=1), required=False, default=list
-    )
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         has_file = attrs.get("file") is not None
@@ -433,3 +444,109 @@ class PersonnelMergeSerializer(serializers.Serializer[dict[str, Any]]):
             "invalid": "Hedef kayıt kimliği sayısal olmalıdır.",
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Ayrılış havuzu (F1 eki 7; tasarım §6.1, §8.3) — AD İÇERİR: yalnız yönetim yüzeyi
+# ---------------------------------------------------------------------------
+
+
+def _pool_run(person: Student | Personnel) -> dict[str, Any] | None:
+    """Kişiyi havuza ekleyen aktarım: dosya adı (yapıştırılan listede boş) + gün."""
+    run = selectors.leave_pool_run(person)
+    if run is None:
+        return None
+    zaman = run.finished_at or run.started_at
+    return {
+        "id": run.pk,
+        "file_name": run.file_name,
+        "date": timezone.localdate(zaman).isoformat(),
+    }
+
+
+class LeavePoolStudentSerializer(serializers.ModelSerializer[Student]):
+    """Havuzdaki öğrenci: sınıf/şube, havuza giriş tarihi ve hangi aktarımla."""
+
+    full_name = serializers.CharField(read_only=True)
+    class_label = serializers.CharField(read_only=True)
+    run = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Student
+        fields = [
+            "id",
+            "full_name",
+            "student_number",
+            "class_label",
+            "leave_candidate_since",
+            "run",
+        ]
+        read_only_fields = fields
+
+    def get_run(self, obj: Student) -> dict[str, Any] | None:
+        return _pool_run(obj)
+
+
+class LeavePoolPersonnelSerializer(serializers.ModelSerializer[Personnel]):
+    """Havuzdaki öğretmen / diğer personel + "olası aynı kişi" adayları.
+
+    Adaylar `context["similar"]`'dan (kimlik → kayıtlar) okunur; birleştirme
+    `personnel/<id>/merge/ {into_id: aday}` ile yapılır (havuzdaki kişi kaynaktır).
+    """
+
+    full_name = serializers.CharField(read_only=True)
+    run = serializers.SerializerMethodField()
+    similar = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Personnel
+        fields = [
+            "id",
+            "full_name",
+            "member_kind",
+            "leave_candidate_since",
+            "run",
+            "similar",
+        ]
+        read_only_fields = fields
+
+    def get_run(self, obj: Personnel) -> dict[str, Any] | None:
+        return _pool_run(obj)
+
+    def get_similar(self, obj: Personnel) -> list[dict[str, Any]]:
+        adaylar: dict[int, list[Personnel]] = self.context.get("similar", {})
+        return [{"id": p.pk, "full_name": p.full_name} for p in adaylar.get(obj.pk, [])]
+
+
+_POOL_IDS_ERRORS: dict[str, Any] = {
+    "not_a_list": "Kişi kimlikleri liste olarak gönderilmelidir.",
+}
+
+
+def _pool_ids_field() -> serializers.ListField:
+    return serializers.ListField(
+        child=serializers.IntegerField(
+            min_value=1, error_messages={"invalid": "Kişi kimliği sayısal olmalıdır."}
+        ),
+        required=False,
+        default=list,
+        error_messages=_POOL_IDS_ERRORS,
+    )
+
+
+class LeavePoolDecisionSerializer(serializers.Serializer[dict[str, Any]]):
+    """Bir kişi türü için karar: `leave` (ayrıldı olarak işaretle) / `keep` (aktif kalsın)."""
+
+    leave = _pool_ids_field()
+    keep = _pool_ids_field()
+
+
+class LeavePoolResolveSerializer(serializers.Serializer[dict[str, Any]]):
+    """`POST leave-pool/resolve/` — `{students: {leave, keep}, personnel: {leave, keep}}`.
+
+    Çakışma (aynı kişi iki listede), boş karar ve havuzda olmayan kişi
+    denetimleri serviste, TEK işlemdedir (`persons.resolve_leave_pool`).
+    """
+
+    students = LeavePoolDecisionSerializer(required=False)
+    personnel = LeavePoolDecisionSerializer(required=False)

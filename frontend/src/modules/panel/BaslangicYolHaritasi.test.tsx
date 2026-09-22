@@ -54,6 +54,20 @@ describe("BaslangicYolHaritasi", () => {
     expect(maddeTamamMi("kurtarma_zarfi", durum)).toBe(false);
   });
 
+  it("kurtarma anahtarı doğrulanmamışsa uyarı ve Güvenlik bağlantısı gösterilir", () => {
+    bas({ ...KURULU_DURUM, recovery_key_confirmed: false });
+    const uyari = screen.getByText(/Kurtarma anahtarı doğrulanmadı/).closest("div");
+    expect(uyari).not.toBeNull();
+    expect(
+      within(uyari as HTMLElement).getByRole("link", { name: /Güvenlik ayarları/ }),
+    ).toHaveAttribute("href", "/ayarlar?tab=guvenlik");
+  });
+
+  it("anahtar doğrulanmışsa uyarı çıkmaz", () => {
+    bas();
+    expect(screen.queryByText(/Kurtarma anahtarı doğrulanmadı/)).toBeNull();
+  });
+
   it("her madde ilgili sayfaya bağlanır", () => {
     bas();
     const bag = (metin: RegExp) => within(madde(metin)).getByRole("link");
@@ -74,9 +88,10 @@ describe("BaslangicYolHaritasi", () => {
       "href",
       "/ayarlar?tab=guvenlik",
     );
+    // Çapalı adres: kılavuzun "Ağ Kataloğu" bölümüne kaydırır.
     expect(bag(/bilişim teknolojileri rehber öğretmeniyle \(BTR\)/)).toHaveAttribute(
       "href",
-      "/kilavuz",
+      "/kilavuz#ag-katalogu",
     );
     // Şablon maddesi bir sayfaya değil, şablon indirme işlevine bağlanır.
     expect(

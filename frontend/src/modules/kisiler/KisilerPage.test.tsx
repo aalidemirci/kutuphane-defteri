@@ -35,6 +35,8 @@ const okulApiMock = vi.hoisted(() => ({
   leaveStudent: vi.fn(),
   leavePersonnel: vi.fn(),
   mergePersonnel: vi.fn(),
+  getLeavePool: vi.fn(),
+  resolveLeavePool: vi.fn(),
   previewStudentImport: vi.fn(),
   commitStudentImport: vi.fn(),
   previewPersonnelImport: vi.fn(),
@@ -65,6 +67,7 @@ const STUDENT: Student = {
   class_label: "10/A",
   status: "ACTIVE",
   left_at: null,
+  leave_candidate_since: null,
 };
 
 const PERSONNEL: Personnel = {
@@ -75,6 +78,7 @@ const PERSONNEL: Personnel = {
   member_kind: "TEACHER",
   is_active: true,
   left_at: null,
+  leave_candidate_since: null,
 };
 
 const PREVIEW_REPORT: StudentImportReport = {
@@ -86,12 +90,13 @@ const PREVIEW_REPORT: StudentImportReport = {
   updated_students: 1,
   unchanged_students: 0,
   reactivated_students: 0,
-  leaving_students: 0,
+  pool_added_students: 0,
+  pool_removed_students: 0,
   full_list: false,
   already_imported: false,
   dry_run: true,
   classes: [],
-  leaving: [],
+  pool_added: [],
   warnings: [{ row_number: 3, field: "class", issue: "Sınıf/şube çözülemedi", raw_value: "8-A" }],
   skipped: [],
 };
@@ -431,10 +436,11 @@ describe("KisilerPage — öğretmenler ve diğer personel sekmesi", () => {
     expect(await screen.findByText("Kayıt silindi.")).toBeInTheDocument();
   });
 
-  it("ayrıldı olarak işaretleme onaylı yapılır; saklanan kayıt bildirilir", async () => {
+  it("ayrıldı olarak işaretleme onaylı yapılır; kaydın silinmediği söylenir", async () => {
     okulApiMock.leavePersonnel.mockResolvedValue({
-      deleted: false,
-      personnel: { ...PERSONNEL, is_active: false, left_at: "2026-09-22" },
+      ...PERSONNEL,
+      is_active: false,
+      left_at: "2026-09-22",
     });
     const user = userEvent.setup();
     renderPage("/kisiler?tab=personel");
@@ -445,7 +451,8 @@ describe("KisilerPage — öğretmenler ve diğer personel sekmesi", () => {
     const onay = await screen.findByRole("dialog", {
       name: "Kişi ayrıldı olarak işaretlensin mi?",
     });
-    expect(within(onay).getByText(/kaydı hemen silinir/)).toBeInTheDocument();
+    expect(within(onay).getByText(/Kaydı silinmez/)).toBeInTheDocument();
+    expect(within(onay).queryByText(/hemen silinir/)).toBeNull();
     await user.click(within(onay).getByRole("button", { name: "Ayrıldı olarak işaretle" }));
 
     await waitFor(() => expect(okulApiMock.leavePersonnel).toHaveBeenCalledWith(5));
@@ -470,8 +477,12 @@ describe("KisilerPage — öğretmenler ve diğer personel sekmesi", () => {
 });
 
 describe("KisilerPage — öğrenci ayrılışı ve parola uyarısı", () => {
-  it("ayrıldı olarak işaretle: onaydan sonra kaydın silindiği bildirilir", async () => {
-    okulApiMock.leaveStudent.mockResolvedValue({ deleted: true, student: null });
+  it("ayrıldı olarak işaretle: kayıt silinmez, onaydan sonra işaretlendiği bildirilir", async () => {
+    okulApiMock.leaveStudent.mockResolvedValue({
+      ...STUDENT,
+      status: "LEFT",
+      left_at: "2026-09-22",
+    });
     const user = userEvent.setup();
     renderPage();
     await screen.findByText("Ayşe Yılmaz");
@@ -482,10 +493,22 @@ describe("KisilerPage — öğrenci ayrılışı ve parola uyarısı", () => {
     const onay = await screen.findByRole("dialog", {
       name: "Öğrenci ayrıldı olarak işaretlensin mi?",
     });
+    expect(within(onay).getByText(/Kaydı silinmez/)).toBeInTheDocument();
     await user.click(within(onay).getByRole("button", { name: "Ayrıldı olarak işaretle" }));
 
     await waitFor(() => expect(okulApiMock.leaveStudent).toHaveBeenCalledWith(1));
-    expect(await screen.findByText("Öğrenci ayrıldı; kaydı silindi.")).toBeInTheDocument();
+    expect(await screen.findByText("Öğrenci ayrıldı olarak işaretlendi.")).toBeInTheDocument();
+    expect(screen.queryByText(/kaydı silindi/)).toBeNull();
+  });
+
+  it("ayrılış havuzundaki öğrencide “Ayrılış kararı bekliyor” rozeti görünür", async () => {
+    okulApiMock.listStudents.mockResolvedValue(
+      page([{ ...STUDENT, leave_candidate_since: "2026-09-22" }]),
+    );
+    renderPage();
+
+    expect(await screen.findByText("Ayrılış kararı bekliyor")).toBeInTheDocument();
+    expect(screen.getByText("Aktif")).toBeInTheDocument();
   });
 
   it("ayrılış onayından vazgeçilirse istek atılmaz", async () => {
@@ -569,13 +592,34 @@ describe("KisilerPage — öğrenci ayrılışı ve parola uyarısı", () => {
 });
 
 describe("KisilerPage — sekmeler", () => {
-  it("iki sekme vardır: Öğrenciler ve Öğretmenler (BEP ve fotoğraf yok)", async () => {
+  it("üç sekme vardır: Öğrenciler, Öğretmenler ve Ayrılış Havuzu (BEP ve fotoğraf yok)", async () => {
     renderPage();
     await screen.findByText("Ayşe Yılmaz");
 
-    expect(screen.getAllByRole("tab")).toHaveLength(2);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual([
+      expect.stringContaining("Öğrenciler"),
+      expect.stringContaining("Öğretmenler ve Diğer Personel"),
+      expect.stringContaining("Ayrılış Havuzu"),
+    ]);
     expect(screen.queryByRole("tab", { name: /BEP/ })).toBeNull();
     expect(screen.queryByText(/fotoğraf/i)).toBeNull();
+  });
+
+  it("derin bağlantı: /kisiler?tab=havuz Ayrılış Havuzu sekmesini açar", async () => {
+    okulApiMock.getLeavePool.mockResolvedValue({
+      student_count: 0,
+      personnel_count: 0,
+      students: [],
+      personnel: [],
+    });
+    renderPage("/kisiler?tab=havuz");
+
+    expect(await screen.findByText("Ayrılış kararı bekleyen kişi yok")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Ayrılış Havuzu/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(okulApiMock.listStudents).not.toHaveBeenCalled();
   });
 
   it("derin bağlantı: /kisiler?tab=personel doğrudan Öğretmenler sekmesini açar", async () => {
@@ -592,7 +636,7 @@ describe("KisilerPage — sekmeler", () => {
   it("geçersiz ya da kaldırılmış sekme parametresi sessizce Öğrenciler sekmesine düşer", async () => {
     renderPage("/kisiler?tab=bep");
 
-    expect(await screen.findByText("Öğrenci sicili")).toBeInTheDocument();
+    expect(await screen.findByText("Öğrenci Sicili")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Öğrenciler/ })).toHaveAttribute(
       "aria-selected",
       "true",
@@ -672,12 +716,12 @@ describe("KisilerPage — içe aktarma paneli", () => {
       updated_personnel: 0,
       unchanged_personnel: 0,
       reactivated_personnel: 0,
-      missing_count: 0,
-      left_personnel: 0,
+      pool_added_personnel: 0,
+      pool_removed_personnel: 0,
       similar_pair_count: 0,
       already_imported: false,
       dry_run: true,
-      missing: [],
+      pool_added: [],
       similar_pairs: [],
       warnings: [],
       skipped: [],
@@ -694,10 +738,7 @@ describe("KisilerPage — içe aktarma paneli", () => {
     await user.click(screen.getByRole("button", { name: "Aktar" }));
     expect(await screen.findByText("İçe aktarma sonucu")).toBeInTheDocument();
     await waitFor(() =>
-      expect(okulApiMock.commitPersonnelImport).toHaveBeenCalledWith(
-        { text: "ad\tsoyad" },
-        { markLeftIds: [] },
-      ),
+      expect(okulApiMock.commitPersonnelImport).toHaveBeenCalledWith({ text: "ad\tsoyad" }),
     );
     expect(screen.queryByText(/zümre/i)).toBeNull();
     expect(screen.queryByRole("link", { name: /Zümreler/ })).toBeNull();

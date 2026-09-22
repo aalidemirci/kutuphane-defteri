@@ -30,7 +30,7 @@ from apps.okul.models import Student
 from apps.okul.permissions import RequiresAdminPassword
 
 # Kişi (öğrenci/personel; F6'da üyelik) yazan uçlar — izin sınıfını taşımalıdır.
-# Ayrılış (katı silme dahil) ve birleştirme de kişi yazar (F1-C).
+# Ayrılış, birleştirme (F1-C) ve ayrılış havuzu kararı (F1 eki 7) da kişi yazar.
 KISI_YAZAN_UCLAR = frozenset(
     {
         "student-list",
@@ -44,6 +44,7 @@ KISI_YAZAN_UCLAR = frozenset(
         "import-students-commit",
         "import-personnel-preview",
         "import-personnel-commit",
+        "leave-pool-resolve",
     }
 )
 
@@ -59,6 +60,8 @@ DIGER_UCLAR = frozenset(
         "holiday-detail",
         "holiday-list",
         "holiday-seed",
+        # Havuz listesi yalnız okur (GET); karar ucu yukarıdaki listededir.
+        "leave-pool",
         "library-import-template",
         "school-year-activate",
         "school-year-list",
@@ -70,7 +73,9 @@ DIGER_UCLAR = frozenset(
         "security-mode-admin",
         "security-mode-staff",
         "security-recover",
+        "security-recovery-key-confirm",
         "security-recovery-key-pdf",
+        "security-recovery-key-renew",
         "security-state-reset",
         "security-status",
         "security-unlock",
@@ -163,8 +168,8 @@ def test_parolasizken_kisi_yazan_her_uc_yazma_yontemiyle_409_doner(parolasiz: Pa
             assert yanit.json() == PAROLA_GEREKLI_GOVDESI, (ad, yontem)
             denenen += 1
     # 2 liste (POST) + 2 ayrıntı (PUT/PATCH/DELETE) + 4 içe aktarma (POST)
-    # + 2 ayrılış (POST) + 1 birleştirme (POST)
-    assert denenen == 2 + 2 * 3 + 4 + 2 + 1
+    # + 2 ayrılış (POST) + 1 birleştirme (POST) + 1 havuz kararı (POST)
+    assert denenen == 2 + 2 * 3 + 4 + 2 + 1 + 1
     assert not Student.all_objects.exists()
 
 

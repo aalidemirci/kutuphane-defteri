@@ -7,6 +7,10 @@ denetiminin sözleşmesidir — küme değişirse FE `SetupStatus` tipi ve
 Kod kapısı (tasarım §14.1 F1, sözleşme E): sihirbaz parola adımı olmadan
 ilerlemez ve `setup/complete/` eksik adımda Türkçe 400 (`kurulum_eksik`) ile
 HANGİ adımın eksik olduğunu söyler — her dal ayrı testtedir.
+
+Bu dosyada kurtarma anahtarı DOĞRULANMIŞ başlanır (`anahtar_dogrulanmis`,
+otomatik): 1. adımın ikinci koşulu (F1 eki, karar 2) ve damgasız kurulumun
+reddi `test_kurtarma_dogrulama.py`'dedir.
 """
 
 from __future__ import annotations
@@ -19,14 +23,19 @@ import pytest
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from apps.okul.kip import KIP
 from apps.okul.models import Holiday, HolidayKind, SchoolConfig, SchoolLevel, Student
+from apps.okul.services import app_password
 from apps.okul.services import school_year as school_year_service
 from apps.okul.services import setup as setup_service
 from apps.okul.services import terms as term_service
+from apps.okul.tests.kip_ortak import SahteSaat
+from conftest import TEST_KURTARMA_ANAHTARI, TEST_PAROLA
 
 DURUM_ALANLARI = {
     "setup_completed",
     "password_set",
+    "recovery_key_confirmed",
     "school_name",
     "school_info_complete",
     "has_active_school_year",
@@ -53,6 +62,12 @@ TAM_OKUL = {
 @pytest.fixture
 def client() -> APIClient:
     return APIClient()
+
+
+@pytest.fixture(autouse=True)
+def anahtar_dogrulanmis(guvenlik_ortami: Path) -> None:
+    """Varsayılan ortamın kurtarma anahtarı saklandı olarak damgalanır (modül başlığı)."""
+    app_password.confirm_recovery_key(TEST_KURTARMA_ANAHTARI)
 
 
 def _okul_bilgileri(**degisiklik: Any) -> None:
@@ -82,8 +97,9 @@ class TestSetupStatus:
         veri = yanit.json()
         assert set(veri.keys()) == DURUM_ALANLARI
         assert veri["setup_completed"] is False
-        # Varsayılan test ortamı: parola kurulu; okul ve takvim adımları eksik.
+        # Varsayılan test ortamı: parola kurulu (anahtar doğrulanmış); okul ve takvim eksik.
         assert veri["password_set"] is True
+        assert veri["recovery_key_confirmed"] is True
         assert veri["missing_steps"] == ["school", "calendar"]
         assert veri["active_school_year"] is None
         assert veri["school_break_count"] == 0
@@ -92,6 +108,7 @@ class TestSetupStatus:
     def test_parolasizken_ilk_eksik_adim_parola(self, client: APIClient, parolasiz: Path) -> None:
         veri = client.get("/api/v1/setup/status/").json()
         assert veri["password_set"] is False
+        assert veri["recovery_key_confirmed"] is False
         assert veri["missing_steps"] == ["password", "school", "calendar"]
 
     def test_kurulum_sonrasi_sayimlar_ve_aktif_yil(self, client: APIClient) -> None:
@@ -197,6 +214,28 @@ class TestSetupComplete:
         assert "2. adım (okul bilgileri)" in mesaj
         assert f"{beklenen} eksik." in mesaj
         assert SchoolConfig.load().setup_completed is False
+
+    def test_kurulum_suresince_sure_islemez_tamamlaninca_sayaclar_sifirdan_baslar(
+        self, client: APIClient
+    ) -> None:
+        """Karar 2-1: sihirbazda geçen süre yönetici kipini düşürmez; bitince tam süre."""
+        saat = SahteSaat()
+        KIP._reset_for_tests(saat=saat)
+        assert KIP.durum() == "yonetici"
+        _okul_bilgileri()
+        _aktif_yil()
+        saat.ilerlet(45 * 60)  # sihirbazda 45 dk (boşta ve mutlak süreden uzun)
+        assert KIP.durum() == "yonetici"
+        saat.ilerlet(170)
+
+        assert _tamamla(client).status_code == 200
+
+        ozet = KIP.ozet()
+        assert ozet["durum"] == "yonetici"
+        assert ozet["bosta_kalan_sn"] == 180
+        assert ozet["mutlak_kalan_sn"] == 1800
+        saat.ilerlet(180)
+        assert KIP.durum() == "gorevli"
 
     def test_demirbas_no_istege_baglidir(self, client: APIClient) -> None:
         _okul_bilgileri(demirbas_no="")
@@ -383,6 +422,69 @@ class TestYolHaritasi:
 
         yanit = self._isaretle(client, "btr_gorusmesi", done=False)
         assert yanit.json()["hidden"] is False
+
+    def _hepsi_tamam(self, client: APIClient, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Yol haritasının bütün maddelerini tamamlar (gizlemenin ön koşulu)."""
+        for madde in setup_service.ROADMAP_MANUAL_ITEMS:
+            self._isaretle(client, madde)
+        gercek = setup_service.setup_status
+
+        def dolu_durum() -> dict[str, Any]:
+            return {**gercek(), "student_count": 3, "personnel_count": 2, "school_break_count": 1}
+
+        monkeypatch.setattr(setup_service, "setup_status", dolu_durum)
+
+    def test_kurtarma_anahtari_damgasizken_kart_gizli_kalmaz(
+        self, client: APIClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """KORUMA: "kurtarma anahtarı doğrulanmadı" uyarısı kartın İÇİNDEDİR.
+
+        Kart gizliyken uyarı da basılmazdı ve kartı geri getirecek bir arayüz
+        yolu yoktur (işaret kutuları ve gizleme düğmesi kartın içinde). Damgasız
+        kurulumda kart görünür kalır; SAKLANAN gizleme tercihi silinmez.
+        """
+        self._hepsi_tamam(client, monkeypatch)
+        assert (
+            client.post("/api/v1/setup/roadmap/", {"hidden": True}, format="json").json()["hidden"]
+            is True
+        )
+
+        yeni_anahtar = app_password.renew_recovery_key(password=TEST_PAROLA)  # damga silinir
+
+        durum = client.get("/api/v1/setup/status/").json()
+        assert durum["recovery_key_confirmed"] is False
+        assert durum["roadmap"]["hidden"] is False
+        assert SchoolConfig.load().yol_haritasi["gizli"] is True  # tercih duruyor
+
+        app_password.confirm_recovery_key(yeni_anahtar)
+        assert client.get("/api/v1/setup/status/").json()["roadmap"]["hidden"] is True
+
+    def test_kurtarma_anahtari_damgasizken_gizlenemez(
+        self, client: APIClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._hepsi_tamam(client, monkeypatch)
+        app_password.renew_recovery_key(password=TEST_PAROLA)
+
+        yanit = client.post("/api/v1/setup/roadmap/", {"hidden": True}, format="json")
+
+        assert yanit.status_code == 400
+        assert "doğrulanmadan" in yanit.json()["message"]
+        assert SchoolConfig.load().yol_haritasi.get("gizli") is not True
+
+    def test_damgasizken_isaretleme_saklanan_gizleme_tercihini_silmez(
+        self, client: APIClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Yazma yolu SAKLANAN durumu okur: kapı tercihi sessizce sıfırlamaz."""
+        self._hepsi_tamam(client, monkeypatch)
+        client.post("/api/v1/setup/roadmap/", {"hidden": True}, format="json")
+        yeni_anahtar = app_password.renew_recovery_key(password=TEST_PAROLA)
+
+        yanit = self._isaretle(client, "btr_gorusmesi")
+
+        assert yanit.json()["hidden"] is False  # arayüz: kart görünür
+        assert SchoolConfig.load().yol_haritasi["gizli"] is True  # saklanan: gizli
+        app_password.confirm_recovery_key(yeni_anahtar)
+        assert client.get("/api/v1/setup/status/").json()["roadmap"]["hidden"] is True
 
     def test_bozuk_ya_da_bilinmeyen_kayit_disari_sizmaz(self) -> None:
         config, _ = SchoolConfig.objects.get_or_create(pk=SchoolConfig.SINGLETON_PK)

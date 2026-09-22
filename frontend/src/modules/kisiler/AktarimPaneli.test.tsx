@@ -1,8 +1,11 @@
-// Aktarım paneli — e-Okul MUTABAKATI (tasarım §8.3). Öğrenci: "Bu dosya okulun tam
-// listesidir" onayı, şube bazında etki tablosu, ayrılacaklar listesi ve ayrılış
-// doğuran aktarımın onayı. Personel: listede olmayanlar (işaretlenenler ayrılır,
-// varsayılan hiçbiri), "olası aynı kişi" çiftleri ve aktarımdan sonra onaylı
-// "Birleştir", üye türü denetim uyarısı. Tüm adlar uydurmadır (KVKK).
+// Aktarım paneli — e-Okul MUTABAKATI (tasarım §8.3) ve AYRILIŞ HAVUZU (F1 eki 7):
+// aktarım kimseyi ayırmaz ve silmez; listede bulunmayanlar havuza eklenir, karar
+// Kişiler → Ayrılış Havuzu'nda verilir. Öğrenci: bütün şubeleri içeren tek dosya
+// önerisi, "Bu dosya okulun tam listesidir" onayı, şube bazında etki tablosu,
+// "N öğrenci ayrılış havuzuna eklenecek, M öğrenci havuzdan çıkacak" notu.
+// Personel: listede olmayanlar havuza eklenecek (eski "ayrıldı sayılsın mı?" seçimi
+// yok), "olası aynı kişi" çiftleri ve aktarımdan sonra onaylı "Birleştir", üye türü
+// denetim uyarısı. Tüm adlar uydurmadır (KVKK).
 
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -44,7 +47,8 @@ const OGRENCI_ONIZLEME: StudentImportReport = {
   updated_students: 1,
   unchanged_students: 1,
   reactivated_students: 0,
-  leaving_students: 2,
+  pool_added_students: 2,
+  pool_removed_students: 1,
   full_list: true,
   already_imported: false,
   dry_run: true,
@@ -56,7 +60,7 @@ const OGRENCI_ONIZLEME: StudentImportReport = {
       created: 1,
       updated: 1,
       unchanged: 1,
-      leaving: 1,
+      to_pool: 1,
     },
     {
       class_label: "",
@@ -65,11 +69,11 @@ const OGRENCI_ONIZLEME: StudentImportReport = {
       created: 0,
       updated: 0,
       unchanged: 0,
-      leaving: 1,
+      to_pool: 1,
     },
   ],
-  leaving: [
-    { id: 7, full_name: "DENEME AYRILAN", student_number: "702", class_label: "10/A" },
+  pool_added: [
+    { id: 7, full_name: "DENEME EKSİK", student_number: "702", class_label: "10/A" },
     { id: 8, full_name: "NAKİL ÖĞRENCİ", student_number: "", class_label: "" },
   ],
   warnings: [],
@@ -85,12 +89,12 @@ const PERSONEL_ONIZLEME: PersonnelImportReport = {
   updated_personnel: 0,
   unchanged_personnel: 1,
   reactivated_personnel: 0,
-  missing_count: 2,
-  left_personnel: 0,
+  pool_added_personnel: 2,
+  pool_removed_personnel: 0,
   similar_pair_count: 1,
   already_imported: false,
   dry_run: true,
-  missing: [
+  pool_added: [
     { id: 11, full_name: "AYŞE KARA" },
     { id: 12, full_name: "MEHMET DEMİR" },
   ],
@@ -136,7 +140,16 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("AktarimPaneli — öğrenci mutabakatı", () => {
+describe("AktarimPaneli — öğrenci mutabakatı ve ayrılış havuzu", () => {
+  it("bütün şubeleri içeren tek dosyayı belirgin biçimde önerir", () => {
+    kur("students");
+
+    expect(
+      screen.getByText(/Önerilen yol: okulun bütün şubelerini içeren listeyi tek dosyada/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Kimse kendiliğinden ayrılmaz/)).toBeInTheDocument();
+  });
+
   it("tam liste onayı varsayılan kapalıdır, açıklaması vardır ve önizlemeye gider", async () => {
     okulApiMock.previewStudentImport.mockResolvedValue(OGRENCI_ONIZLEME);
     const user = userEvent.setup();
@@ -156,13 +169,22 @@ describe("AktarimPaneli — öğrenci mutabakatı", () => {
     );
   });
 
-  it("şube bazında etki tablosu ve ayrılacaklar listesi gösterilir", async () => {
+  it("önizleme havuz etkisini söyler: şube tablosu, eklenecekler ve çıkacaklar", async () => {
     okulApiMock.previewStudentImport.mockResolvedValue(OGRENCI_ONIZLEME);
     const user = userEvent.setup();
     kur("students");
     await yapistirVeOnizle(user);
 
-    const tablo = await screen.findByRole("table", { name: "Şube bazında etki" });
+    expect(
+      await screen.findByText("2 öğrenci ayrılış havuzuna eklenecek, 1 öğrenci havuzdan çıkacak."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Aktarım kimseyi ayırmaz ve kimsenin kaydını silmez/),
+    ).toBeInTheDocument();
+    const tablo = screen.getByRole("table", { name: "Şube bazında etki" });
+    expect(
+      within(tablo).getByRole("columnheader", { name: "Havuza eklenecek" }),
+    ).toBeInTheDocument();
     const satirlar = within(tablo).getAllByRole("row");
     expect(
       within(satirlar[1])
@@ -170,9 +192,11 @@ describe("AktarimPaneli — öğrenci mutabakatı", () => {
         .map((c) => c.textContent),
     ).toEqual(["10/A", "1", "1", "1", "1"]);
     expect(within(satirlar[2]).getByText("Sınıfsız")).toBeInTheDocument();
-    expect(screen.getByText("Ayrılacak öğrenciler (2)")).toBeInTheDocument();
-    expect(screen.getByText("DENEME AYRILAN")).toBeInTheDocument();
+    expect(screen.getByText("Ayrılış havuzuna eklenecek öğrenciler (2)")).toBeInTheDocument();
+    expect(screen.getByText("DENEME EKSİK")).toBeInTheDocument();
     expect(screen.getByText(/okulun tamamıyla yapıldı/)).toBeInTheDocument();
+    // Eski "ayrılacak" dili kalmadı.
+    expect(screen.queryByText(/ayrılacak/i)).toBeNull();
     // Atlanan satırın alan kodu kullanıcı adına çevrilir.
     expect(screen.getByRole("cell", { name: "Okul no" })).toBeInTheDocument();
   });
@@ -190,23 +214,7 @@ describe("AktarimPaneli — öğrenci mutabakatı", () => {
     expect(screen.getByRole("button", { name: "Aktar" })).toBeDisabled();
   });
 
-  it("ayrılış doğuran aktarım onaysız uygulanmaz", async () => {
-    okulApiMock.previewStudentImport.mockResolvedValue(OGRENCI_ONIZLEME);
-    const user = userEvent.setup();
-    const onImported = kur("students");
-    await yapistirVeOnizle(user);
-    await screen.findByText("Önizleme — hiçbir kayıt yazılmadı");
-
-    await user.click(screen.getByRole("button", { name: "Aktar" }));
-    const onay = await screen.findByRole("dialog", { name: "Aktarım uygulansın mı?" });
-    expect(within(onay).getByText(/2 öğrenci okuldan ayrılmış sayılacak/)).toBeInTheDocument();
-    await user.click(within(onay).getByRole("button", { name: "Vazgeç" }));
-
-    expect(okulApiMock.commitStudentImport).not.toHaveBeenCalled();
-    expect(onImported).not.toHaveBeenCalled();
-  });
-
-  it("şube kapsamlı önizleme başka şubeye geçen öğrenci riskini söyler", async () => {
+  it("şube kapsamlı önizleme başka şubeye geçen öğrencinin geçici olarak havuza düşeceğini söyler", async () => {
     okulApiMock.previewStudentImport.mockResolvedValue({ ...OGRENCI_ONIZLEME, full_list: false });
     const user = userEvent.setup();
     kur("students");
@@ -214,15 +222,12 @@ describe("AktarimPaneli — öğrenci mutabakatı", () => {
     await screen.findByText("Önizleme — hiçbir kayıt yazılmadı");
 
     expect(screen.getByText(/Kayıtlı oldukları şube dosyada var/)).toBeInTheDocument();
-    expect(screen.getByText(/Başka bir şubeye geçtiği için/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Aktar" }));
-    const onay = await screen.findByRole("dialog", { name: "Aktarım uygulansın mı?" });
-    expect(within(onay).getByText(/okulun bütün şubelerini içeren listeyi/)).toBeInTheDocument();
-    await user.click(within(onay).getByRole("button", { name: "Vazgeç" }));
-    expect(okulApiMock.commitStudentImport).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(/yeni şubesinin listesi aktarılınca havuzdan kendiliğinden çıkar/),
+    ).toBeInTheDocument();
   });
 
-  it("onaylanınca aktarılır, sonuç “Ayrılan” diye gösterilir", async () => {
+  it("aktarım kimseyi ayırmadığı için onay istemez; sonuç havuza bağlanır", async () => {
     okulApiMock.previewStudentImport.mockResolvedValue(OGRENCI_ONIZLEME);
     okulApiMock.commitStudentImport.mockResolvedValue({ ...OGRENCI_ONIZLEME, dry_run: false });
     const user = userEvent.setup();
@@ -231,8 +236,6 @@ describe("AktarimPaneli — öğrenci mutabakatı", () => {
     await screen.findByText("Önizleme — hiçbir kayıt yazılmadı");
 
     await user.click(screen.getByRole("button", { name: "Aktar" }));
-    const onay = await screen.findByRole("dialog", { name: "Aktarım uygulansın mı?" });
-    await user.click(within(onay).getByRole("button", { name: "Aktar" }));
 
     await waitFor(() =>
       expect(okulApiMock.commitStudentImport).toHaveBeenCalledWith(
@@ -240,7 +243,15 @@ describe("AktarimPaneli — öğrenci mutabakatı", () => {
         { fullList: false },
       ),
     );
-    expect(await screen.findByText("Ayrılan öğrenciler (2)")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(await screen.findByText("Ayrılış havuzuna eklenen öğrenciler (2)")).toBeInTheDocument();
+    expect(
+      screen.getByText("2 öğrenci ayrılış havuzuna eklendi, 1 öğrenci havuzdan çıktı."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ayrılış Havuzu'nu aç" })).toHaveAttribute(
+      "href",
+      "/kisiler?tab=havuz",
+    );
     expect(onImported).toHaveBeenCalledTimes(1);
   });
 
@@ -268,6 +279,28 @@ describe("AktarimPaneli — öğrenci mutabakatı", () => {
     expect(screen.getByRole("link", { name: "Kurulum sihirbazını aç" })).toBeInTheDocument();
   });
 
+  it("hiç satır işlenemeyen dosyanın uyarısı “Ayrılış havuzu” alanıyla gösterilir", async () => {
+    okulApiMock.previewStudentImport.mockResolvedValue({
+      ...OGRENCI_ONIZLEME,
+      pool_added_students: 0,
+      pool_removed_students: 0,
+      pool_added: [],
+      warnings: [
+        {
+          row_number: 1,
+          field: "leave_pool",
+          issue: "Dosyada işlenebilen öğrenci satırı bulunamadı.",
+          raw_value: "",
+        },
+      ],
+    });
+    const user = userEvent.setup();
+    kur("students");
+    await yapistirVeOnizle(user);
+
+    expect(await screen.findByRole("cell", { name: "Ayrılış havuzu" })).toBeInTheDocument();
+  });
+
   it("şablon indirilemezse hata bandı görünür", async () => {
     okulApiMock.studentTemplate.mockRejectedValue(new Error("ağ"));
     const user = userEvent.setup();
@@ -279,7 +312,7 @@ describe("AktarimPaneli — öğrenci mutabakatı", () => {
   });
 });
 
-describe("AktarimPaneli — personel mutabakatı", () => {
+describe("AktarimPaneli — personel mutabakatı ve ayrılış havuzu", () => {
   it("görev sütununun yalnız üye türü için okunduğu, branşın okunmadığı söylenir", () => {
     kur("personnel");
     expect(
@@ -287,61 +320,33 @@ describe("AktarimPaneli — personel mutabakatı", () => {
         /yalnız üye türünü .* belirlemek için kullanılır ve saklanmaz, branş okunmaz/,
       ),
     ).toBeInTheDocument();
+    // Tek dosya önerisi yalnız öğrenci panelindedir.
+    expect(screen.queryByText(/Önerilen yol/)).toBeNull();
   });
 
-  it("listede olmayanlar sorulur; yalnız işaretlenenler ayrılır (onaylı)", async () => {
-    okulApiMock.previewPersonnelImport.mockResolvedValue(PERSONEL_ONIZLEME);
-    okulApiMock.commitPersonnelImport.mockResolvedValue({
-      ...PERSONEL_ONIZLEME,
-      dry_run: false,
-      left_personnel: 1,
-    });
-    const user = userEvent.setup();
-    kur("personnel");
-    await yapistirVeOnizle(user);
-
-    const soru = await screen.findByRole("group", {
-      name: "2 kişi listede yok. Ayrıldı sayılsın mı?",
-    });
-    const kutular = within(soru).getAllByRole("checkbox");
-    expect(kutular.every((k) => !(k as HTMLInputElement).checked)).toBe(true);
-    // Olası aynı kişi çiftindeki kayıt için uyarı notu.
-    expect(within(soru).getByText(/birleştirmek için işaretlemeyin/)).toBeInTheDocument();
-
-    await user.click(within(soru).getByRole("checkbox", { name: /MEHMET DEMİR/ }));
-    await user.click(screen.getByRole("button", { name: "Aktar" }));
-    const onay = await screen.findByRole("dialog", { name: "Aktarım uygulansın mı?" });
-    expect(within(onay).getByText(/İşaretlediğiniz 1 kişi/)).toBeInTheDocument();
-    await user.click(within(onay).getByRole("button", { name: "Aktar" }));
-
-    await waitFor(() =>
-      expect(okulApiMock.commitPersonnelImport).toHaveBeenCalledWith(
-        { text: "liste" },
-        { markLeftIds: [12] },
-      ),
-    );
-    expect(await screen.findByText("İçe aktarma sonucu")).toBeInTheDocument();
-  });
-
-  it("işaret kaldırılınca seçim geri alınır, onaysız aktarılır", async () => {
+  it("listede olmayanlar havuza eklenecek diye listelenir; seçim yok, aktarım onaysız", async () => {
     okulApiMock.previewPersonnelImport.mockResolvedValue(PERSONEL_ONIZLEME);
     okulApiMock.commitPersonnelImport.mockResolvedValue({ ...PERSONEL_ONIZLEME, dry_run: false });
     const user = userEvent.setup();
     kur("personnel");
     await yapistirVeOnizle(user);
 
-    const kutu = await screen.findByRole("checkbox", { name: /AYŞE KARA/ });
-    await user.click(kutu);
-    await user.click(kutu);
+    expect(
+      await screen.findByText("Listede olmayan 2 kişi ayrılış havuzuna eklenecek"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("MEHMET DEMİR")).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.queryByText(/Ayrıldı sayılsın mı/)).toBeNull();
+    expect(screen.getByText(/olası aynı kişi — aşağıya bakın/)).toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: "Aktar" }));
 
     await waitFor(() =>
-      expect(okulApiMock.commitPersonnelImport).toHaveBeenCalledWith(
-        { text: "liste" },
-        { markLeftIds: [] },
-      ),
+      expect(okulApiMock.commitPersonnelImport).toHaveBeenCalledWith({ text: "liste" }),
     );
-    expect(screen.queryByRole("dialog", { name: "Aktarım uygulansın mı?" })).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(await screen.findByText("İçe aktarma sonucu")).toBeInTheDocument();
+    expect(screen.getByText("Listede olmayan 2 kişi ayrılış havuzuna eklendi")).toBeInTheDocument();
   });
 
   it("önizlemede olası aynı kişi gösterilir ama birleştirme aktarımdan sonra sunulur", async () => {
@@ -353,12 +358,12 @@ describe("AktarimPaneli — personel mutabakatı", () => {
     expect(await screen.findByText("Olası aynı kişi (1)")).toBeInTheDocument();
     expect(screen.getByText("Satır 3: AYŞE BEYAZ ↔ kayıttaki AYŞE KARA")).toBeInTheDocument();
     expect(
-      screen.getByText(/Aktardıktan sonra iki kaydı birleştirebilirsiniz/),
+      screen.getByText(/burada ya da Ayrılış Havuzu'nda birleştirebilirsiniz/),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /birleştir/i })).toBeNull();
   });
 
-  it("aktarımdan sonra “Birleştir” onaylı çalışır, çift listeden düşer", async () => {
+  it("aktarımdan sonra “Birleştir” onaylı çalışır, çift ve havuz satırı listeden düşer", async () => {
     const sonuc: PersonnelImportReport = {
       ...PERSONEL_ONIZLEME,
       dry_run: false,
@@ -382,8 +387,8 @@ describe("AktarimPaneli — personel mutabakatı", () => {
     await user.click(within(onay).getByRole("button", { name: "Birleştir" }));
 
     await waitFor(() => expect(okulApiMock.mergePersonnel).toHaveBeenCalledWith(11, 21));
-    // Bildirim, "İçe aktarma tamamlandı." bildiriminin ardından kuyruktan gelir.
     await waitFor(() => expect(screen.queryByText(/Satır 3: AYŞE BEYAZ/)).toBeNull());
+    expect(screen.getByText("Listede olmayan 1 kişi ayrılış havuzuna eklendi")).toBeInTheDocument();
     expect(onImported).toHaveBeenCalledTimes(2); // aktarım + birleştirme
   });
 
@@ -432,7 +437,10 @@ describe("AktarimPaneli — personel mutabakatı", () => {
 
     expect(await screen.findByText(/1 satırda üye türünü denetleyin/)).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Üye türü" })).toBeInTheDocument();
-    expect(screen.getByText("Listede olmayan")).toBeInTheDocument();
+    expect(screen.getByText("Havuza eklenecek")).toBeInTheDocument();
+    expect(
+      screen.getByText("2 kişi ayrılış havuzuna eklenecek, 0 kişi havuzdan çıkacak."),
+    ).toBeInTheDocument();
   });
 
   it("personel şablonu indirilir", async () => {

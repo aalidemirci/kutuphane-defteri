@@ -146,7 +146,7 @@ export default function AyarlarPage() {
       </div>
 
       <section className="space-y-3">
-        <h2 className="text-title-medium text-on-surface">Diğer ayarlar</h2>
+        <h2 className="text-title-medium text-on-surface">Diğer Ayarlar</h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Kurulum tamamlandıktan sonra sihirbaza gezinilebilir tek yol burasıdır
               (menüde yer almaz); adımları gözden geçirmek isteyen kullanıcı sıkışmasın. */}
@@ -182,7 +182,7 @@ function DersYillariPanel({
       {error && <ErrorBanner message={error} />}
 
       <Card elevation={1} className="p-6">
-        <p className="text-title-medium text-on-surface">Ders yılları</p>
+        <p className="text-title-medium text-on-surface">Ders Yılları</p>
         <p className="mt-1 text-body-medium text-on-surface-variant">
           Aynı anda yalnız BİR ders yılı aktif olabilir. Şube kataloğu ve e-Okul aktarımı aktif yıla
           bağlanır.
@@ -420,7 +420,7 @@ function SchoolYearCreateCard({ onCreated }: { onCreated: () => void }) {
 
   return (
     <Card elevation={1} className="p-6">
-      <p className="text-title-medium text-on-surface">Yeni ders yılı</p>
+      <p className="text-title-medium text-on-surface">Yeni Ders Yılı</p>
       <p className="mt-1 text-body-medium text-on-surface-variant">
         Yeni yıl PASİF doğar; hazır olduğunuzda listeden aktifleştirirsiniz.
       </p>
@@ -572,7 +572,7 @@ function SubelerPanel({ years, yearsLoading }: { years: SchoolYear[]; yearsLoadi
       {error && <ErrorBanner message={error} />}
 
       <Card elevation={1} className="p-6">
-        <p className="text-title-medium text-on-surface">Şube kataloğu</p>
+        <p className="text-title-medium text-on-surface">Şube Kataloğu</p>
         <p className="mt-1 text-body-medium text-on-surface-variant">
           Öğrenci aktarımında görülen şubeler buraya kendiliğinden eklenir; eksik kalan şubeyi
           aşağıdan elle ekleyebilirsiniz.
@@ -745,7 +745,7 @@ function OkulBilgileriPanel() {
 
   return (
     <Card elevation={1} className="p-6">
-      <p className="text-title-medium text-on-surface">Okul bilgileri</p>
+      <p className="text-title-medium text-on-surface">Okul Bilgileri</p>
       <p className="mt-1 text-body-medium text-on-surface-variant">
         Programın bastığı evrakın antedi, etiketler ve üye kartları bu bilgilerden üretilir.
         Hazırlık sınıfı varsa sınıf düzeylerine Hazırlık eklenir.

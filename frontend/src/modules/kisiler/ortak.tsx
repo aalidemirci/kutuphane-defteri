@@ -1,6 +1,7 @@
 // Kişiler sayfasının ortak parçaları: hata bandı (409 `parola_gerekli` dahil),
-// durum rozeti ("Ayrıldı · gg.aa.yyyy") ve API hatasını sayfa hatasına çeviren
-// yardımcı. Sayfa (KisilerPage) ve aktarım paneli (AktarimPaneli) paylaşır.
+// durum rozeti ("Ayrıldı · gg.aa.yyyy", "Ayrılış kararı bekliyor") ve API hatasını
+// sayfa hatasına çeviren yardımcı. Sayfa (KisilerPage), aktarım paneli
+// (AktarimPaneli) ve Ayrılış Havuzu (AyrilisHavuzu) paylaşır.
 
 import { Link } from "react-router-dom";
 
@@ -64,8 +65,33 @@ export function ErrorBand({ hata }: { hata: SayfaHatasi | string }) {
   );
 }
 
-/** Sicil durum rozeti: aktif kişide "Aktif", ayrılmışta "Ayrıldı · gg.aa.yyyy". */
-export function DurumRozeti({ aktif, leftAt }: { aktif: boolean; leftAt: string | null }) {
+/** Ayrılış Havuzu sekmesinin adresi (Kişiler → `?tab=havuz`). */
+export const HAVUZ_ADRESI = "/kisiler?tab=havuz";
+
+/**
+ * Sicil durum rozeti: aktif kişide "Aktif", ayrılmışta "Ayrıldı · gg.aa.yyyy".
+ * Ayrılış havuzundaki (aktif) kişide ek rozet: "Ayrılış kararı bekliyor".
+ */
+export function DurumRozeti({
+  aktif,
+  leftAt,
+  havuzda = false,
+}: {
+  aktif: boolean;
+  leftAt: string | null;
+  havuzda?: boolean;
+}) {
+  if (aktif && havuzda) {
+    return (
+      <span className="inline-flex flex-wrap items-center gap-2">
+        <span>Aktif</span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-tertiary-container px-2 py-0.5 text-label-medium text-on-tertiary-container">
+          <Icon name="pending_actions" size="sm" />
+          Ayrılış kararı bekliyor
+        </span>
+      </span>
+    );
+  }
   if (aktif) return <span>Aktif</span>;
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-surface-container-highest px-2 py-0.5 text-label-medium text-on-surface-variant">

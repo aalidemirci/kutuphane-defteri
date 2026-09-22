@@ -7,6 +7,7 @@ import { GOREVLI_EKRANI_BASLIGI } from "./modules/kip/GorevliEkrani";
 import KipGostergesi from "./modules/kip/KipGostergesi";
 import { useKip } from "./modules/kip/useKip";
 import DensitySwitcher from "./ui/DensitySwitcher";
+import { DurumBasligiSaglayici, useDurumBasligiYonetimi } from "./ui/DurumBasligi";
 import Icon from "./ui/Icon";
 import ThemeSwitcher from "./ui/ThemeSwitcher";
 
@@ -159,8 +160,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
   );
   const [mobileOpen, setMobileOpen] = useState(false);
   const gorevli = useKip().ozet?.durum === "gorevli";
+  // Program durumu ekranları (kilitli, güvenlik dosyası kayıp, yeniden başlat)
+  // açıkken üst çubukta o ekranın h1'i yazar — sözlük §4.2. Adrese bağlı
+  // olmadıkları için başlığı kendileri bildirir (ui/DurumBasligi).
+  const { durumBasligi, yaz } = useDurumBasligiYonetimi();
   // Görevli kipinde her rota görevli ekranını gösterir; başlık onun h1'idir.
-  const title = gorevli ? GOREVLI_EKRANI_BASLIGI : pageTitle(location.pathname);
+  const title = durumBasligi ?? (gorevli ? GOREVLI_EKRANI_BASLIGI : pageTitle(location.pathname));
 
   const toggleCollapsed = () => {
     setCollapsed((current) => {
@@ -227,7 +232,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 Açılışta `/updates/` isteği çıkmadığı `App.test.tsx`'te sabittir.
                 Görevli kipinde gizlidir: indirme yönetici işidir (§4.4). */}
             <UpdateBanner gizli={gorevli} />
-            {children}
+            <DurumBasligiSaglayici yaz={yaz}>{children}</DurumBasligiSaglayici>
           </div>
         </main>
       </div>

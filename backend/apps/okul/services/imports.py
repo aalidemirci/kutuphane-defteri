@@ -6,33 +6,41 @@ mutabakatla genişletildi (tasarım §8.3, EK-20, EK-21):
 - TCKN, veli ve cinsiyet zinciri TAMAMEN YOK. Öğrenci eşleştirme anahtarı OKUL
   NUMARASIDIR ve eşleştirme KÖR İNDEKSLE, tam eşleşmedir (okul no şifreli, T14):
   aynı numaranın farklı yazımı ('0123' ≡ '123') aynı kişiye iner.
-- **Öğrenci mutabakatı (EK-21):** dosyada olmayan aktif öğrenciler "ayrılacak"
-  kümesine girer — ama VARSAYILAN KAPSAM YALNIZ DOSYADA BULUNAN ŞUBELERDİR. Tek
-  şubelik dosya diğer şubeleri ayrılmış saymaz; bütün okulla karşılaştırma yalnız
-  `full_list` ("Bu dosya okulun tam listesidir") onayıyla yapılır. Şube değiştiren
-  öğrenci "güncellendi"dir, ayrılmaz. Ayrılmış (canlı) kayıt aynı numarayla
-  ve AYNI ADLA dönerse yeniden aktifleşir; numara adı farklı birine verilmişse
-  eski kayıt dokunulmadan kalır, yeni kayıt açılır (okul no yeniden
-  kullanılabilir — başkasının kütüphane geçmişi yeni öğrenciye bağlanmaz).
-  Ayrılacaklar AYRILIŞ YOLUNDAN geçer (`persons.leave_student`: kancalar +
-  gerekiyorsa katı silme).
-- **Ayrılış yalnız kanıtla (import silmez ilkesi).** Okul numarası dosyada geçen
-  öğrenci, satırı başka sebeple atlansa da (ad boş, sınıf çözülemedi) ayrılmış
-  sayılmaz. Numarası boş bir öğrenci satırı kimin olduğu bilinemediği için o
-  satırın şubesinde (sınıfı da yoksa hiçbir yerde) ayrılışı durdurur; hiç satır
-  işlenemeyen dosya kimseyi ayırmaz. Her durum önizlemede satır no ile söylenir.
+- **AKTARIM HİÇ KİMSEYİ AYIRMAZ VE SİLMEZ (F1 eki 7, kullanıcı kararı
+  22.09.2026).** Mutabakatta listede bulunmayan aktif kişi AYRILIŞ HAVUZUNA
+  girer (`persons.add_to_leave_pool`: giriş tarihi + bu aktarım), durumu AKTİF
+  kalır; karar Kişiler → Ayrılış Havuzu'nda yöneticinindir. Dosyada bulunan kişi
+  havuzdaysa kendiliğinden çıkar (`persons.remove_from_leave_pool`).
+- **Öğrenci mutabakatı (EK-21):** dosyada olmayan aktif öğrenciler havuza girer
+  — ama VARSAYILAN KAPSAM YALNIZ DOSYADA BULUNAN ŞUBELERDİR. Tek şubelik dosya
+  diğer şubelere dokunmaz; bütün okulla karşılaştırma yalnız `full_list` ("Bu
+  dosya okulun tam listesidir") onayıyla yapılır. Şube değiştiren öğrenci
+  "güncellendi"dir; havuzdaysa çıkar (9/A dosyası öğrenciyi havuza atar, 9/B
+  dosyası onu bulup çıkarır). Ayrılmış (canlı) kayıt aynı numarayla ve AYNI
+  ADLA dönerse yeniden aktifleşir; numara adı farklı birine verilmişse eski
+  kayıt dokunulmadan kalır, yeni kayıt açılır (okul no yeniden kullanılabilir —
+  başkasının kütüphane geçmişi yeni öğrenciye bağlanmaz).
+- **Havuza ekleme yalnız kanıtla (import silmez ilkesi).** Okul numarası dosyada
+  geçen öğrenci, satırı başka sebeple atlansa da (ad boş, sınıf çözülemedi)
+  havuza eklenmez. Numarası boş bir öğrenci satırı kimin olduğu bilinemediği
+  için o satırın şubesinde (sınıfı da yoksa hiçbir yerde) havuza eklemeyi
+  durdurur; hiç satır işlenemeyen dosya kimseyi havuza eklemez. Her durum
+  önizlemede satır no ile söylenir.
 - **Personel mutabakatı (EK-20):** eşleşme normalize ad-soyadla (Python; ad
-  şifreli). Listede olmayan aktif personel `missing` olarak döner; yalnız
-  kullanıcının seçtikleri (`mark_left_ids`) ayrılır, varsayılan hiçbiri. Ada göre
-  eşleşmeyen yeni satırla listede olmayan kişi arasında "olası aynı kişi" çifti
-  üretilir (soyadı değişimi); birleştirme ayrı uçtandır (`persons.merge_personnel`).
-- **Kişisel veri ve kalıcı iz:** ayrılacakların ve listede olmayanların ADLARI
-  yalnız API yanıtında (yönetim yüzeyi, yönetici kipi) döner; `ImportRun.report`
-  (kalıcı) yalnız SAYILARI taşır (`to_run_dict`). Satır sorunlarına ad, okul no
-  ve görev metni yazılmaz; hücrenin ham değeri (`raw_value`) yalnız API
-  yanıtındadır, kalıcı rapordan silinir (kaymış sütunda kişi verisi taşıyabilir).
-  Günlüğe yalnız sayılar düşer; aktarımın ayrılışları kişi başına günlüğe
-  yazılmaz (önizlemenin geri sarılan ayrılışı "silindi" diye iz bırakmasın).
+  şifreli). Listede olmayan aktif personel havuza girer (eski `mark_left_ids`
+  seçimi kalktı; karar havuzda verilir). Ada göre eşleşmeyen yeni satırla
+  listede olmayan kişi arasında "olası aynı kişi" çifti üretilir (soyadı
+  değişimi); birleştirme ayrı uçtandır (`persons.merge_personnel`) ve havuzdan
+  da yapılabilir. Havuza ekleme personelde de yalnız KANITLADIR: kimlik anahtarı
+  ad olduğu için ad-soyadı boş bir satır (kaymış sütun) ya da hiç satırı
+  işlenemeyen bir dosya hiç kimseyi havuza eklemez — öğrencideki şube kapsamının
+  personelde karşılığı yoktur, kapı "hiç kimse"dir.
+- **Kişisel veri ve kalıcı iz:** havuza eklenecek kişilerin ADLARI yalnız API
+  yanıtında (yönetim yüzeyi, yönetici kipi) döner; `ImportRun.report` (kalıcı)
+  yalnız SAYILARI taşır (`to_run_dict`). Satır sorunlarına ad, okul no ve görev
+  metni yazılmaz; hücrenin ham değeri (`raw_value`) yalnız API yanıtındadır,
+  kalıcı rapordan silinir (kaymış sütunda kişi verisi taşıyabilir). Günlüğe
+  yalnız sayılar düşer ve yalnız uygulamada yazılır (önizleme geri sarılır).
 - Excel (.xlsx ŞABLONU ve e-Okul'un .xls İHRACI) ile pano yapıştırması AYNI
   boru hattı: her girişten önce `rows` matrisi üretilir (`read_sheet` /
   `text_to_grid`), ardından `eokul.hazirla_*_matrisi` e-Okul'a özgü blok
@@ -41,10 +49,10 @@ mutabakatla genişletildi (tasarım §8.3, EK-20, EK-21):
   edilebilir — `already_imported=True` uyarısıyla MEVCUT COMPLETED `ImportRun`
   satırı güncellenir (koşullu unique bozulmaz). Aynı dosyanın ikinci uygulaması
   değişiklik üretmez.
-- Önizleme deseni AYNEN: gerçek ingest (ayrılış yolu dahil) atomic blokta
+- Önizleme deseni AYNEN: gerçek ingest (havuz yazımı dahil) atomic blokta
   koşulur ve `set_rollback(True)` ile geri alınır — %100 sonuç paritesi;
   ardından kalıcı PREVIEWED izi yazılır. Ingest zincirine `transaction.on_commit`
-  EKLENEMEZ; ayrılış kancaları yalnız veritabanına yazar.
+  EKLENEMEZ.
 - Boş/çözülemeyen hücre mevcut veriyi SİLMEZ (import silmez ilkesi).
 """
 
@@ -52,7 +60,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from collections.abc import Callable, Collection
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from typing import Any
 from zipfile import BadZipFile
@@ -61,7 +69,7 @@ from django.db import transaction
 from django.utils import timezone
 from openpyxl.utils.exceptions import InvalidFileException
 
-from apps.okul import eokul, excel_ogrenci, excel_personel, normalize, selectors
+from apps.okul import eokul, excel_ogrenci, excel_personel, name_match, normalize, selectors
 from apps.okul.excel_ogrenci import ColumnMapping, ParsedRow, ParserError
 from apps.okul.excel_personel import ParsedPersonnelRow, PersonnelColumnMapping
 from apps.okul.models import (
@@ -87,22 +95,32 @@ MEMBER_KIND_CHECK_MESSAGE = (
     "açılır; mevcut kaydın üye türü değişmez."
 )
 DUPLICATE_ROW_MESSAGE = "Bu okul numarası dosyada daha önce geçti; satır atlandı."
-#: Numarası dosyada geçen ama satırı atlanan öğrenci ayrılmaz (satır no ile; ad ve no yok).
+#: Numarası dosyada geçen ama satırı atlanan öğrenci havuza girmez (satır no ile; ad ve no yok).
 KEPT_ROW_MESSAGE = (
-    "Satır atlandı; bu okul numarasıyla kayıtlı öğrenci değiştirilmedi ve ayrılmış sayılmadı."
+    "Satır atlandı; bu okul numarasıyla kayıtlı öğrenci değiştirilmedi ve ayrılış havuzuna "
+    "eklenmedi."
 )
 NUMBER_MISSING_MESSAGE = "Okul numarası bulunamadı."
-#: Numarası boş öğrenci satırı: kim olduğu bilinmediği için ayrılış durdurulur.
+#: Numarası boş öğrenci satırı: kim olduğu bilinmediği için havuza ekleme durdurulur.
 UNIDENTIFIED_ROW_MESSAGE = (
-    "Okul numarası boş; satır atlandı. Bu satırdaki öğrenci tanınamadığı için bu şubede "
-    "kimse ayrılmış sayılmadı."
+    "Okul numarası boş; satır atlandı. Bu satırdaki öğrenci tanınamadığı için bu şubeden "
+    "kimse ayrılış havuzuna eklenmedi."
 )
 UNIDENTIFIED_ROW_ALL_MESSAGE = (
     "Okul numarası ve sınıfı boş; satır atlandı. Bu satırdaki öğrenci tanınamadığı için "
-    "hiçbir öğrenci ayrılmış sayılmadı."
+    "hiçbir öğrenci ayrılış havuzuna eklenmedi."
 )
 NOTHING_PROCESSED_MESSAGE = (
-    "Dosyada işlenebilen öğrenci satırı bulunamadı; hiçbir öğrenci ayrılmış sayılmadı."
+    "Dosyada işlenebilen öğrenci satırı bulunamadı; hiçbir öğrenci ayrılış havuzuna eklenmedi."
+)
+#: Ad-soyadı boş personel satırı: kimlik anahtarı ad olduğu için havuza ekleme durur.
+#: (Öğrencideki "o şube" dalının personelde karşılığı yoktur: kapsam kavramı yok.)
+PERSONNEL_UNIDENTIFIED_ROW_MESSAGE = (
+    "Ad-soyad boş; satır atlandı. Bu satırdaki kişi tanınamadığı için hiçbir kişi ayrılış "
+    "havuzuna eklenmedi."
+)
+PERSONNEL_NOTHING_PROCESSED_MESSAGE = (
+    "Dosyada işlenebilen personel satırı bulunamadı; hiçbir kişi ayrılış havuzuna eklenmedi."
 )
 #: Okul no, adı farklı AYRILMIŞ bir kayıtta da geçiyor: o kayıt yeniden etkinleşmez.
 REUSED_NUMBER_MESSAGE = (
@@ -110,8 +128,8 @@ REUSED_NUMBER_MESSAGE = (
     "yeniden etkinleştirilmedi, yeni kayıt açıldı."
 )
 
-#: "Olası aynı kişi" için normalize ad-soyad düzenleme uzaklığı üst sınırı.
-SIMILAR_NAME_MAX_DISTANCE = 2
+#: Genel (satıra bağlı olmayan) havuz uyarılarının alan kodu (arayüz: "Ayrılış havuzu").
+POOL_FIELD = "leave_pool"
 
 
 @dataclass
@@ -147,12 +165,13 @@ class ClassImpact:
     created: int = 0
     updated: int = 0
     unchanged: int = 0
-    leaving: int = 0
+    #: Dosyada bulunmadığı için bu aktarımla ayrılış havuzuna YENİ eklenen öğrenci.
+    to_pool: int = 0
 
 
 @dataclass
-class LeavingStudent:
-    """Ayrılacak öğrenci — AD İÇERİR: yalnız API yanıtında, `ImportRun.report`'a girmez."""
+class PoolStudent:
+    """Havuza eklenecek öğrenci — AD İÇERİR: yalnız API yanıtında, `ImportRun.report`'a girmez."""
 
     id: int
     full_name: str
@@ -162,7 +181,12 @@ class LeavingStudent:
 
 @dataclass
 class StudentImportReport:
-    """Öğrenci içe aktarma özeti (UI raporu; `to_run_dict` → ImportRun.report)."""
+    """Öğrenci içe aktarma özeti (UI raporu; `to_run_dict` → ImportRun.report).
+
+    Aktarım kimseyi ayırmaz: `pool_added_students` bu aktarımla ayrılış havuzuna
+    YENİ giren (zaten havuzda olan sayılmaz), `pool_removed_students` dosyada
+    bulunduğu için havuzdan çıkan öğrenci sayısıdır.
+    """
 
     file_hash: str
     file_name: str = ""
@@ -173,12 +197,13 @@ class StudentImportReport:
     unchanged_students: int = 0
     #: Güncellenenlerin içinde: ayrılmışken aynı numarayla dönen öğrenciler.
     reactivated_students: int = 0
-    leaving_students: int = 0
+    pool_added_students: int = 0
+    pool_removed_students: int = 0
     full_list: bool = False
     already_imported: bool = False
     dry_run: bool = False
     classes: list[ClassImpact] = field(default_factory=list)
-    leaving: list[LeavingStudent] = field(default_factory=list)
+    pool_added: list[PoolStudent] = field(default_factory=list)
     warnings: list[ImportIssue] = field(default_factory=list)
     skipped: list[ImportIssue] = field(default_factory=list)
 
@@ -189,27 +214,29 @@ class StudentImportReport:
         self.skipped.append(ImportIssue(row, field_name, issue, raw))
 
     def to_dict(self) -> dict[str, Any]:
-        """API yanıtı (yönetim yüzeyi): ayrılacakların adları dahil."""
+        """API yanıtı (yönetim yüzeyi): havuza eklenecek öğrencilerin adları dahil."""
         return asdict(self)
 
     def to_run_dict(self) -> dict[str, Any]:
         """Kalıcı `ImportRun.report`: yalnız sayılar — ad listesi ve ham hücreler ÇIKARILIR."""
         veri = asdict(self)
-        veri.pop("leaving", None)
+        veri.pop("pool_added", None)
         return _strip_raw_values(veri)
 
     def summary_tr(self) -> str:
         return (
             f"İçe aktarma: {self.processed}/{self.total_rows} satır işlendi — "
             f"{self.created_students} yeni, {self.updated_students} güncellenen, "
-            f"{self.unchanged_students} değişmeyen, {self.leaving_students} ayrılan öğrenci; "
+            f"{self.unchanged_students} değişmeyen öğrenci; "
+            f"{self.pool_added_students} öğrenci ayrılış havuzuna eklendi, "
+            f"{self.pool_removed_students} öğrenci havuzdan çıktı; "
             f"{len(self.warnings)} uyarı, {len(self.skipped)} atlanan."
         )
 
 
 @dataclass
-class MissingPersonnel:
-    """Listede olmayan aktif personel — AD İÇERİR: yalnız API yanıtında."""
+class PoolPersonnel:
+    """Havuza eklenecek personel — AD İÇERİR: yalnız API yanıtında."""
 
     id: int
     full_name: str
@@ -221,7 +248,7 @@ class SimilarPair:
 
     AD İÇERİR: yalnız API yanıtında. `new_id` yalnız uygulamada dolar (önizlemede
     yeni kayıt geri alındığı için None'dır); birleştirme `personnel/<existing_id>/merge/`
-    ucuna `{into_id: new_id}` ile yapılır.
+    ucuna `{into_id: new_id}` ile yapılır (aktarım sonucundan ya da ayrılış havuzundan).
     """
 
     row_number: int
@@ -233,7 +260,12 @@ class SimilarPair:
 
 @dataclass
 class PersonnelImportReport:
-    """Personel içe aktarma özeti (UI raporu; `to_run_dict` → ImportRun.report)."""
+    """Personel içe aktarma özeti (UI raporu; `to_run_dict` → ImportRun.report).
+
+    Aktarım kimseyi ayırmaz: listede olmayan aktif personel ayrılış havuzuna
+    girer (`pool_added_personnel`: bu aktarımla YENİ giren), listede görülen
+    havuzdaki kişi çıkar (`pool_removed_personnel`).
+    """
 
     file_hash: str
     file_name: str = ""
@@ -244,12 +276,12 @@ class PersonnelImportReport:
     unchanged_personnel: int = 0
     #: Güncellenenlerin içinde: ayrılmışken listede yeniden görülen personel.
     reactivated_personnel: int = 0
-    missing_count: int = 0
-    left_personnel: int = 0
+    pool_added_personnel: int = 0
+    pool_removed_personnel: int = 0
     similar_pair_count: int = 0
     already_imported: bool = False
     dry_run: bool = False
-    missing: list[MissingPersonnel] = field(default_factory=list)
+    pool_added: list[PoolPersonnel] = field(default_factory=list)
     similar_pairs: list[SimilarPair] = field(default_factory=list)
     warnings: list[ImportIssue] = field(default_factory=list)
     skipped: list[ImportIssue] = field(default_factory=list)
@@ -261,13 +293,13 @@ class PersonnelImportReport:
         self.skipped.append(ImportIssue(row, field_name, issue, raw))
 
     def to_dict(self) -> dict[str, Any]:
-        """API yanıtı (yönetim yüzeyi): listede olmayanların ve çiftlerin adları dahil."""
+        """API yanıtı (yönetim yüzeyi): havuza eklenecek kişilerin ve çiftlerin adları dahil."""
         return asdict(self)
 
     def to_run_dict(self) -> dict[str, Any]:
         """Kalıcı `ImportRun.report`: yalnız sayılar — ad listeleri ve ham hücreler ÇIKARILIR."""
         veri = asdict(self)
-        veri.pop("missing", None)
+        veri.pop("pool_added", None)
         veri.pop("similar_pairs", None)
         return _strip_raw_values(veri)
 
@@ -275,7 +307,9 @@ class PersonnelImportReport:
         return (
             f"Personel içe aktarma: {self.processed}/{self.total_rows} satır — "
             f"{self.created_personnel} yeni, {self.updated_personnel} güncellenen, "
-            f"{self.unchanged_personnel} değişmeyen, {self.left_personnel} ayrılan; "
+            f"{self.unchanged_personnel} değişmeyen; "
+            f"{self.pool_added_personnel} kişi ayrılış havuzuna eklendi, "
+            f"{self.pool_removed_personnel} kişi havuzdan çıktı; "
             f"{len(self.warnings)} uyarı, {len(self.skipped)} atlanan."
         )
 
@@ -409,16 +443,18 @@ class _StudentRun:
     """Tek aktarım koşusunun ara durumu (eşleşenler, kapsam, şube etkileri)."""
 
     report: StudentImportReport
+    #: Havuza giren öğrencinin "hangi aktarımla" damgası.
+    run: ImportRun
     matched_ids: set[int] = field(default_factory=set)
     seen_indexes: set[str] = field(default_factory=set)
     scope: set[ClassKey] = field(default_factory=set)
     impacts: dict[ClassKey, ClassImpact] = field(default_factory=dict)
     #: Numarası okunan ama satırı atlanan öğrenciler: kör indeks → ilk satır no.
-    #: Bu indeksteki aktif öğrenci ayrılmış sayılmaz (import silmez ilkesi).
+    #: Bu indeksteki aktif öğrenci havuza eklenmez (import silmez ilkesi).
     kept_indexes: dict[str, int] = field(default_factory=dict)
-    #: Numarası boş öğrenci satırlarının şubeleri: burada kimse ayrılmaz.
+    #: Numarası boş öğrenci satırlarının şubeleri: buradan kimse havuza eklenmez.
     unidentified_scope: set[ClassKey] = field(default_factory=set)
-    #: Numarası ve sınıfı boş öğrenci satırı görüldü: hiçbir yerde kimse ayrılmaz.
+    #: Numarası ve sınıfı boş öğrenci satırı görüldü: hiçbir yerden kimse havuza eklenmez.
     unidentified_anywhere: bool = False
     #: Genel uyarıların (satıra bağlı olmayan) yazılacağı başlık satırı.
     header_row_number: int = 1
@@ -435,7 +471,11 @@ class _StudentRun:
 def _ingest_students(
     *, grid: list[list[Any]], source_hash: str, file_name: str = "", full_list: bool = False
 ) -> StudentImportReport:
-    """Matristeki öğrenci satırlarını yazar ve mutabakatı uygular (kör indeks eşleşmesi)."""
+    """Matristeki öğrenci satırlarını yazar ve mutabakatı uygular (kör indeks eşleşmesi).
+
+    Kimseyi ayırmaz ve silmez: dosyada bulunmayan kapsamdaki aktif öğrenci
+    ayrılış havuzuna girer, dosyada bulunan havuzdaki öğrenci çıkar.
+    """
     app_password.require_password_set()
     mapping, rows = _parse_student_grid(grid)
     report = StudentImportReport(
@@ -448,7 +488,7 @@ def _ingest_students(
     for header_warning in mapping.warnings:
         report.add_warning(mapping.header_row + 1, "header", header_warning)
 
-    kosu = _StudentRun(report=report, header_row_number=mapping.header_row + 1)
+    kosu = _StudentRun(report=report, run=run, header_row_number=mapping.header_row + 1)
     for row in rows:
         if row.class_level is not None:
             # Kapsam: dosyada GÖRÜLEN şubeler (satır başka sebeple atlansa da).
@@ -465,9 +505,11 @@ def _ingest_students(
 def _process_student_row(row: ParsedRow, kosu: _StudentRun) -> None:
     """Tek satır: doğrula → kör indeksle bul (aktif / ayrılmış) → oluştur/güncelle.
 
-    Atlanan satır da mutabakata iz bırakır (import silmez ilkesi): numarası
-    okunan satırın öğrencisi ayrılmaz; numarası boş öğrenci satırı ise kimin
-    olduğu bilinemediği için ayrılışı durdurur (`_reconcile_students`).
+    Bulunan aktif öğrenci ayrılış havuzundaysa havuzdan çıkar (şube değişimi
+    dahil). Atlanan satır da mutabakata iz bırakır (import silmez ilkesi):
+    numarası okunan satırın öğrencisi havuza eklenmez; numarası boş öğrenci
+    satırı ise kimin olduğu bilinemediği için havuza eklemeyi durdurur
+    (`_reconcile_students`).
     """
     report = kosu.report
     has_name = bool(row.student_first or row.student_last)
@@ -527,9 +569,13 @@ def _process_student_row(row: ParsedRow, kosu: _StudentRun) -> None:
             setattr(student, name, fields[name])
         if reactivated:
             changed += ["status", "left_at"]
-        if changed:
+        # Dosyada bulunan öğrenci havuzdaysa kendiliğinden çıkar (9/A → 9/B).
+        havuzdan = persons.remove_from_leave_pool(student, save=False)
+        yazilacak = [*changed, *(persons.POOL_FIELDS if havuzdan else ())]
+        if yazilacak:
             # Okul no yazılmaz: kör indeks zaten eşit (yalnız yazım farkı olabilir).
-            student.save(update_fields=[*changed, "updated_at"])
+            student.save(update_fields=[*yazilacak, "updated_at"])
+        if changed:
             report.updated_students += 1
             impact.updated += 1
             if reactivated:
@@ -537,6 +583,8 @@ def _process_student_row(row: ParsedRow, kosu: _StudentRun) -> None:
         else:
             report.unchanged_students += 1
             impact.unchanged += 1
+        if havuzdan:
+            report.pool_removed_students += 1
         kosu.matched_ids.add(student.pk)
     report.processed += 1
 
@@ -553,33 +601,37 @@ def _returning_student(row: ParsedRow, report: StudentImportReport) -> Student |
     adaylar = selectors.left_students_by_number(row.student_number)
     if not adaylar:
         return None
-    anahtar = _name_key(f"{row.student_first} {row.student_last}")
+    anahtar = name_match.name_key(f"{row.student_first} {row.student_last}")
     for aday in adaylar:
-        if _name_key(aday.full_name) == anahtar:
+        if name_match.name_key(aday.full_name) == anahtar:
             return aday
     report.add_warning(row.row_number, "number", REUSED_NUMBER_MESSAGE)
     return None
 
 
 def _reconcile_students(kosu: _StudentRun) -> None:
-    """Dosyada olmayan AKTİF öğrencileri ayrılış yolundan geçirir (EK-21).
+    """Dosyada olmayan AKTİF öğrencileri AYRILIŞ HAVUZUNA ekler (EK-21, F1 eki 7).
+
+    Hiç kimse ayrılmaz ve silinmez: havuza giren öğrencinin durumu AKTİF kalır,
+    karar havuzda verilir. Zaten havuzda olan öğrenci yeniden sayılmaz (ilk giriş
+    tarihi ve aktarımı korunur).
 
     Kapsam varsayılan olarak yalnız dosyada bulunan şubelerdir; `full_list`
     verilmişse bütün aktif öğrenciler (sınıfsızlar dahil) karşılaştırılır.
-    Bu dosyada eşleşen öğrenci (şube değiştirmiş olsa da) hiçbir durumda
-    ayrılmaz.
+    Bu dosyada eşleşen öğrenci (şube değiştirmiş olsa da) hiçbir durumda havuza
+    girmez.
 
-    Ayrılış yalnız KANITLA yapılır (import silmez ilkesi): numarası dosyada
-    geçen (satırı atlanmış olsa da) öğrenci ayrılmaz; numarası boş bir öğrenci
-    satırının şubesinde — sınıfı da boşsa hiçbir yerde — kimse ayrılmaz; hiç
-    satır işlenemeyen dosya kimseyi ayırmaz.
+    Havuza ekleme yalnız KANITLA yapılır (import silmez ilkesi): numarası dosyada
+    geçen (satırı atlanmış olsa da) öğrenci eklenmez; numarası boş bir öğrenci
+    satırının şubesinden — sınıfı da boşsa hiçbir yerden — kimse eklenmez; hiç
+    satır işlenemeyen dosya kimseyi eklemez.
     """
     report = kosu.report
     if report.processed == 0:
-        report.add_warning(kosu.header_row_number, "leaving", NOTHING_PROCESSED_MESSAGE)
+        report.add_warning(kosu.header_row_number, POOL_FIELD, NOTHING_PROCESSED_MESSAGE)
         return
     adaylar = Student.objects.filter(status=StudentStatus.ACTIVE).exclude(pk__in=kosu.matched_ids)
-    ayrilacaklar: list[Student] = []
+    eksikler: list[Student] = []
     korunan_satirlar: set[int] = set()
     for aday in adaylar:
         key = (aday.class_level, aday.class_section)
@@ -591,23 +643,22 @@ def _reconcile_students(kosu: _StudentRun) -> None:
             continue
         if kosu.unidentified_anywhere or key in kosu.unidentified_scope:
             continue
-        ayrilacaklar.append(aday)
+        eksikler.append(aday)
     for satir in sorted(korunan_satirlar):
         report.add_warning(satir, "number", KEPT_ROW_MESSAGE)
-    for student in selectors.students_sorted(ayrilacaklar):
-        kosu.impact((student.class_level, student.class_section)).leaving += 1
-        report.leaving.append(
-            LeavingStudent(
+    for student in selectors.students_sorted(eksikler):
+        if not persons.add_to_leave_pool(student, run=kosu.run):
+            continue  # zaten havuzda: karar bekliyor
+        kosu.impact((student.class_level, student.class_section)).to_pool += 1
+        report.pool_added.append(
+            PoolStudent(
                 id=student.pk,
                 full_name=student.full_name,
                 student_number=student.student_number,
                 class_label=student.class_label,
             )
         )
-        # Kişi başına günlük satırı YOK: önizleme bu yolu geri sarar; uygulamanın
-        # sayısal özeti `_student_entry`'de yazılır.
-        persons.leave_student(student, log=False)
-        report.leaving_students += 1
+        report.pool_added_students += 1
 
 
 def _ensure_class_sections() -> None:
@@ -632,38 +683,13 @@ def _ensure_class_sections() -> None:
 # ---------------------------------------------------------------------------
 # Personel içe aktarma + mutabakat
 # ---------------------------------------------------------------------------
-def _name_key(value: str) -> str:
-    """Ad-soyad eşleştirme anahtarı (ASCII'ye katlanmış, küçük harf, tek boşluk)."""
-    return excel_ogrenci.normalize_header(value)
-
-
-def _edit_distance(a: str, b: str, *, limit: int) -> int:
-    """Levenshtein uzaklığı; `limit`'i aşınca erken döner (limit + 1)."""
-    if abs(len(a) - len(b)) > limit:
-        return limit + 1
-    onceki = list(range(len(b) + 1))
-    for i, ca in enumerate(a, start=1):
-        simdiki = [i]
-        for j, cb in enumerate(b, start=1):
-            simdiki.append(min(onceki[j] + 1, simdiki[j - 1] + 1, onceki[j - 1] + (ca != cb)))
-        if min(simdiki) > limit:
-            return limit + 1
-        onceki = simdiki
-    return onceki[-1]
-
-
 def _probably_same(row: ParsedPersonnelRow, person: Personnel) -> bool:
-    """ "Olası aynı kişi": ad aynı soyad farklı (soyadı değişimi) YA DA ad-soyad uzaklığı ≤ 2."""
-    row_first = _name_key(row.first_name)
-    if row_first and row_first == _name_key(person.first_name):
-        return True
-    return (
-        _edit_distance(
-            _name_key(row.raw_full_name),
-            _name_key(person.full_name),
-            limit=SIMILAR_NAME_MAX_DISTANCE,
-        )
-        <= SIMILAR_NAME_MAX_DISTANCE
+    """ "Olası aynı kişi" (tek kural `name_match`): ad aynı ya da ad-soyad uzaklığı ≤ 2."""
+    return name_match.probably_same_person(
+        first_a=row.first_name,
+        full_a=row.raw_full_name,
+        first_b=person.first_name,
+        full_b=person.full_name,
     )
 
 
@@ -673,6 +699,11 @@ class _PersonnelRun:
     by_key: dict[str, list[Personnel]] = field(default_factory=dict)
     matched_ids: set[int] = field(default_factory=set)
     created: list[tuple[ParsedPersonnelRow, Personnel]] = field(default_factory=list)
+    #: Ad-soyadı boş satır görüldü: kim olduğu bilinemediği için kimse havuza eklenmez.
+    #: (Personelde kimlik anahtarı addır; öğrencideki "yalnız o şube" dalı yoktur.)
+    unidentified: bool = False
+    #: Genel (satıra bağlı olmayan) havuz uyarılarının yazılacağı başlık satırı.
+    header_row_number: int = 1
 
 
 @transaction.atomic
@@ -681,7 +712,6 @@ def _ingest_personnel(
     grid: list[list[Any]],
     source_hash: str,
     file_name: str = "",
-    mark_left_ids: Collection[int] = (),
 ) -> PersonnelImportReport:
     """Matristeki personel satırlarını yazar ve mutabakatı uygular (ada göre eşleşme).
 
@@ -690,6 +720,16 @@ def _ingest_personnel(
     kapısı zaten 423 verir). Adaşlar tek tek tüketilir: aynı adı taşıyan iki
     satır iki ayrı kayda eşleşir (biri "listede yok" sayılmaz). Aktif kayıt
     ayrılmış kayıttan önce eşleşir; ayrılmış kayıt eşleşirse yeniden aktifleşir.
+
+    Kimseyi ayırmaz ve silmez (F1 eki 7): listede olmayan aktif personel ayrılış
+    havuzuna girer; karar (ayrıldı / aktif kalsın / birleştir) havuzda verilir.
+    "Olası aynı kişi" çiftleri bütün listede olmayanlarla kurulur (zaten havuzda
+    bekleyenler dahil).
+
+    Havuza ekleme yalnız KANITLA yapılır (import silmez ilkesi, öğrencideki
+    karşılığıyla aynı): ad-soyadı boş bir satır görüldüyse o kişi tanınamadığı
+    için hiç kimse havuza eklenmez; hiç satır işlenemeyen dosya da kimseyi
+    eklemez. İki durum da önizlemede söylenir (satır no ile, ad yazılmadan).
     """
     app_password.require_password_set()
     mapping, rows = _parse_personnel_grid(grid)
@@ -702,19 +742,15 @@ def _ingest_personnel(
         report.add_warning(mapping.header_row + 1, "header", header_warning)
 
     mevcut = sorted(Personnel.objects.all(), key=lambda p: (not p.is_active, p.pk))
-    kosu = _PersonnelRun(report=report)
+    kosu = _PersonnelRun(report=report, header_row_number=mapping.header_row + 1)
     for person in mevcut:
-        kosu.by_key.setdefault(_name_key(person.full_name), []).append(person)
+        kosu.by_key.setdefault(name_match.name_key(person.full_name), []).append(person)
     for row in rows:
         _process_personnel_row(row, kosu)
 
-    missing = selectors.personnel_sorted(
+    listede_yok = selectors.personnel_sorted(
         p for p in mevcut if p.is_active and p.pk not in kosu.matched_ids
     )
-    report.missing = [MissingPersonnel(id=p.pk, full_name=p.full_name) for p in missing]
-    report.missing_count = len(missing)
-
-    ayrilacak = set(mark_left_ids)
     report.similar_pairs = [
         SimilarPair(
             row_number=row.row_number,
@@ -724,32 +760,61 @@ def _ingest_personnel(
             new_id=new_person.pk,
         )
         for row, new_person in kosu.created
-        for person in missing
-        # Ayrıldı olarak işaretlenen kişi kullanıcının kararıyla başka biridir.
-        if person.pk not in ayrilacak and _probably_same(row, person)
+        for person in listede_yok
+        if _probably_same(row, person)
     ]
     report.similar_pair_count = len(report.similar_pairs)
 
-    for person in missing:
-        if person.pk in ayrilacak:
-            persons.leave_personnel(person, log=False)
-            report.left_personnel += 1
+    _reconcile_personnel(kosu, listede_yok, run)
 
     _close_run(run, report.to_run_dict())
     return report
 
 
+def _reconcile_personnel(kosu: _PersonnelRun, listede_yok: list[Personnel], run: ImportRun) -> None:
+    """Listede olmayan aktif personeli AYRILIŞ HAVUZUNA ekler (EK-20, F1 eki 7).
+
+    Hiç kimse ayrılmaz ve silinmez: havuza giren kişinin durumu AKTİF kalır,
+    karar havuzda verilir. Zaten havuzda olan kişi yeniden sayılmaz (ilk giriş
+    tarihi ve aktarımı korunur).
+
+    Havuza ekleme yalnız KANITLA yapılır (import silmez ilkesi). Personelde
+    kimlik anahtarı ad-soyaddır; sütunları kaymış ya da ad hücresi boş bir dosya
+    listedeki herkesi "yok" gösterirdi. İki kapı vardır: hiç satır işlenemeyen
+    dosya kimseyi eklemez, ad-soyadı boş bir satır görülen dosya da eklemeyi
+    tümüyle durdurur (öğrencideki şube kapsamının personelde karşılığı yoktur).
+    """
+    report = kosu.report
+    if report.processed == 0:
+        report.add_warning(kosu.header_row_number, POOL_FIELD, PERSONNEL_NOTHING_PROCESSED_MESSAGE)
+        return
+    if kosu.unidentified:
+        return  # gerekçe satır satır söylendi (PERSONNEL_UNIDENTIFIED_ROW_MESSAGE)
+    for person in listede_yok:
+        if persons.add_to_leave_pool(person, run=run):
+            report.pool_added.append(PoolPersonnel(id=person.pk, full_name=person.full_name))
+            report.pool_added_personnel += 1
+
+
 def _process_personnel_row(row: ParsedPersonnelRow, kosu: _PersonnelRun) -> None:
-    """Tek personel satırı: ada göre bul/oluştur; boş hücre mevcut veriyi silmez."""
+    """Tek personel satırı: ada göre bul/oluştur; boş hücre mevcut veriyi silmez.
+
+    Bulunan aktif kişi ayrılış havuzundaysa havuzdan çıkar. Ad-soyadı boş satır
+    atlanır ve havuza eklemeyi durdurur: kişi tanınamadığı için listede olmayan
+    herhangi biri olabilir (`_reconcile_personnel`).
+    """
     report = kosu.report
     if not row.first_name and not row.last_name:
-        report.add_skip(row.row_number, "full_name", "Ad-soyad boş; satır atlandı.")
+        kosu.unidentified = True
+        report.add_skip(row.row_number, "full_name", PERSONNEL_UNIDENTIFIED_ROW_MESSAGE)
         return
     if row.member_kind_unrecognized:
         report.add_warning(row.row_number, "member_kind", MEMBER_KIND_CHECK_MESSAGE)
 
     adaylar = [
-        p for p in kosu.by_key.get(_name_key(row.raw_full_name), []) if p.pk not in kosu.matched_ids
+        p
+        for p in kosu.by_key.get(name_match.name_key(row.raw_full_name), [])
+        if p.pk not in kosu.matched_ids
     ]
     if not adaylar:
         person = Personnel.objects.create(
@@ -772,13 +837,18 @@ def _process_personnel_row(row: ParsedPersonnelRow, kosu: _PersonnelRun) -> None
     if row.member_kind and person.member_kind != row.member_kind:
         person.member_kind = row.member_kind
         changed.append("member_kind")
+    havuzdan = persons.remove_from_leave_pool(person, save=False)
+    yazilacak = [*changed, *(persons.POOL_FIELDS if havuzdan else ())]
+    if yazilacak:
+        person.save(update_fields=[*yazilacak, "updated_at"])
     if changed:
-        person.save(update_fields=[*changed, "updated_at"])
         report.updated_personnel += 1
         if reactivated:
             report.reactivated_personnel += 1
     else:
         report.unchanged_personnel += 1
+    if havuzdan:
+        report.pool_removed_personnel += 1
     kosu.matched_ids.add(person.pk)
     report.processed += 1
 
@@ -822,44 +892,24 @@ def preview_students_text(*, text: str, full_list: bool = False) -> StudentImpor
     )
 
 
-def commit_personnel_file(
-    *, file_bytes: bytes, file_name: str = "", mark_left_ids: Collection[int] = ()
-) -> PersonnelImportReport:
+def commit_personnel_file(*, file_bytes: bytes, file_name: str = "") -> PersonnelImportReport:
     return _personnel_entry(
-        lambda: _grid_from_file(file_bytes),
-        file_hash(file_bytes),
-        file_name,
-        preview=False,
-        mark_left_ids=mark_left_ids,
+        lambda: _grid_from_file(file_bytes), file_hash(file_bytes), file_name, preview=False
     )
 
 
-def commit_personnel_text(
-    *, text: str, mark_left_ids: Collection[int] = ()
-) -> PersonnelImportReport:
+def commit_personnel_text(*, text: str) -> PersonnelImportReport:
+    return _personnel_entry(lambda: text_to_grid(text), text_hash(text), "", preview=False)
+
+
+def preview_personnel_file(*, file_bytes: bytes, file_name: str = "") -> PersonnelImportReport:
     return _personnel_entry(
-        lambda: text_to_grid(text), text_hash(text), "", preview=False, mark_left_ids=mark_left_ids
+        lambda: _grid_from_file(file_bytes), file_hash(file_bytes), file_name, preview=True
     )
 
 
-def preview_personnel_file(
-    *, file_bytes: bytes, file_name: str = "", mark_left_ids: Collection[int] = ()
-) -> PersonnelImportReport:
-    return _personnel_entry(
-        lambda: _grid_from_file(file_bytes),
-        file_hash(file_bytes),
-        file_name,
-        preview=True,
-        mark_left_ids=mark_left_ids,
-    )
-
-
-def preview_personnel_text(
-    *, text: str, mark_left_ids: Collection[int] = ()
-) -> PersonnelImportReport:
-    return _personnel_entry(
-        lambda: text_to_grid(text), text_hash(text), "", preview=True, mark_left_ids=mark_left_ids
-    )
+def preview_personnel_text(*, text: str) -> PersonnelImportReport:
+    return _personnel_entry(lambda: text_to_grid(text), text_hash(text), "", preview=True)
 
 
 def _student_entry(
@@ -889,11 +939,13 @@ def _student_entry(
         raise
     # Günlüğe yalnız sayılar (kişi adı, okul no yok — sözlük §5).
     logger.info(
-        "Öğrenci aktarımı uygulandı: %d yeni, %d güncellenen, %d değişmeyen, %d ayrılan.",
+        "Öğrenci aktarımı uygulandı: %d yeni, %d güncellenen, %d değişmeyen; "
+        "ayrılış havuzuna %d eklendi, havuzdan %d çıktı.",
         report.created_students,
         report.updated_students,
         report.unchanged_students,
-        report.leaving_students,
+        report.pool_added_students,
+        report.pool_removed_students,
     )
     return report
 
@@ -904,29 +956,23 @@ def _personnel_entry(
     file_name: str,
     *,
     preview: bool,
-    mark_left_ids: Collection[int],
 ) -> PersonnelImportReport:
     try:
         grid = grid_supplier()
         if preview:
-            return _preview_personnel(
-                grid=grid,
-                source_hash=source_hash,
-                file_name=file_name,
-                mark_left_ids=mark_left_ids,
-            )
-        report = _ingest_personnel(
-            grid=grid, source_hash=source_hash, file_name=file_name, mark_left_ids=mark_left_ids
-        )
+            return _preview_personnel(grid=grid, source_hash=source_hash, file_name=file_name)
+        report = _ingest_personnel(grid=grid, source_hash=source_hash, file_name=file_name)
     except ParserError as exc:
         _record_failed(ImportSourceType.PERSONNEL, source_hash, file_name, exc)
         raise
     logger.info(
-        "Personel aktarımı uygulandı: %d yeni, %d güncellenen, %d değişmeyen, %d ayrılan.",
+        "Personel aktarımı uygulandı: %d yeni, %d güncellenen, %d değişmeyen; "
+        "ayrılış havuzuna %d eklendi, havuzdan %d çıktı.",
         report.created_personnel,
         report.updated_personnel,
         report.unchanged_personnel,
-        report.left_personnel,
+        report.pool_added_personnel,
+        report.pool_removed_personnel,
     )
     return report
 
@@ -946,16 +992,10 @@ def _preview_students(
 
 
 def _preview_personnel(
-    *,
-    grid: list[list[Any]],
-    source_hash: str,
-    file_name: str = "",
-    mark_left_ids: Collection[int] = (),
+    *, grid: list[list[Any]], source_hash: str, file_name: str = ""
 ) -> PersonnelImportReport:
     with transaction.atomic():
-        report = _ingest_personnel(
-            grid=grid, source_hash=source_hash, file_name=file_name, mark_left_ids=mark_left_ids
-        )
+        report = _ingest_personnel(grid=grid, source_hash=source_hash, file_name=file_name)
         transaction.set_rollback(True)
     report.dry_run = True
     # Önizlemenin açtığı yeni kayıtlar geri alındı: kimlikleri anlamsızdır.

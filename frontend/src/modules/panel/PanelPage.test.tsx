@@ -16,6 +16,7 @@ const oapi = vi.hoisted(() => ({
   getSetupStatus: vi.fn(),
   markRoadmapItem: vi.fn(),
   setRoadmapHidden: vi.fn(),
+  getLeavePoolSummary: vi.fn(),
 }));
 const kapi = vi.hoisted(() => ({ catalogTemplate: vi.fn() }));
 const indirme = vi.hoisted(() => ({ saveBlob: vi.fn() }));
@@ -68,6 +69,7 @@ function yolHaritasi(): HTMLElement {
 
 beforeEach(() => {
   oapi.getSetupStatus.mockResolvedValue(KURULU_DURUM);
+  oapi.getLeavePoolSummary.mockResolvedValue({ student_count: 0, personnel_count: 0 });
 });
 
 afterEach(() => vi.clearAllMocks());
@@ -92,6 +94,34 @@ describe("Genel Bakış", () => {
 
     expect(screen.getByRole("heading", { name: "Katalog Excel Şablonu" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Katalog Excel Şablonu/ })).not.toBeInTheDocument();
+  });
+
+  it("ayrılış havuzu boş değilse “N kişi ayrılış kararı bekliyor” kartı havuza bağlanır", async () => {
+    oapi.getLeavePoolSummary.mockResolvedValue({ student_count: 3, personnel_count: 1 });
+    bas();
+
+    const kart = await screen.findByRole("region", { name: "Ayrılış Havuzu" });
+    expect(
+      within(kart).getByText(
+        "4 kişi ayrılış kararı bekliyor (3 öğrenci, 1 öğretmen ve diğer personel).",
+      ),
+    ).toBeInTheDocument();
+    expect(within(kart).getByRole("link", { name: "Ayrılış Havuzu'nu aç" })).toHaveAttribute(
+      "href",
+      "/kisiler?tab=havuz",
+    );
+  });
+
+  it("ayrılış havuzu boşsa ya da sayı okunamazsa kart görünmez", async () => {
+    const { unmount } = bas();
+    await waitFor(() => expect(oapi.getLeavePoolSummary).toHaveBeenCalled());
+    expect(screen.queryByRole("region", { name: "Ayrılış Havuzu" })).toBeNull();
+    unmount();
+
+    oapi.getLeavePoolSummary.mockRejectedValueOnce(new Error("görevli kipi"));
+    bas();
+    await waitFor(() => expect(oapi.getLeavePoolSummary).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole("region", { name: "Ayrılış Havuzu" })).toBeNull();
   });
 });
 

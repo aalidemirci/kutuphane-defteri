@@ -23,8 +23,9 @@
 // (meb-bilgi-ve-sistem-guvenligi-yonergesi.md), Yönetmelik 18/1
 // (meb-okul-kutuphaneleri-yonetmeligi.md), TBK 93 (6098-…-md92-93.md).
 
+import { useEffect } from "react";
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import Card from "../../ui/Card";
 import Icon from "../../ui/Icon";
@@ -126,7 +127,27 @@ function Kod({ children }: { children: ReactNode }) {
 
 const YONERGE = "Millî Eğitim Bakanlığı Bilgi ve Sistem Güvenliği Yönergesi";
 
+/**
+ * Başka bir ekrandan çapalı adresle gelindiğinde (ör. yol haritasındaki BTR
+ * maddesi → `/kilavuz#ag-katalogu`) ilgili bölüme kaydırır.
+ *
+ * Tarayıcı çapayı YALNIZ gerçek gezinmede kendisi uygular; SPA'da rota
+ * değiştiğinde adresteki `#` yok sayılır, sayfa tepede açılırdı. Sayfa içi
+ * "Bu kılavuzda" bağlantıları düz `<a href="#...">` olduğu için onları
+ * tarayıcı zaten kaydırır; bu etki onları bozmaz (aynı hedefe kaydırır).
+ */
+function useCapayaKaydir(): void {
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (!hash) return;
+    const hedef = document.getElementById(decodeURIComponent(hash.slice(1)));
+    // jsdom ve eski gömülü motorlarda yok olabilir; kaydırma kritik değildir.
+    hedef?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  }, [hash]);
+}
+
 export default function KilavuzPage() {
+  useCapayaKaydir();
   return (
     <div className="mx-auto max-w-4xl space-y-5">
       <header>
@@ -195,12 +216,31 @@ export default function KilavuzPage() {
         </ul>
         <p>
           Sonra “Sakladım, doğrula” düğmesine basın. Anahtar ekrandan kalkar; sakladığınız kopyaya
-          bakarak istenen iki grubu yazarsınız. Doğrulama bitmeden “Devam” düğmesi açılmaz; kopyaya
-          yeniden bakmanız gerekirse “Anahtarı yeniden göster”i kullanın. Bu sırada program görevli
-          kipine geçer ya da kilitlenirse anahtar kaybolmaz: yönetici kipine döndüğünüzde sihirbaz
-          anahtarı yeniden gösterir ve doğrulamayı yeniden ister. Anahtarı saklayıp doğrulamadan
-          programı kapatmayın: kapanan programda anahtar yeniden gösterilemez.
+          bakarak istenen iki grubu yazarsınız. İki grup tuttuğunda program anahtarın saklandığını
+          kaydeder; <strong>kurulum bu doğrulama yapılmadan tamamlanmaz</strong>. Doğrulama bitmeden
+          “Devam” düğmesi açılmaz; kopyaya yeniden bakmanız gerekirse “Anahtarı yeniden göster”i
+          kullanın. Bu sırada görevli kipine geçer ya da kilitlerseniz anahtar kaybolmaz: yönetici
+          kipine döndüğünüzde sihirbaz anahtarı yeniden gösterir ve doğrulamayı yeniden ister.
+          Kurulum bitene kadar program kendiliğinden görevli kipine geçmez (boşta ve mutlak süre
+          kurulum tamamlanınca işlemeye başlar), ama programı kapatırsanız anahtar gider: kapanan
+          programda anahtar yeniden gösterilemez.
         </p>
+        <p>
+          Anahtar ekranda değilken (ör. program kapandı ya da kurtarma anahtarını kaydedemediniz)
+          sihirbazın 1. adımı iki yol sunar:
+        </p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>
+            <strong>Kurtarma Anahtarını Doğrula:</strong> kâğıttaki ya da PDF&apos;teki anahtarın
+            tamamını yazın. Anahtar doğruysa saklandığı kaydedilir ve kuruluma devam edersiniz.
+          </li>
+          <li>
+            <strong>Kurtarma Anahtarını Yenile:</strong> anahtarı kaydedemediyseniz yönetici
+            parolasını girip yeni bir anahtar üretin. Yeni anahtar bir kez gösterilir; onu da
+            saklayıp doğrularsınız. Yenilemeden sonra zarftaki eski anahtar bu bilgisayarda kilidi
+            açmaz, ama eski yedekler için gerekebilir (bkz. Yedek ve Güvenlik Dosyası bölümü).
+          </li>
+        </ul>
         <Ipucu>
           <p>
             Kurtarma anahtarının çıktısını bir zarfa koyup kapatın ve müdürlükte kilitli dolapta
@@ -215,7 +255,10 @@ export default function KilavuzPage() {
           Elle yazdığınız anahtarın temiz bir çıktısını sonradan{" "}
           <Ekran to="/ayarlar?tab=guvenlik">Ayarlar → Güvenlik</Ekran>&apos;teki “Kurtarma anahtarı
           çıktısı” kartından alabilirsiniz: anahtarı yazıp “PDF olarak kaydet”e basın. Program
-          anahtarı doğrular; yanlış yazılmış anahtar basılmaz.
+          anahtarı doğrular; yanlış yazılmış anahtar basılmaz. Aynı ekranda “Kurtarma Anahtarını
+          Yenile” kartı da vardır: anahtar kaybolursa yenisini oradan üretirsiniz. Kurtarma anahtarı
+          doğrulanmamışsa Genel Bakış&apos;taki Başlangıç Yol Haritası ve Güvenlik ekranı uyarı
+          gösterir.
         </p>
 
         <AltBaslik>2. Okul bilgileri</AltBaslik>
@@ -286,7 +329,8 @@ export default function KilavuzPage() {
           İlk üç madde yapıldığında kendiliğinden işaretlenir; şablon maddesi şablonu indirdiğinizde
           işaretlenir. Program diğerlerinin yapıldığını bilemez: yaptıkça “Yapıldı” kutusunu siz
           işaretlersiniz. İşaretler programda saklanır. Bütün maddeler tamamlanınca “Kartı gizle”
-          düğmesi çıkar.
+          düğmesi çıkar. Kurtarma anahtarının saklandığı doğrulanmadıysa kart gizlenmez: uyarı
+          kartın başındadır ve gözden kaçmamalıdır.
         </p>
       </Bolum>
 
@@ -347,9 +391,10 @@ export default function KilavuzPage() {
         <AltBaslik>Parolayı unutursanız</AltBaslik>
         <p>
           Kilit ekranında “Parolamı unuttum”u seçin, kurtarma anahtarını ve yeni parolayı yazıp
-          “Kurtar ve aç” düğmesine basın. Kurtarma anahtarı değişmez, bundan sonra da geçerlidir;
-          zarftaki kâğıt geçerli kalır. Yeni parolayı, parolayı bilen öbür görevlendirilmiş kişiye
-          de bildirin.
+          “Kurtar ve aç” düğmesine basın. Bu işlem kurtarma anahtarını DEĞİŞTİRMEZ: zarftaki kâğıt,
+          siz <Ekran to="/ayarlar?tab=guvenlik">Ayarlar → Güvenlik</Ekran>&apos;teki “Kurtarma
+          Anahtarını Yenile” kartını kullanana kadar geçerli kalır. Yeni parolayı, parolayı bilen
+          öbür görevlendirilmiş kişiye de bildirin.
         </p>
 
         <AltBaslik>Parolayı değiştirmek</AltBaslik>
@@ -364,12 +409,20 @@ export default function KilavuzPage() {
       {/* ------------------------------------------------------------------ */}
       <Bolum id="kisiler">
         <p>
-          <Ekran to="/kisiler">Kişiler</Ekran> sayfasının iki sekmesi vardır: “Öğrenciler” ve
-          “Öğretmenler ve Diğer Personel”. Program T.C. kimlik numarası, veli bilgisi, cinsiyet,
-          unvan ve branş tutmaz. Öğrencide ad, soyad, okul no, sınıf ve şube; öğretmen ve diğer
-          personelde ad, soyad ve üye türü tutulur. Kişi kaydı için yönetici parolasının kurulmuş
-          olması gerekir.
+          <Ekran to="/kisiler">Kişiler</Ekran> sayfasının üç sekmesi vardır: “Öğrenciler”,
+          “Öğretmenler ve Diğer Personel” ve “Ayrılış Havuzu”. Program T.C. kimlik numarası, veli
+          bilgisi, cinsiyet, unvan ve branş tutmaz. Öğrencide ad, soyad, okul no, sınıf ve şube;
+          öğretmen ve diğer personelde ad, soyad ve üye türü tutulur. Kişi kaydı için yönetici
+          parolasının kurulmuş olması gerekir.
         </p>
+        <Ipucu>
+          <p>
+            <strong>Aktarım kimseyi okuldan ayırmaz ve kimsenin kaydını silmez.</strong> Listede
+            bulunmayan öğrenci ve personel “Ayrılış Havuzu” sekmesine eklenir, durumları aktif
+            kalır. Ayrılıp ayrılmadıklarına siz karar verirsiniz; böylece iade edilmemiş kitabı olan
+            kişi kayıp olmaz.
+          </p>
+        </Ipucu>
 
         <AltBaslik>Öğrenci listesi</AltBaslik>
         <p>
@@ -383,35 +436,38 @@ export default function KilavuzPage() {
         </p>
         <p>
           Aktarım iki aşamalıdır. “Önizle” hiçbir kaydı yazmaz: şube bazında kaç öğrencinin yeni,
-          güncellenen, değişmeyen ve ayrılacak olduğunu gösterir. “Aktar” düğmesi önizlemeden sonra
-          açılır; öğrenci ayrılacaksa işlem bir kez daha onay ister.
+          güncellenen, değişmeyen ve ayrılış havuzuna eklenecek olduğunu gösterir. “Aktar” düğmesi
+          önizlemeden sonra açılır.
         </p>
         <ul className="list-disc space-y-2 pl-5">
           <li>
             Öğrenciler okul numarasıyla eşleştirilir. Dosyada yeni şubesiyle görünen öğrenci
-            ayrılmaz, kaydı güncellenir. Ayrıldı olarak duran bir öğrenci aynı numara ve aynı adla
-            listeye dönerse kaydı yeniden aktif olur; numara adı farklı bir öğrenciye verilmişse
-            eski kayıt olduğu gibi kalır ve yeni kayıt açılır.
+            ayrılmaz, kaydı güncellenir; ayrılış havuzunda bekliyorsa havuzdan kendiliğinden çıkar.
+            Ayrıldı olarak duran bir öğrenci aynı numara ve aynı adla listeye dönerse kaydı yeniden
+            aktif olur; numara adı farklı bir öğrenciye verilmişse eski kayıt olduğu gibi kalır ve
+            yeni kayıt açılır.
           </li>
           <li>
             Karşılaştırma varsayılan olarak <strong>yalnız dosyada bulunan şubelerle</strong>{" "}
             yapılır. Tek bir şubenin listesini yüklemek diğer şubelere dokunmaz; dosyadaki bir
-            şubede kayıtlı olup dosyada bulunmayan öğrenci “ayrılacak” sayılır.{" "}
+            şubede kayıtlı olup dosyada bulunmayan öğrenci ayrılış havuzuna eklenir.{" "}
             <strong>
-              Başka bir şubeye geçtiği için bu dosyada bulunmayan öğrenci de “ayrılacak” sayılır.
+              Başka bir şubeye geçtiği için bu dosyada bulunmayan öğrenci de havuza eklenir.
             </strong>{" "}
             Bu yüzden yeni ders yılı başında ya da şube değişikliklerinden sonra listeyi şube şube
-            yüklemeyin: okulun bütün şubelerini içeren listeyi tek dosyada yükleyin.
+            yüklemeyin: okulun bütün şubelerini içeren listeyi tek dosyada yükleyin. (Şube şube
+            yüklerseniz de kimse ayrılmaz; öğrenci yeni şubesinin listesi gelene kadar havuzda
+            bekler.)
           </li>
           <li>
             “Bu dosya okulun tam listesidir” kutusunu yalnız okulun bütün şubelerini içeren dosyada
-            işaretleyin: işaretlenirse dosyada hiç bulunmayan şubelerdeki öğrenciler de okuldan
-            ayrılmış sayılır.
+            işaretleyin: işaretlenirse dosyada hiç bulunmayan şubelerdeki öğrenciler de ayrılış
+            havuzuna eklenir.
           </li>
           <li>
             Bir satır atlanırsa (ad ya da sınıf okunamadıysa) o satırdaki okul numarasına sahip
-            öğrenci ayrılmış sayılmaz. Okul numarası boş bir öğrenci satırı kimin olduğu
-            bilinemediği için o şubede kimseyi ayırmaz. Önizleme bu satırları numarasıyla gösterir.
+            öğrenci havuza eklenmez. Okul numarası boş bir öğrenci satırı kimin olduğu bilinemediği
+            için o şubeden kimseyi havuza eklemez. Önizleme bu satırları numarasıyla gösterir.
           </li>
         </ul>
 
@@ -427,24 +483,58 @@ export default function KilavuzPage() {
         </p>
         <ul className="list-disc space-y-2 pl-5">
           <li>
-            Kişiler ad-soyadla eşleştirilir. Kayıtta olup listede bulunmayanlar önizlemede “… kişi
-            listede yok. Ayrıldı sayılsın mı?” başlığıyla sorulur: yalnız işaretlediğiniz kişiler
-            ayrılır, işaretlemedikleriniz olduğu gibi kalır.
+            Kişiler ad-soyadla eşleştirilir. Kayıtta olup listede bulunmayanlar ayrılış havuzuna
+            eklenir; kimse kendiliğinden ayrılmaz.
           </li>
           <li>
             <strong>Olası aynı kişi:</strong> listedeki yeni bir ad kayıttaki bir kişiye benziyorsa
             (ör. soyadı değişimi) önizleme ikisini birlikte gösterir. Bu kişiyi ayrıldı diye
-            işaretlemeyin; aktardıktan sonra “Birleştir” düğmesine basın. Eski kaydın kütüphane
-            bağları yeni kayda taşınır ve eski kayıt silinir.
+            işaretlemeyin; aktardıktan sonra “Birleştir” düğmesine basın (aynı düğme “Ayrılış
+            Havuzu” sekmesinde de vardır). Eski kaydın kütüphane bağları yeni kayda taşınır ve eski
+            kayıt silinir. Benzerlik yalnız addan hesaplanır: okula yeni gelen bir adaş da eş olarak
+            görünebilir. Birleştirmeden önce gerçekten aynı kişi olduğunu doğrulayın; birleştirme
+            geri alınamaz.
           </li>
         </ul>
+
+        <AltBaslik>Ayrılış Havuzu</AltBaslik>
+        <p>
+          <Ekran to="/kisiler?tab=havuz">Kişiler → Ayrılış Havuzu</Ekran> aktarımda listede
+          bulunmayan kişileri toplar. Havuzdaki kişinin durumu <strong>aktif kalır</strong>: hiçbir
+          kayıt kendiliğinden ayrılmış sayılmaz, silinmez. Her kişi için iki seçenek vardır:
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong>“Ayrıldı olarak işaretle”</strong> (onay ister): kişi okuldan ayrılmış sayılır
+            ve seçicilerden düşer. Kaydı silinmez; sicilde “Ayrıldı · gg.aa.yyyy” rozetiyle kalır,
+            iade etmediği kitap varsa izlenebilir. Sonraki bir e-Okul listesinde yeniden görünürse
+            kaydı yeniden aktif olur.
+          </li>
+          <li>
+            <strong>“Aktif kalsın”</strong>: kişi havuzdan çıkar, hiçbir şey değişmez. Bir sonraki
+            listede yine bulunmazsa havuza yeniden girer.
+          </li>
+        </ul>
+        <p>
+          Satırlar tek tek ya da toplu seçilebilir; “Sınıf” süzgeci yıl sonunda mezun şubeleri bir
+          kerede işaretlemeye yarar. Her satırda kişinin havuza hangi gün ve hangi aktarımla girdiği
+          yazar. Genel Bakış&apos;taki “Ayrılış Havuzu” kartı bekleyen kişi sayısını gösterir ve
+          buraya getirir.
+        </p>
+        <Ipucu>
+          <p>
+            Ayrılan kişilerin kayıtları bu sürümde programda kalır. Kayıtların ne kadar süre
+            saklanacağı ve otomatik silinmesi sonraki sürümlerde gelecek; o zamana kadar gereksiz
+            bulduğunuz bir kaydı düzenleme penceresindeki “Sil” ile kaldırabilirsiniz (kütüphane
+            işlemi olmayan kayıtlarda).
+          </p>
+        </Ipucu>
 
         <AltBaslik>Elle kayıt ve ayrılış</AltBaslik>
         <p>
           Tek kişi eklemek için “Öğrenci ekle” ya da “Kişi ekle” düğmesini kullanın; düzenlemek için
           listedeki satıra tıklayın. Okuldan ayrılan kişi için düzenleme penceresindeki “Ayrıldı
-          olarak işaretle”yi seçin: kütüphane üyeliği ve açık işlemi olmayan kişinin kaydı hemen
-          silinir, kişisel veri saklanmaz; üyeliği ya da açık işlemi varsa kayıt “Ayrıldı ·
+          olarak işaretle”yi seçin: kişi seçicilerden düşer, kaydı silinmez ve “Ayrıldı ·
           gg.aa.yyyy” rozetiyle kalır. “Sil” yalnız yanlış girilmiş kayıtlar içindir.
         </p>
         <p>
@@ -588,10 +678,17 @@ export default function KilavuzPage() {
           güncellemeden önce ayrıca bir yedek alır. Yedekler güçlü şifrelemeyle korunur; yalnız
           yönetici parolasıyla ya da kurtarma anahtarıyla açılır.
         </p>
+        <Ipucu>
+          <p>
+            Yedek <strong>açılışa bağlıdır</strong>: program tepside günlerce açık kalırsa o
+            günlerin yedeği alınmaz. Bilgisayarı her sabah kapatıp açın ya da haftada bir programı
+            tepsideki simgeden “Çık”la kapatıp yeniden açın.
+          </p>
+        </Ipucu>
         <p>
           Otomatik yedekler bu bilgisayardadır; disk bozulursa onlar da gider. Ayda bir{" "}
-          <Ekran to="/ayarlar?tab=guvenlik">Ayarlar → Güvenlik</Ekran>&apos;teki “Şifreli veritabanı
-          yedeği” kartından “Şifreli yedeği indir” düğmesiyle yedek alıp USB belleğe kopyalayın ve
+          <Ekran to="/ayarlar?tab=guvenlik">Ayarlar → Güvenlik</Ekran>&apos;teki “Şifreli Veritabanı
+          Yedeği” kartından “Şifreli yedeği indir” düğmesiyle yedek alıp USB belleğe kopyalayın ve
           belleği bilgisayardan ayrı saklayın. Yedeği bulut depolama hizmetine yüklemeyin (Yönerge
           md. 11/23).
         </p>
@@ -599,7 +696,7 @@ export default function KilavuzPage() {
         <AltBaslik>Yedekten geri yükleme</AltBaslik>
         <p>
           Yanlış veri girişinden sonra eski bir güne dönmek için Ayarlar → Güvenlik&apos;teki
-          “Yedekten geri yükle” kartında günlük yedeklerden birini seçin ya da elinizdeki yedek
+          “Yedekten Geri Yükleme” kartında günlük yedeklerden birini seçin ya da elinizdeki yedek
           dosyasını yükleyin. Yedeğin alındığı dönemdeki yönetici parolasını ya da kurtarma
           anahtarını yazıp “Geri yükle”ye basın. O yedekten sonra girilen kayıtlar kalkar. Mevcut
           veritabanı silinmez, veri klasöründe <Kod>db-onceki-…</Kod> adıyla kenara alınır. İşlemden
@@ -612,6 +709,44 @@ export default function KilavuzPage() {
           <Kod>kutuphane-defteri --geri-yukle</Kod> komutunu kullanın. Program tepsideyse önce
           tepsideki simgeden “Çık”ı seçin.
         </p>
+
+        <AltBaslik>Kurtarma anahtarını yenilerseniz</AltBaslik>
+        <p>
+          Kurtarma anahtarı kaybolduysa ya da kurulumda kaydedilemediyse{" "}
+          <Ekran to="/ayarlar?tab=guvenlik">Ayarlar → Güvenlik</Ekran>&apos;teki “Kurtarma
+          Anahtarını Yenile” kartından yönetici parolanızı girip yenisini üretirsiniz. Kayıtlar
+          yeniden şifrelenmez, yönetici parolası ve numaralar değişmez; yalnız anahtarın açtığı
+          kilit yenilenir. Yeni anahtar bir kez gösterilir: onu da saklayıp doğrulayın.
+        </p>
+        <p>
+          <strong>Eski kâğıdı hemen atmayın.</strong> Her yedek, alındığı günün güvenlik dosyasını
+          içinde taşır. Yenilemeden önce alınmış bir yedek:
+        </p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>
+            bu bilgisayarda (güvenlik dosyası yerindeyken) <strong>yeni</strong> kurtarma
+            anahtarıyla ya da güncel yönetici parolasıyla açılır;
+          </li>
+          <li>
+            başka bir bilgisayarda ya da güvenlik dosyası kaybolduğunda yalnız <strong>eski</strong>{" "}
+            kurtarma anahtarıyla (ya da o dönemin yönetici parolasıyla) açılır.
+          </li>
+        </ul>
+        <p>
+          Bu yüzden USB bellekteki eski yedekler duruyorsa eski kâğıdı “Eski anahtar — [tarih]
+          öncesi yedekler için” diye işaretleyip ayrı saklayın. Bu bilgisayarda eski bir yedeği geri
+          yüklerken güncel parolayı ya da yeni anahtarı kullanın: eski anahtarla geri yüklerseniz
+          güvenlik dosyası da yedeğin dönemine döner ve kilidi yeniden eski anahtar açar.
+        </p>
+        <Ipucu>
+          <p>
+            Yenileme, başkasının eline geçmiş bir anahtara karşı koruma değildir: kayıtların
+            anahtarı değişmez; eski yedekler ve veri klasöründe <Kod>guvenlik-arsiv-…</Kod> adıyla
+            saklanan önceki güvenlik dosyası eski anahtarla açılabilir. Anahtarın başkasının eline
+            geçtiğini düşünüyorsanız yönetici parolasını da değiştirin ve eski yedekleri gözden
+            geçirin.
+          </p>
+        </Ipucu>
 
         <AltBaslik>Güvenlik dosyası bulunamazsa</AltBaslik>
         <p>

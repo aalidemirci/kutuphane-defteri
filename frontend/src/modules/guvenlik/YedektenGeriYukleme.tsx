@@ -121,7 +121,7 @@ export default function YedektenGeriYukleme({ kayipKipi = false }: YedektenGeriY
       <div className="flex items-start gap-3">
         <Icon name="settings_backup_restore" className="mt-0.5 text-primary" />
         <div className="min-w-0 flex-1">
-          <h2 className="text-title-large text-on-surface">Yedekten geri yükle</h2>
+          <h2 className="text-title-large text-on-surface">Yedekten Geri Yükleme</h2>
           {kayipKipi ? (
             <p className="mt-2 text-body-medium text-on-surface-variant">
               En yeni yedeği seçin ya da elinizdeki yedek dosyasını yükleyin. Mevcut veritabanı

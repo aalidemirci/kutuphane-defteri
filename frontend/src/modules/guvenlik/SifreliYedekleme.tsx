@@ -45,7 +45,7 @@ export default function SifreliYedekleme({ parolaKurulu }: { parolaKurulu: boole
       <div className="flex items-start gap-3">
         <Icon name="backup" className="mt-0.5 text-primary" />
         <div className="min-w-0 flex-1">
-          <h2 className="text-title-large text-on-surface">Şifreli veritabanı yedeği</h2>
+          <h2 className="text-title-large text-on-surface">Şifreli Veritabanı Yedeği</h2>
           <p className="mt-2 text-body-medium text-on-surface-variant">
             Kayıtlarınızın tutarlı bir kopyası bu bilgisayarda hazırlanır ve güçlü şifrelemeyle
             korunur, ardından yedek dosyası olarak indirilir. Şifresiz kopya üretilmez; dosya hiçbir

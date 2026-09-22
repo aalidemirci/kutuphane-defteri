@@ -19,8 +19,9 @@ yazan uçlar 409 `parola_gerekli` döner (`apps/okul/permissions.py`,
 **DEK (veri anahtarı) hiçbir yerde açık durmaz**; iki kez sarmalanır: bir kez
 paroladan türetilen anahtarla, bir kez de yazdırılabilir kurtarma anahtarından
 türetilenle. Parola unutulursa kurtarma anahtarı veriyi kurtarır. DEK kurulumda
-bir kez üretilir ve hiç değişmez: parola değişimi yalnız sarmalı yeniler, kör
-indeks ve eski yedekler geçerli kalır.
+bir kez üretilir ve hiç değişmez: parola değişimi de kurtarma anahtarının
+yenilenmesi de yalnız ilgili sarmalı yeniler; kör indeks, yedek anahtarı
+(`yedekleme.json`) ve eski yedekler geçerli kalır.
 
 FAIL-CLOSED DURUM SORGUSU (GA-2, §4.3): "parola kurulu mu?" sorusunun cevabı
 güvenlik dosyasının VARLIĞI **ya da** DB'deki anahtar parmak izidir. Kilitliyken
@@ -42,6 +43,40 @@ KURTARMA ANAHTARI ÇIKTISI (E14): `verify_recovery_key` anahtarı kurtarma
 sarmalına VE bellekteki anahtara karşı doğrular (yanlışta kademeli gecikme);
 yalnız o zaman PDF basılır (`services.recovery_key_document`). Anahtar
 sunucuda saklanmaz, hiçbir günlüğe ve hata iletisine yazılmaz.
+
+KURTARMA ANAHTARININ DOĞRULANMASI (F1 eki, 22.09.2026 kullanıcı kararı 2):
+kurulum, anahtarın saklandığı doğrulanmadan tamamlanmaz. Sihirbaz iki grubu
+istemcide denetledikten sonra bellekteki TAM anahtarı gönderir;
+`confirm_recovery_key` onu `verify_recovery_key` kuralıyla doğrular ve
+`guvenlik.json`'un kurtarma bölümüne doğrulama damgasını (`kurtarma.dogrulandi`,
+ISO zaman damgası) atomik yazar. Damga sarmalla birlikte yaşar: yenilemede
+yeni kurtarma bölümü damgasız yazılır. DB'de alan yoktur (migration gerekmez);
+`recovery_key_confirmed()` ve `status()` damgayı okur.
+
+KURTARMA ANAHTARINI YENİLEME (aynı kararın 3. maddesi; F11 görev devrinin bu
+parçası F1'e çekildi): `renew_recovery_key(password=…)` yalnız kilit açıkken
+çalışır, yönetici parolasını bellekteki anahtara karşı doğrular, YENİ anahtar
+ve YENİ tuzla aynı DEK'i sarmalar. Önceki `guvenlik.json` önce
+`guvenlik-arsiv-<damga>.json` olarak KOPYALANIR (silinmez; `guvenlik.json` hiçbir
+an yok olmaz, yarıda kesilen yenileme dosyayı kayıp hâline düşürmez), sonra yeni
+durum atomik yazılır. Yeni anahtar yanıtla BİR KEZ döner. DEK değişmediği için
+kayıtlar, kör indeks ve yedek anahtarı aynen kalır; bunun iki sonucu vardır ve
+arayüz ile kılavuz ikisini de söyler:
+
+* her yedek, alındığı anın `guvenlik.json`'unu başlığında taşır
+  (`backup_crypto.recovery_metadata`/`usable_recovery_header`): yenilemeden
+  ÖNCE alınmış yedek, güncel güvenlik dosyası yokken (başka bilgisayar, kayıp
+  dosya) yalnız ESKİ kurtarma anahtarıyla ya da o dönemin parolasıyla açılır;
+  bu bilgisayarda güncel dosya yerindeyken yeni anahtar ve güncel parola da
+  açar (`backup_restore._candidate_states`). Yenilemeden SONRA alınan yedekler
+  yeni başlığı taşır;
+* yenileme, ele geçmiş bir anahtara karşı koruma DEĞİLDİR: eski yedekler ve
+  arşivlenen dosya eski anahtarla açılmaya devam eder. Yenilemenin amacı
+  kaydedilemeyen ya da kaybolan kâğıdın yerine yenisini koymaktır.
+
+Güvenlik dosyasını değiştiren işlemler (doğrulama damgası, yenileme, parola
+değişimi, kurtarmayla parola yenileme, yarım geçişin tamamlanması) süreç içi bir
+kilitle sıralanır: oku-değiştir-yaz arasına başka bir yazım girip onu ezmesin.
 
 NEDEN GÜVENLİK DOSYASI VERİ DİZİNİNDE, DB'DE DEĞİL?
   * Yedekler (`backups/gunluk-*.kdbak`) X25519 + AES-256-GCM kapsayıcılarıdır;
@@ -75,6 +110,7 @@ import json
 import logging
 import os
 import sqlite3
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -117,6 +153,19 @@ TRANSITION_ENCRYPTING = "SIFRELENIYOR"
 
 MIN_PASSWORD_LENGTH = 8
 
+#: Kurtarma bölümündeki doğrulama damgası (ISO zaman damgası; F1 eki, karar 2).
+#: Sarmalla birlikte yaşar: yenilenen kurtarma bölümü damgasız yazılır.
+RECOVERY_CONFIRMED_FIELD = "dogrulandi"
+#: Kenara alınan güvenlik dosyalarının ad öneki (`guvenlik-arsiv-<damga>.json`);
+#: geri yükleme (`backup_restore._ensure_state_file`) ve `recovery_metadata`
+#: aynı deseni kullanır.
+STATE_ARCHIVE_PREFIX = "guvenlik-arsiv-"
+
+# Güvenlik dosyasını oku-değiştir-yaz işlemlerinin süreç içi sırası (modül başlığı).
+# Yeniden girilebilir: kurtarmayla açılış `_adopt_key` → `resume_pending` zincirini
+# kilit içindeyken çağırır.
+_state_lock = threading.RLock()
+
 # Kurtarma anahtarı: 20 rastgele bayt → base32 (32 karakter) → 8 dörtlü grup.
 RECOVERY_KEY_BYTES = 20
 RECOVERY_GROUP_SIZE = 4
@@ -144,6 +193,7 @@ _WRONG_PASSWORD_MESSAGE = "Parola hatalı."  # noqa: S105 — kullanıcı iletis
 _WRONG_RECOVERY_MESSAGE = (
     "Kurtarma anahtarı hatalı. Yazdırdığınız kâğıttaki anahtarı olduğu gibi girin."
 )
+_LOCKED_MESSAGE = "Kayıtlar kilitli. Önce yönetici parolasıyla kilidi açın."
 RESET_NOT_ALLOWED_MESSAGE = (
     "Güvenlik dosyası sıfırlanamaz: bu yol yalnız hiç kişi kaydı girilmemiş ve kayıtların "
     "anahtarı henüz veritabanına işlenmemiş bir kurulumda, güvenlik dosyası okunamıyorken "
@@ -226,6 +276,30 @@ def _write_state(data: dict[str, Any]) -> None:
     temp = path.with_name(path.name + ".tmp")
     temp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     temp.replace(path)
+
+
+def _archive_target() -> Path:
+    """Boş bir `guvenlik-arsiv-<damga>.json` yolu (aynı saniyede ikinci arşiv ezilmez)."""
+    yol = state_path()
+    damga = timezone.localtime().strftime("%Y-%m-%d-%H%M%S")
+    arsiv = yol.with_name(f"{STATE_ARCHIVE_PREFIX}{damga}.json")
+    sira = 2
+    while arsiv.exists():
+        arsiv = yol.with_name(f"{STATE_ARCHIVE_PREFIX}{damga}-{sira}.json")
+        sira += 1
+    return arsiv
+
+
+def _copy_state_to_archive() -> Path:
+    """Güncel güvenlik dosyasının baytlarını arşive KOPYALAR (asıl dosya yerinde kalır).
+
+    Arşiv de atomik yazılır (.tmp → yerine koy): yarım arşiv dosyası kalmaz.
+    """
+    arsiv = _archive_target()
+    temp = arsiv.with_name(arsiv.name + ".tmp")
+    temp.write_bytes(state_path().read_bytes())
+    temp.replace(arsiv)
+    return arsiv
 
 
 # ---------------------------------------------------------------------------
@@ -519,11 +593,8 @@ def reset_unusable_state() -> str:
         raise StateResetNotAllowed(RESET_NOT_ALLOWED_MESSAGE)
     damga = timezone.localtime().strftime("%Y-%m-%d-%H%M%S")
     yol = state_path()
-    arsiv = yol.with_name(f"guvenlik-arsiv-{damga}.json")
-    sira = 2
-    while arsiv.exists():  # aynı saniyede geri yükleme arşivi varsa üstüne yazılmaz
-        arsiv = yol.with_name(f"guvenlik-arsiv-{damga}-{sira}.json")
-        sira += 1
+    # Aynı saniyede geri yükleme ya da yenileme arşivi varsa üstüne yazılmaz.
+    arsiv = _archive_target()
     yol.replace(arsiv)
     yedek_ayari = config_path(_data_dir())
     if yedek_ayari.is_file():
@@ -575,8 +646,34 @@ def status() -> dict[str, Any]:
         "reset_available": kayip and state_reset_available(),
         "transition_pending": state is not None and gecis != TRANSITION_DONE,
         "transition": gecis if state is not None and gecis != TRANSITION_DONE else "",
+        # Kurtarma anahtarının saklandığı doğrulandı mı? (damga; kurulum kapısı)
+        "recovery_key_confirmed": _recovery_confirmed_in(state),
         "protected_fields": protected_field_labels(),
     }
+
+
+def _recovery_confirmed_in(state: dict[str, Any] | None) -> bool:
+    """Durumun kurtarma bölümünde doğrulama damgası var mı? Hata yükseltmez."""
+    if not isinstance(state, dict):
+        return False
+    bolum = state.get("kurtarma")
+    if not isinstance(bolum, dict):
+        return False
+    damga = bolum.get(RECOVERY_CONFIRMED_FIELD)
+    return isinstance(damga, str) and bool(damga)
+
+
+def recovery_key_confirmed() -> bool:
+    """Kurtarma anahtarının saklandığı doğrulandı mı? HİÇ hata yükseltmez.
+
+    `setup/status/` (sağlık denetimi ucu) ve `setup/complete/` kapısı sorar:
+    yalnız güvenlik dosyası okunur (~1 KB), DB'ye gidilmez. Dosya yok, okunamıyor
+    ya da damga yoksa yanlış döner (fail-closed: kurulum tamamlanmaz).
+    """
+    try:
+        return _recovery_confirmed_in(read_state())
+    except AppPasswordError:
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -696,18 +793,37 @@ def verify_password(password: str) -> None:
     ("Parola hatalı.") + kademeli gecikme. Anahtar bellekte değilse (kilitli)
     doğrulama yapılamaz; çağıran önce kilidi açtırmalıdır.
     """
-    state = _require_state()
+    _check_password(_require_state(), password)
+
+
+@sensitive_variables("password", "veri_anahtari")
+def _check_password(state: dict[str, Any], password: str) -> bytes:
+    """Parolayı verilen duruma VE bellekteki anahtara karşı doğrular; DEK'i döndürür."""
     aktif = crypto.active_fingerprint()
     if aktif is None:
-        raise AppPasswordError("Kayıtlar kilitli. Önce yönetici parolasıyla kilidi açın.")
+        raise AppPasswordError(_LOCKED_MESSAGE)
     veri_anahtari = _unwrap_with_password(state, password)
     if crypto.key_fingerprint(veri_anahtari) != aktif:
         _delay_after_failure()
         raise AppPasswordError(_WRONG_PASSWORD_MESSAGE)
     _reset_failures()
+    return veri_anahtari
 
 
 @sensitive_variables("recovery_key", "veri_anahtari")
+def _check_recovery_key(state: dict[str, Any], recovery_key: str) -> None:
+    """Kurtarma anahtarını verilen duruma VE bellekteki anahtara karşı doğrular."""
+    aktif = crypto.active_fingerprint()
+    if aktif is None:
+        raise AppPasswordError(_LOCKED_MESSAGE)
+    veri_anahtari = _unwrap_with_recovery(state, recovery_key)
+    if crypto.key_fingerprint(veri_anahtari) != aktif:
+        _delay_after_failure()
+        raise AppPasswordError(_WRONG_RECOVERY_MESSAGE)
+    _reset_failures()
+
+
+@sensitive_variables("recovery_key")
 def verify_recovery_key(recovery_key: str) -> list[str]:
     """Kurtarma anahtarını doğrular; anahtarın dörtlü gruplarını döndürür (E14 çıktısı).
 
@@ -720,16 +836,77 @@ def verify_recovery_key(recovery_key: str) -> list[str]:
 
     Anahtar hiçbir iletiye, günlüğe ya da istisnaya yazılmaz.
     """
-    state = _require_state()
-    aktif = crypto.active_fingerprint()
-    if aktif is None:
-        raise AppPasswordError("Kayıtlar kilitli. Önce yönetici parolasıyla kilidi açın.")
-    veri_anahtari = _unwrap_with_recovery(state, recovery_key)
-    if crypto.key_fingerprint(veri_anahtari) != aktif:
-        _delay_after_failure()
-        raise AppPasswordError(_WRONG_RECOVERY_MESSAGE)
-    _reset_failures()
+    _check_recovery_key(_require_state(), recovery_key)
     return recovery_key_groups(recovery_key)
+
+
+@sensitive_variables("recovery_key")
+def confirm_recovery_key(recovery_key: str) -> None:
+    """Anahtarın saklandığını doğrular ve damgayı `guvenlik.json`'a yazar (F1 eki, karar 2).
+
+    Sihirbaz (ve Ayarlar → Güvenlik) iki grubu istemcide denetledikten sonra
+    TAM anahtarı gönderir. Doğrulama `verify_recovery_key` ile aynı kuraldır:
+    anahtar kurtarma sarmalını açmalı ve çıkan DEK bellekteki anahtar olmalı;
+    yanlışsa `AppPasswordError` + kademeli gecikme, damga yazılmaz. Kilitliyken
+    doğrulama yapılmaz (kilit ara katmanı da 423 ile keser).
+
+    Doğrulama ile yazım AYNI okunmuş durum üzerinde, kilit altında yapılır:
+    arada bir yenileme olsaydı eski anahtarın damgası yeni sarmala yazılırdı.
+    Damga fikirdeştir: doğrulanmış anahtar yeniden doğrulanınca zaman güncellenir.
+    """
+    with _state_lock:
+        state = _require_state()
+        _check_recovery_key(state, recovery_key)
+        bolum = state.get("kurtarma")
+        if not isinstance(bolum, dict):  # pragma: no cover — sarmal açıldıysa bölüm vardır
+            raise AppPasswordError("Güvenlik dosyasının kurtarma bölümü okunamadı.")
+        bolum[RECOVERY_CONFIRMED_FIELD] = timezone.localtime().isoformat(timespec="seconds")
+        _write_state(state)
+    logger.info("Kurtarma anahtarının saklandığı doğrulandı.")
+
+
+@sensitive_variables("password", "veri_anahtari", "yeni_anahtar")
+def renew_recovery_key(*, password: str) -> str:
+    """Kurtarma anahtarını yeniler; YENİ anahtarı döndürür (yanıtta BİR KEZ gösterilir).
+
+    Yalnız kilit açıkken: parola `verify_password` kuralıyla (sarmal + bellekteki
+    anahtarın parmak izi) doğrulanır; yanlışsa "Parola hatalı." + kademeli
+    gecikme ve hiçbir dosya değişmez. Sonra:
+
+    1. güncel `guvenlik.json` `guvenlik-arsiv-<damga>.json` olarak KOPYALANIR
+       (asıl dosya yerinde kalır: kesinti dosyayı kayıp hâline düşürmez);
+    2. aynı DEK YENİ anahtar ve YENİ tuzla sarmalanır; parola bölümü, KDF
+       parametreleri ve geçiş damgası olduğu gibi kalır; kurtarma bölümü
+       DAMGASIZ yazılır (yeni anahtar yeniden doğrulanana dek kurulum kapısı ve
+       Güvenlik ekranı uyarır);
+    3. yeni durum atomik yazılır.
+
+    DEK değişmez: kayıtlar, kör indeks ve yedek anahtarı (`yedekleme.json`)
+    aynen kalır, kilit açılışı (anahtar dönemi) değişmez — kip etkilenmez.
+    Anahtar hiçbir günlüğe, iletiye ya da istisnaya yazılmaz.
+    """
+    with _state_lock:
+        state = _require_state()
+        veri_anahtari = _check_password(state, password)
+        yeni_anahtar = generate_recovery_key()
+        kdf = crypto.KdfParams.from_dict(dict(state.get("kdf", {})))
+        tuz = crypto.new_salt()
+        yeni_durum = dict(state)
+        yeni_durum["kurtarma"] = {
+            "salt": base64.b64encode(tuz).decode("ascii"),
+            "sarmal": crypto.wrap_key(
+                veri_anahtari,
+                wrapping_key=crypto.derive_key(
+                    normalize_recovery_key(yeni_anahtar), salt=tuz, params=kdf
+                ),
+            ),
+        }
+        arsiv = _copy_state_to_archive()
+        _write_state(yeni_durum)
+    logger.info(
+        "Kurtarma anahtarı yenilendi; önceki güvenlik dosyası %s olarak saklandı.", arsiv.name
+    )
+    return yeni_anahtar
 
 
 def unlock_with_recovery(*, recovery_key: str, new_password: str) -> None:
@@ -737,40 +914,43 @@ def unlock_with_recovery(*, recovery_key: str, new_password: str) -> None:
 
     Kurtarma sarmalı DEĞİŞMEZ — aynı yazdırılmış anahtar geçerli kalır. Yeni bir
     anahtar üretmek, kullanıcının elindeki kâğıdı sessizce geçersizleştirirdi.
+    Anahtar yalnız kullanıcı isteyince yenilenir (`renew_recovery_key`).
     """
-    state = _require_state()
-    parola = _validate_password(new_password)
-    veri_anahtari = _unwrap_with_recovery(state, recovery_key)
+    with _state_lock:
+        state = _require_state()
+        parola = _validate_password(new_password)
+        veri_anahtari = _unwrap_with_recovery(state, recovery_key)
 
-    kdf = crypto.KdfParams.from_dict(dict(state.get("kdf", {})))
-    tuz = crypto.new_salt()
-    state["parola"] = {
-        "salt": base64.b64encode(tuz).decode("ascii"),
-        "sarmal": crypto.wrap_key(
-            veri_anahtari, wrapping_key=crypto.derive_key(parola, salt=tuz, params=kdf)
-        ),
-    }
-    _write_state(state)
-    _adopt_key(state, veri_anahtari)
+        kdf = crypto.KdfParams.from_dict(dict(state.get("kdf", {})))
+        tuz = crypto.new_salt()
+        state["parola"] = {
+            "salt": base64.b64encode(tuz).decode("ascii"),
+            "sarmal": crypto.wrap_key(
+                veri_anahtari, wrapping_key=crypto.derive_key(parola, salt=tuz, params=kdf)
+            ),
+        }
+        _write_state(state)
+        _adopt_key(state, veri_anahtari)
     logger.info("Kurtarma anahtarıyla giriş yapıldı; parola yenilendi.")
 
 
 def change_password(*, current_password: str, new_password: str) -> None:
     """Parolayı değiştirir. Veri YENİDEN ŞİFRELENMEZ — yalnız sarmal yenilenir."""
-    state = _require_state()
-    yeni = _validate_password(new_password)
-    veri_anahtari = _unwrap_with_password(state, current_password)
+    with _state_lock:
+        state = _require_state()
+        yeni = _validate_password(new_password)
+        veri_anahtari = _unwrap_with_password(state, current_password)
 
-    kdf = crypto.KdfParams.from_dict(dict(state.get("kdf", {})))
-    tuz = crypto.new_salt()
-    state["parola"] = {
-        "salt": base64.b64encode(tuz).decode("ascii"),
-        "sarmal": crypto.wrap_key(
-            veri_anahtari, wrapping_key=crypto.derive_key(yeni, salt=tuz, params=kdf)
-        ),
-    }
-    _write_state(state)
-    _adopt_key(state, veri_anahtari)
+        kdf = crypto.KdfParams.from_dict(dict(state.get("kdf", {})))
+        tuz = crypto.new_salt()
+        state["parola"] = {
+            "salt": base64.b64encode(tuz).decode("ascii"),
+            "sarmal": crypto.wrap_key(
+                veri_anahtari, wrapping_key=crypto.derive_key(yeni, salt=tuz, params=kdf)
+            ),
+        }
+        _write_state(state)
+        _adopt_key(state, veri_anahtari)
     logger.info("Yönetici parolası değiştirildi.")
 
 
@@ -782,21 +962,22 @@ def resume_pending(*, force: bool = False) -> dict[str, Any]:
     örneğin satırların bir bölümü elle düz metne dönmüşse
     (`manage.py app_password resume --force`).
     """
-    state = read_state()
-    if state is None:
-        return {"resumed": False, "rows": 0, "transition": ""}
-    if not crypto.is_unlocked():
-        raise AppPasswordError("Geçişi tamamlamak için önce yönetici parolasıyla açın.")
+    with _state_lock:
+        state = read_state()
+        if state is None:
+            return {"resumed": False, "rows": 0, "transition": ""}
+        if not crypto.is_unlocked():
+            raise AppPasswordError("Geçişi tamamlamak için önce yönetici parolasıyla açın.")
 
-    gecis = str(state.get("gecis", TRANSITION_DONE))
-    parmak = crypto.active_fingerprint() or ""
-    if force or gecis != TRANSITION_DONE or _stored_fingerprint() != parmak:
-        satir = _run_encrypt_pass(_require_raw_key())
-        state["gecis"] = TRANSITION_DONE
-        _write_state(state)
-        logger.info("Şifreleme geçişi tamamlandı (%d kayıt).", satir)
-        return {"resumed": True, "rows": satir, "transition": TRANSITION_ENCRYPTING}
-    return {"resumed": False, "rows": 0, "transition": ""}
+        gecis = str(state.get("gecis", TRANSITION_DONE))
+        parmak = crypto.active_fingerprint() or ""
+        if force or gecis != TRANSITION_DONE or _stored_fingerprint() != parmak:
+            satir = _run_encrypt_pass(_require_raw_key())
+            state["gecis"] = TRANSITION_DONE
+            _write_state(state)
+            logger.info("Şifreleme geçişi tamamlandı (%d kayıt).", satir)
+            return {"resumed": True, "rows": satir, "transition": TRANSITION_ENCRYPTING}
+        return {"resumed": False, "rows": 0, "transition": ""}
 
 
 def lock() -> None:

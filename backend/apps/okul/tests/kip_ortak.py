@@ -4,10 +4,24 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from apps.okul.models import SchoolConfig
 from apps.okul.services import app_password
 
 DOGRU_PAROLA = "Dogru-Yonetici-Parolasi-1"
 YANLIS_PAROLA = "Yanlis-Parola-9"
+
+
+def kurulum_durumunu_yaz(*, tamam: bool) -> None:
+    """`SchoolConfig.setup_completed`'ı doğrudan yazar (DB gerekir).
+
+    Kurulum bitene kadar süreler kipi düşürmez (F1 eki, karar 2-1); süre
+    testleri (§5.10-14) kurulumu tamamlanmış ortamda koşar, kurulum sırasındaki
+    davranış ayrı testlerdedir. Sihirbaz kapısı (`setup/complete/`) burada
+    atlanır: kip testleri yalnız bayrağı okur.
+    """
+    config, _ = SchoolConfig.objects.get_or_create(pk=SchoolConfig.SINGLETON_PK)
+    config.setup_completed = tamam
+    config.save(update_fields=["setup_completed", "updated_at"])
 
 
 class SahteSaat:

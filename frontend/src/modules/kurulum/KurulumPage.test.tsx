@@ -1,5 +1,7 @@
 // Kurulum sihirbazı testi (F1-E kod kapısı): parola adımı olmadan ilerlenmez;
-// kurtarma anahtarı iki grubu geri yazılarak doğrulanmadan devam edilmez; okul
+// kurtarma anahtarı iki grubu geri yazılarak doğrulanıp sunucuda damgalanmadan
+// devam edilmez (F1 eki, karar 2); anahtar ekranda değilken kâğıttan doğrulama ve
+// YENİ anahtar üretme yolları (kaybolan anahtar senaryosu uçtan uca); okul
 // adımının zorunlu alanları (kademe, kısa ad, demirbaş onayı); ders yılı
 // kaydedilince iki takvim yılının tatilleri eklenir; `setup/complete/` reddi
 // iletisiyle gösterilir; ve sihirbaz UÇTAN UCA çalışır.
@@ -37,7 +39,12 @@ const oapi = vi.hoisted(() => ({
   activateSchoolYear: vi.fn(),
   seedHolidays: vi.fn(),
 }));
-const gapi = vi.hoisted(() => ({ kur: vi.fn(), kurtarmaAnahtariPdf: vi.fn() }));
+const gapi = vi.hoisted(() => ({
+  kur: vi.fn(),
+  kurtarmaAnahtariPdf: vi.fn(),
+  kurtarmaAnahtariniDogrula: vi.fn(),
+  kurtarmaAnahtariniYenile: vi.fn(),
+}));
 const indirme = vi.hoisted(() => ({ saveBlob: vi.fn() }));
 
 vi.mock("../okul/api", async (importOriginal) => {
@@ -58,14 +65,22 @@ vi.mock("../takvim/KapaliGunlerPaneli", () => ({
   ),
 }));
 
+import { bekleyenKurtarmaAnahtariniYaz } from "../guvenlik/bekleyenAnahtar";
+import { kurtarmaAnahtariniNormallestir } from "../guvenlik/kurtarma";
 import KurulumPage from "./KurulumPage";
 
 const ANAHTAR = "TEST-KURT-ARMA-ANAH-TARI-ABCD-EFGH-JKLM";
+const YENI_ANAHTAR = "YENI-ANAH-TARD-EFGH-JKLM-NOPQ-RSTU-VWXY";
+const PAROLA = "Deneme-Parola-1";
 
 // --- Bellek içi sahte sunucu -------------------------------------------------
 
 interface Sunucu {
   parola: boolean;
+  /** Sunucudaki "saklandı" damgası (`guvenlik.json` → `kurtarma.dogrulandi`). */
+  dogrulandi: boolean;
+  /** Güvenlik dosyasındaki kurtarma sarmalının anahtarı (yenilemede değişir). */
+  anahtar: string;
   okul: SchoolConfig;
   yillar: SchoolYear[];
   donemli: Set<number>;
@@ -96,13 +111,14 @@ function durum(): SetupStatus {
   const aktif = sunucu.yillar.find((y) => y.is_active) ?? null;
   const donemli = aktif !== null && sunucu.donemli.has(aktif.id);
   const eksik: SetupStep[] = [];
-  if (!sunucu.parola) eksik.push("password");
+  if (!sunucu.parola || !sunucu.dogrulandi) eksik.push("password");
   if (!okulTamamMi(sunucu.okul)) eksik.push("school");
   if (!donemli) eksik.push("calendar");
   return {
     ...ILK_ACILIS_DURUMU,
     setup_completed: sunucu.tamam,
     password_set: sunucu.parola,
+    recovery_key_confirmed: sunucu.parola && sunucu.dogrulandi,
     school_name: sunucu.okul.school_name,
     school_info_complete: okulTamamMi(sunucu.okul),
     has_active_school_year: aktif !== null,
@@ -120,6 +136,9 @@ function durum(): SetupStatus {
 function sunucuyuKur(baslangic: Partial<Sunucu> = {}) {
   sunucu = {
     parola: false,
+    // Parolası önceden kurulu başlayan senaryolarda anahtar varsayılan olarak doğrulanmıştır.
+    dogrulandi: baslangic.parola ?? false,
+    anahtar: ANAHTAR,
     okul: { ...BOS_OKUL },
     yillar: [],
     donemli: new Set(),
@@ -164,7 +183,30 @@ function sunucuyuKur(baslangic: Partial<Sunucu> = {}) {
   });
   gapi.kur.mockImplementation(async () => {
     sunucu.parola = true;
+    sunucu.dogrulandi = false;
+    sunucu.anahtar = ANAHTAR;
     return { ...durum(), recovery_key: ANAHTAR, locked: false };
+  });
+  // Backend `confirm_recovery_key`: anahtar sarmalı açıyorsa damga yazılır.
+  gapi.kurtarmaAnahtariniDogrula.mockImplementation(async (anahtar: string) => {
+    if (
+      kurtarmaAnahtariniNormallestir(anahtar) !== kurtarmaAnahtariniNormallestir(sunucu.anahtar)
+    ) {
+      throw new ApiError(
+        400,
+        "validation_error",
+        "Kurtarma anahtarı hatalı. Yazdırdığınız kâğıttaki anahtarı olduğu gibi girin.",
+      );
+    }
+    sunucu.dogrulandi = true;
+    return { password_set: true, recovery_key_confirmed: true };
+  });
+  // Backend `renew_recovery_key`: parola doğruysa YENİ anahtar, damga silinir.
+  gapi.kurtarmaAnahtariniYenile.mockImplementation(async (parola: string) => {
+    if (parola !== PAROLA) throw new ApiError(400, "validation_error", "Parola hatalı.");
+    sunucu.anahtar = YENI_ANAHTAR;
+    sunucu.dogrulandi = false;
+    return { password_set: true, recovery_key_confirmed: false, recovery_key: YENI_ANAHTAR };
   });
 }
 
@@ -202,20 +244,31 @@ function renderPage(state?: unknown) {
 
 const ileri = (ad: string | RegExp) => screen.getByRole("button", { name: ad });
 
+/** Paneldeki anahtarın sorulan iki grubunu (sabit rastgele: 1. ve 2.) yazar ve devam eder. */
+async function anahtariDogrulaVeDevamEt(user: ReturnType<typeof userEvent.setup>, anahtar: string) {
+  const gruplar = anahtar.split("-");
+  await user.click(screen.getByRole("button", { name: "Sakladım, doğrula" }));
+  await user.type(screen.getByLabelText("1. grup"), gruplar[0]);
+  await user.type(screen.getByLabelText("2. grup"), gruplar[1]);
+  // İki grup tutunca TAM anahtar sunucuda doğrulanır; İleri ondan sonra açılır.
+  await waitFor(() => expect(ileri("Devam")).toBeEnabled());
+  expect(gapi.kurtarmaAnahtariniDogrula).toHaveBeenLastCalledWith(anahtar);
+  await user.click(ileri("Devam"));
+}
+
 /** Parolayı kurar ve anahtarın sorulan iki grubunu (sabit rastgele: 1. ve 2.) doğrular. */
 async function parolaAdiminiGec(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(await screen.findByLabelText(/^Yönetici parolası/), "Deneme-Parola-1");
-  await user.type(screen.getByLabelText(/^Parola \(tekrar\)/), "Deneme-Parola-1");
+  await user.type(await screen.findByLabelText(/^Yönetici parolası/), PAROLA);
+  await user.type(screen.getByLabelText(/^Parola \(tekrar\)/), PAROLA);
   await user.click(screen.getByRole("button", { name: "Yönetici parolasını kur" }));
   expect(await screen.findByTestId("kurtarma-anahtari")).toHaveTextContent(ANAHTAR);
-  await user.click(screen.getByRole("button", { name: "Sakladım, doğrula" }));
-  await user.type(screen.getByLabelText("1. grup"), "TEST");
-  await user.type(screen.getByLabelText("2. grup"), "KURT");
-  await user.click(ileri("Devam"));
+  await anahtariDogrulaVeDevamEt(user, ANAHTAR);
 }
 
 beforeEach(() => {
   sunucuyuKur();
+  // Bekleyen anahtar modül belleğindedir: testler arasında sızmasın.
+  bekleyenKurtarmaAnahtariniYaz(null);
   // Doğrulanacak gruplar sabit: 1. ve 2. grup (rastgeleIkiGrup(8, () => 0.125)).
   vi.spyOn(Math, "random").mockReturnValue(0.125);
 });
@@ -229,7 +282,7 @@ describe("KurulumPage — 1. adım: yönetici parolası (atlanamaz)", () => {
   it("ilk açılışta parola adımından başlar; parola kurulmadan ilerlenemez", async () => {
     renderPage();
 
-    expect(await screen.findByText("1. Yönetici parolası")).toBeInTheDocument();
+    expect(await screen.findByText("1. Yönetici Parolası")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { level: 1, name: "Kurulum Sihirbazı" }),
     ).toBeInTheDocument();
@@ -240,13 +293,13 @@ describe("KurulumPage — 1. adım: yönetici parolası (atlanamaz)", () => {
     expect(within(ray).queryAllByRole("button")).toHaveLength(0);
     // Eski "isteğe bağlı parola" dili yoktur.
     expect(screen.queryByText(/isteğe bağlı/i)).toBeNull();
-    expect(screen.queryByText("2. Okul bilgileri")).toBeNull();
+    expect(screen.queryByText("2. Okul Bilgileri")).toBeNull();
   });
 
   it("okul bilgileri önceden tamam olsa bile parola yokken adım rayı atlatmaz", async () => {
     sunucuyuKur({ okul: { ...TAM_OKUL } });
     renderPage();
-    expect(await screen.findByText("1. Yönetici parolası")).toBeInTheDocument();
+    expect(await screen.findByText("1. Yönetici Parolası")).toBeInTheDocument();
     const ray = screen.getByRole("list", { name: "Kurulum adımları" });
     expect(within(ray).queryAllByRole("button")).toHaveLength(0);
   });
@@ -296,10 +349,12 @@ describe("KurulumPage — 1. adım: yönetici parolası (atlanamaz)", () => {
     await waitFor(() => expect(ileri("Devam")).toBeEnabled());
     await user.click(ileri("Devam"));
 
-    expect(await screen.findByText("2. Okul bilgileri")).toBeInTheDocument();
+    expect(await screen.findByText("2. Okul Bilgileri")).toBeInTheDocument();
     // Geri dönülünce anahtar bir daha gösterilmez (bellekte tutulmaz).
     await user.click(screen.getByRole("button", { name: "Geri" }));
-    expect(await screen.findByText("1. Yönetici parolası kurulu")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Parola kurulu, kurtarma anahtarının saklandığı doğrulandı/),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId("kurtarma-anahtari")).toBeNull();
     expect(screen.getByRole("heading", { name: "Kurtarma anahtarı çıktısı" })).toBeInTheDocument();
   });
@@ -323,13 +378,109 @@ describe("KurulumPage — 1. adım: yönetici parolası (atlanamaz)", () => {
   });
 });
 
+describe("KurulumPage — 1. adım: anahtar ekranda değilken (F1 eki, karar 2)", () => {
+  it("parola kurulu ama anahtar doğrulanmamış: uyarı, ray kilitli, kâğıttaki anahtarla doğrulanır", async () => {
+    const user = userEvent.setup();
+    sunucuyuKur({ parola: true, dogrulandi: false, okul: { ...TAM_OKUL } });
+    renderPage();
+
+    expect(await screen.findByText(/Kurtarma anahtarı doğrulanmadı/)).toBeInTheDocument();
+    expect(ileri("Devam")).toBeDisabled();
+    expect(
+      screen.getByText("Devam etmek için kurtarma anahtarını doğrulayın ya da yenisini üretin."),
+    ).toBeInTheDocument();
+    const ray = screen.getByRole("list", { name: "Kurulum adımları" });
+    expect(within(ray).queryAllByRole("button")).toHaveLength(0);
+
+    // Yanlış anahtar: backend iletisi, damga yok.
+    await user.type(screen.getByLabelText(/^Kurtarma anahtarı/), "YANLIS-ANAHTAR");
+    await user.click(screen.getByRole("button", { name: "Doğrula" }));
+    expect(await screen.findByText(/Kurtarma anahtarı hatalı/)).toBeInTheDocument();
+    expect(sunucu.dogrulandi).toBe(false);
+
+    await user.clear(screen.getByLabelText(/^Kurtarma anahtarı/));
+    await user.type(screen.getByLabelText(/^Kurtarma anahtarı/), ANAHTAR.toLowerCase());
+    await user.click(screen.getByRole("button", { name: "Doğrula" }));
+
+    expect(
+      await screen.findByText(/Parola kurulu, kurtarma anahtarının saklandığı doğrulandı/),
+    ).toBeInTheDocument();
+    expect(sunucu.dogrulandi).toBe(true);
+    await waitFor(() => expect(ileri("Devam")).toBeEnabled());
+  });
+
+  it("kaybolan anahtar: yenile → yeni anahtar → doğrula → tamamla", async () => {
+    const user = userEvent.setup();
+    // Parola kuruldu, anahtar gösterildi ama pencere kapandı: anahtar bellekte yok.
+    sunucuyuKur({ parola: true, dogrulandi: false, okul: { ...TAM_OKUL } });
+    sunucu.yillar = [AKTIF_YIL];
+    sunucu.donemli.add(AKTIF_YIL.id);
+    renderPage();
+
+    // Tamamlamak mümkün değil: sunucu 1. adımı eksik sayar.
+    expect(await screen.findByText(/Kurtarma anahtarı doğrulanmadı/)).toBeInTheDocument();
+    expect(durum().missing_steps).toEqual(["password"]);
+
+    await user.click(screen.getByRole("button", { name: "Kurtarma anahtarını yenile" }));
+    const diyalog = await screen.findByRole("dialog", { name: "Kurtarma anahtarı yenilensin mi?" });
+    // Dürüst metin: eski yedekler eski anahtarla açılır.
+    expect(within(diyalog).getByText(/Bugünden önce alınmış yedekler/)).toBeInTheDocument();
+    await user.type(within(diyalog).getByLabelText(/^Yönetici parolası/), PAROLA);
+    await user.click(within(diyalog).getByRole("button", { name: "Yeni anahtar üret" }));
+
+    await waitFor(() => expect(gapi.kurtarmaAnahtariniYenile).toHaveBeenCalledWith(PAROLA));
+    expect(await screen.findByTestId("kurtarma-anahtari")).toHaveTextContent(YENI_ANAHTAR);
+    expect(ileri("Devam")).toBeDisabled();
+
+    await anahtariDogrulaVeDevamEt(user, YENI_ANAHTAR);
+    expect(sunucu.dogrulandi).toBe(true);
+
+    expect(await screen.findByText("2. Okul Bilgileri")).toBeInTheDocument();
+    await user.click(ileri("Kaydet ve devam et"));
+    await waitFor(() => expect(ileri("Kurulumu tamamla")).toBeEnabled());
+    await user.click(ileri("Kurulumu tamamla"));
+
+    expect(await screen.findByText("PANEL EKRANI")).toBeInTheDocument();
+    expect(sunucu.tamam).toBe(true);
+    expect(sunucu.anahtar).toBe(YENI_ANAHTAR);
+  });
+
+  it("yenilemede yanlış parola: ileti gösterilir, yeni anahtar üretilmez", async () => {
+    const user = userEvent.setup();
+    sunucuyuKur({ parola: true, dogrulandi: false });
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Kurtarma anahtarını yenile" }));
+    const diyalog = await screen.findByRole("dialog");
+    await user.type(within(diyalog).getByLabelText(/^Yönetici parolası/), "yanlis-parola");
+    await user.click(within(diyalog).getByRole("button", { name: "Yeni anahtar üret" }));
+
+    expect(await within(diyalog).findByText("Parola hatalı.")).toBeInTheDocument();
+    expect(screen.queryByTestId("kurtarma-anahtari")).toBeNull();
+    expect(sunucu.anahtar).toBe(ANAHTAR);
+  });
+
+  it("kurulumu önceden tamamlanmış damgasız programda ray kilitlenmez, yalnız uyarı çıkar", async () => {
+    sunucuyuKur({ parola: true, dogrulandi: false, okul: { ...TAM_OKUL }, tamam: true });
+    sunucu.yillar = [AKTIF_YIL];
+    sunucu.donemli.add(AKTIF_YIL.id);
+    renderPage();
+
+    expect(await screen.findByText(/Kurtarma anahtarı doğrulanmadı/)).toBeInTheDocument();
+    expect(screen.getByText(/Kurulum daha önce tamamlanmıştı/)).toBeInTheDocument();
+    const ray = screen.getByRole("list", { name: "Kurulum adımları" });
+    expect(within(ray).getAllByRole("button").length).toBeGreaterThan(0);
+    expect(ileri("Devam")).toBeEnabled();
+  });
+});
+
 describe("KurulumPage — 2. adım: okul bilgileri", () => {
   beforeEach(() => sunucuyuKur({ parola: true }));
 
   it("kademe, kısa ad ve demirbaş onayı olmadan kaydetmez; alan hataları gösterilir", async () => {
     const user = userEvent.setup();
     renderPage();
-    expect(await screen.findByText("2. Okul bilgileri")).toBeInTheDocument();
+    expect(await screen.findByText("2. Okul Bilgileri")).toBeInTheDocument();
     await user.type(screen.getByLabelText(/Okul adı/), "Deneme Anadolu Lisesi");
     await user.click(ileri("Kaydet ve devam et"));
 
@@ -337,13 +488,13 @@ describe("KurulumPage — 2. adım: okul bilgileri", () => {
     expect(screen.getByText("Kısa ad zorunludur.")).toBeInTheDocument();
     expect(screen.getByText(/onay zorunludur/)).toBeInTheDocument();
     expect(oapi.updateSchoolConfig).not.toHaveBeenCalled();
-    expect(screen.getByText("2. Okul bilgileri")).toBeInTheDocument();
+    expect(screen.getByText("2. Okul Bilgileri")).toBeInTheDocument();
   });
 
   it("tam gövdeyi gönderir ve 3. adıma geçer", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("2. Okul bilgileri");
+    await screen.findByText("2. Okul Bilgileri");
     await user.type(screen.getByLabelText(/Okul adı/), "Deneme Anadolu Lisesi");
     await user.type(screen.getByLabelText(/Kısa ad/), "Deneme AL");
     await user.selectOptions(screen.getByLabelText(/Kademe/), "ORTAOGRETIM");
@@ -365,7 +516,7 @@ describe("KurulumPage — 2. adım: okul bilgileri", () => {
         demirbas_no: "BLG-17",
       }),
     );
-    expect(await screen.findByText("3. Ders yılı")).toBeInTheDocument();
+    expect(await screen.findByText("3. Ders Yılı")).toBeInTheDocument();
   });
 
   it("kayıt hatasında Türkçe hata bandı + alan hatası gösterilir, adım değişmez", async () => {
@@ -381,11 +532,11 @@ describe("KurulumPage — 2. adım: okul bilgileri", () => {
     renderPage();
     // Hepsi tamamken sihirbaz son adımdan açılır; okul adımına raydan dönülür.
     const ray = await screen.findByRole("list", { name: "Kurulum adımları" });
-    await user.click(within(ray).getByRole("button", { name: /Okul bilgileri/ }));
+    await user.click(within(ray).getByRole("button", { name: /Okul Bilgileri/ }));
     await user.click(ileri("Kaydet ve devam et"));
 
     expect(await screen.findAllByText("Kısa ad en çok 24 karakter olabilir.")).not.toHaveLength(0);
-    expect(screen.getByText("2. Okul bilgileri")).toBeInTheDocument();
+    expect(screen.getByText("2. Okul Bilgileri")).toBeInTheDocument();
   });
 });
 
@@ -395,7 +546,7 @@ describe("KurulumPage — 3. adım: ders yılı ve kapalı günler", () => {
   it("ders yılı kaydedilince dönemler kurulur, yıl aktifleşir ve iki takvim yılı tohumlanır", async () => {
     const user = userEvent.setup();
     renderPage();
-    expect(await screen.findByText("3. Ders yılı")).toBeInTheDocument();
+    expect(await screen.findByText("3. Ders Yılı")).toBeInTheDocument();
     expect(ileri("Kurulumu tamamla")).toBeDisabled();
     // Aktif yıl yokken kapalı gün paneli görünmez.
     expect(screen.queryByText(/KAPALI GÜNLER PANELİ/)).toBeNull();
@@ -424,7 +575,7 @@ describe("KurulumPage — 3. adım: ders yılı ve kapalı günler", () => {
       religious_available: year < 2027,
     }));
     renderPage();
-    await screen.findByText("3. Ders yılı");
+    await screen.findByText("3. Ders Yılı");
     await user.click(screen.getByRole("button", { name: "Ders yılını kaydet ve aktifleştir" }));
     expect(await screen.findByText(/dini bayram tarihleri yok/)).toBeInTheDocument();
   });
@@ -434,7 +585,7 @@ describe("KurulumPage — 3. adım: ders yılı ve kapalı günler", () => {
     sunucu.yillar = [AKTIF_YIL];
     renderPage();
 
-    expect(await screen.findByText("2026-2027 dönemleri")).toBeInTheDocument();
+    expect(await screen.findByText("2026-2027 Dönemleri")).toBeInTheDocument();
     expect(ileri("Kurulumu tamamla")).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "Dönemleri kaydet" }));
 
@@ -474,7 +625,7 @@ describe("KurulumPage — uçtan uca", () => {
     await parolaAdiminiGec(user);
 
     // 2. adım
-    expect(await screen.findByText("2. Okul bilgileri")).toBeInTheDocument();
+    expect(await screen.findByText("2. Okul Bilgileri")).toBeInTheDocument();
     await user.type(screen.getByLabelText(/Okul adı/), "Deneme Anadolu Lisesi");
     await user.type(screen.getByLabelText(/Kısa ad/), "Deneme AL");
     await user.selectOptions(screen.getByLabelText(/Kademe/), "ORTAOGRETIM");
@@ -482,7 +633,7 @@ describe("KurulumPage — uçtan uca", () => {
     await user.click(ileri("Kaydet ve devam et"));
 
     // 3. adım
-    expect(await screen.findByText("3. Ders yılı")).toBeInTheDocument();
+    expect(await screen.findByText("3. Ders Yılı")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Ders yılını kaydet ve aktifleştir" }));
     await waitFor(() => expect(ileri("Kurulumu tamamla")).toBeEnabled());
 
@@ -509,7 +660,7 @@ describe("KurulumPage — bilgilendirme", () => {
     sunucu.donemli.add(AKTIF_YIL.id);
     renderPage();
     expect(await screen.findByText(/Kurulum daha önce tamamlanmıştı/)).toBeInTheDocument();
-    expect(await screen.findByText("3. Ders yılı")).toBeInTheDocument();
+    expect(await screen.findByText("3. Ders Yılı")).toBeInTheDocument();
   });
 
   it("durum okunamazsa Türkçe hata bandı gösterilir", async () => {

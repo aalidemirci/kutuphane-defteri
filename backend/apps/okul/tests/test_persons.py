@@ -8,11 +8,13 @@ sicil ekranının elle ekleme/düzeltme/ayrılış/silme yolu sabitlenir:
 - Elle giriş içe aktarmayla AYNI katlamadan geçer: şube harfi Türkçe büyütülür
   ('i' → 'İ'), seviye okul içi sabite (1-12 + hazırlık bayrağı) karşı doğrulanır.
 - Okul no teklik iletisi servisten gelir (kör indeks, T14).
-- UNUTMA KANCASI (tasarım §6.1): ayrılışta hiç üye olmamış ve açık yükümlülüğü
-  olmayan kişi KATI silinir; üyeyse ya da açık yükümlülüğü varsa kayıt kalır.
-  Kullanıcı silmesi açık yükümlülükte gerekçeyle reddedilir, üye olmuş kişide
-  ayrılış yoluna yönlendirir. F1'de kayıtlı denetim yoktur: dört yol SAHTE
-  kayıtlı denetimlerle sınanır.
+- AYRILIŞ KAYDI SİLMEZ (F1 eki 7, kullanıcı kararı 22.09.2026): ayrılış
+  LEFT / `is_active=False` + `left_at` yazar, havuzdan çıkarır, kancaları koşar;
+  kayıt üyelik ve yükümlülükten bağımsız olarak KALIR (eski "hiç üye olmamış ve
+  yükümlülüksüz → katı sil" dalı kalktı; bu testler o davranışı tersine sabitler).
+- Kullanıcı silmesi ("Sil" düğmesi) kuralı korunur: açık yükümlülükte gerekçeyle
+  reddedilir, üye olmuş kişide ayrılış yoluna yönlendirir, aksi hâlde katı siler.
+  F1'de kayıtlı denetim yoktur: yollar SAHTE kayıtlı denetimlerle sınanır.
 
 Tüm ad ve numaralar uydurmadır (KVKK).
 """
@@ -229,56 +231,73 @@ def test_personel_guncelleme_dokunulmayan_alani_ezmez() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Ayrılış yolu (§6.1) — dört dal
+# Ayrılış yolu (§6.1, F1 eki 7) — kayıt SİLİNMEZ
 # ---------------------------------------------------------------------------
 
 
-def test_ayrilista_hic_uye_olmamis_ve_yukumluluksuz_ogrenci_kati_silinir() -> None:
+def test_ayrilis_hic_uye_olmamis_ve_yukumluluksuz_ogrenciyi_silmez() -> None:
+    """Eski kural tersine döndü: üyeliği ve yükümlülüğü olmayan öğrencinin kaydı da kalır."""
     ogrenci = _ogrenci()
-    pk = ogrenci.pk
 
-    silindi = persons.leave_student(ogrenci)
+    sonuc = persons.leave_student(ogrenci)
 
-    assert silindi is True
-    assert Student.all_objects.count() == 0
-    assert not Student.all_objects.filter(pk=pk).exists()  # yumuşak değil, KATI
+    assert sonuc.pk == ogrenci.pk
+    ogrenci.refresh_from_db()
+    assert (ogrenci.status, ogrenci.left_at) == (StudentStatus.LEFT, timezone.localdate())
+    assert ogrenci.deleted_at is None
+    assert Student.all_objects.count() == 1
 
 
-def test_ayrilista_hic_uye_olmamis_ve_yukumluluksuz_personel_kati_silinir() -> None:
+def test_ayrilis_hic_uye_olmamis_ve_yukumluluksuz_personeli_silmez() -> None:
     kisi = _personel()
-    pk = kisi.pk
 
-    assert persons.leave_personnel(kisi) is True
-    assert not Personnel.all_objects.filter(pk=pk).exists()
-    assert Personnel.all_objects.count() == 0
+    persons.leave_personnel(kisi)
+
+    kisi.refresh_from_db()
+    assert (kisi.is_active, kisi.left_at, kisi.deleted_at) == (False, timezone.localdate(), None)
+    assert Personnel.all_objects.count() == 1
 
 
-def test_ayrilista_uye_olmus_ogrenci_kalir_left_ve_tarih_yazilir(
+def test_ayrilis_uye_olmus_ogrencide_de_kaydi_saklar(
     uye_olmus: set[tuple[str, int]],
 ) -> None:
     ogrenci = _ogrenci()
     uye_olmus.add(_anahtar(ogrenci))
 
-    silindi = persons.leave_student(ogrenci)
+    persons.leave_student(ogrenci)
 
-    assert silindi is False
     ogrenci.refresh_from_db()
     assert ogrenci.status == StudentStatus.LEFT
     assert ogrenci.left_at == timezone.localdate()
 
 
-def test_ayrilista_acik_yukumlulugu_olan_personel_kalir(
+def test_ayrilis_acik_yukumlulugu_olan_personelde_de_kaydi_saklar(
     acik_yukumluluk: set[tuple[str, int]],
 ) -> None:
     kisi = _personel()
     acik_yukumluluk.add(_anahtar(kisi))
 
-    assert persons.leave_personnel(kisi) is False
+    persons.leave_personnel(kisi)
     kisi.refresh_from_db()
     assert (kisi.is_active, kisi.left_at) == (False, timezone.localdate())
 
 
-def test_ayrilis_kancasi_kisiyle_ve_silme_kararindan_once_cagrilir(
+def test_ayrilis_havuzdaki_kisiyi_havuzdan_cikarir() -> None:
+    """Havuzdaki kişi elle "Ayrıldı olarak işaretle"nince havuz alanları aynı kayıtta temizlenir."""
+    ogrenci = _ogrenci()
+    kisi = _personel()
+    persons.add_to_leave_pool(ogrenci, run=None)
+    persons.add_to_leave_pool(kisi, run=None)
+
+    persons.leave_student(ogrenci)
+    persons.leave_personnel(kisi)
+
+    for kayit in (ogrenci, kisi):
+        kayit.refresh_from_db()
+        assert (kayit.leave_candidate_since, kayit.leave_candidate_run_id) == (None, None)
+
+
+def test_ayrilis_kancasi_kisiyle_ve_left_olarak_cagrilir(
     uye_olmus: set[tuple[str, int]],
 ) -> None:
     """Kanca (F6: üyeliği sonlandırır) kişiyi alır; kayıt o anda LEFT'tir."""
@@ -314,21 +333,17 @@ def test_ayrilis_kancasi_hata_verirse_ayrilis_geri_sarilir() -> None:
     assert (ogrenci.status, ogrenci.left_at) == (StudentStatus.ACTIVE, None)
 
 
-def test_zaten_ayrilmis_kisi_yeniden_ayrilamaz(uye_olmus: set[tuple[str, int]]) -> None:
+def test_zaten_ayrilmis_kisi_yeniden_ayrilamaz() -> None:
     ogrenci = _ogrenci()
-    uye_olmus.add(_anahtar(ogrenci))
     persons.leave_student(ogrenci)
 
     with pytest.raises(ValidationError, match="zaten ayrıldı"):
         persons.leave_student(ogrenci)
 
 
-def test_ayrilan_ogrencinin_numarasi_yeni_ogrenciye_verilebilir(
-    uye_olmus: set[tuple[str, int]],
-) -> None:
+def test_ayrilan_ogrencinin_numarasi_yeni_ogrenciye_verilebilir() -> None:
     """Teklik yalnız AKTİF canlı kayıtları sayar: ayrılmış (saklanan) kayıt engel olmaz."""
     eski = _ogrenci(student_number="777")
-    uye_olmus.add(_anahtar(eski))
     persons.leave_student(eski)
 
     yeni = _ogrenci(student_number="777", first_name="BAŞKA")
@@ -337,7 +352,7 @@ def test_ayrilan_ogrencinin_numarasi_yeni_ogrenciye_verilebilir(
 
 
 # ---------------------------------------------------------------------------
-# Kullanıcı silmesi
+# Kullanıcı silmesi ("Sil" düğmesi — bilinçli eylem; kural F1 eki 7'de değişmedi)
 # ---------------------------------------------------------------------------
 
 
@@ -358,6 +373,16 @@ def test_silme_hic_uye_olmamis_kisiyi_kati_siler(
 
     assert not model.all_objects.filter(pk=pk).exists()
     assert model.all_objects.count() == 0
+
+
+def test_ayrilmis_ve_hic_uye_olmamis_kisi_elle_silinebilir() -> None:
+    """Ayrılış kaydı saklar; yanlış girilmiş kaydı kullanıcı yine "Sil" ile katı siler."""
+    ogrenci = _ogrenci()
+    persons.leave_student(ogrenci)
+
+    persons.delete_student(ogrenci)
+
+    assert not Student.all_objects.filter(pk=ogrenci.pk).exists()
 
 
 def test_silme_acik_yukumlulukte_gerekceyle_reddedilir(
@@ -605,25 +630,20 @@ def test_api_ogrenci_listesi_suzgecleri(client: APIClient) -> None:
     assert "sayısal" in str(bozuk.json()["fields"]["class_level"])
 
 
-def test_api_ogrenci_ayrilis_ucu_kati_siler_ya_da_kaydi_doner(
-    client: APIClient, uye_olmus: set[tuple[str, int]]
-) -> None:
-    silinecek = _ogrenci(student_number="301")
-    kalacak = _ogrenci(student_number="302", first_name="ÜYE")
-    uye_olmus.add(_anahtar(kalacak))
+def test_api_ogrenci_ayrilis_ucu_kaydi_saklar_ve_doner(client: APIClient) -> None:
+    """Ayrılış ucu hiçbir durumda silmez (üye olmamış öğrencide de); ayrılmış kaydı döner."""
+    ogrenci = _ogrenci(student_number="301")
 
-    sil = client.post(f"{OGRENCI_URL}{silinecek.pk}/leave/")
-    assert sil.status_code == 200
-    assert sil.json() == {"deleted": True, "student": None}
-    assert not Student.all_objects.filter(pk=silinecek.pk).exists()
+    ayril = client.post(f"{OGRENCI_URL}{ogrenci.pk}/leave/")
+    assert ayril.status_code == 200
+    assert ayril.json()["id"] == ogrenci.pk
+    assert ayril.json()["status"] == "LEFT"
+    assert ayril.json()["left_at"] == timezone.localdate().isoformat()
+    assert ayril.json()["leave_candidate_since"] is None
+    assert "deleted" not in ayril.json()
+    assert Student.all_objects.filter(pk=ogrenci.pk, deleted_at__isnull=True).exists()
 
-    kal = client.post(f"{OGRENCI_URL}{kalacak.pk}/leave/")
-    assert kal.status_code == 200
-    assert kal.json()["deleted"] is False
-    assert kal.json()["student"]["status"] == "LEFT"
-    assert kal.json()["student"]["left_at"] == timezone.localdate().isoformat()
-
-    tekrar = client.post(f"{OGRENCI_URL}{kalacak.pk}/leave/")
+    tekrar = client.post(f"{OGRENCI_URL}{ogrenci.pk}/leave/")
     assert tekrar.status_code == 400
     assert tekrar.json()["message"] == persons.ALREADY_LEFT_MESSAGE
 
@@ -654,9 +674,9 @@ def test_api_personel_ekleme_duzeltme_ayrilis_ve_silme(
 
     ayril = client.post(f"{PERSONEL_URL}{kisi_id}/leave/")
     assert ayril.status_code == 200
-    assert ayril.json()["deleted"] is False
-    assert ayril.json()["personnel"]["is_active"] is False
-    assert ayril.json()["personnel"]["left_at"] == timezone.localdate().isoformat()
+    assert ayril.json()["id"] == kisi_id
+    assert ayril.json()["is_active"] is False
+    assert ayril.json()["left_at"] == timezone.localdate().isoformat()
     # Sicil ekranı ayrılanı gösterir, seçiciler (only_active) göstermez.
     assert [p["id"] for p in _sonuclar(client.get(PERSONEL_URL))] == [kisi_id]
     assert _sonuclar(client.get(PERSONEL_URL, {"only_active": "true"})) == []

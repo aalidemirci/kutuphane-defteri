@@ -11,6 +11,11 @@ Kütüphane Defteri için sadeleştirildi (tasarım §6.1, §12):
 - `Personnel`: DD kalıbı + `is_active` + şifreli ad-soyad + `member_kind` +
   ayrılış tarihi. Unvan ve branş YOKTUR (V2-01: branş, küçük okulda öğretmeni
   kişiye bağlar).
+- AYRILIŞ HAVUZU (F1 eki 7, kullanıcı kararı 22.09.2026): `Student` ve
+  `Personnel` `leave_candidate_since` + `leave_candidate_run` taşır. e-Okul
+  aktarımında listede bulunmayan AKTİF kişi havuza girer, durumu aktif kalır;
+  karar yöneticinindir (`services.persons`). Havuzdaki kişi DB kısıtıyla
+  aktiftir: ayrılış havuz alanlarını aynı kayıtta temizler.
 - `ClassSection`: şube kataloğu — ders yılı içinde görülen (seviye, şube)
   çiftleri; içe aktarma sonrası tohumlanır.
 - `Holiday`: DD'nin tatil tablosu, UYARLANARAK — + `SCHOOL_BREAK` türü
@@ -292,9 +297,11 @@ class Personnel(BaseModel):
     """Okul personeli — login'siz sicil kaydı (tasarım §6.1).
 
     Ayrılışta `is_active=False` + `left_at` yazılır (`services.persons`
-    ayrılış yolu); hiç üye olmamış ve açık yükümlülüğü olmayan kişi o anda
-    KATI silinir. Ad-soyad ŞİFRELİDİR (U3) — ada dayalı arama, sıralama ve
-    eşleştirme Python katmanında yapılır. Unvan ve branş YOKTUR (V2-01).
+    ayrılış yolu); kayıt SİLİNMEZ (F1 eki 7), saklama taraması (§6.4, F11)
+    aday gösterir. e-Okul listesinde bulunmayan aktif kişi önce ayrılış
+    havuzuna girer (`leave_candidate_since`). Ad-soyad ŞİFRELİDİR (U3) — ada
+    dayalı arama, sıralama ve eşleştirme Python katmanında yapılır. Unvan ve
+    branş YOKTUR (V2-01).
     """
 
     first_name = EncryptedCharField("ad", max_length=100)
@@ -304,6 +311,15 @@ class Personnel(BaseModel):
     )
     is_active = models.BooleanField("aktif", default=True)
     left_at = models.DateField("ayrılış tarihi", null=True, blank=True)
+    leave_candidate_since = models.DateField("ayrılış havuzuna giriş tarihi", null=True, blank=True)
+    leave_candidate_run = models.ForeignKey(
+        "ImportRun",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="havuza ekleyen aktarım",
+    )
 
     class Meta:
         verbose_name = "personel"
@@ -315,6 +331,11 @@ class Personnel(BaseModel):
             models.CheckConstraint(
                 condition=models.Q(member_kind__in=MemberKind.values),
                 name="ck_personnel_member_kind",
+            ),
+            # Ayrılış havuzunda yalnız AKTİF kişi bekler (ayrılış havuzu temizler).
+            models.CheckConstraint(
+                condition=models.Q(leave_candidate_since__isnull=True) | models.Q(is_active=True),
+                name="ck_personnel_leave_candidate_active",
             ),
         ]
 
@@ -403,6 +424,11 @@ class Student(BaseModel):
     `bulk_update` ve `bulk_create` `save()`'i atlar, indeks eski numarada (ya da
     boş) kalır ve eşleştirme sessizce bozulur. Okul no toplu yazılmaz (koruma
     testi: `test_models.py::test_okul_no_toplu_yazilmaz`).
+
+    AYRILIŞ HAVUZU (F1 eki 7): e-Okul aktarımı kimseyi ayırmaz; dosyada
+    bulunmayan aktif öğrenci `leave_candidate_since` (+ hangi aktarımla)
+    damgasıyla havuza girer, durumu AKTİF kalır. Ayrılış (LEFT + `left_at`)
+    kaydı silmez.
     """
 
     first_name = EncryptedCharField("ad", max_length=100)
@@ -417,6 +443,15 @@ class Student(BaseModel):
         "durum", max_length=16, choices=StudentStatus.choices, default=StudentStatus.ACTIVE
     )
     left_at = models.DateField("ayrılış tarihi", null=True, blank=True)
+    leave_candidate_since = models.DateField("ayrılış havuzuna giriş tarihi", null=True, blank=True)
+    leave_candidate_run = models.ForeignKey(
+        "ImportRun",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="havuza ekleyen aktarım",
+    )
 
     class Meta:
         verbose_name = "öğrenci"
@@ -442,6 +477,11 @@ class Student(BaseModel):
                     & ~models.Q(student_number_index="")
                 ),
                 name="uq_student_number_index_active_alive",
+            ),
+            # Ayrılış havuzunda yalnız AKTİF öğrenci bekler (ayrılış havuzu temizler).
+            models.CheckConstraint(
+                condition=models.Q(leave_candidate_since__isnull=True) | models.Q(status="ACTIVE"),
+                name="ck_student_leave_candidate_active",
             ),
         ]
 

@@ -72,7 +72,7 @@ describe("okulApi — kişi ayrılışı, birleştirme ve mutabakat seçenekleri
     expect(apiMock.post).toHaveBeenCalledWith("/personnel/11/merge/", { into_id: 21 });
   });
 
-  it("metin yolunda mutabakat seçenekleri JSON gövdeye yalnız anlamlıysa girer", async () => {
+  it("metin yolunda tam liste seçeneği JSON gövdeye yalnız anlamlıysa girer", async () => {
     await okulApi.previewStudentImport({ text: "x" });
     expect(apiMock.post).toHaveBeenLastCalledWith("/imports/students/preview/", { text: "x" });
     await okulApi.commitStudentImport({ text: "x" }, { fullList: true });
@@ -80,26 +80,32 @@ describe("okulApi — kişi ayrılışı, birleştirme ve mutabakat seçenekleri
       text: "x",
       full_list: true,
     });
-    await okulApi.commitPersonnelImport({ text: "x" }, { markLeftIds: [] });
+    // Personelde seçenek yoktur: listede olmayanlar Ayrılış Havuzu'na girer.
+    await okulApi.commitPersonnelImport({ text: "x" });
     expect(apiMock.post).toHaveBeenLastCalledWith("/imports/personnel/commit/", { text: "x" });
-    await okulApi.commitPersonnelImport({ text: "x" }, { markLeftIds: [5, 6] });
-    expect(apiMock.post).toHaveBeenLastCalledWith("/imports/personnel/commit/", {
-      text: "x",
-      mark_left_ids: [5, 6],
-    });
   });
 
-  it("dosya yolunda liste alanı çok parçalı gövdede tekrarlanır", async () => {
+  it("dosya yolunda seçenek çok parçalı gövdeye eklenir; personelde ayrılış seçimi gitmez", async () => {
     const dosya = new File(["x"], "liste.xls");
-    await okulApi.commitPersonnelImport({ file: dosya }, { markLeftIds: [5, 6] });
+    await okulApi.commitPersonnelImport({ file: dosya });
     const [yol, form] = apiMock.postForm.mock.calls.at(-1) as unknown as [string, FormData];
     expect(yol).toBe("/imports/personnel/commit/");
-    expect(form.getAll("mark_left_ids")).toEqual(["5", "6"]);
+    expect(form.getAll("mark_left_ids")).toEqual([]);
     expect(form.get("file")).toBeInstanceOf(File);
 
     await okulApi.previewStudentImport({ file: dosya }, { fullList: true });
     const [, ogrenciFormu] = apiMock.postForm.mock.calls.at(-1) as unknown as [string, FormData];
     expect(ogrenciFormu.get("full_list")).toBe("true");
+  });
+
+  it("Ayrılış Havuzu: liste, yalnız sayılı özet ve toplu karar uçları", async () => {
+    await okulApi.getLeavePool();
+    expect(apiMock.get).toHaveBeenLastCalledWith("/leave-pool/");
+    await okulApi.getLeavePoolSummary();
+    expect(apiMock.get).toHaveBeenLastCalledWith("/leave-pool/?summary=true");
+    const govde = { students: { leave: [1, 2], keep: [3] }, personnel: { keep: [9] } };
+    await okulApi.resolveLeavePool(govde);
+    expect(apiMock.post).toHaveBeenLastCalledWith("/leave-pool/resolve/", govde);
   });
 
   it("üye türü adları sözlüğe uyar: öğretmen / diğer personel", () => {

@@ -67,7 +67,7 @@ export default function HakkindaPage() {
           </span>
           <div>
             <h2 className="text-title-large font-semibold text-on-surface">
-              Ücretsiz ve ticari olmayan kullanım
+              Ücretsiz ve Ticari Olmayan Kullanım
             </h2>
             <p className="mt-2 text-body-medium text-on-surface-variant">
               Bu sürüm <strong>PolyForm Noncommercial License 1.0.0</strong> ile sunulur. Eğitim
@@ -107,7 +107,7 @@ export default function HakkindaPage() {
             <Icon name="shield_lock" size="xl" />
           </span>
           <div>
-            <h2 className="text-title-large font-semibold text-on-surface">Teknik bilgiler</h2>
+            <h2 className="text-title-large font-semibold text-on-surface">Teknik Bilgiler</h2>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-body-medium text-on-surface-variant">
               <li>
                 Program çevrimdışı çalışır; veriler yalnız bu bilgisayarda tutulur. Program açılışta

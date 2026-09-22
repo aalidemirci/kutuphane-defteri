@@ -4,10 +4,11 @@
 
 import type { SetupStatus } from "../modules/okul/api";
 
-/** Kurulum bitmiş, parola kurulu, aktif yıl dönemleriyle hazır; yol haritası boş. */
+/** Kurulum bitmiş, parola kurulu, anahtar doğrulanmış, aktif yıl dönemleriyle hazır; yol haritası boş. */
 export const KURULU_DURUM: SetupStatus = {
   setup_completed: true,
   password_set: true,
+  recovery_key_confirmed: true,
   school_name: "Örnek Anadolu Lisesi",
   school_info_complete: true,
   has_active_school_year: true,
@@ -31,6 +32,7 @@ export const ILK_ACILIS_DURUMU: SetupStatus = {
   ...KURULU_DURUM,
   setup_completed: false,
   password_set: false,
+  recovery_key_confirmed: false,
   school_name: "",
   school_info_complete: false,
   has_active_school_year: false,

@@ -17,8 +17,9 @@ from datetime import date
 from typing import Any
 
 from django.db.models import QuerySet
+from django.utils import timezone
 
-from apps.okul import normalize
+from apps.okul import name_match, normalize
 from apps.okul.excel_ogrenci import normalize_header
 from apps.okul.models import (
     ClassSection,
@@ -290,6 +291,77 @@ def left_students_by_number(student_number: str) -> list[Student]:
 def get_personnel(personnel_id: int) -> Personnel | None:
     """Tek personel (canlı) — yoksa None."""
     return Personnel.objects.filter(pk=personnel_id).first()
+
+
+# ---------------------------------------------------------------------------
+# Ayrılış havuzu (F1 eki 7 — kişisel veri: yalnız yönetim yüzeyi, yönetici kipi)
+# ---------------------------------------------------------------------------
+def _pool_students_qs() -> QuerySet[Student]:
+    return Student.objects.filter(status=StudentStatus.ACTIVE, leave_candidate_since__isnull=False)
+
+
+def _pool_personnel_qs() -> QuerySet[Personnel]:
+    return Personnel.objects.filter(is_active=True, leave_candidate_since__isnull=False)
+
+
+def leave_pool_students() -> list[Student]:
+    """Havuzdaki öğrenciler — sınıf, şube (TR), okul no (doğal) sırasıyla (Python)."""
+    return students_sorted(_pool_students_qs().select_related("leave_candidate_run"))
+
+
+def leave_pool_personnel() -> list[Personnel]:
+    """Havuzdaki öğretmen ve diğer personel — ada göre Türk alfabesiyle (Python)."""
+    return personnel_sorted(_pool_personnel_qs().select_related("leave_candidate_run"))
+
+
+def leave_pool_counts() -> dict[str, int]:
+    """Havuzdaki kişi sayıları (Genel Bakış kartı; kişisel veri yok)."""
+    return {
+        "student_count": _pool_students_qs().count(),
+        "personnel_count": _pool_personnel_qs().count(),
+    }
+
+
+def leave_pool_run(person: Student | Personnel) -> ImportRun | None:
+    """Kişiyi havuza ekleyen aktarım (canlı değilse None — yumuşak silme ileri FK'da süzmez)."""
+    run = person.leave_candidate_run
+    if run is None or run.deleted_at is not None:
+        return None
+    return run
+
+
+def leave_pool_similar_personnel(pool: Iterable[Personnel]) -> dict[int, list[Personnel]]:
+    """Havuzdaki her personel için "olası aynı kişi" adayları (kimlik → adaylar, TR sıralı).
+
+    Aday: aktif, havuzda OLMAYAN ve sicile kişinin havuza girdiği gün ya da sonra
+    girmiş kayıt — tipik olarak aynı aktarımın yeni adla açtığı kayıt (soyadı
+    değişimi). Eski kayıtlar aday sayılmaz: okulda aynı adı taşıyan başka
+    öğretmenler her havuz kişisine "benzer" görünürdü. Kural aktarım
+    önizlemesindekiyle aynıdır (`name_match.probably_same_person`).
+    """
+    kisiler = list(pool)
+    if not kisiler:
+        return {}
+    adaylar = personnel_sorted(
+        Personnel.objects.filter(is_active=True, leave_candidate_since__isnull=True)
+    )
+    sonuc: dict[int, list[Personnel]] = {}
+    for kisi in kisiler:
+        giris = kisi.leave_candidate_since
+        if giris is None:
+            continue
+        sonuc[kisi.pk] = [
+            aday
+            for aday in adaylar
+            if timezone.localdate(aday.created_at) >= giris
+            and name_match.probably_same_person(
+                first_a=kisi.first_name,
+                full_a=kisi.full_name,
+                first_b=aday.first_name,
+                full_b=aday.full_name,
+            )
+        ]
+    return sonuc
 
 
 def get_school_year(school_year_id: int) -> SchoolYear | None:

@@ -19,12 +19,13 @@ export const GOREVLI_EKRANI_METNI =
   "Bu kipte yalnız masa işleri yapılır; yönetici işlemleri için yönetici kipine geçin.";
 
 /**
- * Kurulum sırasında, kurtarma anahtarı doğrulanmadan görevli kipine düşülürse
- * (boşta süre, Kilitle, kısayol) gösterilir: anahtar kaybolmadı, yönetici kipine
- * dönülünce sihirbaz onu yeniden gösterir (`guvenlik/bekleyenAnahtar`).
+ * Kurtarma anahtarı (kurulumda verilen ya da Ayarlar → Güvenlik'te yenilenen)
+ * doğrulanmadan görevli kipine geçilirse (düğme, kısayol) gösterilir: anahtar
+ * kaybolmadı, yönetici kipine dönülünce anahtarın gösterildiği ekran onu yeniden
+ * gösterir (`guvenlik/bekleyenAnahtar`). Kurulum sürerken süreler kipi düşürmez.
  */
 export const BEKLEYEN_ANAHTAR_METNI =
-  "Kurtarma anahtarınız henüz doğrulanmadı. Yönetici kipine geçtiğinizde Kurulum Sihirbazı anahtarı yeniden gösterir; programı kapatmayın.";
+  "Kurtarma anahtarınız henüz doğrulanmadı. Yönetici kipine geçtiğinizde anahtar yeniden gösterilir; programı kapatmayın.";
 
 export default function GorevliEkrani({
   onGecti,

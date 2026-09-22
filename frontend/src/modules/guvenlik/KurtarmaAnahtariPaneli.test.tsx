@@ -1,16 +1,21 @@
 // Kurtarma anahtarı paneli (E14 akışı): anahtar gruplarıyla GÖRÜNÜR; yazdır, PDF
 // olarak kaydet ve elle yaz yolları sunulur; devam, sakladığı kopyadan rastgele
-// İKİ grubun geri yazdırılmasıyla doğrulanır (istemci tarafında, doğrulama
-// kipinde anahtar ekrandan kalkar). Anahtar ve okul adı uydurmadır.
+// İKİ grubun geri yazdırılmasıyla doğrulanır (doğrulama kipinde anahtar ekrandan
+// kalkar); iki grup tutunca TAM anahtar sunucuda doğrulanıp "saklandı" damgası
+// yazılır (F1 eki, karar 2) ve `onDogrulama(true)` ancak o zaman gelir. Anahtar
+// ve okul adı uydurmadır.
 
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "../../lib/api";
 import { SnackbarProvider } from "../../ui/SnackbarProvider";
 
-const guvenlik = vi.hoisted(() => ({ kurtarmaAnahtariPdf: vi.fn() }));
+const guvenlik = vi.hoisted(() => ({
+  kurtarmaAnahtariPdf: vi.fn(),
+  kurtarmaAnahtariniDogrula: vi.fn(),
+}));
 const indirme = vi.hoisted(() => ({ saveBlob: vi.fn() }));
 
 vi.mock("./api", () => ({ guvenlikApi: guvenlik }));
@@ -48,6 +53,10 @@ function bas(onDogrulama = vi.fn(), rastgele = sabitRastgele(0.125, 0.6)) {
   );
   return onDogrulama;
 }
+
+beforeEach(() => {
+  guvenlik.kurtarmaAnahtariniDogrula.mockResolvedValue({ recovery_key_confirmed: true });
+});
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -150,7 +159,7 @@ describe("KurtarmaAnahtariPaneli", () => {
     expect(indirme.saveBlob).not.toHaveBeenCalled();
   });
 
-  it("doğrulama kipinde anahtar ekrandan kalkar; iki grup doğru yazılınca doğrulanır", async () => {
+  it("doğrulama kipinde anahtar ekrandan kalkar; iki grup doğru yazılınca sunucuda damgalanır", async () => {
     const kullanici = userEvent.setup();
     const onDogrulama = bas();
     expect(onDogrulama).toHaveBeenLastCalledWith(false);
@@ -161,13 +170,38 @@ describe("KurtarmaAnahtariPaneli", () => {
     expect(screen.getByText(/anahtarın 2\. ve 6\. grubunu yazın/)).toBeInTheDocument();
     // Küçük harf ve boşluk serbest (backend normalleştirmesiyle aynı).
     await kullanici.type(screen.getByLabelText("2. grup"), "kurt");
+    expect(guvenlik.kurtarmaAnahtariniDogrula).not.toHaveBeenCalled();
     await kullanici.type(screen.getByLabelText("6. grup"), "ab cd");
 
+    expect(await screen.findByRole("status")).toHaveTextContent("Doğrulandı.");
+    // Sunucuya bellekteki TAM anahtar gider (kullanıcının yazdığı iki grup değil).
+    expect(guvenlik.kurtarmaAnahtariniDogrula).toHaveBeenCalledTimes(1);
+    expect(guvenlik.kurtarmaAnahtariniDogrula).toHaveBeenCalledWith(ANAHTAR);
+    expect(onDogrulama).toHaveBeenLastCalledWith(true);
+  });
+
+  it("sunucu damgayı yazamazsa doğrulanmaz; ileti ve yeniden deneme çıkar", async () => {
+    const kullanici = userEvent.setup();
+    guvenlik.kurtarmaAnahtariniDogrula.mockRejectedValueOnce(
+      new ApiError(423, "locked", "Kayıtlar yönetici parolasıyla kilitli.", {}),
+    );
+    const onDogrulama = bas();
+    await kullanici.click(screen.getByRole("button", { name: "Sakladım, doğrula" }));
+    await kullanici.type(screen.getByLabelText("2. grup"), "KURT");
+    await kullanici.type(screen.getByLabelText("6. grup"), "ABCD");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Kayıtlar yönetici parolasıyla kilitli.",
+    );
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(onDogrulama).not.toHaveBeenCalledWith(true);
+
+    await kullanici.click(screen.getByRole("button", { name: "Yeniden dene" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Doğrulandı.");
     expect(onDogrulama).toHaveBeenLastCalledWith(true);
   });
 
-  it("yanlış grup doğrulanmaz ve alan hatası gösterir", async () => {
+  it("yanlış grup doğrulanmaz, sunucuya gidilmez ve alan hatası gösterir", async () => {
     const kullanici = userEvent.setup();
     const onDogrulama = bas();
     await kullanici.click(screen.getByRole("button", { name: "Sakladım, doğrula" }));
@@ -177,7 +211,22 @@ describe("KurtarmaAnahtariPaneli", () => {
 
     expect(screen.getByText("Bu grup anahtarla eşleşmiyor.")).toBeInTheDocument();
     expect(screen.queryByRole("status")).toBeNull();
+    expect(guvenlik.kurtarmaAnahtariniDogrula).not.toHaveBeenCalled();
     expect(onDogrulama).not.toHaveBeenCalledWith(true);
+  });
+
+  it("grup sonradan bozulursa doğrulama düşer", async () => {
+    const kullanici = userEvent.setup();
+    const onDogrulama = bas();
+    await kullanici.click(screen.getByRole("button", { name: "Sakladım, doğrula" }));
+    await kullanici.type(screen.getByLabelText("2. grup"), "KURT");
+    await kullanici.type(screen.getByLabelText("6. grup"), "ABCD");
+    await waitFor(() => expect(onDogrulama).toHaveBeenLastCalledWith(true));
+
+    await kullanici.type(screen.getByLabelText("6. grup"), "X");
+
+    expect(onDogrulama).toHaveBeenLastCalledWith(false);
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("anahtar yeniden gösterilince doğrulama düşer", async () => {
@@ -186,7 +235,7 @@ describe("KurtarmaAnahtariPaneli", () => {
     await kullanici.click(screen.getByRole("button", { name: "Sakladım, doğrula" }));
     await kullanici.type(screen.getByLabelText("2. grup"), "KURT");
     await kullanici.type(screen.getByLabelText("6. grup"), "ABCD");
-    expect(onDogrulama).toHaveBeenLastCalledWith(true);
+    await waitFor(() => expect(onDogrulama).toHaveBeenLastCalledWith(true));
 
     await kullanici.click(screen.getByRole("button", { name: "Anahtarı yeniden göster" }));
 

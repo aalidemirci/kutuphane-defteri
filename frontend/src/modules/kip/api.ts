@@ -10,9 +10,12 @@ export type KipAdi = "kurulum" | "kilitli" | "guvenlik_dosyasi_kayip" | "yonetic
 /** `GET /security/mode/` yanıtı. */
 export interface KipOzeti {
   durum: KipAdi;
-  /** Boşta kalınırsa görevli kipine inmeye kalan saniye (yalnız yönetici kipinde). */
+  /**
+   * Boşta kalınırsa görevli kipine inmeye kalan saniye (yalnız yönetici kipinde). Yönetici
+   * kipinde `null` ise kurulum sürüyordur: süreler işlemez (F1 eki, karar 2-1).
+   */
   bosta_kalan_sn: number | null;
-  /** Etkinlikten bağımsız mutlak süreden kalan saniye (yalnız yönetici kipinde). */
+  /** Etkinlikten bağımsız mutlak süreden kalan saniye (yalnız yönetici kipinde; kurulumda `null`). */
   mutlak_kalan_sn: number | null;
   /** Ayarlı boşta süresi (dakika). */
   bosta_dk: number;

@@ -1,20 +1,25 @@
 // e-Okul listesinden (ya da şablondan) aktarım paneli — önizle → aktar, MUTABAKATLA
 // (tasarım §8.3). Dosya VEYA pano metni aynı boru hattından geçer.
 //
-// Öğrenci: karşılaştırma varsayılan olarak YALNIZ dosyada bulunan şubelerle yapılır;
-// "Bu dosya okulun tam listesidir" onayı verilirse dosyada olmayan şubelerdeki
-// öğrenciler de ayrılmış sayılır. Önizleme şube bazında etki tablosu ve
-// ayrılacakların listesini gösterir.
+// AKTARIM KİMSEYİ AYIRMAZ VE SİLMEZ (F1 eki 7, kullanıcı kararı 22.09.2026): listede
+// bulunmayan aktif kişi Ayrılış Havuzu'na eklenir, durumu aktif kalır; dosyada
+// bulunan havuzdaki kişi havuzdan kendiliğinden çıkar. Karar Kişiler → Ayrılış
+// Havuzu'nda verilir. Önizleme "N öğrenci ayrılış havuzuna eklenecek, M öğrenci
+// havuzdan çıkacak" der; ayrılış olmadığı için aktarım ayrıca onay istemez.
 //
-// Personel: listede olmayanlar sorulur (varsayılan hiçbiri ayrılmaz, kullanıcı
-// işaretler); "olası aynı kişi" çiftleri gösterilir, aktarımdan sonra onaylı
-// "Birleştir" eylemiyle eski kayıt yeni kayda katılır. Görev sütunu yalnız üye
-// türü için okunur; tanınmayan satırlar "Üye türünü denetleyin" uyarısı alır.
+// Öğrenci: panel bütün şubeleri içeren TEK dosyayı belirgin biçimde önerir.
+// Karşılaştırma varsayılan olarak YALNIZ dosyada bulunan şubelerle yapılır; "Bu dosya
+// okulun tam listesidir" onayı verilirse dosyada olmayan şubelerdeki öğrenciler de
+// havuza eklenir. Önizleme şube bazında etki tablosu ve havuza eklenecekleri gösterir.
 //
-// Ayrılış kalıcıdır: kütüphane üyeliği ve açık işlemi olmayan kişinin kaydı
-// silinir. Bu yüzden ayrılış doğuran aktarım onay diyaloğundan geçer.
+// Personel: listede olmayanlar havuza eklenir (eski "ayrıldı sayılsın mı?" seçimi
+// kalktı); "olası aynı kişi" çiftleri gösterilir, aktarımdan sonra onaylı "Birleştir"
+// ile eski kayıt yeni kayda katılır (Ayrılış Havuzu'ndan da yapılabilir). Görev
+// sütunu yalnız üye türü için okunur; tanınmayan satırlar "Üye türünü denetleyin"
+// uyarısı alır.
 
 import { useId, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { saveBlob } from "../../lib/download";
 import { formatNumber } from "../../lib/format";
@@ -38,37 +43,44 @@ import type {
   SimilarPair,
   StudentImportReport,
 } from "../okul/api";
-import { ErrorBand, hataOku } from "./ortak";
+import { ErrorBand, HAVUZ_ADRESI, hataOku } from "./ortak";
 import type { SayfaHatasi } from "./ortak";
 
 export type ImportKind = "students" | "personnel";
 
 const IMPORT_LABEL: Record<ImportKind, { title: string; hint: string; template: string }> = {
   students: {
-    title: "e-Okul raporundan veya şablondan öğrenci aktar",
+    title: "e-Okul Raporundan veya Şablondan Öğrenci Aktar",
     hint: "e-Okul Öğrenci İşlemleri → Raporlar → OOG01001R020 — Sınıf/Şube Öğrenci Listesi raporunu Excel olarak indirip DEĞİŞTİRMEDEN yükleyin: şube blokları, sınıf başlıkları ve sayaç dipnotları otomatik çözülür. Alternatif olarak uygulama şablonu (sınıf, okul numarası, ad, soyad) doldurulabilir ya da tablo doğrudan panoya yapıştırılabilir. Cinsiyet ve pansiyon sütunları okunmaz.",
     template: STUDENT_TEMPLATE_FILENAME,
   },
   personnel: {
-    title: "e-Okul raporundan veya şablondan öğretmen ve diğer personeli aktar",
+    title: "e-Okul Raporundan veya Şablondan Öğretmen ve Diğer Personeli Aktar",
     hint: "e-Okul Kurum İşlemleri → Raporlar → OOK01001R1 — Personel Listesi raporunu Excel olarak indirip DEĞİŞTİRMEDEN yükleyin. Ad-soyad okunur; görev sütunu yalnız üye türünü (öğretmen ya da diğer personel) belirlemek için kullanılır ve saklanmaz, branş okunmaz; sayaç dipnotu atlanır. Alternatif olarak uygulama şablonu doldurulabilir ya da tablo panoya yapıştırılabilir.",
     template: PERSONNEL_TEMPLATE_FILENAME,
   },
 };
 
+/** Panelin belirgin önerisi: bütün şubeleri içeren tek dosya (Karar 1-8). */
+const TEK_DOSYA_ONERISI =
+  "Önerilen yol: okulun bütün şubelerini içeren listeyi tek dosyada yükleyin ve “Bu dosya okulun tam listesidir” kutusunu işaretleyin. Böylece şube değiştiren öğrencinin kaydı güncellenir ve kimse gereksiz yere ayrılış havuzuna düşmez.";
+
 /**
  * Şube şube yüklemenin bilinen sınırı: öğrenci yalnız BU dosyada aranır. Kayıtlı
  * olduğu şube dosyada olup kendisi başka şubeye geçtiği için dosyada olmayan
- * öğrenci de ayrılacaklar listesine düşer (yıl başında bütün öğrenciler üst
- * sınıfa geçer).
+ * öğrenci de havuza eklenir; yeni şubesinin listesi gelince kendiliğinden çıkar.
  */
 const SUBE_DEGISIMI_UYARISI =
-  "Başka bir şubeye geçtiği için bu dosyada bulunmayan öğrenci de bu listeye düşer. Yıl başında ya da şube değişikliklerinden sonra okulun bütün şubelerini içeren listeyi tek dosyada yükleyin ve “Bu dosya okulun tam listesidir” kutusunu işaretleyin.";
+  "Başka bir şubeye geçtiği için bu dosyada bulunmayan öğrenci de ayrılış havuzuna eklenir; yeni şubesinin listesi aktarılınca havuzdan kendiliğinden çıkar. Yıl başında ya da şube değişikliklerinden sonra okulun bütün şubelerini içeren listeyi tek dosyada yükleyin.";
+
+/** Havuzun ne olduğu — önizleme ve sonuçta aynı cümle. */
+const HAVUZ_ACIKLAMASI =
+  "Aktarım kimseyi ayırmaz ve kimsenin kaydını silmez: listede bulunmayanların durumu aktif kalır, karar Ayrılış Havuzu'nda verilir.";
 
 /** Rapor satır sorunlarındaki alan kodlarının kullanıcı adları. */
 const ALAN_ADI: Record<string, string> = {
   header: "Başlık",
-  leaving: "Ayrılış",
+  leave_pool: "Ayrılış havuzu",
   number: "Okul no",
   class: "Sınıf/şube",
   student_name: "Ad-soyad",
@@ -91,7 +103,6 @@ export default function AktarimPaneli({
   const [text, setText] = useState("");
   const [report, setReport] = useState<ImportReport | null>(null);
   const [fullList, setFullList] = useState(false);
-  const [markLeft, setMarkLeft] = useState<Set<number>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<SayfaHatasi | null>(null);
   const snackbar = useSnackbar();
@@ -113,27 +124,6 @@ export default function AktarimPaneli({
   const sifirla = () => {
     setReport(null);
     setError(null);
-    setMarkLeft(new Set());
-  };
-
-  const commitOnayi = async (): Promise<boolean> => {
-    if (report === null) return false;
-    if (isStudentReport(report) && report.leaving_students > 0) {
-      const subeUyarisi = report.full_list ? "" : ` ${SUBE_DEGISIMI_UYARISI}`;
-      return confirm({
-        title: "Aktarım uygulansın mı?",
-        message: `${formatNumber(report.leaving_students)} öğrenci okuldan ayrılmış sayılacak. Kütüphane üyeliği ve açık işlemi olmayanların kaydı silinir; bu işlem geri alınamaz.${subeUyarisi}`,
-        confirmLabel: "Aktar",
-      });
-    }
-    if (!isStudentReport(report) && markLeft.size > 0) {
-      return confirm({
-        title: "Aktarım uygulansın mı?",
-        message: `İşaretlediğiniz ${formatNumber(markLeft.size)} kişi okuldan ayrılmış sayılacak. Kütüphane üyeliği ve açık işlemi olmayanların kaydı silinir; bu işlem geri alınamaz.`,
-        confirmLabel: "Aktar",
-      });
-    }
-    return true;
   };
 
   const run = async (mode: "preview" | "commit") => {
@@ -141,7 +131,6 @@ export default function AktarimPaneli({
       setError({ message: "Önce bir dosya seçin ya da listeyi yapıştırın.", parolaGerekli: false });
       return;
     }
-    if (mode === "commit" && !(await commitOnayi())) return;
     setBusy(true);
     setError(null);
     try {
@@ -153,15 +142,13 @@ export default function AktarimPaneli({
             ? await okulApi.previewStudentImport(input, options)
             : await okulApi.commitStudentImport(input, options);
       } else {
-        const options = { markLeftIds: [...markLeft] };
         result =
           mode === "preview"
             ? await okulApi.previewPersonnelImport(input)
-            : await okulApi.commitPersonnelImport(input, options);
+            : await okulApi.commitPersonnelImport(input);
       }
       setReport(result);
       if (mode === "commit") {
-        setMarkLeft(new Set());
         snackbar.success("İçe aktarma tamamlandı.");
         onImported();
       }
@@ -198,7 +185,7 @@ export default function AktarimPaneli({
       setReport({
         ...report,
         similar_pairs: report.similar_pairs.filter((p) => p !== pair),
-        missing: report.missing.filter((m) => m.id !== pair.existing_id),
+        pool_added: report.pool_added.filter((m) => m.id !== pair.existing_id),
       });
       snackbar.success("Kayıtlar birleştirildi.");
       onImported();
@@ -220,6 +207,13 @@ export default function AktarimPaneli({
           Şablon indir
         </Button>
       </div>
+
+      {kind === "students" && (
+        <p className="flex items-start gap-2 rounded-shape-sm bg-secondary-container px-4 py-3 text-body-medium text-on-secondary-container">
+          <Icon name="recommend" size="lg" className="mt-0.5 shrink-0" />
+          <span>{TEK_DOSYA_ONERISI}</span>
+        </p>
+      )}
 
       <div>
         <label htmlFor={fileId} className="mb-1 block text-label-large text-on-surface-variant">
@@ -293,9 +287,9 @@ export default function AktarimPaneli({
               </span>
               <span className="block text-body-small text-on-surface-variant">
                 İşaretlemezseniz yalnız dosyada bulunan şubeler karşılaştırılır; diğer şubelere
-                dokunulmaz. İşaretlerseniz dosyada bulunmayan şubelerdeki öğrenciler de okuldan
-                ayrılmış sayılır. Yıl başında bütün şubeleri içeren listeyi tek dosyada yükleyip bu
-                kutuyu işaretleyin: üst sınıfa geçen öğrencinin kaydı böylece güncellenir.
+                dokunulmaz. İşaretlerseniz dosyada bulunmayan şubelerdeki öğrenciler de ayrılış
+                havuzuna eklenir. Kimse kendiliğinden ayrılmaz; karar Ayrılış Havuzu&apos;nda
+                verilir.
               </span>
             </span>
           </label>
@@ -313,15 +307,7 @@ export default function AktarimPaneli({
         </Button>
       </div>
 
-      {report && (
-        <ImportReportView
-          report={report}
-          markLeft={markLeft}
-          onMarkLeftChange={setMarkLeft}
-          onMerge={birlestir}
-          busy={busy}
-        />
-      )}
+      {report && <ImportReportView report={report} onMerge={birlestir} busy={busy} />}
     </Card>
   );
 }
@@ -332,14 +318,10 @@ export default function AktarimPaneli({
 
 function ImportReportView({
   report,
-  markLeft,
-  onMarkLeftChange,
   onMerge,
   busy,
 }: {
   report: ImportReport;
-  markLeft: Set<number>;
-  onMarkLeftChange: (next: Set<number>) => void;
   onMerge: (pair: SimilarPair) => void;
   busy: boolean;
 }) {
@@ -351,11 +333,8 @@ function ImportReportView({
     { label: "Yeni", value: counts.created },
     { label: "Güncellenen", value: counts.updated },
     { label: "Değişmeyen", value: counts.unchanged },
-    ogrenci
-      ? { label: report.dry_run ? "Ayrılacak" : "Ayrılan", value: report.leaving_students }
-      : report.dry_run
-        ? { label: "Listede olmayan", value: report.missing_count }
-        : { label: "Ayrılan", value: report.left_personnel },
+    { label: report.dry_run ? "Havuza eklenecek" : "Havuza eklenen", value: counts.poolAdded },
+    { label: report.dry_run ? "Havuzdan çıkacak" : "Havuzdan çıkan", value: counts.poolRemoved },
   ];
 
   return (
@@ -373,7 +352,7 @@ function ImportReportView({
         </div>
       )}
 
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
         {cells.map((c) => (
           <div key={c.label} className="rounded-shape-sm bg-surface-container px-3 py-2">
             <dt className="text-label-small text-on-surface-variant">{c.label}</dt>
@@ -382,16 +361,12 @@ function ImportReportView({
         ))}
       </dl>
 
+      <HavuzOzeti report={report} poolAdded={counts.poolAdded} poolRemoved={counts.poolRemoved} />
+
       {ogrenci ? (
         <OgrenciMutabakati report={report} />
       ) : (
-        <PersonelMutabakati
-          report={report}
-          markLeft={markLeft}
-          onMarkLeftChange={onMarkLeftChange}
-          onMerge={onMerge}
-          busy={busy}
-        />
+        <PersonelMutabakati report={report} onMerge={onMerge} busy={busy} />
       )}
 
       <IssueTable
@@ -404,6 +379,39 @@ function ImportReportView({
         issues={report.skipped}
         emptyText="Atlanan satır yok."
       />
+    </div>
+  );
+}
+
+/** "N … ayrılış havuzuna eklenecek, M … havuzdan çıkacak" + havuza bağlantı. */
+function HavuzOzeti({
+  report,
+  poolAdded,
+  poolRemoved,
+}: {
+  report: ImportReport;
+  poolAdded: number;
+  poolRemoved: number;
+}) {
+  const birim = isStudentReport(report) ? "öğrenci" : "kişi";
+  const cumle = report.dry_run
+    ? `${formatNumber(poolAdded)} ${birim} ayrılış havuzuna eklenecek, ${formatNumber(poolRemoved)} ${birim} havuzdan çıkacak.`
+    : `${formatNumber(poolAdded)} ${birim} ayrılış havuzuna eklendi, ${formatNumber(poolRemoved)} ${birim} havuzdan çıktı.`;
+  return (
+    <div className="flex items-start gap-2 rounded-shape-sm bg-surface-container px-4 py-3 text-body-medium text-on-surface">
+      <Icon name="pending_actions" size="lg" className="mt-0.5 shrink-0" />
+      <div className="min-w-0 space-y-1">
+        <p className="text-label-large">{cumle}</p>
+        <p className="text-body-small text-on-surface-variant">{HAVUZ_ACIKLAMASI}</p>
+        {!report.dry_run && poolAdded > 0 && (
+          <Link
+            to={HAVUZ_ADRESI}
+            className="inline-flex text-label-large text-primary underline underline-offset-2"
+          >
+            Ayrılış Havuzu&apos;nu aç
+          </Link>
+        )}
+      </div>
     </div>
   );
 }
@@ -431,7 +439,7 @@ function OgrenciMutabakati({ report }: { report: StudentImportReport }) {
                 <th className={TH}>Yeni</th>
                 <th className={TH}>Güncellenen</th>
                 <th className={TH}>Değişmeyen</th>
-                <th className={TH}>{report.dry_run ? "Ayrılacak" : "Ayrılan"}</th>
+                <th className={TH}>{report.dry_run ? "Havuza eklenecek" : "Havuza eklenen"}</th>
               </tr>
             </thead>
             <tbody>
@@ -444,8 +452,8 @@ function OgrenciMutabakati({ report }: { report: StudentImportReport }) {
                   <td className={TD}>{formatNumber(c.created)}</td>
                   <td className={TD}>{formatNumber(c.updated)}</td>
                   <td className={TD}>{formatNumber(c.unchanged)}</td>
-                  <td className={c.leaving > 0 ? `${TD} font-semibold text-error` : TD}>
-                    {formatNumber(c.leaving)}
+                  <td className={c.to_pool > 0 ? `${TD} font-semibold` : TD}>
+                    {formatNumber(c.to_pool)}
                   </td>
                 </tr>
               ))}
@@ -454,18 +462,18 @@ function OgrenciMutabakati({ report }: { report: StudentImportReport }) {
         </div>
       )}
 
-      {report.leaving.length > 0 && (
+      {report.pool_added.length > 0 && (
         <div>
           <p className="text-label-large text-on-surface-variant">
             {report.dry_run
-              ? `Ayrılacak öğrenciler (${formatNumber(report.leaving.length)})`
-              : `Ayrılan öğrenciler (${formatNumber(report.leaving.length)})`}
+              ? `Ayrılış havuzuna eklenecek öğrenciler (${formatNumber(report.pool_added.length)})`
+              : `Ayrılış havuzuna eklenen öğrenciler (${formatNumber(report.pool_added.length)})`}
           </p>
           <p className="text-body-small text-on-surface-variant">
             {report.full_list
-              ? "Okulun tam listesinde bulunmadıkları için okuldan ayrılmış sayılırlar."
-              : "Kayıtlı oldukları şube dosyada var ama kendileri dosyada bulunmadığı için okuldan ayrılmış sayılırlar."}{" "}
-            Kütüphane üyeliği ve açık işlemi olmayanların kaydı silinir.
+              ? "Okulun tam listesinde bulunmadıkları için ayrılış havuzuna eklenirler."
+              : "Kayıtlı oldukları şube dosyada var ama kendileri dosyada bulunmadığı için ayrılış havuzuna eklenirler."}{" "}
+            Durumları aktif kalır; ayrılıp ayrılmadıklarına havuzda karar verilir.
           </p>
           {!report.full_list && (
             <p className="mt-1 flex items-start gap-2 rounded-shape-sm bg-tertiary-container px-3 py-2 text-body-small text-on-tertiary-container">
@@ -483,7 +491,7 @@ function OgrenciMutabakati({ report }: { report: StudentImportReport }) {
                 </tr>
               </thead>
               <tbody>
-                {report.leaving.map((s) => (
+                {report.pool_added.map((s) => (
                   <tr key={s.id} className="border-t border-outline-variant/50">
                     <td className={TD}>{s.student_number || "—"}</td>
                     <td className={TD}>{s.full_name}</td>
@@ -501,24 +509,14 @@ function OgrenciMutabakati({ report }: { report: StudentImportReport }) {
 
 function PersonelMutabakati({
   report,
-  markLeft,
-  onMarkLeftChange,
   onMerge,
   busy,
 }: {
   report: PersonnelImportReport;
-  markLeft: Set<number>;
-  onMarkLeftChange: (next: Set<number>) => void;
   onMerge: (pair: SimilarPair) => void;
   busy: boolean;
 }) {
   const ciftteki = new Set(report.similar_pairs.map((p) => p.existing_id));
-  const degistir = (id: number, secili: boolean) => {
-    const yeni = new Set(markLeft);
-    if (secili) yeni.add(id);
-    else yeni.delete(id);
-    onMarkLeftChange(yeni);
-  };
   const turUyarisi = report.warnings.filter((w) => w.field === "member_kind").length;
 
   return (
@@ -534,36 +532,30 @@ function PersonelMutabakati({
         </div>
       )}
 
-      {report.dry_run && report.missing.length > 0 && (
-        <fieldset className="space-y-2">
-          <legend className="text-label-large text-on-surface">
-            {formatNumber(report.missing.length)} kişi listede yok. Ayrıldı sayılsın mı?
-          </legend>
+      {report.pool_added.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-label-large text-on-surface">
+            {report.dry_run
+              ? `Listede olmayan ${formatNumber(report.pool_added.length)} kişi ayrılış havuzuna eklenecek`
+              : `Listede olmayan ${formatNumber(report.pool_added.length)} kişi ayrılış havuzuna eklendi`}
+          </p>
           <p className="text-body-small text-on-surface-variant">
-            Yalnız işaretlediğiniz kişiler aktarımda okuldan ayrılmış sayılır; işaretlemedikleriniz
-            olduğu gibi kalır. Kütüphane üyeliği ve açık işlemi olmayanların kaydı silinir.
+            Durumları aktif kalır; okuldan ayrılıp ayrılmadıklarına Ayrılış Havuzu&apos;nda karar
+            verirsiniz.
           </p>
           <ul className="space-y-1">
-            {report.missing.map((m) => (
-              <li key={m.id}>
-                <label className="flex min-h-10 items-center gap-3 text-body-medium text-on-surface">
-                  <input
-                    type="checkbox"
-                    checked={markLeft.has(m.id)}
-                    onChange={(e) => degistir(m.id, e.target.checked)}
-                    className="size-5 accent-primary"
-                  />
-                  <span>{m.full_name}</span>
-                  {ciftteki.has(m.id) && (
-                    <span className="text-body-small text-on-surface-variant">
-                      (olası aynı kişi — birleştirmek için işaretlemeyin)
-                    </span>
-                  )}
-                </label>
+            {report.pool_added.map((m) => (
+              <li key={m.id} className="text-body-medium text-on-surface">
+                {m.full_name}
+                {ciftteki.has(m.id) && (
+                  <span className="ml-2 text-body-small text-on-surface-variant">
+                    (olası aynı kişi — aşağıya bakın)
+                  </span>
+                )}
               </li>
             ))}
           </ul>
-        </fieldset>
+        </div>
       )}
 
       {report.similar_pairs.length > 0 && (
@@ -573,7 +565,7 @@ function PersonelMutabakati({
           </p>
           <p className="text-body-small text-on-surface-variant">
             {report.dry_run
-              ? "Listedeki yeni ad, kayıttaki bir kişiye benziyor (ör. soyadı değişimi). Aktardıktan sonra iki kaydı birleştirebilirsiniz."
+              ? "Listedeki yeni ad, kayıttaki bir kişiye benziyor (ör. soyadı değişimi). Aktardıktan sonra iki kaydı burada ya da Ayrılış Havuzu'nda birleştirebilirsiniz."
               : "Birleştirilen eski kaydın kütüphane bağları yeni kayda taşınır ve eski kayıt silinir."}
           </p>
           <ul className="space-y-2">

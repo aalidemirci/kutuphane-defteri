@@ -32,6 +32,11 @@ export interface GuvenlikDurumu {
    * kaydı yokken (korunan veri yok). Aksi hâlde backend 409 döner.
    */
   reset_available: boolean;
+  /**
+   * Kurtarma anahtarının saklandığı doğrulandı mı? (`guvenlik.json`'daki damga.) Kurulum
+   * bu doğrulama olmadan tamamlanmaz; yenilenen anahtar yeniden doğrulanana dek yanlıştır.
+   */
+  recovery_key_confirmed: boolean;
   /** Korunan alanların Türkçe adları — arayüz metni bunları listeler. */
   protected_fields: string[];
 }
@@ -43,6 +48,11 @@ export interface SifirlamaSonucu extends GuvenlikDurumu {
 
 /** `POST /security/enable/` yanıtı: durum + TEK SEFERLİK kurtarma anahtarı. */
 export interface ParolaKurmaSonucu extends GuvenlikDurumu {
+  recovery_key: string;
+}
+
+/** `POST /security/recovery-key/renew/` yanıtı: durum + TEK SEFERLİK YENİ kurtarma anahtarı. */
+export interface AnahtarYenilemeSonucu extends GuvenlikDurumu {
   recovery_key: string;
 }
 
@@ -87,6 +97,20 @@ export const guvenlikApi = {
    */
   kurtarmaAnahtariPdf: (recovery_key: string) =>
     api.postBlob("/security/recovery-key/pdf/", { recovery_key }),
+  /**
+   * Anahtarın saklandığını doğrular: TAM anahtar gider, backend onu kurtarma sarmalına
+   * karşı doğrulayıp güvenlik dosyasına damga yazar (yanlışsa 400, kademeli gecikmeyle).
+   * Kurulum bu damga olmadan tamamlanmaz. Kilitliyken 423, görevli kipinde 403.
+   */
+  kurtarmaAnahtariniDogrula: (recovery_key: string) =>
+    api.post<GuvenlikDurumu>("/security/recovery-key/confirm/", { recovery_key }),
+  /**
+   * Kurtarma anahtarını yeniler (yönetici parolası ister). Yanıttaki YENİ anahtar tek
+   * seferliktir; damga silinir, yeni anahtar yeniden doğrulanmalıdır. Kayıtlar yeniden
+   * şifrelenmez. Kilitliyken 423, görevli kipinde 403.
+   */
+  kurtarmaAnahtariniYenile: (password: string) =>
+    api.post<AnahtarYenilemeSonucu>("/security/recovery-key/renew/", { password }),
   /** Kayıp ekranındaki "sıfırla ve kuruluma dön" (yalnız `reset_available` iken). */
   sifirla: () => api.post<SifirlamaSonucu>("/security/state/reset/"),
   // Yedekten geri yükleme (Güvenlik sekmesi; güvenlik dosyası kayıpken de açık).

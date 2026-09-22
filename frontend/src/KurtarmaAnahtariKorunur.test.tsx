@@ -3,14 +3,15 @@
 // kaybolmamalı ve doğrulama atlanmamalıdır. Tam App ağacı (kilit, kurulum ve
 // kip kapıları gerçek); yalnız API sınırı sahtedir.
 //
-// Sayfanın söküldüğü üç yol sınanır: boşta süre dolup kip görevliye iner
-// (sunucu kararı; ön yüz kip yoklamasıyla öğrenir), "Kilitle" (kilit ekranı) ve
-// üst menüden başka bir sayfaya gidilmesi (kurulum kapısı sihirbazı sıfırdan açar).
+// Sayfanın söküldüğü üç yol sınanır: kip görevliye iner (sunucu kararı; ön yüz kip
+// yoklamasıyla öğrenir — kurulum sürerken süre kipi düşürmez, ama "Görevli kipine
+// geç" ve Ctrl+Shift+G çalışır), "Kilitle" (kilit ekranı) ve üst menüden başka bir
+// sayfaya gidilmesi (kurulum kapısı sihirbazı sıfırdan açar).
 // Her yolda sihirbaz yeniden 1. adımda anahtarı gösterir ve iki grup yeniden
 // doğrulanmadan "Devam" kapalı kalır.
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -51,6 +52,8 @@ const gapi = vi.hoisted(() => ({
   kur: vi.fn(),
   ac: vi.fn(),
   kurtarmaAnahtariPdf: vi.fn(),
+  kurtarmaAnahtariniDogrula: vi.fn(),
+  kurtarmaAnahtariniYenile: vi.fn(),
 }));
 vi.mock("./modules/guvenlik/api", () => ({ guvenlikApi: gapi }));
 
@@ -64,6 +67,8 @@ const GRUPLAR = ANAHTAR.split("-");
 const PAROLA = "Gizli-Parola-42";
 let parolaKurulu = false;
 let kilitli = false;
+/** Sunucudaki "saklandı" damgası (F1 eki, karar 2): doğrulama ucu yazar. */
+let anahtarDogrulandi = false;
 
 const kipOzeti = (durum: string) => ({
   durum,
@@ -74,9 +79,13 @@ const kipOzeti = (durum: string) => ({
 });
 
 function kurulumDurumu(): SetupStatus {
-  return parolaKurulu
-    ? { ...ILK_ACILIS_DURUMU, password_set: true, missing_steps: ["school", "calendar"] }
-    : ILK_ACILIS_DURUMU;
+  if (!parolaKurulu) return ILK_ACILIS_DURUMU;
+  return {
+    ...ILK_ACILIS_DURUMU,
+    password_set: true,
+    recovery_key_confirmed: anahtarDogrulandi,
+    missing_steps: anahtarDogrulandi ? ["school", "calendar"] : ["password", "school", "calendar"],
+  };
 }
 
 function guvenlikDurumu() {
@@ -87,6 +96,7 @@ function guvenlikDurumu() {
     reset_available: false,
     transition_pending: false,
     transition: "",
+    recovery_key_confirmed: anahtarDogrulandi,
     protected_fields: [],
   };
 }
@@ -94,6 +104,7 @@ function guvenlikDurumu() {
 beforeEach(() => {
   parolaKurulu = false;
   kilitli = false;
+  anahtarDogrulandi = false;
   okulApiMock.getSetupStatus.mockImplementation(async () => kurulumDurumu());
   okulApiMock.getSchoolConfig.mockResolvedValue({
     school_name: "",
@@ -111,7 +122,12 @@ beforeEach(() => {
   gapi.durum.mockImplementation(async () => guvenlikDurumu());
   gapi.kur.mockImplementation(async () => {
     parolaKurulu = true;
+    anahtarDogrulandi = false;
     return { recovery_key: ANAHTAR };
+  });
+  gapi.kurtarmaAnahtariniDogrula.mockImplementation(async () => {
+    anahtarDogrulandi = true;
+    return guvenlikDurumu();
   });
   gapi.ac.mockImplementation(async () => {
     kilitli = false;
@@ -141,7 +157,7 @@ async function parolayiKur() {
   await kullanici.type(screen.getByLabelText(/^Yönetici parolası/), PAROLA);
   await kullanici.type(screen.getByLabelText(/^Parola \(tekrar\)/), PAROLA);
   await kullanici.click(screen.getByRole("button", { name: "Yönetici parolasını kur" }));
-  await screen.findByText("Kurtarma anahtarınız");
+  await screen.findByText("Kurtarma Anahtarınız");
   return kullanici;
 }
 
@@ -155,9 +171,9 @@ function kipDegisti(durum: string) {
 
 /** Sihirbaz anahtarı yeniden gösteriyor ve doğrulanmadan ilerlemiyor mu? */
 async function anahtarYenidenGosterilir() {
-  await screen.findByText("Kurtarma anahtarınız");
+  await screen.findByText("Kurtarma Anahtarınız");
   expect(screen.getByTestId("kurtarma-anahtari")).toHaveTextContent(ANAHTAR);
-  expect(screen.queryByText("2. Okul bilgileri")).toBeNull();
+  expect(screen.queryByText("2. Okul Bilgileri")).toBeNull();
   expect(screen.getByRole("button", { name: "Devam" })).toBeDisabled();
 }
 
@@ -171,13 +187,15 @@ async function dogrulaVeDevamEt(kullanici: ReturnType<typeof userEvent.setup>) {
     await kullanici.type(alan, GRUPLAR[grupNo - 1]);
   }
   const devam = screen.getByRole("button", { name: "Devam" });
-  expect(devam).toBeEnabled();
+  // İki grup tuttuktan sonra sunucu damgayı yazar; İleri ondan sonra açılır.
+  await waitFor(() => expect(devam).toBeEnabled());
+  expect(gapi.kurtarmaAnahtariniDogrula).toHaveBeenLastCalledWith(ANAHTAR);
   await kullanici.click(devam);
-  await screen.findByText("2. Okul bilgileri");
+  await screen.findByText("2. Okul Bilgileri");
 }
 
 describe("kurtarma anahtarı doğrulanmadan sihirbaz sökülürse anahtar kaybolmaz", () => {
-  it("boşta süre dolup görevli kipine inince anahtar bekler, yönetici kipinde geri gelir", async () => {
+  it("görevli kipine geçilince anahtar bekler, yönetici kipinde geri gelir", async () => {
     bas();
     const kullanici = await parolayiKur();
 
@@ -191,7 +209,7 @@ describe("kurtarma anahtarı doğrulanmadan sihirbaz sökülürse anahtar kaybol
     await dogrulaVeDevamEt(kullanici);
     // Doğrulanıp ilerlenince anahtar bellekten bırakılır: geri dönülünce gösterilmez.
     await kullanici.click(screen.getByRole("button", { name: "Geri" }));
-    await screen.findByText("1. Yönetici parolası kurulu");
+    await screen.findByText(/Parola kurulu, kurtarma anahtarının saklandığı doğrulandı/);
     expect(screen.queryByTestId("kurtarma-anahtari")).toBeNull();
   });
 

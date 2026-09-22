@@ -1,6 +1,6 @@
 // Kurtarma anahtarı paneli — kurulum sihirbazının ilk adımında, yönetici parolası
-// kurulur kurulmaz gösterilir (tasarım §6.3-1, E14). Eski `KurtarmaAnahtariDiyalogu`
-// bu akışa uyarlandı ve yerini bu panel aldı; parola artık yalnız sihirbazda kurulur.
+// kurulur kurulmaz gösterilir (tasarım §6.3-1, E14). Anahtar yenilendiğinde (sihirbaz
+// ya da Ayarlar → Güvenlik) yeni anahtar da bu panelle saklatılıp doğrulatılır.
 //
 // Anahtar SUNUCUDA SAKLANMAZ, bu panel onu gösteren TEK yerdir. Kural "basım
 // zorunlu" değil "SAKLAMA zorunlu"dur; üç saklama yolu sunulur:
@@ -12,8 +12,11 @@
 //      biçiminde görür ve saklama önerilerini de taşır.
 //   3. Elle yaz — yönerge metni.
 // Devam için anahtarın rastgele İKİ GRUBU sakladığı kopyaya bakılarak geri yazılır
-// (doğrulama kipinde anahtar ekrandan kalkar, yoksa ekrandan kopyalanırdı).
-// Doğrulama istemci tarafındadır: anahtar sunucuya yalnız PDF isteğinde gider.
+// (doğrulama kipinde anahtar ekrandan kalkar, yoksa ekrandan kopyalanırdı). İki grup
+// istemcide tutunca bellekteki TAM anahtar `security/recovery-key/confirm/`'a gider:
+// sunucu onu kurtarma sarmalına karşı doğrulayıp güvenlik dosyasına "saklandı"
+// damgası yazar (F1 eki, karar 2; kurulum damgasız tamamlanmaz). `onDogrulama(true)`
+// ancak sunucu damgayı yazınca bildirilir; hata olursa ileti ve "Yeniden dene" çıkar.
 //
 // Yazdırma notu: program bir masaüstü penceresinde (pywebview) koştuğu için
 // `window.print()` bütün kabuğu basardı. Panel görünürken devreye giren küçük
@@ -22,13 +25,15 @@
 // niteliğiyle DEĞİL: jsdom nitelik biçimini yok sayıp kuralı ekrana da uygular,
 // o zaman `visibility: hidden` tüm sayfayı erişilebilirlik ağacından düşürürdü.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { ApiError } from "../../lib/api";
 import Button from "../../ui/Button";
 import Card from "../../ui/Card";
 import Icon from "../../ui/Icon";
 import { useSnackbar } from "../../ui/SnackbarProvider";
 import TextField from "../../ui/TextField";
+import { guvenlikApi } from "./api";
 import {
   kurtarmaAnahtariniNormallestir,
   kurtarmaGruplari,
@@ -52,18 +57,27 @@ interface KurtarmaAnahtariPaneliProps {
   anahtar: string;
   /** Okul adı — yazıcı çıktısında hangi kuruma ait olduğu belli olsun (boş olabilir). */
   okulAdi?: string;
-  /** İki grup doğru yazılınca `true`, doğrulama bozulunca `false` bildirilir. */
+  /**
+   * İki grup doğru yazılıp sunucu "saklandı" damgasını yazınca `true`, doğrulama
+   * bozulunca (grup değişti, anahtar yeniden gösterildi) `false` bildirilir.
+   */
   onDogrulama: (dogrulandi: boolean) => void;
+  /** Doğrulama sonrası ileti (sihirbazda sonraki adım, Güvenlik'te bitti). */
+  dogrulandiMetni?: string;
   /** Doğrulanacak grupların seçimi (testte sabitlenir). */
   rastgele?: () => number;
 }
 
 type Asama = "goster" | "dogrula";
 
+/** Sunucu doğrulamasının durumu (iki grup istemcide tuttuktan sonra). */
+type Onay = "bekliyor" | "gonderiliyor" | "tamam" | "hata";
+
 export default function KurtarmaAnahtariPaneli({
   anahtar,
   okulAdi = "",
   onDogrulama,
+  dogrulandiMetni = "Doğrulandı. Kurulumun sonraki adımına geçebilirsiniz.",
   rastgele,
 }: KurtarmaAnahtariPaneliProps) {
   const snackbar = useSnackbar();
@@ -71,16 +85,43 @@ export default function KurtarmaAnahtariPaneli({
   const [asama, setAsama] = useState<Asama>("goster");
   const [sorulan, setSorulan] = useState<[number, number]>([0, 1]);
   const [yanitlar, setYanitlar] = useState<[string, string]>(["", ""]);
+  const [onay, setOnay] = useState<Onay>("bekliyor");
+  const [onayHatasi, setOnayHatasi] = useState<string | null>(null);
+  // Her yeni istek (ya da iptal) sayacı artırır; bayat yanıt durumu değiştirmez.
+  const istekNo = useRef(0);
   const { indir, indiriliyor, hata: pdfHatasi } = useKurtarmaCiktisi();
 
   const dogru = sorulan.map(
     (sira, i) => kurtarmaAnahtariniNormallestir(yanitlar[i]) === gruplar[sira],
   );
-  const dogrulandi = asama === "dogrula" && dogru[0] && dogru[1];
+  const dogrulandi = asama === "dogrula" && dogru[0] && dogru[1] && onay === "tamam";
 
   useEffect(() => {
     onDogrulama(dogrulandi);
   }, [dogrulandi, onDogrulama]);
+
+  function onayiBirak() {
+    istekNo.current += 1;
+    setOnay("bekliyor");
+    setOnayHatasi(null);
+  }
+
+  async function sunucudaDogrula() {
+    istekNo.current += 1;
+    const no = istekNo.current;
+    setOnay("gonderiliyor");
+    setOnayHatasi(null);
+    try {
+      await guvenlikApi.kurtarmaAnahtariniDogrula(anahtar);
+      if (no === istekNo.current) setOnay("tamam");
+    } catch (err) {
+      if (no !== istekNo.current) return;
+      setOnay("hata");
+      setOnayHatasi(
+        err instanceof ApiError ? err.message : "Doğrulama kaydedilemedi. Yeniden deneyin.",
+      );
+    }
+  }
 
   function yazdir() {
     // jsdom/bazı gömülü motorlarda `print` bulunmayabilir — sessizce atlanır.
@@ -94,20 +135,33 @@ export default function KurtarmaAnahtariPaneli({
   }
 
   function dogrulamayaGec() {
+    onayiBirak();
     setSorulan(rastgeleIkiGrup(gruplar.length, rastgele));
     setYanitlar(["", ""]);
     setAsama("dogrula");
   }
 
+  function anahtariYenidenGoster() {
+    onayiBirak();
+    setAsama("goster");
+  }
+
   function yanitDegisti(i: 0 | 1, deger: string) {
-    setYanitlar((onceki) => (i === 0 ? [deger, onceki[1]] : [onceki[0], deger]));
+    const yeni: [string, string] = i === 0 ? [deger, yanitlar[1]] : [yanitlar[0], deger];
+    setYanitlar(yeni);
+    const ikisiDeDogru = sorulan.every(
+      (sira, k) => kurtarmaAnahtariniNormallestir(yeni[k]) === gruplar[sira],
+    );
+    // İki grup tutunca TAM anahtar sunucuda doğrulanır; bozulunca bekleyen yanıt bayatlar.
+    if (ikisiDeDogru) void sunucudaDogrula();
+    else onayiBirak();
   }
 
   return (
     <Card elevation={1} className="p-6">
       <div className="flex items-center gap-3">
         <Icon name="key" className="text-primary" />
-        <h2 className="text-title-medium text-on-surface">Kurtarma anahtarınız</h2>
+        <h2 className="text-title-medium text-on-surface">Kurtarma Anahtarınız</h2>
       </div>
       <p className="mt-2 text-body-medium text-on-surface-variant">{KURTARMA_UYARISI}</p>
 
@@ -190,22 +244,35 @@ export default function KurtarmaAnahtariPaneli({
               );
             })}
           </div>
+          {onay === "gonderiliyor" && (
+            <p className="mt-3 text-body-medium text-on-surface-variant">Doğrulanıyor…</p>
+          )}
           {dogrulandi && (
             <p
               role="status"
               className="mt-3 flex items-center gap-2 text-body-medium text-on-surface"
             >
               <Icon name="check_circle" className="text-primary" />
-              Doğrulandı. Kurulumun sonraki adımına geçebilirsiniz.
+              {dogrulandiMetni}
             </p>
           )}
+          {onay === "hata" && onayHatasi && (
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <p role="alert" className="text-body-medium text-error">
+                {onayHatasi}
+              </p>
+              <Button
+                variant="tonal"
+                icon="refresh"
+                type="button"
+                onClick={() => void sunucudaDogrula()}
+              >
+                Yeniden dene
+              </Button>
+            </div>
+          )}
           <div className="mt-4">
-            <Button
-              variant="text"
-              icon="visibility"
-              type="button"
-              onClick={() => setAsama("goster")}
-            >
+            <Button variant="text" icon="visibility" type="button" onClick={anahtariYenidenGoster}>
               Anahtarı yeniden göster
             </Button>
           </div>

@@ -41,6 +41,7 @@ const OKUNAMADI: GuvenlikDurumu = {
   reset_available: false,
   transition_pending: false,
   transition: "",
+  recovery_key_confirmed: false,
   protected_fields: [],
 };
 

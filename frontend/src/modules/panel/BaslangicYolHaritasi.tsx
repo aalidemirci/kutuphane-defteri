@@ -13,6 +13,10 @@
 // depolamasında DEĞİL: yönetim yüzeyi her açılışta rastgele portta dinler, köken
 // değiştiği için `localStorage` açılışlar arasında taşınmaz. İşaretler kişisel
 // veri içermez (madde + tarih).
+//
+// Kurtarma anahtarının saklandığı sunucuda doğrulanmamışsa (kurulumu bu karardan
+// önce tamamlanmış program ya da yenilenip doğrulanmamış anahtar — F1 eki,
+// 22.09.2026 kararı 2) kartın başında uyarı ve Güvenlik ayarlarına bağlantı durur.
 
 import { Link } from "react-router-dom";
 
@@ -20,6 +24,7 @@ import { formatDate } from "../../lib/format";
 import Button from "../../ui/Button";
 import Card from "../../ui/Card";
 import Icon from "../../ui/Icon";
+import { DOGRULANMADI_BASLIGI } from "../guvenlik/metinler";
 import { useKatalogSablonuIndirme } from "../kutuphane/useKatalogSablonu";
 import type { RoadmapManualItem, SetupStatus } from "../okul/api";
 
@@ -80,7 +85,9 @@ export const YOL_HARITASI_MADDELERI: readonly MaddeTanimi[] = [
     baslik: "Ağ Kataloğu için bilişim teknolojileri rehber öğretmeniyle (BTR) görüşün",
     aciklama:
       "Ağ Kataloğu, okul ağındaki bilgisayar ve etkileşimli tahtalardan kitap aramayı sağlar; kişisel veri göstermez. Okul ağında açılmadan önce BTR'nin bilgisi alınır.",
-    bag: { to: "/kilavuz", etiket: "Kılavuz'da okuyun" },
+    // Çapalı adres: kılavuz açılınca doğrudan "Ağ Kataloğu" bölümüne kayar
+    // (KilavuzPage sayfa içi çapayı kendisi uygular).
+    bag: { to: "/kilavuz#ag-katalogu", etiket: "Kılavuz'da okuyun" },
   },
 ];
 
@@ -158,6 +165,26 @@ export default function BaslangicYolHaritasi({
             </div>
           </div>
         </div>
+
+        {!durum.recovery_key_confirmed && (
+          <div className="mt-4 flex items-start gap-2 rounded-shape-md bg-error-container px-4 py-3 text-body-medium text-on-error-container">
+            <Icon name="key_off" />
+            <div className="min-w-0">
+              <p>
+                <strong>{DOGRULANMADI_BASLIGI}.</strong> Parola unutulursa kayıtlara yalnız kurtarma
+                anahtarıyla ulaşılır. Anahtarı sakladıysanız Güvenlik ayarlarında doğrulayın;
+                kaydedemediyseniz aynı yerden yenisini üretin.
+              </p>
+              <Link
+                to="/ayarlar?tab=guvenlik"
+                className="mt-1 inline-flex items-center gap-1 text-label-large font-medium underline-offset-4 hover:underline"
+              >
+                Güvenlik ayarları
+                <Icon name="arrow_forward" size="sm" />
+              </Link>
+            </div>
+          </div>
+        )}
 
         <ol className="mt-4 divide-y divide-outline-variant/50">
           {YOL_HARITASI_MADDELERI.map((madde) => {

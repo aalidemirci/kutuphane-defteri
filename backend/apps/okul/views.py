@@ -30,6 +30,7 @@ from rest_framework.views import APIView
 
 from apps.okul import selectors
 from apps.okul.excel_ogrenci import ParserError
+from apps.okul.kip import KIP
 from apps.okul.models import (
     ClassSection,
     Personnel,
@@ -43,6 +44,7 @@ from apps.okul.serializers import (
     PersonnelMergeSerializer,
     PersonnelSerializer,
     RecoveryKeyPdfRequestSerializer,
+    RecoveryKeyRequestSerializer,
     RoadmapUpdateSerializer,
     SchoolConfigSerializer,
     SchoolTermConfigurationSerializer,
@@ -130,13 +132,19 @@ class SchoolConfigView(APIView):
 
 
 class SetupCompleteView(APIView):
-    """`POST setup/complete/` — yalnız üç adım da tamamsa (parola, okul, ders yılı)."""
+    """`POST setup/complete/` — yalnız üç adım da tamamsa (parola, okul, ders yılı).
+
+    1. adım kurtarma anahtarı doğrulanmadan tamam sayılmaz (F1 eki, karar 2).
+    Kurulum sürerken kip süreleri işlemez; tamamlanınca iki sayaç sıfırdan başlar
+    (`kip.KipDurumu.sureleri_yeniden_baslat`).
+    """
 
     def post(self, request: Request) -> Response:
         try:
             config = setup_service.mark_setup_completed()
         except setup_service.SetupIncomplete as exc:
             raise SetupIncompleteResponse(detail=str(exc)) from exc
+        KIP.sureleri_yeniden_baslat()
         return Response({"setup_completed": config.setup_completed})
 
 
@@ -289,40 +297,34 @@ class PersonnelDetailView(generics.RetrieveUpdateDestroyAPIView[Personnel]):
 class StudentLeaveView(APIView):
     """`POST students/<pk>/leave/` — "Ayrıldı olarak işaretle" (ayrılış yolu).
 
-    Yanıt `{deleted, student}`: hiç üye olmamış ve açık yükümlülüğü olmayan
-    öğrenci o anda katı silinir (`deleted: true`, `student: null`); aksi hâlde
-    ayrılmış kayıt döner.
+    Kayıt SİLİNMEZ (F1 eki 7): LEFT + `left_at`, havuzdaysa havuzdan çıkar.
+    Yanıt ayrılmış öğrenci kaydıdır. Toplu karar `leave-pool/resolve/`'dadır.
     """
 
     permission_classes = [RequiresAdminPassword]
 
     def post(self, request: Request, pk: int) -> Response:
         student = get_object_or_404(selectors.students_all(), pk=pk)
-        silindi = persons_service.leave_student(student)
-        return Response(
-            {"deleted": silindi, "student": None if silindi else StudentSerializer(student).data}
-        )
+        return Response(StudentSerializer(persons_service.leave_student(student)).data)
 
 
 class PersonnelLeaveView(APIView):
-    """`POST personnel/<pk>/leave/` — "Ayrıldı olarak işaretle" (ayrılış yolu)."""
+    """`POST personnel/<pk>/leave/` — "Ayrıldı olarak işaretle" (ayrılış yolu; kayıt kalır)."""
 
     permission_classes = [RequiresAdminPassword]
 
     def post(self, request: Request, pk: int) -> Response:
         person = get_object_or_404(selectors.personnel_all(), pk=pk)
-        silindi = persons_service.leave_personnel(person)
-        return Response(
-            {"deleted": silindi, "personnel": None if silindi else PersonnelSerializer(person).data}
-        )
+        return Response(PersonnelSerializer(persons_service.leave_personnel(person)).data)
 
 
 class PersonnelMergeView(APIView):
     """`POST personnel/<pk>/merge/` gövde `{into_id}` — "olası aynı kişi" birleştirmesi.
 
-    `<pk>` (kaynak: listede artık bulunmayan eski kayıt) `into_id` (hedef: yeni
-    adla gelen kayıt) kaydına birleşir; bağlar birleştirme kancalarıyla taşınır,
-    kaynak katı silinir. İki kayıt da canlı olmalıdır (silinmiş kayıt 404).
+    `<pk>` (kaynak: listede artık bulunmayan, ayrılış havuzundaki eski kayıt)
+    `into_id` (hedef: yeni adla gelen kayıt) kaydına birleşir; bağlar birleştirme
+    kancalarıyla taşınır, kaynak katı silinir. Aktarım sonucundan ya da ayrılış
+    havuzundan çağrılır. İki kayıt da canlı olmalıdır (silinmiş kayıt 404).
     """
 
     permission_classes = [RequiresAdminPassword]
@@ -383,7 +385,7 @@ class _BaseImportView(APIView):
     text_handler: str = ""  # import_service fonksiyon adı (metin yolu)
 
     def options_for(self, validated: dict[str, Any]) -> dict[str, Any]:
-        """Mutabakat seçenekleri (öğrenci: `full_list`, personel: `mark_left_ids`)."""
+        """Mutabakat seçenekleri (öğrenci: `full_list`; personelde seçenek yok — karar havuzda)."""
         return {}
 
     def post(self, request: Request) -> Response:
@@ -411,11 +413,6 @@ class _StudentImportView(_BaseImportView):
         return {"full_list": bool(validated.get("full_list", False))}
 
 
-class _PersonnelImportView(_BaseImportView):
-    def options_for(self, validated: dict[str, Any]) -> dict[str, Any]:
-        return {"mark_left_ids": list(validated.get("mark_left_ids") or [])}
-
-
 class StudentImportPreviewView(_StudentImportView):
     file_handler = "preview_students_file"
     text_handler = "preview_students_text"
@@ -426,12 +423,12 @@ class StudentImportCommitView(_StudentImportView):
     text_handler = "commit_students_text"
 
 
-class PersonnelImportPreviewView(_PersonnelImportView):
+class PersonnelImportPreviewView(_BaseImportView):
     file_handler = "preview_personnel_file"
     text_handler = "preview_personnel_text"
 
 
-class PersonnelImportCommitView(_PersonnelImportView):
+class PersonnelImportCommitView(_BaseImportView):
     file_handler = "commit_personnel_file"
     text_handler = "commit_personnel_text"
 
@@ -492,15 +489,19 @@ class SecurityEnableView(APIView):
     """`POST /api/v1/security/enable/` — yönetici parolasını kurar (yalnız ilk kurulumda).
 
     Yanıttaki `recovery_key` TEK SEFERLİKTİR: sunucu onu bir daha üretemez
-    (yalnız sarmalı saklanır). Arayüz kullanıcıya yazdırtmadan diyaloğu kapatmaz.
+    (yalnız sarmalı saklanır); yanıt önbelleğe alınmaz. Sihirbaz anahtarı
+    saklatıp doğrulatmadan (`security/recovery-key/confirm/`) ilerlemez.
     """
 
+    @sensitive_variables("req", "kurtarma")
     def post(self, request: Request) -> Response:
         req = AppPasswordRequestSerializer(data=request.data)
         req.is_valid(raise_exception=True)
         with _service_errors():
             kurtarma = app_password_service.enable(password=req.validated_data["password"])
-        return Response({"recovery_key": kurtarma, **app_password_service.status()}, status=201)
+        yanit = Response({"recovery_key": kurtarma, **app_password_service.status()}, status=201)
+        yanit["Cache-Control"] = "no-store"
+        return yanit
 
 
 class SecurityUnlockView(APIView):
@@ -560,6 +561,50 @@ class SecurityRecoveryKeyPdfView(APIView):
             filename=recovery_key_document.recovery_key_pdf_filename(),
             content_type="application/pdf",
         )
+        yanit["Cache-Control"] = "no-store"
+        return yanit
+
+
+class SecurityRecoveryKeyConfirmView(APIView):
+    """`POST /api/v1/security/recovery-key/confirm/` `{recovery_key}` — saklandı damgası.
+
+    Sihirbaz (ya da Ayarlar → Güvenlik) iki grubu istemcide denetledikten sonra
+    TAM anahtarı gönderir; anahtar kurtarma sarmalını açıyor ve bellekteki
+    anahtara aitse `guvenlik.json`'a doğrulama damgası yazılır (F1 eki, karar 2).
+    Yanlışsa 400 + kademeli gecikme. Kişi yazmaz. Kilitliyken kilit kapısı keser
+    (`LOCKED_DENIED_PATHS`), görevli kipinde kapalıdır (izin listesinde yok).
+    Yanıt güncel güvenlik durumudur (`recovery_key_confirmed: true`).
+    """
+
+    @sensitive_variables("req")
+    def post(self, request: Request) -> Response:
+        req = RecoveryKeyRequestSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        with _service_errors():
+            app_password_service.confirm_recovery_key(req.validated_data["recovery_key"])
+        return Response(app_password_service.status())
+
+
+class SecurityRecoveryKeyRenewView(APIView):
+    """`POST /api/v1/security/recovery-key/renew/` `{password}` — kurtarma anahtarını yeniler.
+
+    Yalnız kilit açık + yönetici kipinde (görevli izin listesinde yok; kilitliyken
+    423 — `LOCKED_DENIED_PATHS`). Yönetici parolası bellekteki anahtara karşı
+    doğrulanır (yanlışsa 400 "Parola hatalı." + kademeli gecikme). Yanıttaki
+    `recovery_key` TEK SEFERLİKTİR: sunucu onu saklamaz, bir daha üretemez; yanıt
+    önbelleğe alınmaz. Yeni anahtar doğrulanana dek `recovery_key_confirmed`
+    yanlıştır. Kişi yazmaz.
+    """
+
+    @sensitive_variables("req", "anahtar")
+    def post(self, request: Request) -> Response:
+        req = AppPasswordRequestSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        with _service_errors():
+            anahtar = app_password_service.renew_recovery_key(
+                password=req.validated_data["password"]
+            )
+        yanit = Response({"recovery_key": anahtar, **app_password_service.status()})
         yanit["Cache-Control"] = "no-store"
         return yanit
 

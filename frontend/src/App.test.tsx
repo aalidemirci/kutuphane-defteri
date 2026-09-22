@@ -41,6 +41,8 @@ const okulApiMock = vi.hoisted(() => ({
   listHolidays: vi.fn(),
   markRoadmapItem: vi.fn(),
   setRoadmapHidden: vi.fn(),
+  // Genel Bakış'taki "Ayrılış Havuzu" kartı yalnız sayıları okur.
+  getLeavePoolSummary: vi.fn(),
 }));
 
 vi.mock("./modules/okul/api", async (importOriginal) => {
@@ -150,6 +152,7 @@ beforeEach(() => {
   const bosSayfa = { count: 0, next: null, previous: null, results: [] };
   okulApiMock.listStudents.mockResolvedValue(bosSayfa);
   okulApiMock.listPersonnel.mockResolvedValue(bosSayfa);
+  okulApiMock.getLeavePoolSummary.mockResolvedValue({ student_count: 0, personnel_count: 0 });
   kipApiMock.durum.mockResolvedValue(YONETICI_KIPI);
 });
 

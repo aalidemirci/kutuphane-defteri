@@ -22,6 +22,7 @@ import { ApiError } from "../../lib/api";
 import Button from "../../ui/Button";
 import Card from "../../ui/Card";
 import { useConfirm } from "../../ui/ConfirmProvider";
+import { useDurumBasligi } from "../../ui/DurumBasligi";
 import Icon from "../../ui/Icon";
 import YedektenGeriYukleme from "./YedektenGeriYukleme";
 import { guvenlikApi } from "./api";
@@ -69,7 +70,7 @@ function SifirlamaKarti({ onSifirlandi }: { onSifirlandi: () => void }) {
 
   return (
     <Card elevation={1} className="p-6">
-      <h2 className="text-title-medium text-on-surface">Henüz kişi kaydı girilmemiş kurulum</h2>
+      <h2 className="text-title-medium text-on-surface">Güvenlik Dosyasını Sıfırlama</h2>
       <p className="mt-2 text-body-medium text-on-surface-variant">{DOSYA_KAYIP_SIFIRLA_METNI}</p>
       {hata && (
         <p role="alert" className="mt-2 text-body-small text-error">
@@ -89,6 +90,7 @@ export default function GuvenlikDosyasiKayip({
   onYenidenDenetle,
   sifirlanabilir = false,
 }: GuvenlikDosyasiKayipProps) {
+  useDurumBasligi(DOSYA_KAYIP_BASLIGI);
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4">
       <Card elevation={1} className="p-6">

@@ -2,7 +2,8 @@
 // docs/sozluk.md §4); kart başlıkları gittikleri sayfanın h1'iyle aynıdır.
 //
 // Kartlar: "Başlangıç Yol Haritası" (kurulumdan sonra sıradaki işler; bütün
-// maddeler tamamlanınca gizlenebilir — tasarım §14.1 F1), modül kartları ve
+// maddeler tamamlanınca gizlenebilir — tasarım §14.1 F1), "Ayrılış Havuzu" (havuz
+// boş değilse "N kişi ayrılış kararı bekliyor" — F1 eki 7), modül kartları ve
 // "Katalog Excel Şablonu" (bir sayfaya gitmez, şablonu indirir — tasarım §8.1;
 // indirme yol haritasının şablon maddesini de işaretler). Diğer pano kartları
 // (temiz kapanış uyarısı…) kendi fazlarında gelir.
@@ -18,6 +19,7 @@ import { useSnackbar } from "../../ui/SnackbarProvider";
 import KatalogSablonuKarti from "../kutuphane/KatalogSablonuKarti";
 import { okulApi } from "../okul/api";
 import type { RoadmapManualItem, SetupStatus } from "../okul/api";
+import AyrilisHavuzuKarti from "./AyrilisHavuzuKarti";
 import BaslangicYolHaritasi from "./BaslangicYolHaritasi";
 
 export default function PanelPage() {
@@ -81,6 +83,8 @@ export default function PanelPage() {
           onGizle={() => void gizle()}
         />
       )}
+      {/* Havuz boşsa görünmez; yalnız sayı okunur (F1 eki 7). */}
+      <AyrilisHavuzuKarti />
       <div className="grid gap-4 sm:grid-cols-2">
         <HubFeatureCard
           to="/kisiler"

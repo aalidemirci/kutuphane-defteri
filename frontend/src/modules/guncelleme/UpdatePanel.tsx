@@ -72,7 +72,7 @@ export default function UpdatePanel() {
       <Card elevation={1} className="p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-title-medium text-on-surface">Uygulama güncellemesi</p>
+            <p className="text-title-medium text-on-surface">Uygulama Güncellemesi</p>
             <p className="mt-1 text-body-medium text-on-surface-variant">
               Yayımlanan son sürüm yalnız “Şimdi denetle” düğmesine bastığınızda denetlenir; program
               açılışta internete çıkmaz. Programın internete çıkan tek isteği budur ve kişisel veri

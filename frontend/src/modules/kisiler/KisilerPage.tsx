@@ -1,11 +1,13 @@
 // Kişiler sayfası (DD kalıbı) — öğrenci, öğretmen ve diğer personel sicillerinin tek
 // ekranı. Sicil sekmelerinde arama/filtre + sayfalama, Dialog içinde elle
-// ekleme-düzenleme, "Ayrıldı olarak işaretle" (ayrılış yolu) ve silme; altta
-// e-Okul listesinden aktarım paneli (önizle → mutabakat → aktar, AktarimPaneli).
+// ekleme-düzenleme, "Ayrıldı olarak işaretle" (ayrılış yolu; kayıt silinmez) ve
+// silme; altta e-Okul listesinden aktarım paneli (önizle → mutabakat → aktar,
+// AktarimPaneli). Üçüncü sekme "Ayrılış Havuzu" (F1 eki 7): aktarım kimseyi ayırmaz,
+// listede bulunmayan kişi orada karar bekler (AyrilisHavuzu).
 // KVKK (tasarım §6.1): TCKN, veli, cinsiyet, fotoğraf, unvan ve branş bu programda
 // HİÇ YOKTUR — sicil ad-soyad + okul no + sınıf/şube (personelde üye türü) ile
 // yürür. Okul no şifreli saklanır: arama numaranın tamamıyla yapılır. Sekme URL'de
-// tutulur (`?tab=personel`): başka ekranlar doğrudan o sekmeye bağlanabilir.
+// tutulur (`?tab=personel`, `?tab=havuz`): başka ekranlar doğrudan o sekmeye bağlanır.
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -37,6 +39,7 @@ import type {
   StudentWriteBody,
 } from "../okul/api";
 import AktarimPaneli from "./AktarimPaneli";
+import AyrilisHavuzu from "./AyrilisHavuzu";
 import { DurumRozeti, ErrorBand, hataOku } from "./ortak";
 import type { SayfaHatasi } from "./ortak";
 
@@ -44,7 +47,7 @@ import type { SayfaHatasi } from "./ortak";
 const PAGE_SIZE = 25;
 
 // TAB_KEYS[0] varsayılan sekmedir (useTabParam fallback) — başa yeni anahtar EKLEME.
-const TAB_KEYS = ["ogrenciler", "personel"] as const;
+const TAB_KEYS = ["ogrenciler", "personel", "havuz"] as const;
 type TabKey = (typeof TAB_KEYS)[number];
 
 // Sözlük: "personel" tek başına öğretmen anlamında kullanılmaz; üye türleri
@@ -52,11 +55,12 @@ type TabKey = (typeof TAB_KEYS)[number];
 const TABS: TabItem[] = [
   { key: "ogrenciler", label: "Öğrenciler", icon: "school" },
   { key: "personel", label: "Öğretmenler ve Diğer Personel", icon: "badge" },
+  { key: "havuz", label: "Ayrılış Havuzu", icon: "pending_actions" },
 ];
 
-/** Ayrılış onayının ortak sonucu cümlesi (F1'de üyelik yok → kayıt silinir). */
+/** Ayrılış onayının ortak sonucu cümlesi (F1 eki 7: ayrılış kaydı silmez). */
 const AYRILIS_SONUCU =
-  "Kütüphane üyeliği ve açık işlemi olmayan kişinin kaydı hemen silinir; kişisel veri saklanmaz. Üyeliği ya da açık işlemi varsa kayıt “Ayrıldı” olarak kalır.";
+  "Kaydı silinmez; sicilde “Ayrıldı · gg.aa.yyyy” rozetiyle kalır, iade etmediği kitap varsa izlenebilir.";
 
 function emptyPage<T>(): Paginated<T> {
   return { count: 0, next: null, previous: null, results: [] };
@@ -92,7 +96,8 @@ export default function KisilerPage() {
           <h1 className="kd-page-title">Kişiler</h1>
           <p className="kd-page-description">
             Öğrenci, öğretmen ve diğer personel sicili. Kayıtlar e-Okul listesinden toplu
-            aktarılabilir ya da tek tek girilebilir. TCKN, veli bilgisi, unvan ve branş bu programda
+            aktarılabilir ya da tek tek girilebilir. Aktarım kimseyi ayırmaz: listede bulunmayanlar
+            Ayrılış Havuzu&apos;nda karar bekler. TCKN, veli bilgisi, unvan ve branş bu programda
             tutulmaz.
           </p>
         </div>
@@ -109,6 +114,7 @@ export default function KisilerPage() {
       <div {...tabPanelProps("kisiler", active)}>
         {active === "ogrenciler" && <OgrencilerSekmesi />}
         {active === "personel" && <PersonelSekmesi />}
+        {active === "havuz" && <AyrilisHavuzu />}
       </div>
     </div>
   );
@@ -226,7 +232,13 @@ function OgrencilerSekmesi() {
     { header: "Sınıf", cell: (s) => s.class_label || "—" },
     {
       header: "Durum",
-      cell: (s) => <DurumRozeti aktif={s.status === "ACTIVE"} leftAt={s.left_at} />,
+      cell: (s) => (
+        <DurumRozeti
+          aktif={s.status === "ACTIVE"}
+          leftAt={s.left_at}
+          havuzda={s.leave_candidate_since !== null}
+        />
+      ),
     },
   ];
 
@@ -234,7 +246,7 @@ function OgrencilerSekmesi() {
     <div className="space-y-[var(--kd-page-gap)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-title-medium text-on-surface">Öğrenci sicili</p>
+          <p className="text-title-medium text-on-surface">Öğrenci Sicili</p>
           {!loading && (
             <p className="text-body-small text-on-surface-variant">
               {formatNumber(page.count)} kayıt
@@ -398,10 +410,8 @@ function OgrenciFormDialog({
     setBusy(true);
     setError(null);
     try {
-      const sonuc = await okulApi.leaveStudent(student.id);
-      snackbar.success(
-        sonuc.deleted ? "Öğrenci ayrıldı; kaydı silindi." : "Öğrenci ayrıldı olarak işaretlendi.",
-      );
+      await okulApi.leaveStudent(student.id);
+      snackbar.success("Öğrenci ayrıldı olarak işaretlendi.");
       onSaved();
     } catch (e) {
       setError(hataOku(e, "Öğrenci ayrıldı olarak işaretlenemedi."));
@@ -458,9 +468,14 @@ function OgrenciFormDialog({
     >
       <div className="space-y-4">
         {error && <ErrorBand hata={error} />}
-        {student && !aktif && (
+        {student && (!aktif || student.leave_candidate_since !== null) && (
           <p className="text-body-medium text-on-surface-variant">
-            Durum: <DurumRozeti aktif={false} leftAt={student.left_at} />
+            Durum:{" "}
+            <DurumRozeti
+              aktif={aktif}
+              leftAt={student.left_at}
+              havuzda={student.leave_candidate_since !== null}
+            />
           </p>
         )}
 
@@ -559,14 +574,23 @@ function PersonelSekmesi() {
   const columns: Column<Personnel>[] = [
     { header: "Ad soyad", cell: (p) => p.full_name },
     { header: "Üye türü", cell: (p) => MEMBER_KIND_TR[p.member_kind] },
-    { header: "Durum", cell: (p) => <DurumRozeti aktif={p.is_active} leftAt={p.left_at} /> },
+    {
+      header: "Durum",
+      cell: (p) => (
+        <DurumRozeti
+          aktif={p.is_active}
+          leftAt={p.left_at}
+          havuzda={p.leave_candidate_since !== null}
+        />
+      ),
+    },
   ];
 
   return (
     <div className="space-y-[var(--kd-page-gap)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-title-medium text-on-surface">Öğretmen ve diğer personel sicili</p>
+          <p className="text-title-medium text-on-surface">Öğretmen ve Diğer Personel Sicili</p>
           {!loading && (
             <p className="text-body-small text-on-surface-variant">
               {formatNumber(page.count)} kayıt
@@ -696,10 +720,8 @@ function PersonelFormDialog({
     setBusy(true);
     setError(null);
     try {
-      const sonuc = await okulApi.leavePersonnel(personnel.id);
-      snackbar.success(
-        sonuc.deleted ? "Kişi ayrıldı; kaydı silindi." : "Kişi ayrıldı olarak işaretlendi.",
-      );
+      await okulApi.leavePersonnel(personnel.id);
+      snackbar.success("Kişi ayrıldı olarak işaretlendi.");
       onSaved();
     } catch (e) {
       setError(hataOku(e, "Kişi ayrıldı olarak işaretlenemedi."));
@@ -755,9 +777,14 @@ function PersonelFormDialog({
     >
       <div className="space-y-4">
         {error && <ErrorBand hata={error} />}
-        {personnel && !aktif && (
+        {personnel && (!aktif || personnel.leave_candidate_since !== null) && (
           <p className="text-body-medium text-on-surface-variant">
-            Durum: <DurumRozeti aktif={false} leftAt={personnel.left_at} />
+            Durum:{" "}
+            <DurumRozeti
+              aktif={aktif}
+              leftAt={personnel.left_at}
+              havuzda={personnel.leave_candidate_since !== null}
+            />
           </p>
         )}
         <TextField

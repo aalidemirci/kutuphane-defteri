@@ -22,7 +22,7 @@
 
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { DOSYA_KAYIP_BASLIGI } from "../guvenlik/metinler";
 import { GOREVLI_EKRANI_BASLIGI } from "../kip/GorevliEkrani";
@@ -98,6 +98,37 @@ describe("KilavuzPage — kabuk ve bölümler", () => {
     });
   });
 
+  // Yol haritasındaki BTR maddesi `/kilavuz#ag-katalogu` adresine gider;
+  // tarayıcı SPA rota değişiminde çapayı kendisi uygulamaz (KilavuzPage uygular).
+  it("çapalı adresle açılınca o bölüme kaydırır", () => {
+    const kaydir = vi.fn();
+    const onceki = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = kaydir;
+    try {
+      render(
+        <MemoryRouter initialEntries={["/kilavuz#ag-katalogu"]}>
+          <KilavuzPage />
+        </MemoryRouter>,
+      );
+      expect(kaydir).toHaveBeenCalledTimes(1);
+      expect(kaydir.mock.instances[0]).toBe(document.getElementById("ag-katalogu"));
+    } finally {
+      Element.prototype.scrollIntoView = onceki;
+    }
+  });
+
+  it("çapasız açılışta kaydırma yapılmaz", () => {
+    const kaydir = vi.fn();
+    const onceki = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = kaydir;
+    try {
+      renderPage();
+      expect(kaydir).not.toHaveBeenCalled();
+    } finally {
+      Element.prototype.scrollIntoView = onceki;
+    }
+  });
+
   it("ekran bağlantıları ilgili sayfaya ve sekmeye gider", () => {
     renderPage();
 
@@ -133,6 +164,10 @@ describe("KilavuzPage — bölüm içerikleri", () => {
       expect(metin).toContain(dugme);
     }
     expect(metin).toContain("Yönetici parolası zorunludur ve bu adım atlanamaz");
+    // F1 eki, karar 2: kurulum anahtar doğrulanmadan tamamlanmaz; iki çıkış yolu.
+    expect(metin).toContain("kurulum bu doğrulama yapılmadan tamamlanmaz");
+    expect(metin).toContain("Kurtarma Anahtarını Doğrula:");
+    expect(metin).toContain("Kurtarma Anahtarını Yenile:");
     expect(metin).toContain("müdürlükte kilitli dolapta saklayın");
     expect(metin).toContain("en az iki görevlendirilmiş kişide bulunsun");
     expect(metin).toContain("0, 1, 8 ve 9 rakamları yoktur");
@@ -183,11 +218,13 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     expect(metin).toContain("3 dakika işlem yapılmazsa");
     expect(metin).toContain("en geç 30 dakika sonra");
     expect(metin).toContain("“Kilitle” her kipte parolasızdır");
-    expect(metin).toContain("Kurtarma anahtarı değişmez");
+    // Kurtarmayla parola yenileme anahtarı değiştirmez; anahtar yalnız istenirse yenilenir.
+    expect(metin).toContain("kurtarma anahtarını DEĞİŞTİRMEZ");
+    expect(metin).toContain("“Kurtarma Anahtarını Yenile”");
     expect(metin).toContain("Pencerenin çarpı düğmesi programı ne kapatır ne kilitler");
   });
 
-  it("kişiler: e-Okul raporları, şube kapsamı, tam liste onayı, ayrılış ve birleştirme", () => {
+  it("kişiler: e-Okul raporları, şube kapsamı, tam liste onayı, ayrılış havuzu ve birleştirme", () => {
     renderPage();
     const metin = bolumMetni("kisiler");
 
@@ -203,7 +240,8 @@ describe("KilavuzPage — bölüm içerikleri", () => {
       "“Önizle”",
       "“Aktar”",
       "“Bu dosya okulun tam listesidir”",
-      "Ayrıldı sayılsın mı?",
+      "“Ayrılış Havuzu”",
+      "“Aktif kalsın”",
       "“Birleştir”",
       "“Öğrenci ekle”",
       "“Kişi ekle”",
@@ -216,13 +254,18 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     expect(metin).toContain("yalnız dosyada bulunan şubelerle");
     expect(metin).toContain("Tek bir şubenin listesini yüklemek diğer şubelere dokunmaz");
     expect(metin).toContain("Dosyada yeni şubesiyle görünen öğrenci ayrılmaz");
+    // Aktarım kimseyi ayırmaz ve silmez (F1 eki 7): karar havuzda verilir.
+    expect(metin).toContain("Aktarım kimseyi okuldan ayırmaz ve kimsenin kaydını silmez.");
+    expect(metin).toContain("durumu aktif kalır");
+    expect(metin).toContain("iade etmediği kitap varsa izlenebilir");
+    expect(metin).toContain("Sınıf” süzgeci yıl sonunda mezun şubeleri bir kerede işaretlemeye");
     // Şube şube yüklemenin bilinen sınırı açıkça söylenir; yıl başında tam liste önerilir.
     expect(metin).toContain(
-      "Başka bir şubeye geçtiği için bu dosyada bulunmayan öğrenci de “ayrılacak” sayılır",
+      "Başka bir şubeye geçtiği için bu dosyada bulunmayan öğrenci de havuza eklenir",
     );
     expect(metin).toContain("okulun bütün şubelerini içeren listeyi tek dosyada yükleyin");
     // Import silmez ilkesi ve okul no yeniden kullanımı.
-    expect(metin).toContain("o satırdaki okul numarasına sahip öğrenci ayrılmış sayılmaz");
+    expect(metin).toContain("o satırdaki okul numarasına sahip öğrenci havuza eklenmez");
     expect(metin).toContain("aynı numara ve aynı adla");
     expect(metin).toContain("Olası aynı kişi");
     expect(metin).toContain("görev sütunu yalnız üye türünü");
@@ -270,10 +313,13 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     const metin = bolumMetni("yedek");
 
     expect(metin).toContain(`“${DOSYA_KAYIP_BASLIGI}” ekranını`);
+    // Yedek AÇILIŞTA alınır; tepside açık kalan programda gün değişimi kapısı
+    // henüz yoktur (desktop/main.py: daily_backup yalnız açılış zincirinde).
+    expect(metin).toContain("Yedek açılışa bağlıdır");
     for (const ad of [
-      "“Şifreli veritabanı yedeği”",
+      "“Şifreli Veritabanı Yedeği”",
       "“Şifreli yedeği indir”",
-      "“Yedekten geri yükle”",
+      "“Yedekten Geri Yükleme”",
       "“Geri yükle”",
       "“Yeniden denetle”",
       "“Güvenlik dosyasını sıfırla ve kuruluma dön”",
@@ -286,6 +332,11 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     expect(metin).toContain("Mevcut veritabanı silinmez");
     expect(metin).toContain("Yedeği bulut depolama hizmetine yüklemeyin");
     expect(metin).toContain("tam disk şifrelemesi değildir");
+    // Anahtar yenileme ve eski yedekler (F1 eki, karar 2-3; backend testiyle kanıtlı).
+    expect(metin).toContain("“Kurtarma Anahtarını Yenile” kartından");
+    expect(metin).toContain("Eski kâğıdı hemen atmayın.");
+    expect(metin).toContain("güvenlik dosyası da yedeğin dönemine döner");
+    expect(metin).toContain("eline geçmiş bir anahtara karşı koruma değildir");
   });
 
   it("Ağ Kataloğu: kişisel veri göstermez, varsayılan kapalı, BTR'nin bilgisi alınır", () => {

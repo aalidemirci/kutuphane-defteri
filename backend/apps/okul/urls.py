@@ -3,16 +3,17 @@
 `setup/status/` hem arayüz kurulum kapısının hem masaüstü sağlık denetiminin
 (`desktop/server.py::HEALTH_PATH`) tek kaynağıdır — yolu değişirse üçü birlikte
 güncellenir. `security/` ön eki kilit kapısından muaftır
-(`lock_middleware.ALLOWED_PREFIXES` ile birebir aynı kalmalıdır); tek istisna
-kurtarma anahtarı çıktısıdır (`LOCKED_DENIED_PATHS`: kilit açmanın yolu
-değildir, kilitliyken anahtar deneme kapısı olmasın).
+(`lock_middleware.ALLOWED_PREFIXES` ile birebir aynı kalmalıdır); istisnalar
+kurtarma anahtarı uçlarıdır — çıktı, doğrulama damgası ve yenileme
+(`LOCKED_DENIED_PATHS`: kilit açmanın yolu değildirler, kilitliyken anahtar ya
+da parola deneme kapısı olmasınlar).
 """
 
 from __future__ import annotations
 
 from django.urls import path
 
-from apps.okul import views, views_calendar, views_mode
+from apps.okul import views, views_calendar, views_mode, views_pool
 
 urlpatterns = [
     # Kurulum sihirbazı
@@ -60,6 +61,14 @@ urlpatterns = [
         views.PersonnelMergeView.as_view(),
         name="personnel-merge",
     ),
+    # Ayrılış havuzu (F1 eki 7): aktarım kimseyi ayırmaz; karar burada verilir.
+    # İkisi de görevli kipinde kapalıdır (izin listesinde yok).
+    path("leave-pool/", views_pool.LeavePoolView.as_view(), name="leave-pool"),
+    path(
+        "leave-pool/resolve/",
+        views_pool.LeavePoolResolveView.as_view(),
+        name="leave-pool-resolve",
+    ),
     path("class-sections/", views.ClassSectionListCreateView.as_view(), name="class-section-list"),
     path(
         "class-sections/<int:pk>/",
@@ -102,6 +111,19 @@ urlpatterns = [
         "security/recovery-key/pdf/",
         views.SecurityRecoveryKeyPdfView.as_view(),
         name="security-recovery-key-pdf",
+    ),
+    # Kurtarma anahtarının saklandığını doğrulama ve anahtarı yenileme (F1 eki,
+    # karar 2). İkisi de kilit açma yolu değildir: kilitliyken KAPALI
+    # (LOCKED_DENIED_PATHS); görevli kipinde kapalı (izin listesinde yok).
+    path(
+        "security/recovery-key/confirm/",
+        views.SecurityRecoveryKeyConfirmView.as_view(),
+        name="security-recovery-key-confirm",
+    ),
+    path(
+        "security/recovery-key/renew/",
+        views.SecurityRecoveryKeyRenewView.as_view(),
+        name="security-recovery-key-renew",
     ),
     # "Güvenlik dosyasını sıfırla ve kuruluma dön" — yalnız korunan veri yokken (409 aksi).
     path(

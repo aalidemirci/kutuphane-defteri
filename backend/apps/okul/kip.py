@@ -49,6 +49,23 @@ GÖREVLİ'ye iner:
 Kalan süre sıfıra ulaştığı anda kip iner (fail-closed: sınır anı görevli
 sayılır). Saat enjekte edilebilir; varsayılan `UykuyuSayanSaat`tir.
 
+KURULUM BİTENE KADAR SÜRELER KİPİ DÜŞÜRMEZ (F1 eki, 22.09.2026 kullanıcı kararı
+2-1). Sihirbazın ilk adımında kurtarma anahtarı ekrandadır; boşta süre dolup
+görevli kipine inmek kullanıcıyı anahtar saklanmadan ekrandan atıyordu.
+`SchoolConfig.setup_completed` yanlışken tembel dolum uygulanmaz. Veritabanına
+iki yerden sorulur: süre dolacağı anda (sıcak yol) ve kip özetinde (geri sayım
+gösterilecek mi?). Soru UCUZDUR ve TÜKENİR: olumlu yanıt `_kurulum_tamam_mi`
+içinde önbelleğe alınır (kurulum tek yönlüdür), yani kurulumu bitmiş bir
+programda hiç sorulmaz — sorgu yalnız sihirbaz açıkken koşar. Kurulum
+sürüyorsa iki sayaç yeniden başlar ve kip yönetici kalır, böylece sıcak yolda
+bir sonraki soru en erken bir boşta süre sonradır.
+Veritabanı okunamazsa kurulum tamamlanmış sayılır (fail-closed: süreler işler).
+Elle "Görevli kipine geç" ve "Kilitle" kurulum sırasında da çalışır (bekleyen
+anahtar ön yüzün modül belleğindedir, `guvenlik/bekleyenAnahtar.ts`). Özet
+(`ozet`) kurulum sürerken kalan süreleri boş verir: üst çubuktaki geri sayım
+görünmez. `setup/complete/` başarılı olunca sayaçlar sıfırdan başlar
+(`sureleri_yeniden_baslat`): kurulumu bitiren yönetici tam süreyle devam eder.
+
 SAAT: UYKU DA SÜREDİR. Tasarım §4.5 kapak kapatmayı ve kullanıcının başlattığı
 uykuyu engellemez. `time.monotonic` Linux'ta (Pardus) `CLOCK_MONOTONIC`tır ve
 askıya alınan süreyi SAYMAZ: yönetici kipindeyken uyutulup ertesi sabah
@@ -67,8 +84,9 @@ fail-closed, yönetici parolayı yeniden girer); geri sıçrarsa monoton ilerlem
 kullanılır, süre UZAMAZ.
 
 Ara katman (sıcak yol) `gorevli_mi()` kullanır: yalnız bellekteki anahtara ve
-bu nesnenin durumuna bakar, güvenlik dosyasına ve veritabanına dokunmaz. Tam
-durum (`durum()`, `ozet()`) kip uçlarında ve tepside sorulur.
+bu nesnenin durumuna bakar, güvenlik dosyasına hiç dokunmaz; veritabanına da
+yalnız yukarıdaki dar kapıda (süre dolduğu an, kurulumun bittiği görülene dek)
+gider. Tam durum (`durum()`, `ozet()`) kip uçlarında ve tepside sorulur.
 """
 
 from __future__ import annotations
@@ -80,6 +98,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Final, Literal
 
+from django.db import DatabaseError
+
+from apps.okul.models import SchoolConfig
 from apps.okul.services import app_password
 from shared import crypto
 
@@ -112,6 +133,22 @@ def kip_sureleri() -> KipSureleri:
     değerlendirmede çağırır: ayar değişikliği yeniden başlatma istemez.
     """
     return KipSureleri(bosta_sn=VARSAYILAN_BOSTA_DK * 60, mutlak_sn=VARSAYILAN_MUTLAK_DK * 60)
+
+
+def kurulum_tamamlandi_mi() -> bool:
+    """Kurulum sihirbazı tamamlandı mı? (`SchoolConfig.setup_completed`)
+
+    Yalnız süre dolacağı anda ve kip özetinde sorulur, olumlu yanıt da bir kez
+    sorulur (`KipDurumu._kurulum_tamam_mi`; modül başlığı). Satır yoksa kurulum
+    sürüyordur. Veritabanı okunamazsa DOĞRU döner (fail-closed: süreler işler,
+    kip görevliye iner).
+    """
+    try:
+        return SchoolConfig.objects.filter(
+            pk=SchoolConfig.SINGLETON_PK, setup_completed=True
+        ).exists()
+    except DatabaseError:
+        return True
 
 
 class KipGecisHatasi(Exception):
@@ -176,8 +213,9 @@ class UykuyuSayanSaat:
 class KipDurumu:
     """Süreç içi kip durumu (T16). İş parçacığı güvenlidir (RLock).
 
-    `saat` ve `sureler` testte taklit edilir; üretimde varsayılanlar kullanılır
-    (saat verilmezse her nesneye yeni bir `UykuyuSayanSaat`).
+    `saat`, `sureler` ve `kurulum_tamam` testte taklit edilir; üretimde
+    varsayılanlar kullanılır (saat verilmezse her nesneye yeni bir
+    `UykuyuSayanSaat`; kurulum bilgisi veritabanından).
     """
 
     def __init__(
@@ -185,17 +223,34 @@ class KipDurumu:
         *,
         saat: Callable[[], float] | None = None,
         sureler: Callable[[], KipSureleri] = kip_sureleri,
+        kurulum_tamam: Callable[[], bool] = kurulum_tamamlandi_mi,
     ) -> None:
         self._kilit = threading.RLock()
         self._saat: Callable[[], float] = saat if saat is not None else UykuyuSayanSaat()
         self._sureler = sureler
+        self._kurulum_tamam = kurulum_tamam
         self._gorevli = False
         self._son_etkinlik = 0.0
         self._yonetici_baslangic = 0.0
         # Son görülen `crypto.key_epoch()`; None = henüz hiç açılış görülmedi.
         self._gorulen_epoch: int | None = None
+        # Kurulumun tamamlandığı BİR KEZ görüldü mü? (aşağıya bakın)
+        self._kurulum_gorulen = False
 
     # ------------------------------------------------------------ iç yardımcılar
+    def _kurulum_tamam_mi(self) -> bool:
+        """Kurulum tamamlandı mı? DOĞRU yanıt görülünce bir daha SORULMAZ.
+
+        Kurulum tek yönlüdür (`setup/complete/` sonrası geri alınmaz; yedekten
+        geri yükleme zaten yeniden başlatma kapısından geçer), bu yüzden olumlu
+        yanıt önbelleğe alınır. Böylece kurulumu bitmiş bir programda ne sıcak
+        yol ne de 15 saniyede bir gelen kip özeti veritabanına gider; sorgu
+        yalnız sihirbaz açıkken, o da kısa bir süre boyunca koşar.
+        """
+        if not self._kurulum_gorulen and self._kurulum_tamam():
+            self._kurulum_gorulen = True
+        return self._kurulum_gorulen
+
     def _yoneticiye_ata(self, simdi: float) -> None:
         self._gorevli = False
         self._son_etkinlik = simdi
@@ -219,6 +274,11 @@ class KipDurumu:
             simdi - self._son_etkinlik >= sureler.bosta_sn
             or simdi - self._yonetici_baslangic >= sureler.mutlak_sn
         ):
+            if not self._kurulum_tamam_mi():
+                # Kurulum sürüyor: süre kipi düşürmez, sayaçlar yeniden başlar
+                # (veritabanına en erken bir boşta süre sonra yeniden sorulur).
+                self._yoneticiye_ata(simdi)
+                return YONETICI
             self._gorevli = True
             return GOREVLI
         return YONETICI
@@ -241,7 +301,9 @@ class KipDurumu:
     def gorevli_mi(self) -> bool:
         """Ara katmanın sıcak yolu: kilit açık VE kip görevli mi?
 
-        Güvenlik dosyasına ve veritabanına bakmaz (her API isteğinde çağrılır).
+        Güvenlik dosyasına bakmaz (her API isteğinde çağrılır). Veritabanına da
+        yalnız süre dolduğu anda ve yalnız kurulumun bittiği görülene dek gider
+        (`_kurulum_tamam_mi`); kurulumu bitmiş programda sorgu hiç koşmaz.
         Kilitli durum zaten kilit kapısında (423) kesilir. Kayıp durumda kilit
         kapısı çıkış yollarını (yedek listesi, geri yükleme) geçirir; kip kapısı
         bu yüzden RED yolunda dosya kaybını ayrıca sorar (`kip_middleware`).
@@ -255,6 +317,10 @@ class KipDurumu:
         """`GET security/mode/` yanıtı. Kalan süreler yalnız yönetici kipinde doludur.
 
         Arayüzdeki geri sayım yalnız GÖRSELDİR; karar her istekte sunucuda verilir.
+        Kurulum sürerken süreler işlemediği için kalan süreler boştur (geri sayım
+        gösterilmez; modül başlığı). Ön yüz bu ucu 15 saniyede bir yokladığından
+        kurulum bilgisi `_kurulum_tamam_mi` ile sorulur: kurulum bittikten sonra
+        veritabanına hiç gidilmez.
         """
         with self._kilit:
             simdi = self._saat()
@@ -262,7 +328,7 @@ class KipDurumu:
             sureler = self._sureler()
             bosta_kalan: int | None = None
             mutlak_kalan: int | None = None
-            if durum == YONETICI:
+            if durum == YONETICI and self._kurulum_tamam_mi():
                 bosta_kalan = _kalan_sn(self._son_etkinlik + sureler.bosta_sn - simdi)
                 mutlak_kalan = _kalan_sn(self._yonetici_baslangic + sureler.mutlak_sn - simdi)
             return {
@@ -322,21 +388,39 @@ class KipDurumu:
             self._yoneticiye_ata(self._saat())
             return YONETICI
 
+    def sureleri_yeniden_baslat(self) -> None:
+        """Yönetici kipindeyse iki sayacı sıfırdan başlatır (`setup/complete/` sonrası).
+
+        Kurulum sürerken süreler işlemez; kurulum tamamlanınca yönetici tam
+        süreyle devam eder. Görevli, kilitli ya da başka durumda etkisizdir.
+        """
+        with self._kilit:
+            if not crypto.is_unlocked():
+                return
+            simdi = self._saat()
+            if self._kip_hesapla(simdi) == YONETICI:
+                self._yoneticiye_ata(simdi)
+
     # ------------------------------------------------------------ test desteği
     def _reset_for_tests(
         self,
         *,
         saat: Callable[[], float] | None = None,
         sureler: Callable[[], KipSureleri] | None = None,
+        kurulum_tamam: Callable[[], bool] | None = None,
     ) -> None:
         """Yalnız testler için: tekil süreç içi olduğundan durum testler arasında sızar."""
         with self._kilit:
             self._saat = saat if saat is not None else UykuyuSayanSaat()
             self._sureler = sureler if sureler is not None else kip_sureleri
+            self._kurulum_tamam = (
+                kurulum_tamam if kurulum_tamam is not None else kurulum_tamamlandi_mi
+            )
             self._gorevli = False
             self._son_etkinlik = 0.0
             self._yonetici_baslangic = 0.0
             self._gorulen_epoch = None
+            self._kurulum_gorulen = False
 
 
 def _kalan_sn(deger: float) -> int:

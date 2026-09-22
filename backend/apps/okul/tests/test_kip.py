@@ -3,13 +3,19 @@
 Varsayılan test ortamı (kök `conftest.py`): yönetici parolası kurulu + kilit
 açık. Saat taklit edilir (`SahteSaat`); parola doğrulaması `verify_password`
 sözleşmesine göre taklit edilir (gerçek doğrulama `test_kip_uclari.py`'de).
+
+Bu dosyada kurulum TAMAMLANMIŞ başlanır (`kurulum_tamamlanmis`, otomatik):
+kurulum bitene kadar süreler kipi düşürmez (F1 eki, karar 2-1); o davranış
+`TestKurulumSurerken` sınıfındadır.
 """
 
 from __future__ import annotations
 
 import time
+from typing import Any
 
 import pytest
+from django.db import DatabaseError
 
 from apps.okul import kip as kip_modulu
 from apps.okul.kip import (
@@ -25,20 +31,29 @@ from apps.okul.kip import (
     kip_sureleri,
     uykuyu_sayan_monoton_kaynak,
 )
+from apps.okul.models import SchoolConfig
 from apps.okul.services import app_password
 from apps.okul.tests.kip_ortak import (
     DOGRU_PAROLA,
     YANLIS_PAROLA,
     SahteSaat,
+    kurulum_durumunu_yaz,
     sahte_dogrulayici,
 )
 from shared import crypto
 
-# `parolasiz` ortamında `is_password_set()` DB'deki parmak izine bakar.
+# `parolasiz` ortamında `is_password_set()` DB'deki parmak izine bakar; kurulum
+# bilgisi de (`setup_completed`) DB'dedir.
 pytestmark = pytest.mark.django_db
 
 BOSTA = 3 * 60
 MUTLAK = 30 * 60
+
+
+@pytest.fixture(autouse=True)
+def kurulum_tamamlanmis(db: None) -> None:
+    """Süre testleri kurulumu tamamlanmış ortamda koşar (modül başlığı)."""
+    kurulum_durumunu_yaz(tamam=True)
 
 
 @pytest.fixture
@@ -277,6 +292,136 @@ class TestSureler:
         assert kip.durum() == YONETICI
         sureler[0] = KipSureleri(bosta_sn=60, mutlak_sn=MUTLAK)  # ayar değişti (F6)
         assert kip.durum() == GOREVLI
+
+
+# ============================================================ kurulum sürerken
+
+
+class TestKurulumSurerken:
+    """Kurulum bitene kadar süreler kipi düşürmez (F1 eki, 22.09.2026 kararı 2-1)."""
+
+    @pytest.fixture(autouse=True)
+    def kurulum_suruyor(self, kurulum_tamamlanmis: None) -> None:
+        kurulum_durumunu_yaz(tamam=False)
+
+    def test_bosta_ve_mutlak_sure_kipi_dusurmez(self, kip: KipDurumu, saat: SahteSaat) -> None:
+        assert kip.durum() == YONETICI
+        saat.ilerlet(BOSTA + 1)
+        assert kip.durum() == YONETICI
+        assert kip.gorevli_mi() is False
+        for _ in range(MUTLAK // 60 + 5):  # mutlak süreyi de aşan etkinliksiz bekleme
+            saat.ilerlet(60)
+            assert kip.durum() == YONETICI
+
+    def test_ozet_kalan_sureleri_bos_verir(self, kip: KipDurumu, saat: SahteSaat) -> None:
+        """Geri sayım gösterilmez: süre işlemiyor."""
+        kip.durum()
+        saat.ilerlet(40)
+        ozet = kip.ozet()
+        assert ozet["durum"] == YONETICI
+        assert ozet["bosta_kalan_sn"] is None
+        assert ozet["mutlak_kalan_sn"] is None
+        assert ozet["bosta_dk"] == 3
+
+    def test_elle_gorevli_kipine_gecis_ve_kilitle_calisir(self, kip: KipDurumu) -> None:
+        assert kip.gorevliye_gec() == GOREVLI
+        assert kip.durum() == GOREVLI
+        app_password.lock()
+        assert kip.durum() == KILITLI
+
+    def test_kurulum_tamamlaninca_sureler_islemeye_baslar(
+        self, kip: KipDurumu, saat: SahteSaat
+    ) -> None:
+        kip.durum()
+        saat.ilerlet(BOSTA + 30)
+        assert kip.durum() == YONETICI
+        kurulum_durumunu_yaz(tamam=True)
+        saat.ilerlet(BOSTA)
+        assert kip.durum() == GOREVLI
+
+    def test_kurulum_bilgisi_yalniz_sure_dolarken_sorulur(self, saat: SahteSaat) -> None:
+        """Sıcak yol hafif kalır: süre dolmadıkça veritabanına sorulmaz."""
+        sorgular: list[float] = []
+
+        def kurulum_tamam() -> bool:
+            sorgular.append(saat())
+            return False
+
+        kip = KipDurumu(saat=saat, kurulum_tamam=kurulum_tamam)
+        assert kip.durum() == YONETICI  # açılış: iki sayaç şimdi başlar
+        for _ in range(BOSTA // 10 - 1):
+            saat.ilerlet(10)
+            kip.gorevli_mi()
+            kip.durum()
+        assert sorgular == []
+        saat.ilerlet(10)  # boşta süre doldu: bir kez sorulur, sayaçlar yeniden başlar
+        assert kip.gorevli_mi() is False
+        assert len(sorgular) == 1
+        for _ in range(BOSTA // 10 - 1):
+            saat.ilerlet(10)
+            kip.gorevli_mi()
+        assert len(sorgular) == 1
+
+    def test_kip_ozeti_kurulum_bitince_veritabanina_gitmez(self, saat: SahteSaat) -> None:
+        """Ön yüz kip özetini 15 saniyede bir yoklar (`useKip`): sorgu TÜKENMELİDİR.
+
+        Kurulum sürerken geri sayımın gizlenmesi için her özette sorulur (kısa
+        ömürlü: yalnız sihirbaz açıkken). Kurulumun bittiği bir kez görülünce
+        özet de sıcak yol da bir daha veritabanına gitmez.
+        """
+        bitti = False
+        sorgular: list[float] = []
+
+        def kurulum_tamam() -> bool:
+            sorgular.append(saat())
+            return bitti
+
+        kip = KipDurumu(saat=saat, kurulum_tamam=kurulum_tamam)
+        for _ in range(5):
+            saat.ilerlet(15)  # KIP_YOKLAMA_MS = 15 sn; boşta süre (180 sn) dolmaz
+            assert kip.ozet()["bosta_kalan_sn"] is None
+        assert len(sorgular) == 5
+
+        bitti = True
+        sorgular.clear()
+        for _ in range(5):
+            saat.ilerlet(15)
+            assert kip.ozet()["bosta_kalan_sn"] is not None
+        assert len(sorgular) == 1
+        assert kip.gorevli_mi() is False
+        assert len(sorgular) == 1
+
+    def test_veritabani_okunamazsa_kurulum_tamam_sayilir(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Fail-closed: kurulum bilgisi okunamazsa süreler işler."""
+
+        def patlat(*_a: object, **_k: object) -> None:
+            raise DatabaseError("disk I/O error")
+
+        monkeypatch.setattr(SchoolConfig.objects, "filter", patlat)
+        assert kip_modulu.kurulum_tamamlandi_mi() is True
+
+    def test_kurulum_bilgisi_veritabanindan_okunur(self) -> None:
+        assert kip_modulu.kurulum_tamamlandi_mi() is False
+        kurulum_durumunu_yaz(tamam=True)
+        assert kip_modulu.kurulum_tamamlandi_mi() is True
+        satirlar: Any = SchoolConfig.all_objects.all()  # SoftDeleteQuerySet (stub'sız yönetici)
+        satirlar.hard_delete()  # satır yok: kurulum sürüyor
+        assert kip_modulu.kurulum_tamamlandi_mi() is False
+
+
+def test_sureleri_yeniden_baslat_yalniz_yonetici_kipinde_etkilidir(saat: SahteSaat) -> None:
+    kip = KipDurumu(saat=saat)
+    kip.durum()
+    saat.ilerlet(BOSTA - 10)
+    kip.sureleri_yeniden_baslat()
+    ozet = kip.ozet()
+    assert ozet["bosta_kalan_sn"] == BOSTA
+    assert ozet["mutlak_kalan_sn"] == MUTLAK
+    kip.gorevliye_gec()
+    kip.sureleri_yeniden_baslat()
+    assert kip.durum() == GOREVLI
 
 
 # ============================================================ özet
