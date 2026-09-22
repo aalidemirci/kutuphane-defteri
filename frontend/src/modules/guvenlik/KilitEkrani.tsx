@@ -1,7 +1,7 @@
-// Kilit ekranı (F5-D5) — uygulama parolası kuruluyken programın ilk yüzü.
-// OYS'de karşılığı YOK (orada Google/JWT girişi vardır); bu ekran authsuz tek
-// kullanıcılı programın TEK kapısıdır: kimlik doğrulamaz, yalnız kayıtların
-// şifresini çözecek anahtarı belleğe aldırır.
+// Kilit ekranı — yönetici parolası kuruluyken programın ilk yüzü (tasarım §4.4).
+// OYS'de karşılığı YOK (orada Google/JWT girişi vardır); bu ekran hesapsız
+// programın kilit kapısıdır: kimlik doğrulamaz, yalnız kayıtların şifresini
+// çözecek anahtarı belleğe aldırır. Açılış yönetici kipine götürür.
 //
 // İki yol sunar: parola VE (parola unutulduysa) kurtarma anahtarı. İkincisi
 // yeni parola belirlemeyi de zorunlu kılar — kurtarma bir kerelik giriş değil,
@@ -12,10 +12,14 @@ import type { FormEvent } from "react";
 
 import Button from "../../ui/Button";
 import Card from "../../ui/Card";
+import { useDurumBasligi } from "../../ui/DurumBasligi";
 import Icon from "../../ui/Icon";
 import TextField from "../../ui/TextField";
 import { guvenlikApi } from "./api";
 import { KAPSAM_METNI, YARIM_GECIS_METNI } from "./metinler";
+
+/** Ekranın h1'i — üst çubukta da bu yazar (docs/sozluk.md §4.2). */
+export const KILIT_EKRANI_BASLIGI = "Kayıtlar kilitli";
 
 interface KilitEkraniProps {
   /** Kilit açıldığında çağrılır (kapı içeriği göstermeye geçer). */
@@ -29,6 +33,7 @@ function hataMesaji(err: unknown, varsayilan: string): string {
 }
 
 export default function KilitEkrani({ onAcildi, yarimGecis = false }: KilitEkraniProps) {
+  useDurumBasligi(KILIT_EKRANI_BASLIGI);
   const [kurtarmaKipi, setKurtarmaKipi] = useState(false);
   const [parola, setParola] = useState("");
   const [kurtarmaAnahtari, setKurtarmaAnahtari] = useState("");
@@ -62,7 +67,7 @@ export default function KilitEkrani({ onAcildi, yarimGecis = false }: KilitEkran
       <Card elevation={1} className="w-full max-w-md p-6">
         <div className="mb-4 flex items-center gap-3">
           <Icon name="lock" size="lg" className="text-primary" />
-          <h1 className="text-headline-small text-on-surface">Kayıtlar kilitli</h1>
+          <h1 className="text-headline-small text-on-surface">{KILIT_EKRANI_BASLIGI}</h1>
         </div>
 
         {yarimGecis && (
@@ -95,7 +100,7 @@ export default function KilitEkrani({ onAcildi, yarimGecis = false }: KilitEkran
             </>
           ) : (
             <TextField
-              label="Uygulama parolası"
+              label="Yönetici parolası"
               type="password"
               value={parola}
               onChange={(e) => setParola(e.target.value)}

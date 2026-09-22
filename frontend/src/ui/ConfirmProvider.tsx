@@ -7,8 +7,14 @@
 //   const confirm = useConfirm();
 //   if (!(await confirm({ message: "'X' silinsin mi?", confirmLabel: "Sil" }))) return;
 // Onayla → Promise true; Vazgeç / ESC / scrim → false.
+//
+// İKİNCİ DOĞRULAMA (`acknowledgeLabel`, TB18): geri alınamayan ve kararı PROGRAMIN
+// DEĞİL kullanıcının verdiği işlemlerde (ör. "olası aynı kişi" birleştirmesi —
+// aday yalnız ad benzerliğiyle bulunur, adaş olabilir) onay düğmesi kutu
+// işaretlenmeden etkinleşmez. Kutu her açılışta boştur: bir önceki onayın
+// işareti sonrakine devredilmez.
 
-import { createContext, useCallback, useContext, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import Button from "./Button";
@@ -23,6 +29,11 @@ export interface ConfirmOptions {
   confirmLabel?: string;
   /** İptal butonu etiketi (varsayılan "Vazgeç"). */
   cancelLabel?: string;
+  /**
+   * Verilirse onay düğmesi bu kutu işaretlenmeden KAPALI kalır (geri alınamayan,
+   * kullanıcının kendi bilgisiyle doğrulaması gereken işlemler — TB18).
+   */
+  acknowledgeLabel?: string;
 }
 
 type ConfirmFn = (options: ConfirmOptions) => Promise<boolean>;
@@ -37,6 +48,8 @@ export function useConfirm(): ConfirmFn {
 
 export function ConfirmProvider({ children }: { children: ReactNode }) {
   const [options, setOptions] = useState<ConfirmOptions | null>(null);
+  const [dogrulandi, setDogrulandi] = useState(false);
+  const dogrulamaId = useId();
   // Bekleyen Promise'in resolve'u — StrictMode state-updater'ı iki kez çağırdığı
   // için resolve'u updater İÇİNDE değil, olay işleyicide ref üzerinden çağırırız
   // (aksi halde Promise iki kez resolve olur).
@@ -58,6 +71,13 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
     resolve?.(ok);
   }, []);
 
+  // Her açılışta kutu boşalır (önceki onayın işareti devredilmez).
+  useEffect(() => {
+    if (options !== null) setDogrulandi(false);
+  }, [options]);
+
+  const dogrulamaGerekli = options?.acknowledgeLabel !== undefined;
+
   return (
     <ConfirmContext.Provider value={confirm}>
       {children}
@@ -70,13 +90,32 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
             <Button variant="text" onClick={() => close(false)}>
               {options?.cancelLabel ?? "Vazgeç"}
             </Button>
-            <Button variant="filled" onClick={() => close(true)}>
+            <Button
+              variant="filled"
+              disabled={dogrulamaGerekli && !dogrulandi}
+              onClick={() => close(true)}
+            >
               {options?.confirmLabel ?? "Onayla"}
             </Button>
           </>
         }
       >
         {options?.message}
+        {options?.acknowledgeLabel !== undefined && (
+          <label
+            htmlFor={dogrulamaId}
+            className="mt-4 flex items-start gap-3 rounded-shape-sm bg-surface-container px-3 py-2 text-body-medium text-on-surface"
+          >
+            <input
+              id={dogrulamaId}
+              type="checkbox"
+              checked={dogrulandi}
+              onChange={(e) => setDogrulandi(e.target.checked)}
+              className="mt-0.5 size-5 shrink-0 accent-primary"
+            />
+            <span>{options.acknowledgeLabel}</span>
+          </label>
+        )}
       </Dialog>
     </ConfirmContext.Provider>
   );

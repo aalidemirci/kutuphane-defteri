@@ -24,16 +24,15 @@ _MESSAGE = "Veri dosyası bozuk görünüyor; program veriyi korumak için açı
 
 
 def _hint(backup_dir: Path | None) -> str:
-    """Yol daima geri yükleme kipine çıkar: `--geri-yukle` düz VE şifreli yedeği
-    açar (şifrelide uygulama parolası ya da kurtarma anahtarı sorulur); elle
-    kopyalama tarifi kaldırıldı — şifreli `.kdbak` için zaten çalışmıyordu."""
+    """Yol daima geri yükleme kipine çıkar: `--geri-yukle` şifreli yedeği açar
+    (yönetici parolası ya da kurtarma anahtarı sorulur; düz yedek dalı yok);
+    elle kopyalama tarifi kaldırıldı — şifreli `.kdbak` için çalışmaz."""
     yol = (
         "Son sağlam yedeği geri yüklemek için Başlat menüsündeki "
         "'Kütüphane Defteri — Yedekten Geri Yükle' kısayolunu çalıştırın "
         "(veya komut satırından: kutuphane-defteri --geri-yukle). Yedek listeden "
-        "seçilir; şifreli yedekler için uygulama parolanız ya da kurtarma "
-        "anahtarınız sorulur. Bozuk dosya silinmez; 'db-onceki-*' adıyla veri "
-        "klasöründe saklanır."
+        "seçilir; yönetici parolanız ya da kurtarma anahtarınız sorulur. Bozuk "
+        "dosya silinmez; 'db-onceki-*' adıyla veri klasöründe saklanır."
     )
     if backup_dir is None:
         return yol

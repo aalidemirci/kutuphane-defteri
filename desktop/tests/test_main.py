@@ -72,7 +72,9 @@ def izlenen_adimlar(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     monkeypatch.setattr(main_mod, "ensure_stamp_compatible", kaydet("surum-damgasi"))
     monkeypatch.setattr(main_mod, "check_database_integrity", kaydet("butunluk"))
     monkeypatch.setattr(main_mod, "encrypt_legacy_backups", kaydet("eski-yedekleri-sifrele", []))
-    monkeypatch.setattr(main_mod, "daily_backup", kaydet("gunluk-yedek"))
+    monkeypatch.setattr(
+        main_mod, "daily_backup", kaydet("gunluk-yedek", Path("gunluk-2026-09-22.kdbak"))
+    )
     monkeypatch.setattr(main_mod, "rotate_backups", kaydet("rotasyon", []))
     monkeypatch.setattr(main_mod, "prepare_django", kaydet("django-hazirla"))
     monkeypatch.setattr(main_mod, "has_pending_migrations", kaydet("bekleyen-goc-var-mi", True))
@@ -99,6 +101,24 @@ def test_acilis_sirasi_tasarimla_birebir(tmp_path: Path, izlenen_adimlar: list[s
         "goc",
         "damga-yaz",
     ]
+
+
+def test_gunluk_yedek_alinmadiysa_rotasyon_kosmaz(
+    tmp_path: Path, izlenen_adimlar: list[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Yedek atlandıysa (parola yok, anahtar bozuk, guvenlik.json kayıp) eski yedekler
+    silinmez: kayıp kilidinden çıkış yolu onlardır (GA-2)."""
+
+    def yedek_atlandi(*args: Any, **kwargs: Any) -> None:
+        izlenen_adimlar.append("gunluk-yedek")
+
+    monkeypatch.setattr(main_mod, "daily_backup", yedek_atlandi)
+    paths = resolve_app_paths(environ={ENV_APP_HOME: str(tmp_path)})
+
+    main_mod.prepare_data(paths, "0.1.0")
+
+    assert "gunluk-yedek" in izlenen_adimlar
+    assert "rotasyon" not in izlenen_adimlar
 
 
 def test_bekleyen_goc_yoksa_ek_yedek_alinmaz(
@@ -582,7 +602,8 @@ def test_autotest_kipi_gercek_acilisi_dogrular(tmp_path: Path) -> None:
     assert (tmp_path / "data" / "db.sqlite3").is_file()
     assert (tmp_path / "data" / "surum.json").is_file()
     assert (tmp_path / "logs" / "uygulama.log").is_file()
-    # İlk açılışta veritabanı henüz yoktu → günlük yedek bir sonraki açılışta alınır.
+    # İlk açılışta veritabanı henüz yoktu → yedek yok; ilk yedek yönetici parolası
+    # kurulduktan sonraki açılışta alınır.
     assert (tmp_path / "backups").is_dir()
     # T15: düzenli çıkış işareti yazar; ilk açılış alarm vermez.
     assert (tmp_path / "data" / MARKER_FILE_NAME).is_file()
@@ -592,7 +613,10 @@ def test_autotest_kipi_gercek_acilisi_dogrular(tmp_path: Path) -> None:
 
 
 @pytest.mark.slow
-def test_ikinci_acilis_gunluk_yedegi_alir(tmp_path: Path) -> None:
+def test_parola_kurulmadan_ikinci_acilista_gunluk_yedek_atlanir(tmp_path: Path) -> None:
+    """Tasarım §6.3-6: ilk açılışta `yedekleme.json` (ve kişi verisi) yokken günlük
+    yedek ATLANIR; düz kopya hiçbir koşulda yazılmaz. İlk yedek, yönetici parolası
+    kurulduktan sonraki açılışta şifreli alınır."""
     for _ in range(2):
         sonuc = subprocess.run(  # noqa: S603 — sabit argümanlar, kabuk yok
             [
@@ -615,10 +639,10 @@ def test_ikinci_acilis_gunluk_yedegi_alir(tmp_path: Path) -> None:
     assert "Önceki oturum düzenli kapanmış." in gunluk
     assert (tmp_path / "data" / MARKER_FILE_NAME).is_file()
 
-    # KS K9 iki kip: parolasız kipte günlük yedek ATLANMAZ — düz `.kdbak` alınır.
-    yedekler = list((tmp_path / "backups").glob("gunluk-*.kdbak"))
-    assert len(yedekler) == 1
-    assert yedekler[0].read_bytes().startswith(b"SQLite format 3")
+    # Parola kurulmadı → yedek anahtarı yok → yedek atlandı; düz kopya da yok.
+    assert not (tmp_path / "data" / "yedekleme.json").exists()
+    assert not list((tmp_path / "backups").glob("gunluk-*"))
+    assert "yedek alınmadı" in gunluk
 
 
 def _autotest_sureci(tmp_path: Path) -> subprocess.Popen[str]:

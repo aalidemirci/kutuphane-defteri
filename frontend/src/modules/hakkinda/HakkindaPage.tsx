@@ -67,7 +67,7 @@ export default function HakkindaPage() {
           </span>
           <div>
             <h2 className="text-title-large font-semibold text-on-surface">
-              Ücretsiz ve ticari olmayan kullanım
+              Ücretsiz ve Ticari Olmayan Kullanım
             </h2>
             <p className="mt-2 text-body-medium text-on-surface-variant">
               Bu sürüm <strong>PolyForm Noncommercial License 1.0.0</strong> ile sunulur. Eğitim
@@ -107,7 +107,7 @@ export default function HakkindaPage() {
             <Icon name="shield_lock" size="xl" />
           </span>
           <div>
-            <h2 className="text-title-large font-semibold text-on-surface">Teknik bilgiler</h2>
+            <h2 className="text-title-large font-semibold text-on-surface">Teknik Bilgiler</h2>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-body-medium text-on-surface-variant">
               <li>
                 Program çevrimdışı çalışır; veriler yalnız bu bilgisayarda tutulur. Program açılışta
@@ -115,13 +115,15 @@ export default function HakkindaPage() {
                 bastığınızda yayımlanan son sürümü soran anonim denetimdir.
               </li>
               <li>
-                Parola kurulduğunda öğrenci ve öğretmen ad-soyadları Fernet (AES-128-CBC +
-                HMAC-SHA256) ile şifrelenir; şifreleme anahtarı, parolanızdan Argon2id ile türetilen
-                anahtarla korunur.
+                Öğrenci, öğretmen ve diğer personelin ad-soyadları ile öğrencilerin okul numaraları
+                Fernet (AES-128-CBC + HMAC-SHA256) ile şifrelenir; şifreleme anahtarı, yönetici
+                parolasından Argon2id ile türetilen anahtarla korunur. Okul numarasıyla arama ve
+                e-Okul eşleştirmesi, aynı anahtardan türetilen HMAC-SHA256 kör indeksle numaranın
+                tamamı üzerinden yapılır.
               </li>
               <li>
                 Şifreli yedekler (<span className="font-mono">.kdbak</span>) X25519 ve AES-256-GCM
-                ile şifrelenir; yedek, uygulama parolası ya da kurtarma anahtarıyla açılır.
+                ile şifrelenir; yedek, yönetici parolası ya da kurtarma anahtarıyla açılır.
               </li>
             </ul>
           </div>

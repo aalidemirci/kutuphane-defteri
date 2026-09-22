@@ -23,6 +23,15 @@ def test_synchronous_full() -> None:
 
 
 @pytest.mark.django_db
+def test_secure_delete_acik() -> None:
+    """Tasarım §6.3-5: silinen/güncellenen içerik serbest sayfada okunur kalmaz."""
+    with connection.cursor() as cursor:
+        cursor.execute("PRAGMA secure_delete")
+        (deger,) = cursor.fetchone()
+    assert deger == 1
+
+
+@pytest.mark.django_db
 def test_yabanci_anahtarlar_acik() -> None:
     with connection.cursor() as cursor:
         cursor.execute("PRAGMA foreign_keys")

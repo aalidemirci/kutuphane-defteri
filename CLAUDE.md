@@ -291,6 +291,7 @@ kayıtlıdır.
 | OpenAPI / drf-spectacular yok | Tipler elle; serializer alan listesi anlık görüntüyle test edilir | T13 |
 | Veri `ProgramData`'da değil hesabın `%LOCALAPPDATA%`'sında | `ProgramData` bütün hesaplara okuma hakkı verirdi; önerilen hesap ayrı kütüphane masası hesabıdır | §4.5 |
 | Personel unvanı, branşı ve öğrenci cinsiyeti yok | Veri en aza indirme; branş öğretmeni kişiye bağlar | V2-01, §6.1 |
+| e-Okul aktarımı kimseyi "ayrıldı" yapmıyor, ayrılış da kaydı silmiyor | 22.09.2026 kullanıcı kararı: listede bulunmayan kişi **Ayrılış Havuzu**'na düşer, kararı kullanıcı verir; ayrılan kişinin iade etmediği kaynak olabileceği için kayıt kalır. Ayrılmış kayıtların temizliği F11 saklama taramasına bağlıdır | §14.1 F1 ekleri, TB16 |
 
 **Kural:** Bu tabloya ya da teknik borç kütüğüne giren bir konuyu yalnız
 *gerekçenin yanlış olduğunu* gösterebiliyorsan raporla; "auth yok" demekle
@@ -366,20 +367,28 @@ açılır, geliştirme konteynerinde değil.
 
 ## 7. Faz durumu
 
-**F0 İskelet — sürüyor (21.09.2026).** Tamamlanan: KS iskeletinin kopyası ve KD
-kimlik çevirisi; sınav ve ders modüllerinin çıkarılması. Sürenler: kalan KS'ye
-özgü kodun temizliği, belgeler, iki sunucu iskeleti, bağımlılık zincirleri,
-Inno yönetici kurulumu, `synchronous=FULL` + temiz kapanış işareti, spike'lar
-(Windows pystray iş parçacığı, Linux Qt ana iş parçacığı,
-`SO_EXCLUSIVEADDRUSE` + waitress `sockets=`, Inno kapatma olayı).
+**F0 İskelet — kapandı (21.09.2026, PR #1).** KS iskeletinin KD'ye çevrilmesi,
+sınav ve ders modüllerinin sökümü, belgeler ve mevzuat metinleri, iki sunucu
+iskeleti (katalog yalnız 127.0.0.1), bağımlılık zincirleri (segno, pystray),
+`barcode128.py`, Inno yönetici kurulumu + kapatma olayı, tepsi, tek kopya
+kanalı, `synchronous=FULL` + temiz kapanış işareti, kimlik kalıntı taraması.
+Kod kapısı yeşil; **elle doğrulanacaklar** `packaging/windows/NOTLAR.md`'de
+(tepsi simgesi, Çık, kurucunun açık programı kapatması, Pardus Qt tepsisi).
 
-F0 kod kapısı: exe açılır, tepsiye iner, Çık ile kapanır · çıkış kodları ·
-`--pdf-duman`, `--bagimlilik-duman` · §5.10-1/2/3 · temiz kapanış işareti
-yazılır, zorla sonlandırmada eksik kalır · kimlik kalıntı taraması sıfır ·
-gates yeşil.
+**F1 Çekirdek + güvenlik — kod tarafı bitti (22.09.2026).** Zorunlu yönetici
+parolası ve parolasız dalın sökümü · fail-closed şifreli yazma
+(`KeyMissingError`) · kör indeks (okul no) · güvenlik dosyası kayıp/okunamaz
+kilidi ve çıkış yolları · `KipDurumu` + KipMiddleware + izin listesi + boşta ve
+mutlak süre · Student/Personnel sadeleştirmesi (unvan ve branş yok, üye türü
+var) · e-Okul mutabakatı ve **Ayrılış Havuzu** (aktarım kimseyi ayırmaz ve
+silmez — 22.09.2026 kullanıcı kararı) · Holiday `SCHOOL_BREAK` + kapalı günler
+ekranı · üç adımlı kurulum sihirbazı, kurtarma anahtarı çıktısı, doğrulaması ve
+yenilemesi · Başlangıç Yol Haritası · katalog Excel şablonu ve sütun sözlüğü ·
+kılavuz bölümleri. Tasarımdan sapmalar ve F1'de alınan kararlar: tasarım §14.1
+**"F1 ekleri"**; kalan riskler `docs/teknik-borc.md` (TB16-TB19).
 
-Sıradaki: F1 çekirdek + güvenlik (sihirbaz, parolasız dal sökümü, kör indeks,
-kip). Tam tablo: tasarım §14.1. Saha hazırlık hattı (S1-S13, kod dışı): §14.2.
+Sıradaki: F2 Katalog (eser/nüsha/edinim, TR arama ve sıralama, ISBN, barkod).
+Tam tablo: tasarım §14.1. Saha hazırlık hattı (S1-S13, kod dışı): §14.2.
 
 ---
 

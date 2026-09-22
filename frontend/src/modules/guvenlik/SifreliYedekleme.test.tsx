@@ -28,7 +28,7 @@ it("parola yokken şifreli yedek indirmesini kapalı tutar", () => {
   );
 
   expect(screen.getByRole("button", { name: /Şifreli yedeği indir/ })).toBeDisabled();
-  expect(screen.getByText(/önce uygulama parolası kurmalısınız/)).toBeInTheDocument();
+  expect(screen.getByText(/önce yönetici parolası kurmalısınız/)).toBeInTheDocument();
 });
 
 it("yalnız şifreli kdbak dosyasını kullanıcıya indirir", async () => {
@@ -83,4 +83,15 @@ it("metin kripto jargonu kullanmaz (teknik adlar yalnız Hakkında sayfasında)"
   expect(screen.getByText(/güçlü şifrelemeyle\s+korunur/)).toBeInTheDocument();
   expect(screen.getByText(/ağ diskine/)).toBeInTheDocument();
   expect(screen.queryByText(/X25519|AES-256|NAS/)).not.toBeInTheDocument();
+});
+
+it("buluta kopyalamayı önermez (Yönerge 11/23: bulut depolama sistemine veri aktarılmaz)", () => {
+  render(
+    <SnackbarProvider>
+      <SifreliYedekleme parolaKurulu />
+    </SnackbarProvider>,
+  );
+
+  expect(screen.getByText(/bulut\s+depolama hizmetine yüklemeyin/)).toBeInTheDocument();
+  expect(screen.queryByText(/bulut klasörüne/)).not.toBeInTheDocument();
 });

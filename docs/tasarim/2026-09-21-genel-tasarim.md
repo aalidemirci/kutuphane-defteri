@@ -338,6 +338,9 @@ yönetim sunucusu → sağlık denetimi → WebView2 → pencere. Farkları:
 | Görevli, kart numaralarını sırayla yazarak üye adlarını çıkarır (GA-7) | Kart no: 6 rastgele hane + sağlama hanesi · art arda 5 geçersiz kart → yönetici parolası | — |
 | Ağdan yük bindirilir ya da slowloris saldırısı yapılır (GA-12) | Kendi havuzu, `connection_limit`, kısa zaman aşımı, IP başına token-bucket · kabul anında IP başına eşzamanlı bağlantı sınırı (dispatcher alt sınıfı) | Kalan risk yalnız katalogun erişilemez olmasıdır, veri riski yoktur |
 
+*F1 eki (22.09.2026):* bozuk güvenlik dosyası da kayıp kilidine düşer; kayıp ekranında
+koşullu "Güvenlik dosyasını sıfırla ve kuruluma dön" yolu vardır (§14.1 F1 ekleri, 1).
+
 ### 4.4 İki kip: görevli ve yönetici (U5)
 
 **Terim.** "Kütüphane yöneticisi" kütüphaneci ya da kütüphaneden sorumlu öğretmen
@@ -360,6 +363,8 @@ Ayrıca `GÜVENLİK_DOSYASI_KAYIP` ve `YENİDEN_BAŞLAT_GEREK` durumları vardı
 - Ön yüzdeki geri sayım yalnız görseldir.
 - Varsayılanlar: N = **3 dk**. Ayrıca etkinlikten bağımsız **mutlak süre 30 dk**; süre
   dolunca parola yeniden sorulur. İkisi de ayarlanabilir (GA-9, KM-2).
+- *F1 eki (22.09.2026):* kurulum sihirbazı bitene kadar süreler kipi DÜŞÜRMEZ (anahtar
+  ekrandayken ekrandan atmasın); elle geçiş ve Kilitle çalışır (§14.1 F1 ekleri, 8).
 
 **KipMiddleware kuralları.**
 - Yalnız kilit açıkken ve kip görevliyken devreye girer.
@@ -416,8 +421,11 @@ Ayrıca `GÜVENLİK_DOSYASI_KAYIP` ve `YENİDEN_BAŞLAT_GEREK` durumları vardı
 
 **Görev devri** (SU-25). Güvenlik ekranında yönetici kipinde çalışır:
 - parola değişir;
-- kurtarma sarmalı yeni anahtarla yeniden yazılır, eski anahtar geçersiz olur;
-- yeni anahtar saklanır;
+- kurtarma sarmalı yeni anahtarla yeniden yazılır, eski anahtar bu kurulumun kilidini
+  artık açmaz (*F1 eki (22.09.2026):* "Kurtarma anahtarını yenile" F1'e çekildi; DEK
+  değişmediği için eski yedekler ve arşivlenen güvenlik dosyası eski anahtarla
+  açılabilir kalır — §14.1 F1 ekleri, 8);
+- yeni anahtar saklanır ve saklandığı doğrulanır (aynı damga);
 - devir-teslim notu (E18) basılır.
 
 Eski yedekler eski parola ve anahtarla açılabilir kalır; kılavuz bunu anlatır.
@@ -808,11 +816,23 @@ bloklarını içerebilir.
 | `ImportRun` + e-Okul parser'ları | + öğrenci **ve personel** mutabakatı (§8.3) |
 | `Holiday` (DD — UYARLA) | + tür **`SCHOOL_BREAK`**: ara tatil ve yarıyıl. DD bu günleri disiplin sürelerinde iş günü sayar; kütüphanede bunlar "öğrenciye kapalı gün"dür (UY-13, SU-6) · + `next_open_day()` · takvim ekranı · 2027 ve sonrası bayramlar için TAHMİNİ uyarısı |
 
+*F1 eki (22.09.2026):* e-Okul personel aktarımı "Görevi" sütununu yalnız üye türü için
+geçici okur, saklamaz; `Holiday.OTHER` ("İdari izin / diğer") dayanaksız program
+kuralıyla her zaman kapalıdır; `Student` ve `Personnel` **ayrılış havuzu** alanlarını
+(`leave_candidate_since`, `leave_candidate_run`) taşır ve ayrılış hiçbir kaydı silmez
+(§14.1 F1 ekleri, 2, 3 ve 7).
+
 **Unutma kancası** (KS'de öğrenci LEFT olunca hemen katı siler; burada uyarlanır):
 - Açık ödünç, açık dosya ya da teslim varken kişi silinmez.
 - Ayrılış yalnız üyeliği sonlandırır.
-- **Hiç üye olmamış** kişi ayrılınca ve açık yükümlülüğü yoksa hemen katı silinir.
+- ~~**Hiç üye olmamış** kişi ayrılınca ve açık yükümlülüğü yoksa hemen katı silinir.~~
+  **F1 eki 7 (22.09.2026) ile kalktı: ayrılış hiçbir kaydı silmez** (ayrılanın iade
+  etmediği kitap olabilir). Ayrılan kayıt saklama taramasına kalır; kullanıcının
+  "Sil" eylemi eski kuralıyla sürer.
 - Üyeler için §6.4'teki süreler geçerlidir (KM-4).
+- **Ayrılış havuzu** (F1 eki 7): e-Okul aktarımı kimseyi ayırmaz; listede bulunmayan
+  aktif kişi `leave_candidate_since` + `leave_candidate_run` ile havuzda bekler,
+  durumu aktif kalır. Karar (ayrıldı / aktif kalsın / birleştir) yöneticinindir.
 
 ### 6.2 Kütüphane modelleri (OYS'den — UYARLA)
 
@@ -879,6 +899,9 @@ Personelin unvanı ve branşı modelde yoktur (§6.1).
 1. Sihirbazın **ilk adımı parola + kurtarma anahtarıdır**. Anahtar yazdırılır, USB'ye
    PDF olarak kaydedilir ya da elle yazılır; bir parçası geri yazdırılarak doğrulanır.
    Kural "basım zorunlu" değil, **"saklama zorunlu"**dur.
+   *F1 eki (22.09.2026):* doğrulama sunucuya da işlenir (`guvenlik.json`'da damga) ve
+   **kurulum damgasız tamamlanmaz**; anahtar ekranda değilken kâğıttaki anahtarı
+   doğrulama ve anahtarı yenileme yolları vardır (§14.1 F1 ekleri, 8).
 2. Parola kurulmadan kişi yazan bütün uçlar **409** döner: e-Okul aktarımı, kişi CRUD
    ve üyelik.
 3. `EncryptedField.get_prep_value`, anahtar yokken boş olmayan değerde **hata
@@ -901,7 +924,7 @@ Personelin unvanı ve branşı modelde yoktur (§6.1).
 
 | Veri | Kural | Varsayılan |
 |---|---|---|
-| Hiç üye olmamış ve ayrılmış kişi | Açık yükümlülük yoksa ayrılışta katı silinir | hemen |
+| Hiç üye olmamış ve ayrılmış kişi | **Ayrılışta SİLİNMEZ** (F1 eki 7): kayıt kalır; saklama taraması aday gösterir, yönetici onayıyla silinir | süre F11'de kararlaşır (TB16) |
 | Sonlanmış üyeliğin ödünç ve dosya bağları | `terminated_at + N` sonunda `membership=NULL` + `anonymized_at`. `override_reason` ve gerekçe metinleri temizlenir | N = 2 yıl |
 | Sonlanmış üyelik satırı + kişi kaydı | Açık yükümlülük yoksa aynı süre sonunda katı silinir | N = 2 yıl |
 | **Aktif** üyenin iade edilmiş ödünçleri | Ders yılı sonu + M sonunda kişi bağı koparılır, `override_reason` temizlenir | M = 1 yıl (A3) |
@@ -1064,21 +1087,31 @@ karar gelince toplu kataloglanır.
 **Kaynak.** e-Okul sınıf listesi (OOG01001R020) ve personel listesi (OOK01001R1). KS
 hattı kullanılır, `gender` alınmaz.
 
+**AKTARIM KİMSEYİ AYIRMAZ** (F1 eki 7, 22.09.2026): mutabakatta listede bulunmayan
+aktif kişi **ayrılış havuzuna** girer, durumu aktif kalır; karar Kişiler → Ayrılış
+Havuzu'nda verilir. Aşağıdaki kapsam kuralları "kimin havuza gireceğini" belirler.
+
 **Öğrenci mutabakatı** (EK-21):
 - Varsayılan olarak **yalnız dosyada bulunan şubelerle** karşılaştırılır.
 - Bütün okulla karşılaştırma, ancak açık bir "bu dosya okulun tam listesidir"
-  onayıyla yapılır.
-- Önizleme şube bazında etkiyi gösterir.
-- Tek şubelik dosya diğer şubeleri LEFT yapmaz; bu testle sabitlenir.
+  onayıyla yapılır; panel bütün şubeleri içeren tek dosyayı belirgin biçimde önerir.
+- Önizleme şube bazında etkiyi ve "N öğrenci havuza eklenecek, M öğrenci havuzdan
+  çıkacak" sayılarını gösterir.
+- Tek şubelik dosya diğer şubeleri LEFT yapmaz — hiçbir dosya kimseyi LEFT yapmaz;
+  bu testle sabitlenir.
+- *F1 eki (22.09.2026):* havuza ekleme yalnız kanıtla; yeniden aktifleşme numara + ad
+  eşleşmesiyle; şube şube yüklemenin bilinen sınırı, havuz sayesinde geri
+  alınabilirdir (§14.1 F1 ekleri, 4 ve 7).
 
 **Personel mutabakatı** (EK-20):
-- Önizlemede "N personel listede yok, ayrıldı sayılsın mı?" sorulur.
-- Elle "ayrıldı" işareti konabilir.
+- Listede olmayan aktif personel havuza girer (eski "ayrıldı sayılsın mı?" seçimi
+  ve `mark_left_ids` kalktı — F1 eki 7).
 - Ada göre eşleşmeyen yeni satırda "olası aynı kişi" uyarısı çıkar. Birleştirme
-  aracıyla üyelik ve ödünçler eski kayıttan taşınır (ör. soyadı değişimi).
+  aracıyla üyelik ve ödünçler eski kayıttan taşınır (ör. soyadı değişimi);
+  birleştirme ayrılış havuzundan da yapılır.
 
-**Onaylananlar:** durum LEFT olur, `left_at` yazılır, üyelik sonlanır, açık ödünç ve
-teslimler ilişik listesine düşer.
+**Havuzda "ayrıldı" kararı verilenler:** durum LEFT olur, `left_at` yazılır, üyelik
+sonlanır, açık ödünç ve teslimler ilişik listesine düşer; **kayıt silinmez**.
 
 **Yıl sonu akışı (Mayıs-Haziran; SU-8, EK-22).** Mezunlar Haziran'da ayrılır; Eylül'de
 kitap toplamak fiilen imkânsızdır.
@@ -1430,6 +1463,206 @@ ifadeleri ters çevrilir: `settings.py:3-7`, `server.py:8`, `docs/kurulum.md:83-
 **Sıralama gerekçesi.** Ağ kataloğu (F5) dolaşımdan önce gelir. Katalog girildiği anda
 ağdan taranabilir ve en büyük belirsizlik erken sahaya çıkar. Dolaşım gelene kadar
 nüshalar "Rafta" görünür.
+
+**F1 ekleri (22.09.2026).** F1'de tasarımdan bilinçli sapmalar ve tasarımda yazmayan
+kararlar. İlgili bölümlerde bu listeye gönderme vardır.
+
+1. **§4.3, §4.4 — kayıp kilidi ve kip geçişi.** Güvenlik dosyası yalnız silinince değil,
+   var olup kullanılamadığında da (boş, bozuk JSON, bölümleri eksik) "güvenlik dosyası
+   kayıp" kilidine düşer; bu hâl parmak izinden bağımsızdır. Kilit açık değilken kip
+   geçişi isteği 409 `kip_gecisi_gecersiz` alır. Kayıp ekranına üçüncü çıkış yolu
+   eklendi: **"Güvenlik dosyasını sıfırla ve kuruluma dön"**. Yalnız dört koşul
+   birlikteyken açıktır: dosya var ama kullanılamıyor, DB'de parmak izi boş, şifreli
+   alan taşıyan bütün tablolar boş, yedek klasöründe (parola kurulurken alınan geçiş
+   yedeği dışında) yedek yok. Bozuk dosya silinmez, `guvenlik-arsiv-*` olarak kenara
+   alınır. Koşul dışında uç 409 döner.
+2. **§6.1 — personel görev sütunu.** e-Okul personel listesindeki "Görevi/Unvan" sütunu
+   yalnız `member_kind`'i (öğretmen / diğer personel) belirlemek için geçici okunur;
+   hiçbir yerde saklanmaz (kayıt, `ImportRun.report`, günlük). Tanınmayan görev
+   öğretmen sayılır ve önizlemede satır no ile "üye türünü denetleyin" uyarısı çıkar.
+   Branş sütunu hiç okunmaz. Saklanan veri §6.1'deki gibidir.
+3. **§6.1 Holiday — `OTHER` türü "İdari izin / diğer".** Her zaman kapalıdır ve iade
+   tarihini kaydırır. Dayanağı TBK 93 değildir (idari izin kanunen tatil sayılmaz),
+   programın kuralıdır: `docs/mevzuat/BENIOKU.md` §4'e işlendi, kılavuzda ayrı madde.
+4. **§8.3 — öğrenci mutabakatının ayrıntıları.** Ayrılış yalnız kanıtla yapılır:
+   okul numarası dosyada geçen öğrenci satırı atlansa da (ad boş, sınıf çözülemedi)
+   ayrılmaz; numarası boş öğrenci satırı o şubede (sınıfı da boşsa hiçbir yerde)
+   ayrılışı durdurur; hiç satır işlenemeyen dosya kimseyi ayırmaz. Ayrılmış kayıt aynı
+   okul no **ve aynı ad-soyadla** dönerse yeniden aktifleşir; numara adı farklı birine
+   verilmişse eski kayıt dokunulmadan kalır, yeni kayıt açılır (okul no yeniden
+   kullanılabilir). Bilinen sınır: şube şube yüklemede başka şubeye geçmiş öğrenci
+   ayrılacaklar listesine düşer (yeni şubesi o dosyada yoktur). Önizleme, onay metni
+   ve kılavuz bunu söyler ve yıl başında bütün şubeleri içeren tek dosyayı önerir.
+5. **§14.1 F1 — yol haritası işaretleri.** "Başlangıç Yol Haritası"nın kullanıcı
+   işaretleri tarayıcı deposunda değil `SchoolConfig.yol_haritasi` JSON alanında durur
+   (kişisel veri yok; pencere profili silinse de kaybolmaz).
+6. **§14.1 F1 — okul bilgileri.** Okul adı, kademe, kısa ad ve demirbaş onayı yalnız
+   `setup/complete/` anında değil, sonradan her kayıtta da zorunludur: Okul Bilgileri
+   ekranından ya da API'den boşaltılamaz (gönderilmeyen alana dokunulmaz).
+7. **§6.1, §6.4, §8.3 — AYRILIŞ HAVUZU (kullanıcı kararı 22.09.2026).** Kullanıcının
+   sözleri: "ayrılanları doğrudan silme, bir havuza ekle, orada karar verilsin; çünkü
+   ayrılanın iade etmediği kitap olabilir; kaydı silmeyelim, yalnız aktif öğrencilik
+   durumu değişsin."
+   - **e-Okul aktarımı hiç kimseyi ayırmaz ve hiç kimseyi silmez.** Kapsamdaki
+     (varsayılan: dosyadaki şubeler; `full_list` onayında bütün okul) aktif
+     öğrencilerden ve listede olmayan aktif personelden dosyada bulunmayanlar
+     **ayrılış havuzuna** eklenir; durumları AKTİF kalır. "Ayrılış yalnız kanıtla"
+     kuralları (atlanan satırın numarası, numarası boş satır, hiç satırı işlenemeyen
+     dosya) havuza ekleme için aynen geçerlidir — **personelde de**, kimlik anahtarı
+     ad-soyad olduğu için kapsam şube değil "hiç kimse"dir: ad-soyadı boş bir satır
+     (kaymış sütun) ya da hiç satırı işlenemeyen bir dosya hiç kimseyi havuza eklemez
+     (F1 ekleri 10). Dosyada bulunan kişi havuzdan
+     kendiliğinden çıkar (şube değişimi dahil: 9/A dosyası havuza atar, 9/B dosyası
+     çıkarır). Personel aktarımındaki `mark_left_ids` seçimi KALKTI.
+   - **Ayrılış kaydı silmez** (öğrenci ve personel, üyelik ve yükümlülükten bağımsız):
+     durum LEFT / `is_active=False`, `left_at`, havuzdan çıkış, ayrılış kancaları (F6:
+     üyelik sonlanır). `persons.py`'deki "hiç üye olmamış ve yükümlülüksüz → katı
+     silme" dalı kalktı. Kişinin elle **silinmesi** ("Sil" düğmesi) mevcut kuralıyla
+     kalır (açık yükümlülükte ret; üye olmuşsa ayrılış yoluna yönlendirme; aksi hâlde
+     katı silme).
+   - **Model:** `Student` ve `Personnel` → `leave_candidate_since` (DateField) +
+     `leave_candidate_run` (FK ImportRun, SET_NULL); DB kısıtı havuzdaki kişinin aktif
+     olmasını zorlar (göç `0005_ayrilis_havuzu`).
+   - **Uçlar:** `GET leave-pool/` (havuz listesi; `?summary=true` yalnız sayılar) ve
+     `POST leave-pool/resolve/` (`{students:{leave,keep},personnel:{leave,keep}}`, tek
+     işlem; biri havuzda değilse hiçbir karar uygulanmaz). Karar ucu kişi yazar
+     (`RequiresAdminPassword`, 409); ikisi de görevli kipinde kapalıdır.
+   - **Arayüz:** Kişiler → "Ayrılış Havuzu" sekmesi (öğrenci ve personel ayrı listeler,
+     TR sıralı, sınıf süzgeci, tek tek/toplu karar; personelde "olası aynı kişi" ve
+     havuzdan birleştirme), Genel Bakış'ta "N kişi ayrılış kararı bekliyor" kartı,
+     aktarım panelinde tek dosya önerisi ve "N … havuza eklenecek, M … havuzdan
+     çıkacak" özeti. Yıl sonu mezunları bu yolla toplu ayrılır.
+   - **KVKK sonucu:** ayrılmış kişi kayıtları artık ayrılışta silinmez (§6.4 ilk satır);
+     saklama taraması (F11) aday gösterir, yönetici onayıyla silinir — süre F11'de
+     kararlaştırılır (teknik borç TB16). Aydınlatma metni (E13, F6) bunu söyler.
+8. **§4.4, §6.3 — KURTARMA ANAHTARI: ÜÇ ÖNLEM BİRLİKTE (kullanıcı kararı 22.09.2026).**
+   Gerekçe: sihirbazın ilk adımında anahtar ekrandayken boşta süre dolup görevli kipine
+   inmek kullanıcıyı anahtar saklanmadan ekrandan atıyordu; anahtarı hiç saklayamamış
+   bir okulun da elinde bir yol olmalı.
+   - **Kurulum bitene kadar süreler kipi düşürmez.** `SchoolConfig.setup_completed`
+     yanlışken `KipDurumu`'nun boşta/mutlak tembel dolumu uygulanmaz. DB'ye iki yerden
+     bakılır: süre dolacağı anda (sıcak yol) ve kip özetinde (geri sayım gösterilecek
+     mi). Soru tükenir: OLUMLU yanıt önbelleğe alınır (kurulum tek yönlüdür), yani
+     kurulumu bitmiş bir programda ne sıcak yol ne 15 saniyede bir gelen kip özeti
+     DB'ye gider (F1 ekleri 10). Kurulum sürüyorsa iki sayaç yeniden başlar.
+     DB okunamazsa kurulum tamamlanmış sayılır (fail-closed). Elle
+     "Görevli kipine geç" ve "Kilitle" çalışmaya devam eder; kip özeti kurulum sürerken
+     kalan süreleri boş verir (üst çubukta geri sayım görünmez). `setup/complete/`
+     başarılı olunca sayaçlar sıfırdan başlar. §5.10-14 testleri kurulumu tamamlanmış
+     ortamda koşar; kurulum sırasındaki davranışın kendi testleri vardır.
+   - **Kurulum, kurtarma anahtarı doğrulanmadan tamamlanmaz.** Doğrulama damgası
+     `guvenlik.json`'un kurtarma bölümündedir (`kurtarma.dogrulandi`, ISO zaman damgası);
+     sarmalla birlikte yaşar, yenilemede damgasız yazılır — DB migration'ı GEREKMEZ.
+     `POST security/recovery-key/confirm/ {recovery_key}`: sihirbaz iki grubu istemcide
+     denetledikten sonra bellekteki TAM anahtarı gönderir, sunucu `verify_recovery_key`
+     kuralıyla (sarmal + bellekteki DEK'in parmak izi) doğrulayıp damgayı atomik yazar;
+     yanlışta kademeli gecikme. `security/status/` ve `setup/status/`
+     `recovery_key_confirmed` taşır; `setup/complete/` damgasızsa 400 `kurulum_eksik`
+     ("kurtarma anahtarı doğrulanmadı"). Bu karardan önce tamamlanmış (damgasız)
+     kurulumlar KİLİTLENMEZ: yol haritası ve Güvenlik ekranı uyarır, sihirbazın 1. adımı
+     kâğıttaki anahtarı doğrulama yolunu sunar.
+   - **"Kurtarma anahtarını yenile"** (F11 görev devrinin bu parçası F1'e çekildi):
+     `POST security/recovery-key/renew/ {password}` — yalnız kilit açık + yönetici
+     kipinde (görevli izin listesine girmez; kilitliyken 423, `LOCKED_DENIED_PATHS`;
+     `confirm` de aynı listededir). Parola bellekteki anahtara karşı doğrulanır, aynı DEK
+     yeni anahtar ve yeni tuzla sarmalanır; önceki `guvenlik.json` `guvenlik-arsiv-<damga>.json`
+     olarak KOPYALANIR (silinmez; dosya hiçbir an yok olmaz), yeni durum atomik yazılır,
+     damga YOKTUR. Anahtar yanıtla bir kez döner (`Cache-Control: no-store`,
+     `sensitive_variables`, günlüğe düşmez). DEK değişmediği için kayıtlar, kör indeks,
+     yedek anahtarı ve kilit açılışı (kip) etkilenmez.
+   - **Eski yedekler (koddan doğrulandı, `backup_restore._candidate_states`).** Her yedek
+     alındığı anın `guvenlik.json`'unu başlığında taşır: yenilemeden önceki yedek bu
+     bilgisayarda (güncel dosya yerindeyken) yeni anahtarla ya da güncel parolayla,
+     güvenlik dosyası yokken (başka bilgisayar, kayıp dosya) yalnız ESKİ anahtarla ya da
+     o dönemin parolasıyla açılır; eski anahtarla geri yükleme güvenlik dosyasını da
+     yedeğin dönemine döndürür. Arayüz, kılavuz ve `docs/kurulum.md` bunu ve "yenileme
+     ele geçmiş anahtara karşı koruma değildir" sınırını söyler (DEK değişmez; arşiv
+     dosyası ve eski yedekler eski anahtarla açılır). §4.4'teki görev devri satırı
+     ("eski anahtar geçersiz olur") bu ayrıntıyla okunur.
+9. **§18 sözlük — başlık düzeni, durum ekranı başlıkları ve belgenin dürüstlüğü
+   (dalga 3 denetiminin son rötuşları, 22.09.2026).**
+   - **Başlık Düzeni'nin kapsamı sözlük §3'te netleşti:** kullanıcıya yol tarif
+     edilirken adı geçebilen her başlık (sayfa h1, sekme, sayfa içi bölüm ve kart
+     başlığı) Başlık Düzenindedir; bir bölümün ya da kartın içinde metni parçalayan
+     **alt başlıklar** cümle düzeninde kalır. Üç istisna: §2'deki belge adları başlık
+     yerinde de kendi yazımıyla kalır ("Kurtarma anahtarı çıktısı"), program durumu
+     ekranlarının başlıkları §4.2'deki cümlenin kendisidir, onay diyaloğunun başlığı
+     sorudur. Ayarlar, Güvenlik, sihirbaz, Kişiler, Kapalı Günler ve yol haritası
+     ekranlarındaki kart/bölüm başlıkları bu kurala getirildi; Güvenlik'in ilk kartı
+     **durumla değişen** bir başlık yerine sabit "Yönetici Parolası ve Şifreleme" adını
+     aldı (durum cümlesi başlığın altına indi), sihirbazın adım rayı ve kart başlıkları
+     Başlık Düzenine geçti (sözlük §4.4, §4.6).
+   - **Durum ekranlarının üst çubuk başlığı.** Kilitli, güvenlik dosyası kayıp ve
+     "yeniden başlatın" ekranları bir adrese bağlı olmadığı için `AppShell` başlığı yol
+     adından türetemiyordu. Ekran kendi h1'ini `ui/DurumBasligi` yığınına yazar, kabuk
+     onu gösterir (sözlük §4: "h1 = üst çubuk"). Örtüşen ekranlarda en son açılan
+     kazanır.
+   - **"Yeniden başlatın" ekranının metni düzeltildi:** pencerenin çarpısı programı
+     KAPATMAZ, tepsiye gizler (`desktop/window.py::on_closing`); ekran artık tepsideki
+     simgeden "Çık"ı seçmeyi tarif eder.
+   - **Kılavuzun çapaları gerçekten kaydırır.** SPA rota değişiminde tarayıcı adresteki
+     `#` parçasını uygulamaz; `KilavuzPage` çapayı kendisi uygular ve yol haritasındaki
+     BTR maddesi `/kilavuz#ag-katalogu` adresine bağlanır.
+   - **`docs/kurulum.md` bugünkü sürümü anlatır.** Gün değişimi kapısı yoktur (günlük
+     yedek yalnız AÇILIŞTA alınır — `desktop/main.py`, T9 iskeleti F5'te), görevli
+     kipindeki parolalı Çık (`app/quit/`) F5'te, kütüphane aydınlatma metni (E13) F6'da
+     gelecek: üçü de "sonraki sürümde" diye işaretlendi. Kılavuzun yedek bölümü de
+     "yedek açılışa bağlıdır" uyarısını taşır.
+10. **§8.3, §14.1 F1, §4.4 — dalga 3 denetiminin düzeltmeleri (22.09.2026).** Dördü de
+    var olan kararların EKSİK UYGULANMASIYDI; karar değişmedi.
+    - **Personel aktarımında "havuza ekleme yalnız kanıtla" kapısı yoktu.** Öğrenci
+      yolundaki iki kapının (`_reconcile_students`) personel karşılığı yazılmamıştı:
+      sütunları kaymış bir dosya BÜTÜN aktif personeli, üstelik tek uyarı bile üretmeden
+      ayrılış havuzuna atıyordu. `_reconcile_personnel` eklendi: hiç satırı işlenemeyen
+      dosya kimseyi eklemez (başlık satırına `leave_pool` alanlı uyarı) ve ad-soyadı boş
+      bir satır görülen dosya eklemeyi tümüyle durdurur (satır no ile uyarı). Personelde
+      kimlik anahtarı ad-soyaddır; öğrencideki "yalnız o şube" dalının karşılığı yoktur.
+      Zaten havuzda bekleyen kişi kapıdan etkilenmez (kararı silinmez).
+    - **Yol haritası kartı gizlenince kurtarma anahtarı uyarısı da kayboluyordu.**
+      "Kurtarma anahtarı doğrulanmadı" uyarısı kartın İÇİNDEDİR ve kartı geri getirecek
+      arayüz yolu yoktur (işaret kutuları ve gizleme düğmesi de kartın içinde). Var olan
+      "eksik madde varken kart gizli kalmaz" kuralı damgaya da uygulandı: damga yokken
+      `roadmap_state` `hidden: false` döner ve `set_roadmap_hidden` 400 ile reddeder.
+      SAKLANAN tercih silinmez (yazma yolları saklanan durumu okur): damga gelince kart
+      yine gizli açılır.
+    - **Kip özeti her yoklamada `SchoolConfig` sorguluyordu.** Ön yüz `security/mode/`'u
+      15 saniyede bir yokladığı için, cevabı kalıcı olarak "evet" olan bir sorgu günde
+      binlerce kez ve modül tekilinin kilidi altında koşuyordu; modül başlığı ile
+      `gorevli_mi()` docstring'i de "yalnız süre dolarken / DB'ye bakmaz" diyerek
+      gerçeği söylemiyordu. Olumlu yanıt artık `_kurulum_tamam_mi` içinde önbelleğe
+      alınır (kurulum tek yönlüdür; geri yükleme zaten yeniden başlatma kapısından
+      geçer) ve docstring'ler gerçeğe getirildi.
+    - **Ayrılış havuzunda sınıf süzgeci karardan sonra bayat kalıyordu.** 12/A'yı toplu
+      ayırınca seçenek listeden düşüyor, süzgeç "12/A"da kalıyor, tablo boş görünüyor ve
+      seçici eşleşen seçenek bulamadığı için "Tümü" yazıyordu. Liste yenilendiğinde
+      süzgeç de listeyle eşitlenir.
+    - Kayda geçen kalan riskler: **TB18** ("olası aynı kişi" adayı ad benzerliğiyle
+      bulunur, adaşı eleyemez — kural soyadı değişimi için böyle seçildi) ve **TB19**
+      (kurulum bitene kadar yönetici kipinin süreyle kapanmaması).
+11. **§8.3, §4.4, §6.3 — TB18 ve TB19'un daraltılması (kullanıcı kararı 22.09.2026).**
+    İki kalemin de KURALI aynen kaldı; eklenen, kullanıcının doğru kararı verebilmesi
+    için gereken bilgi ve bir adım daha.
+    - **TB18 — "olası aynı kişi" dürüst ve iki adımlı.** `name_match.match_reason`
+      eşleşmenin gerekçesini de döndürür (`MatchReason`: `ayni_ad_soyad`,
+      `ad_ayni_soyad_farkli`, `yazim_farki`); `probably_same_person` bu kuralın boolean
+      sarmalıdır (davranış değişmedi). Gerekçe `selectors.SimilarCandidate` ile taşınır,
+      `LeavePoolPersonnelSerializer` her adayda `reason`, `member_kind` ve `created_on`
+      (adayın sicile eklendiği yerel gün) döndürür; aktarım önizlemesinin `SimilarPair`
+      kaydı da `reason` taşır (kalıcı `ImportRun.report`'a girmez — ad listeleriyle
+      birlikte düşer). Ekranlar "Neden aday: …" satırını yazar. Birleştirme onayı ikinci
+      bir doğrulama ister: diyalog başlığı "Bu iki kayıt aynı kişi mi?", gövdede iki
+      kaydın ayırt edici bilgisi ve "geri alınamaz" cümlesi; "Birleştir" düğmesi
+      `ConfirmProvider`'ın yeni `acknowledgeLabel` kutusu ("Bu iki kaydın aynı kişi
+      olduğunu doğruladım") işaretlenmeden açılmaz, kutu her açılışta boşalır. Kalan
+      risk TB18'de daraltılmış olarak durur (program hâlâ iki adaşı ayırt edemez).
+    - **TB19 — gözetimsiz ekranda anahtar gizlenir.** Kip askısı (yukarıda, madde 8)
+      AYNEN korunur ve anahtar bellekte kalır; `KurtarmaAnahtariPaneli` 5 dakika hiç
+      etkileşim olmazsa anahtarı ekranda gizler ("Anahtar güvenlik için gizlendi" +
+      "Anahtarı göster"; göster sayacı sıfırlar). Gizliyken anahtar DOM'da değildir, bu
+      yüzden yazdırma alanı da onu taşımaz; PDF yolu ve doğrulama akışı değişmez. Sayaç
+      YALNIZ GÖRSELDİR ve istemcide durur: kipi düşürmez, sunucuya sorulmaz. Ölçü
+      `lib/api.ts`in kip için zaten tuttuğu etkileşim saatinden okunur (yeni küresel
+      dinleyici yok, panele ait olan yalnız yoklama zamanlayıcısıdır).
 
 ### 14.2 Saha hazırlık hattı (kod dışı — F0 ile başlar)
 

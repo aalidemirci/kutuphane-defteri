@@ -30,7 +30,11 @@ iç kavramları (karar, faz, evrak kodları) yüzeye çıkmaz.
 | `is_reference` vb. | **danışma kaynağı**; durum **"Ödünç verilmez — kütüphanede okunur"** | referans, "ödünç dışı" | Tek türetim `is_loanable` (Md. 14/1-a, 16/1) |
 | Nüsha durumları | **Rafta** · **Ödünçte** · **Ödünç verilmez — kütüphanede okunur** · **Geçici olarak kullanım dışı** · **Sınıf kitaplığında** · **Onarımda** · **Kayıp** | AVAILABLE gibi kodlar, "müsait" | Ağ kataloğu ve masa aynı sözcükleri kullanır |
 | `Membership` | **üye**, **üyelik** | okuyucu, abone, kullanıcı (kişi anlamında) | Üyelik isteğe bağlıdır (Md. 17/1) |
-| `member_kind` | **üye türü**: öğrenci / öğretmen / diğer personel | personel (öğretmen anlamında), çalışan | "Personel" yalnız e-Okul raporunun adında ("Personel Listesi") |
+| `member_kind` | **üye türü**: öğrenci / öğretmen / diğer personel | personel (öğretmen anlamında), çalışan | "Personel" yalnız e-Okul raporunun adında ("Personel Listesi"). Kişiler sekmesi: **"Öğretmenler ve Diğer Personel"** |
+| Ayrılış (`left_at`, LEFT) | durum rozeti **"Ayrıldı · gg.aa.yyyy"**; eylem **"Ayrıldı olarak işaretle"** | pasif, pasifleştir, arşivle, mezun (genel ayrılış anlamında) | Ayrılış kaydı SİLMEZ: kişi seçicilerden düşer, kayıt rozetle kalır; onay gövdesi bunu söyler |
+| Ayrılış havuzu (`leave_candidate_since`) | **Ayrılış Havuzu** (sekme ve kart adı, özel ad); aktif kişide rozet **"Ayrılış kararı bekliyor"**; eylemler **"Ayrıldı olarak işaretle"** ve **"Aktif kalsın"** | bekleyenler, karantina, ayrılacaklar listesi, silinecekler | Aktarımda listede bulunmayan kişiler burada karar bekler; durumları aktif kalır. Karar ekranı: Kişiler → Ayrılış Havuzu |
+| e-Okul mutabakatı | **"Bu dosya okulun tam listesidir"** (onay kutusu); **"N öğrenci ayrılış havuzuna eklenecek / eklendi"**, **"M öğrenci havuzdan çıkacak / çıktı"** | ayrılacak, silinecek, kaldırılacak | Varsayılan karşılaştırma yalnız dosyadaki şubelerledir. **Aktarım kimseyi ayırmaz ve kimsenin kaydını silmez** |
+| Personel birleştirme | **olası aynı kişi**; eylem **"Birleştir"** | mükerrer, duplicate, çift kayıt | Eski kaydın kütüphane bağları yeni kayda taşınır, eski kayıt silinir (ör. soyadı değişimi). Aktarım sonucundan ya da Ayrılış Havuzu'ndan yapılır |
 | Kart | **üye kartı**, **kart no** (8 hane) | okuyucu kartı, kütüphane kartı, kimlik kartı | Evrakta madde atfı gerekirse konum kalıbı: "Md. 20'de öngörülen kullanıcı kartının okulca düzenlenen yerel karşılığıdır; Bakanlık otomasyon sistemindeki kaydın yerine geçmez." |
 | `CardRevocation` | **"Kartı yenile"** (düğme); eski kart için **"iptal edilmiş kart"** | kartı sil, kart iptal kaydı | İleti: "İptal edilmiş kart — kütüphane yöneticisine yönlendirin" |
 | `Loan` | **ödünç** (ad), **ödünç ver** (eylem), **iade al** / **iade** | emanet, check-out, teslim (ödünç anlamında), "kitap çıkışı" | "Teslim" başka bir işlemdir (aşağıda) |
@@ -39,6 +43,7 @@ iç kavramları (karar, faz, evrak kodları) yüzeye çıkmaz.
 | Ödünç geçmişi | **ödünç kaydı**, **ödünç geçmişi** | **okuduğu kitaplar**, okuma karnesi, okuma puanı, okuma geçmişi | **Ödünç ≠ okuduğu kitap.** Öğrenci bazlı ödünç sayısı öğretmene ya da e-Okul'a aktarılmaz (tasarım §3) |
 | İade tarihi | **iade tarihi**; gecikmişte **gecikme**, **"… gün gecikti"** | son teslim tarihi, ceza, harç, uzatma | Programda uzatma, ceza ve harç yoktur. Kaydırılmış tarih "Md. 18 gereği" diye sunulmaz |
 | `Holiday.SCHOOL_BREAK` | **öğrenciye kapalı gün** (ara tatil, yarıyıl) | tatil (tek başına) | Kanunen tatil değildir; resmî ve dini tatil ayrı türdür |
+| `Holiday` diğer türler | **resmî tatil**, **dini bayram**, **idari izin / diğer**; hepsinin üst adı **kapalı gün** (sayfa: "Kapalı Günler") | tatil günü (genel anlamda) | İdari izin kütüphanenin de kapalı olduğu gündür; iade tarihi hesabında resmî tatil gibi her zaman kapalı sayılır. Bu programın kuralıdır, TBK 93 kıyası altında anılmaz (`docs/mevzuat/BENIOKU.md` §4). Tahmini bayram tarihinde **"tahmini"** rozeti |
 | `Delivery` (U11) | **teslim**: "sınıf kitaplığına teslim", "öğretmene teslim"; geri dönüşü **geri alma** | ödünç, emanet, zimmet | **Teslim ödünç değildir**, Md. 18 sayı sınırı uygulanmaz |
 | İlişik | **"Kütüphaneden ilişiği yoktur" belgesi**, **ilişik listesi** | borç, ilişik kesme | Karne ya da diplomanın ön koşulu diye SUNULMAZ; dayanağı yok |
 | `LossDamageCase` | **kayıp**, **hasar**, **onarım**; belge "Kayıp/hasar tutanağı" | zayi, telef | Bedel seçenekleri yalnız ortaöğretimde (Md. 19). Program tahsilat yapmaz |
@@ -56,6 +61,7 @@ iç kavramları (karar, faz, evrak kodları) yüzeye çıkmaz.
 | Görevli | **görevli** (masadaki öğrenci görevli ya da personel) | asistan, operatör | Md. 23/1-a "kütüphane görevlisi" |
 | Sorumlu kişi | **kütüphane yöneticisi** (kütüphaneci ya da kütüphaneden sorumlu öğretmen) | admin, yetkili, sorumlu (tek başına) | Md. 20'nin terimi. Çoğu okulda kütüphaneci atanmaz (Md. 7/1) |
 | Parola | **yönetici parolası**, **kurtarma anahtarı** | şifre, uygulama parolası, PIN | Parola zorunludur, sihirbazın ilk adımıdır |
+| Kurtarma anahtarı işlemleri | kart adları **Kurtarma Anahtarını Doğrula** ve **Kurtarma Anahtarını Yenile**; eylem **"yenileme"** | anahtarı sıfırla, anahtar değiştir, yeni anahtar üret (tek başına) | Yenileme kayıtların anahtarını değiştirmez, yalnız kurtarma kilidini yeniler; yenilemeden önce alınmış yedekler için eski kâğıt gerekebilir ve metin bunu söyler |
 | Görev devri | **görev devri**; belge **Görev devri notu** | devir teslim (tek başına) | "Devir" TMY'de başka anlama gelir |
 | Masa hesabı | **kütüphane masası Windows hesabı** | kiosk hesabı, ortak hesap | Yönetici yetkisi olmayan ayrı hesap (U9) |
 | Yedek | **yedek**, **şifreli yedek**; "güçlü şifrelemeyle korunur" | X25519, AES, `.kdbak` (kullanıcı metninde) | Teknik adlar yalnız Hakkında sayfasında |
@@ -100,6 +106,16 @@ testlerde kodlar serbesttir.
 - **Düğmeler cümle düzenindedir:** "Ödünç ver", "İade al", "Kartı yenile",
   "Görevli kipine geç". Sayfa, sekme ve bölüm **başlıkları** Başlık
   Düzenindedir: "Dolaşım Masası".
+- **Başlık Düzeni nereye uygulanır:** kullanıcıya yol tarif edilirken adı
+  geçebilen her başlık — sayfa başlığı (h1), sekme, sayfa içi bölüm ve kart
+  başlıkları — Başlık Düzenindedir ("Ayarlar → Güvenlik", "Kişiler → Ayrılış
+  Havuzu", "Şifreli Veritabanı Yedeği"); bir bölümün ya da kartın içinde metni
+  parçalayan **alt başlıklar** (kılavuzun ara başlıkları, kart içi adımlar)
+  cümle düzeninde kalır ("Sakladığınızı doğrulayın", "Parolayı unutursanız").
+  Üç istisna: §2'deki **belge adları** başlık yerinde de oradaki yazımıyla
+  yazılır ("Kurtarma anahtarı çıktısı"), program durumu ekranlarının başlıkları
+  §4.2'deki cümlenin kendisidir ("Kayıtlar kilitli"), onay diyaloğunun başlığı
+  sorudur.
 - **Devam düğmesi** tek biçim: "Kaydet ve devam et" (kayıt yoksa "Devam").
   Vazgeçme: "Vazgeç"; salt bilgi diyaloğunda "Kapat".
 - **Seçici yer tutucusu** tek biçim: "Seçin". Boş seçenek: "— yok —".
@@ -120,7 +136,76 @@ testlerde kodlar serbesttir.
 ## 4. Sayfa ve gezinme adları
 
 Ekranlar fazlarla geldikçe buraya işlenir. Kural: gezinme etiketi kısa, sayfa
-başlığı (h1) tam addır ve üst çubuktaki başlıkla AYNIDIR.
+başlığı (h1) tam addır ve üst çubuktaki başlıkla AYNIDIR. Gezinme kartının
+(Genel Bakış) başlığı gittiği sayfanın h1'idir. Sekme adları Başlık
+Düzenindedir; sekme adreste `?tab=` ile tutulur, böylece başka ekranlar ve
+kılavuz doğrudan sekmeye bağlanır. Kılavuzda ekran, sekme ve düğme adları
+buradaki ve ekrandaki metinle birebir yazılır ("Ayarlar → Güvenlik").
+
+*Aşağıdaki tablolar F1 sonundaki durumdur (22.09.2026); kaynak `AppShell.tsx`
+(`NAV_ITEMS`, `PAGE_TITLES`), sayfaların h1'leri ve sekme tanımlarıdır.*
+
+### 4.1 Sayfalar
+
+| Gezinme etiketi | Sayfa başlığı (h1 = üst çubuk) | Adres | Not |
+|---|---|---|---|
+| Genel Bakış | Genel Bakış | `/` | Ana sayfanın tek adı |
+| Kişiler | Kişiler | `/kisiler` | |
+| Ayarlar | Ayarlar | `/ayarlar` | |
+| Kılavuz | Kullanım Kılavuzu | `/kilavuz` | |
+| Hakkında ve Lisans | Hakkında ve Lisans | `/hakkinda` | Kenar çubuğunun altında, ana gezinmenin dışında |
+| — | Kurulum Sihirbazı | `/kurulum` | Menüde yoktur. İlk açılışta kurulum kapısı buraya getirir; kurulumdan sonra Ayarlar'ın altındaki "Diğer Ayarlar" bölümünde **Kurulum Sihirbazı** kartıyla açılır |
+
+Ana gezinmenin sırası: Genel Bakış · Kişiler · Ayarlar · Kılavuz. Görevli
+kipinde gezinme bağlantıları gösterilmez; her adreste görevli ekranı durur.
+
+### 4.2 Program durumu ekranları
+
+Bunlar adres değildir; program durumuna göre sayfanın yerine gelir.
+
+| Durum | Başlık |
+|---|---|
+| Kilitli | **Kayıtlar kilitli** |
+| Görevli kipi | **Görevli Kipi** (üst çubukta da bu ad yazar) |
+| Güvenlik dosyası yok ya da bozuk | **Güvenlik dosyası bulunamadı ya da okunamıyor** |
+| Yedekten geri yüklendi | **Programı kapatıp yeniden açın** |
+
+Üst çubuktaki kip göstergesinin adları: kip adı **Yönetici kipi** / **Görevli
+kipi**; düğmeler **Görevli kipine geç** (kısayol Ctrl+Shift+G), **Yönetici
+kipine geç**, **Kilitle**.
+
+### 4.3 Sekmeler
+
+İlk sekme varsayılandır.
+
+| Sayfa | Sekmeler, sırasıyla (`?tab=` değeri) |
+|---|---|
+| Kişiler | **Öğrenciler** (`ogrenciler`) · **Öğretmenler ve Diğer Personel** (`personel`) · **Ayrılış Havuzu** (`havuz`) |
+| Ayarlar | **Ders Yılları** (`ders-yillari`) · **Kapalı Günler** (`kapali-gunler`) · **Şubeler** (`subeler`) · **Okul Bilgileri** (`okul`) · **Güvenlik** (`guvenlik`) · **Güncelleme** (`guncelleme`) |
+
+### 4.4 Kurulum Sihirbazı adımları
+
+Adım rayındaki adlar, sırasıyla: **Yönetici Parolası** · **Okul Bilgileri** ·
+**Ders Yılı ve Kapalı Günler**. İlk adım atlanamaz. Adımlar arası düğmeler:
+**Geri**, **Devam** (1. adım), **Kaydet ve devam et** (2. adım), **Kurulumu
+tamamla** (son adım).
+
+### 4.5 Genel Bakış kartları
+
+**Başlangıç Yol Haritası** (kurulumdan sonra; bütün maddeler bitince
+gizlenebilir — kurtarma anahtarı doğrulanmamışken gizlenemez, uyarı kartın
+başındadır) · **Ayrılış Havuzu** (yalnız havuz boş değilken: "N kişi ayrılış
+kararı bekliyor" → Kişiler → Ayrılış Havuzu) · **Kişiler** · **Ayarlar** ·
+**Katalog Excel Şablonu** (bir sayfaya gitmez, şablonu indirir).
+
+### 4.6 Ayarlar → Güvenlik kartları
+
+Sırasıyla: **Yönetici Parolası ve Şifreleme** (durumu, şifrelenen alanları,
+"Parolayı değiştir" ve "Kilitle" düğmelerini taşır) · **Kurtarma Anahtarınız**
+(yalnız yeni üretilmiş anahtar beklerken) · **Kurtarma Anahtarını Doğrula**
+(yalnız anahtar doğrulanmamışken) · **Kurtarma Anahtarını Yenile** ·
+**Kurtarma anahtarı çıktısı** (belge adı, §2 E14) · **Şifreli Veritabanı
+Yedeği** · **Yedekten Geri Yükleme**.
 
 ## 5. Kişisel veri ve metin
 

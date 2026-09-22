@@ -55,7 +55,7 @@ def yol_yasak_mi(goreli_yol: Path) -> bool:
         or goreli_yol.suffix.casefold() in YASAK_UZANTILAR
         or ad.endswith(YASAK_SONLAR)
         or ad in YASAK_ADLAR
-        # Parola kaldırma arşivi (app_password._archive_state) — sarmal taşır.
+        # Geri yüklemede kenara alınan güvenlik dosyası (backup_restore) — sarmal taşır.
         or ad.startswith("guvenlik-arsiv-")
     )
 

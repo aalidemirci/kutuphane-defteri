@@ -1,10 +1,16 @@
 """Standart API hata yanıtı — `{code, message, fields}` sözleşmesi (tasarım §4.3).
 
 OYS `shared/exceptions.py`'den uyarlandı: AccessLog/yetki-reddi bölümleri
-KALDIRILDI (tek kullanıcılı authsuz program — izin katmanı yok); gövde dönüşümü
-AYNEN. FE `lib/api.ts` bu biçimi bekler:
+KALDIRILDI (hesapsız program — masadaki kişi ayrımı kiple yapılır, §4.4); gövde
+dönüşümü AYNEN. FE `lib/api.ts` bu biçimi bekler:
 
     { "code": "validation_error", "message": "Türkçe açıklama", "fields": {...} }
+
+Fail-closed şifreleme (§6.3-2/3): anahtar bellekte değilken şifreli alana yazma
+girişimi (`shared.crypto.KeyMissingError`, alt sınıfı
+`app_password.PasswordRequired` dahil) **409 `parola_gerekli`** olur. Parola
+kuruluysa kilitli durum zaten ara katmanda (423) kesildiği için bu yanıt
+pratikte "önce yönetici parolasını kurun" demektir.
 """
 
 from __future__ import annotations
@@ -13,10 +19,29 @@ from typing import Any
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.http import Http404
-from rest_framework.exceptions import NotFound
+from rest_framework import status
+from rest_framework.exceptions import APIException, NotFound
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.response import Response
 from rest_framework.views import exception_handler as drf_exception_handler
+
+from shared.crypto import KeyMissingError
+
+# Sözleşme §2 — FE bu kodu tanır (kurulum sihirbazına yönlendirir). S105: hata kodu
+# ve kullanıcı iletisidir, parola değil.
+PASSWORD_REQUIRED_CODE = "parola_gerekli"  # noqa: S105
+PASSWORD_REQUIRED_MESSAGE = (
+    "Kişi kaydı için önce yönetici parolasını kurun (Kurulum Sihirbazı'nın ilk adımı)."  # noqa: S105
+)
+
+
+class PasswordRequiredResponse(APIException):
+    """`KeyMissingError`'ın DRF karşılığı: 409 `parola_gerekli` (işlem geri alınır)."""
+
+    status_code = status.HTTP_409_CONFLICT
+    default_code = PASSWORD_REQUIRED_CODE
+    default_detail = PASSWORD_REQUIRED_MESSAGE
+
 
 # Django/DRF'in kayıt-bulunamadı metinleri İngilizcedir ve model adını sızdırır
 # ("No ExamSession matches the given query."). Sözleşme Türkçe mesaj
@@ -63,6 +88,13 @@ def _service_error(exc: Exception) -> DjangoValidationError | None:
 
 def kd_exception_handler(exc: Exception, context: dict[str, Any]) -> Response | None:
     """DRF varsayılan hata gövdesini sözleşme biçimine dönüştürür."""
+    if isinstance(exc, KeyMissingError):
+        # DRF APIException'a çevrilir: böylece DRF işlemi geri alınacak diye
+        # işaretler (`set_rollback`) ve gövde aşağıdaki ortak yoldan kurulur.
+        # Hatanın kendi metni (iç ayrıntı) yankılanmaz; sözleşme metni gider.
+        converted_key = PasswordRequiredResponse()
+        converted_key.__cause__ = exc
+        exc = converted_key
     service_error = _service_error(exc)
     if isinstance(exc, DjangoValidationError):
         # Servis katmanı Django `ValidationError` fırlatır; DRF onu TANIMAZ (handler

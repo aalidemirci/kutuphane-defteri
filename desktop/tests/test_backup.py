@@ -1,8 +1,9 @@
 """Otomatik yedek testleri (tasarım §4.2 — `Connection.backup()`, 14 gün rotasyon).
 
-KS K9 iki kip: parolalı kurulumda (yedekleme.json var) yedekler şifreli, parolasız
-kipte DÜZ `.kdbak` alınır — hiçbir kipte atlanmaz. Yardımcılar kapsayıcının
-başındaki MAGIC'e bakarak iki biçimi de açar.
+Yedek YALNIZ şifreli alınır (tasarım §6.3-6; KS'nin düz yedek dalı söküldü).
+Yedek anahtarı (`yedekleme.json`) ya da kurtarma başlığı (`guvenlik.json`) yoksa
+yedek ATLANIR; düz kopya hiçbir koşulda yazılmaz. Yardımcı `_db_olustur`
+varsayılan olarak ikisini de yazar (parolası kurulu kurulum).
 """
 
 from __future__ import annotations
@@ -30,12 +31,22 @@ from desktop.backup_crypto import (
 )
 
 _TEST_KEY = b"k" * 32
+# Kurtarma başlığı olarak gömülen örnek durum dosyası. Sarmallar kriptografik
+# olarak anlamsızdır (yedek başlığı opaktır), ama biçim `is_usable_security_state`
+# kuralına uyar: iki bölüm, ikisinde de dolu tuz + sarmal.
+_GUVENLIK = (
+    b'{"surum":1,"kdf":{"time_cost":1},'
+    b'"parola":{"salt":"dHV6MQ==","sarmal":"ornek-parola-sarmali"},'
+    b'"kurtarma":{"salt":"dHV6Mg==","sarmal":"ornek-kurtarma-sarmali"},'
+    b'"gecis":"TAMAM"}'
+)
 
 
-def _db_olustur(path: Path, satir_sayisi: int = 3, *, sifreli: bool = True) -> None:
+def _db_olustur(path: Path, satir_sayisi: int = 3, *, parola_kurulu: bool = True) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    if sifreli:
+    if parola_kurulu:
         ensure_public_config(path.parent, _TEST_KEY)
+        (path.parent / "guvenlik.json").write_bytes(_GUVENLIK)
     conn = sqlite3.connect(path)
     try:
         conn.execute("PRAGMA journal_mode=WAL")
@@ -52,9 +63,11 @@ def _db_olustur(path: Path, satir_sayisi: int = 3, *, sifreli: bool = True) -> N
 def _satir_sayisi(path: Path) -> int:
     content = path.read_bytes()
     restored = path.with_name(path.name + ".restored.sqlite3")
-    restored.write_bytes(
-        decrypt_bytes(content, _TEST_KEY) if content.startswith(MAGIC) else content
-    )
+    if content.startswith(MAGIC):
+        restored.write_bytes(decrypt_bytes(content, _TEST_KEY))
+    else:
+        # Eski düz yedek (yalnız `encrypt_legacy_backups` testlerinin kaynağı).
+        restored.write_bytes(content)
     conn = sqlite3.connect(restored)
     try:
         return int(conn.execute("SELECT COUNT(*) FROM ogrenci").fetchone()[0])
@@ -78,7 +91,7 @@ def test_gunluk_yedek_tarihli_deterministik_ad_alir(tmp_path: Path) -> None:
 def test_yedek_kurtarma_basligini_tasir_ve_baslik_dogrulanir(tmp_path: Path) -> None:
     db = tmp_path / "db.sqlite3"
     _db_olustur(db)
-    guvenlik = b'{"kdf":{"time_cost":3},"parola":{"sarmal":"ornek"}}'
+    guvenlik = _GUVENLIK.replace(b'"time_cost":1', b'"time_cost":3')
     (tmp_path / "guvenlik.json").write_bytes(guvenlik)
 
     sonuc = daily_backup(db, tmp_path / "backups", today=date(2026, 7, 24))
@@ -172,6 +185,7 @@ def test_yedek_wal_de_bekleyen_sayfalari_da_icerir(tmp_path: Path) -> None:
     """
     db = tmp_path / "db.sqlite3"
     ensure_public_config(db.parent, _TEST_KEY)
+    (db.parent / "guvenlik.json").write_bytes(_GUVENLIK)
     conn = sqlite3.connect(db)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("CREATE TABLE ogrenci (id INTEGER PRIMARY KEY, ad TEXT)")
@@ -259,7 +273,7 @@ def test_eski_duz_yedek_sifrelenir_ve_duz_kopya_silinir(tmp_path: Path) -> None:
     yedekler = tmp_path / "backups"
     yedekler.mkdir()
     legacy = yedekler / "gunluk-2026-07-20.sqlite3"
-    _db_olustur(legacy)
+    _db_olustur(legacy, parola_kurulu=False)
 
     encrypted = encrypt_legacy_backups(yedekler, data_dir)
 
@@ -270,7 +284,7 @@ def test_eski_duz_yedek_sifrelenir_ve_duz_kopya_silinir(tmp_path: Path) -> None:
     assert _satir_sayisi(target) == 3
 
 
-# ---------------------------------------------------------- iki kip (KS K9)
+# ------------------------------------------------ yalnız şifreli (§6.3-6)
 
 
 def test_serialize_olmayan_sqlite_ile_yedek_alinir(
@@ -282,40 +296,31 @@ def test_serialize_olmayan_sqlite_ile_yedek_alinir(
     """
     monkeypatch.setattr(backup_mod, "_HAS_SERIALIZE", False)
     db = tmp_path / "db.sqlite3"
-    _db_olustur(db, sifreli=False)
+    _db_olustur(db)
 
     sonuc = daily_backup(db, tmp_path / "backups", today=date(2026, 7, 24))
 
-    assert sonuc is not None and _satir_sayisi(sonuc) == 3
+    assert sonuc is not None and sonuc.read_bytes().startswith(MAGIC)
+    assert _satir_sayisi(sonuc) == 3
     # Geçici görüntü dizini veri dizininde kalıntı bırakmaz.
     assert not list(tmp_path.glob("tmp*")) and not list(tmp_path.glob("*goruntu*"))
 
 
-def test_parolasiz_kipte_gunluk_yedek_duz_alinir(tmp_path: Path) -> None:
-    """KS K9 düzeltmesi: anahtar yoksa yedek ATLANMAZ, düz `.kdbak` yazılır."""
+def test_ilk_acilista_yedek_anahtari_yokken_gunluk_yedek_atlanir(tmp_path: Path) -> None:
+    """Tasarım §6.3-6: yönetici parolası kurulmadan (yedekleme.json yok, kişi verisi
+    de yok) günlük yedek ATLANIR; düz kopya YAZILMAZ."""
     db = tmp_path / "db.sqlite3"
-    _db_olustur(db, sifreli=False)
+    _db_olustur(db, parola_kurulu=False)
 
-    sonuc = daily_backup(db, tmp_path / "backups", today=date(2026, 7, 24))
-
-    assert sonuc == tmp_path / "backups" / "gunluk-2026-07-24.kdbak"
-    assert sonuc is not None and sonuc.read_bytes().startswith(b"SQLite format 3")
-    assert _satir_sayisi(sonuc) == 3
-
-
-def test_parolasiz_kipte_migrate_oncesi_yedek_duz_alinir(tmp_path: Path) -> None:
-    db = tmp_path / "db.sqlite3"
-    _db_olustur(db, sifreli=False)
-
-    sonuc = pre_migrate_backup(db, tmp_path / "backups", "0.2.0", today=date(2026, 7, 24))
-
-    assert sonuc is not None and sonuc.read_bytes().startswith(b"SQLite format 3")
+    assert daily_backup(db, tmp_path / "backups", today=date(2026, 7, 24)) is None
+    assert pre_migrate_backup(db, tmp_path / "backups", "0.2.0", today=date(2026, 7, 24)) is None
+    assert not list((tmp_path / "backups").glob("*"))
 
 
 def test_bozuk_anahtar_dosyasiyla_duz_yedek_yazilmaz(tmp_path: Path) -> None:
-    """Anahtar dosyası VAR ama bozuksa şifreli kurulumdan düz kopya SIZDIRILMAZ."""
+    """Anahtar dosyası VAR ama bozuksa düz kopya SIZDIRILMAZ, yedek atlanır."""
     db = tmp_path / "db.sqlite3"
-    _db_olustur(db, sifreli=False)
+    _db_olustur(db)
     (tmp_path / "yedekleme.json").write_text("{bozuk", encoding="utf-8")
 
     assert daily_backup(db, tmp_path / "backups", today=date(2026, 7, 24)) is None
@@ -323,15 +328,99 @@ def test_bozuk_anahtar_dosyasiyla_duz_yedek_yazilmaz(tmp_path: Path) -> None:
     assert list((tmp_path / "backups").glob("*.kdbak")) == []
 
 
-def test_parolasiz_donemin_duz_yedekleri_parola_kurulunca_sifrelenir(
+def test_guvenlik_dosyasi_kayipken_basliksiz_yedek_alinmaz(tmp_path: Path) -> None:
+    """GA-2: guvenlik.json kayıpken yedek kurtarma başlığı taşıyamaz; başlıksız yedek
+    ancak kaybolan dosyayla açılabilirdi. Yedek atlanır (eski başlıklı yedekler çıkış
+    yoludur; açılış akışı bu durumda rotasyonu da koşmaz — test_main)."""
+    db = tmp_path / "db.sqlite3"
+    _db_olustur(db)
+    (tmp_path / "guvenlik.json").unlink()
+
+    assert daily_backup(db, tmp_path / "backups", today=date(2026, 7, 24)) is None
+    assert not list((tmp_path / "backups").glob("*.kdbak"))
+
+
+_KULLANILAMAZ_GUVENLIK = {
+    "bos": b"",
+    "bozuk_json": b"{bozuk",
+    "utf8_degil": b"\xff\xfe\x00",
+    "sozluk_degil": b'["parola"]',
+    "bos_sozluk": b"{}",
+    "sarmal_bolumu_yok": b'{"surum":1,"kdf":{"time_cost":1},"gecis":"TAMAM"}',
+    "bolumler_sozluk_degil": b'{"parola":"x","kurtarma":[]}',
+    "sarmallar_bos": (
+        b'{"parola":{"salt":"dHV6","sarmal":""},"kurtarma":{"salt":"","sarmal":"s"}}'
+    ),
+    "tuz_dize_degil": b'{"parola":{"salt":5,"sarmal":"s"}}',
+    "kdf_sozluk_degil": (
+        b'{"kdf":"x","parola":{"salt":"dHV6","sarmal":"s"},'
+        b'"kurtarma":{"salt":"dHV6","sarmal":"s"}}'
+    ),
+}
+
+
+@pytest.mark.parametrize("icerik", _KULLANILAMAZ_GUVENLIK.values(), ids=_KULLANILAMAZ_GUVENLIK)
+def test_bos_ya_da_bozuk_guvenlik_json_ile_yedek_alinmaz(tmp_path: Path, icerik: bytes) -> None:
+    """GA-2 türevi: dosya SİLİNMEZ ama içi boşaltılır/bozulur. Varlık denetimi yetmez;
+    başlık `is_usable_security_state` kuralından geçmezse yedek atlanır (None)."""
+    db = tmp_path / "db.sqlite3"
+    _db_olustur(db)
+    (tmp_path / "guvenlik.json").write_bytes(icerik)
+
+    assert daily_backup(db, tmp_path / "backups", today=date(2026, 7, 24)) is None
+    assert pre_migrate_backup(db, tmp_path / "backups", "0.2.0", today=date(2026, 7, 24)) is None
+    assert not list((tmp_path / "backups").glob("*.kdbak"))
+
+
+def test_tek_tam_sarmal_basliga_yeter(tmp_path: Path) -> None:
+    """Tek tam sarmal (ör. yalnız parola bölümü) o sırla DEK'i açar: yedek alınır."""
+    db = tmp_path / "db.sqlite3"
+    _db_olustur(db)
+    yalniz_parola = b'{"kdf":{"time_cost":1},"parola":{"salt":"dHV6","sarmal":"s"}}'
+    (tmp_path / "guvenlik.json").write_bytes(yalniz_parola)
+
+    sonuc = daily_backup(db, tmp_path / "backups", today=date(2026, 7, 24))
+
+    assert sonuc is not None
+    assert embedded_recovery_metadata(sonuc.read_bytes()) == yalniz_parola
+
+
+def test_bosaltilan_guvenlik_json_eski_baslikli_yedekleri_rotasyona_kurban_etmez(
     tmp_path: Path,
 ) -> None:
-    """Parola kurulduğunda düz `.kdbak` yedekleri YERİNDE şifreli biçime döner."""
+    """Denetçi senaryosu: sağlam başlıklı 01.09 yedeği var; kilitliyken guvenlik.json
+    boşaltılır; program 21.09'da açılır. Başlıksız yedek ALINMAZ, açılış akışı
+    (`main.prepare_data`: yalnız yedek alındıysa rotasyon) eski yedeği silmez."""
     db = tmp_path / "db.sqlite3"
-    _db_olustur(db, sifreli=False)
+    _db_olustur(db)
     yedekler = tmp_path / "backups"
-    duz = daily_backup(db, yedekler, today=date(2026, 7, 24))
-    assert duz is not None and duz.read_bytes().startswith(b"SQLite format 3")
+    eski = daily_backup(db, yedekler, today=date(2026, 9, 1))
+    assert eski is not None
+    assert embedded_recovery_metadata(eski.read_bytes()) == _GUVENLIK
+
+    (tmp_path / "guvenlik.json").write_bytes(b"")
+    bugun = date(2026, 9, 21)
+    alinan = daily_backup(db, yedekler, today=bugun)
+    if alinan is not None:  # `desktop/main.py::prepare_data` ile aynı koşul
+        rotate_backups(yedekler, today=bugun)
+
+    assert alinan is None
+    assert sorted(p.name for p in yedekler.glob("*.kdbak")) == ["gunluk-2026-09-01.kdbak"]
+    assert embedded_recovery_metadata(eski.read_bytes()) == _GUVENLIK
+
+
+def test_eski_duz_kdbak_yedekleri_parola_kurulunca_sifrelenir(
+    tmp_path: Path,
+) -> None:
+    """Parolasız dal sökülmeden önceki sürümlerden kalmış düz `.kdbak` dosyaları,
+    parola kurulduğunda / kilit açıldığında YERİNDE şifreli biçime döner."""
+    db = tmp_path / "db.sqlite3"
+    _db_olustur(db, parola_kurulu=False)
+    yedekler = tmp_path / "backups"
+    yedekler.mkdir()
+    duz = yedekler / "gunluk-2026-07-24.kdbak"
+    duz.write_bytes(db.read_bytes())
+    assert duz.read_bytes().startswith(b"SQLite format 3")
 
     ensure_public_config(tmp_path, _TEST_KEY)
     encrypted = encrypt_legacy_backups(yedekler, tmp_path)

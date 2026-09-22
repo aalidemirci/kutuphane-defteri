@@ -17,6 +17,11 @@ parola kabuk istemine düşebilirdi (ekranda yankılanır, hatta komut olarak
 Django BURADA AYAĞA KALDIRILIR ama veritabanına DOKUNULMAZ: `prepare_django`
 yalnız ayarları ve uygulama kayıt defterini yükler; göç ve bütünlük denetimi
 bu kipte KOŞULMAZ (bozuk veritabanı bu kipin varlık sebebidir).
+
+Yedekler daima şifrelidir (tasarım §6.3-6; düz yedek dalı söküldü): yönetici
+parolası ya da kurtarma anahtarı her geri yüklemede istenir. Güvenlik dosyası
+kayıpsa (GA-2) bu kip de çıkış yoludur: çekirdek `guvenlik.json`'u yedeğin
+kurtarma başlığından yeniden yazar.
 """
 
 from __future__ import annotations
@@ -28,7 +33,7 @@ from getpass import getpass
 from pathlib import Path
 from typing import Any
 
-from desktop.backup_crypto import BACKUP_SUFFIX, MAGIC, BackupCryptoError
+from desktop.backup_crypto import BACKUP_SUFFIX, BackupCryptoError
 from desktop.dialogs import show_error
 from desktop.django_bootstrap import prepare_django
 from desktop.errors import EXIT_OK, EXIT_RESTORE_FAILED, AlreadyRunningError
@@ -103,19 +108,18 @@ def _run_steps(paths: AppPaths, args: argparse.Namespace, interactive: bool) -> 
             print("Geri yükleme iptal edildi.")
         return EXIT_OK
 
-    sifreli = _is_encrypted(yedek)
     parola: str | None = str(getattr(args, "parola", "") or "") or None
     anahtar: str | None = str(getattr(args, "kurtarma_anahtari", "") or "") or None
-    if sifreli and not parola and not anahtar:
+    if not parola and not anahtar:
         if not interactive:
             raise RestoreCliError(
-                "Bu yedek şifreli; --parola ya da --kurtarma-anahtari verin veya "
+                "Yedekler şifrelidir; --parola ya da --kurtarma-anahtari verin veya "
                 "komutu etkileşimli bir uçbirimden çalıştırın."
             )
         parola, anahtar = _ask_secret()
 
     if interactive:
-        print(f"\nYedek : {yedek.name} ({'şifreli' if sifreli else 'düz'})")
+        print(f"\nYedek : {yedek.name}")
         print(f"Hedef : {paths.db_path}")
         print("Mevcut veritabanı silinmez; 'db-onceki-*' adıyla aynı klasörde saklanır.")
     if not args.evet:
@@ -202,14 +206,6 @@ def list_backups(backup_dir: Path) -> list[Path]:
     return dosyalar
 
 
-def _is_encrypted(path: Path) -> bool:
-    try:
-        with path.open("rb") as handle:
-            return handle.read(len(MAGIC)) == MAGIC
-    except OSError:
-        return False
-
-
 def _choose_backup(paths: AppPaths, args: argparse.Namespace, interactive: bool) -> Path | None:
     istenen = str(args.geri_yukle or "")
     if istenen:
@@ -232,9 +228,8 @@ def _choose_backup(paths: AppPaths, args: argparse.Namespace, interactive: bool)
 def _pick_backup(yedekler: list[Path]) -> Path | None:
     print("Geri yüklenebilir yedekler (en yeniden eskiye):")
     for sira, yol in enumerate(yedekler, start=1):
-        kip = "şifreli" if _is_encrypted(yol) else "düz"
         boyut = max(1, yol.stat().st_size // 1024)
-        print(f"  {sira:2d}) {yol.name}  ({kip}, {boyut} KB)")
+        print(f"  {sira:2d}) {yol.name}  ({boyut} KB)")
     while True:
         try:
             secim = input("Geri yüklenecek yedeğin numarası (vazgeçmek için boş bırakın): ").strip()
@@ -285,7 +280,7 @@ def _read_secret(prompt: str) -> str:
 
 def _ask_secret() -> tuple[str | None, str | None]:
     """(parola, kurtarma anahtarı) — biri dolu döner."""
-    parola = _read_secret("Uygulama parolası (kurtarma anahtarıyla açmak için boş bırakın): ")
+    parola = _read_secret("Yönetici parolası (kurtarma anahtarıyla açmak için boş bırakın): ")
     if parola:
         return parola, None
     try:

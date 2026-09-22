@@ -21,7 +21,7 @@ def create_encrypted_backup() -> tuple[bytes, str]:
     """Tutarlı veritabanı görüntüsünü RAM'de şifreleyip indirmeye hazırlar."""
     if app_password.is_locked():
         raise EncryptedBackupError(
-            "Şifreli yedek oluşturmak için uygulama parolasıyla kilidi açın."
+            "Şifreli yedek oluşturmak için yönetici parolasıyla kilidi açın."
         )
 
     data_dir = app_password.state_path().parent

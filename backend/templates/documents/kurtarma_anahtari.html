@@ -1,0 +1,83 @@
+{% extends "documents/base.html" %}
+{% comment %}Kurtarma anahtarı çıktısı (E14; tasarım §6.3-1). Bağlam
+apps/okul/services/recovery_key_document.py'den gelir: antet, `document_title`,
+`issued_on` (gg.aa.yyyy, yerel gün), `asset_no` (bilgisayarın demirbaş no'su;
+boşsa elle doldurulacak çizgi) ve `key_groups` (numaralı dörtlü gruplar).
+Anahtar karakter karakter EŞİT GENİŞLİKLİ kutulara basılır: gömülü yazı tipi
+yalnız DejaVu Sans'tır (tek aralıklı DejaVu pakette yok), eşit genişlik kutuyla
+sağlanır. Anahtar ayrıca tek satırda da basılır (elle yazarken ve PDF'ten
+kopyalarken karıştırılmasın). text-transform YOK — başlıklar doğrudan büyük
+harf (WeasyPrint TR "i" tuzağı). Belge tek sayfadır (sayfa bütçesi testi).{% endcomment %}
+{% block extra_style %}
+<style>
+  .key-box { margin: 12pt 0 4pt; border: 1.5pt solid var(--pr-ink); padding: 10pt 8pt 8pt;
+             break-inside: avoid; page-break-inside: avoid; }
+  .key-caption { text-align: center; font-size: 8.5pt; color: var(--pr-secondary);
+                 margin-bottom: 6pt; }
+  .key-grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .key-grid td { text-align: center; vertical-align: top; padding: 3pt 2pt 7pt; }
+  .key-no { font-size: 7.5pt; color: var(--pr-muted); margin-bottom: 2pt; }
+  .key-char { display: inline-block; width: 17pt; height: 23pt; line-height: 23pt;
+              margin: 0 1pt; border: 0.75pt solid var(--pr-line); background: var(--pr-fill);
+              font-size: 16pt; font-weight: bold; color: var(--pr-ink); text-align: center; }
+  .key-line { text-align: center; font-size: 11pt; font-weight: bold; color: var(--pr-ink);
+              margin-top: 2pt; }
+  .key-line-label { font-weight: normal; font-size: 8.5pt; color: var(--pr-secondary); }
+  .key-hint { text-align: center; font-size: 8pt; color: var(--pr-secondary); margin-top: 5pt; }
+  .advice { margin: 4pt 0 0 14pt; padding: 0; font-size: 9.5pt; line-height: 1.4; }
+  .advice li { margin-bottom: 3pt; }
+  .confidential { margin-top: 14pt; text-align: center; font-size: 8.5pt; font-weight: bold;
+                  color: var(--pr-label); border-top: 0.6pt solid var(--pr-faint); padding-top: 5pt; }
+</style>
+{% endblock %}
+{% block content %}
+  <div class="doc-title">{{ document_title }}</div>
+  <div class="doc-subtitle">Kütüphane Defteri · yönetici parolası unutulduğunda kayıtlara erişmenin yolu</div>
+
+  <table class="info">
+    <tr><td class="label">Düzenlenme tarihi</td><td>{{ issued_on }}</td></tr>
+    <tr><td class="label">Bilgisayarın demirbaş no'su</td><td>{% if asset_no %}{{ asset_no }}{% else %}……………………………………{% endif %}</td></tr>
+    <tr><td class="label">Program</td><td>Kütüphane Defteri — okulun kütüphane işlerini yürüttüğü yerel araç</td></tr>
+  </table>
+
+  <div class="key-box">
+    <div class="key-caption">Sekiz grup, soldan sağa ve yukarıdan aşağıya sırayla</div>
+    <table class="key-grid">
+      <tr>
+      {% for grup in key_groups %}{% if forloop.counter0 == 4 %}</tr><tr>{% endif %}
+        <td>
+          <div class="key-no">{{ grup.no }}. grup</div>
+          <div>{% for harf in grup.chars %}<span class="key-char">{{ harf }}</span>{% endfor %}</div>
+        </td>
+      {% endfor %}
+      </tr>
+    </table>
+    <div class="key-line"><span class="key-line-label">Tek satırda: </span>{% for grup in key_groups %}{% if not forloop.first %}-{% endif %}{{ grup.chars|join:"" }}{% endfor %}</div>
+    <div class="key-hint">Anahtarda 0, 1, 8 ve 9 rakamları yoktur: O ve I her zaman harftir. Tireler yazılmasa da olur.</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">NE İŞE YARAR?</div>
+    <p class="para">Yönetici parolası unutulursa kilit ekranında “Parolamı unuttum” seçilir, bu
+    anahtar girilir ve yeni parola belirlenir. Yedekten geri yüklemede de parolanın yerine
+    kullanılabilir. Parola değiştirilse de anahtar değişmez; bu kâğıt geçerli kalır. Anahtar
+    kaybolur ve parola da unutulursa şifreli kayıtlar (öğrenci, öğretmen ve diğer personelin
+    adları, okul numaraları) hiçbir yolla açılamaz.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">NASIL SAKLANIR?</div>
+    <ol class="advice">
+      <li>Bu kâğıdı zarfa koyup zarfı kapatın; üstüne “Kütüphane Defteri kurtarma anahtarı” ve
+        tarihi yazın. Zarfı müdürlükte, kilitli dolapta saklayın.</li>
+      <li>Yönetici parolası en az iki görevlendirilmiş kişide bulunsun: biri okuldan ayrılsa ya da
+        parolayı unutsa da kayıtlara erişim sürer.</li>
+      <li>Anahtarı bilgisayarda, e-postada, mesajlaşma uygulamasında ya da fotoğraf olarak
+        saklamayın. Bu çıktının PDF dosyasını kaydettiyseniz dosyayı bu bilgisayarda bırakmayın;
+        USB belleğe alıp zarfla birlikte saklayın.</li>
+      <li>Çıktıyı kütüphane masasında, panoda ya da ortak klasörlerde bırakmayın.</li>
+    </ol>
+  </div>
+
+  <div class="confidential">Bu belge gizlidir; çoğaltılmaz, asılmaz.</div>
+{% endblock %}

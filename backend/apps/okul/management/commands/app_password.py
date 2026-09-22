@@ -1,9 +1,9 @@
-"""Uygulama parolası — konsol kurtarma aracı (tasarım §6).
+"""Yönetici parolası — konsol kurtarma aracı (tasarım §4.3, §6.3).
 
-Arayüz açılamadığında (yarım kalmış geçiş, kayıp güvenlik dosyası şüphesi,
-kilitli veriyle destek çağrısı) tek çıkış yolu budur. Program tek kullanıcılı
-olduğundan yetki denetimi yoktur; komut yalnız veri klasörüne erişebilen kişi
-tarafından çalıştırılabilir.
+Arayüz açılamadığında (yarım kalmış kurulum geçişi, kayıp güvenlik dosyası
+şüphesi, kilitli veriyle destek çağrısı) destek elinin yoludur. Program
+hesapsızdır; komut yalnız veri klasörüne erişebilen kişi tarafından
+çalıştırılabilir.
 
 Kullanım (paketlenmiş kurulumda `manage.py` yoktur; bu araç geliştirme ve
 destek senaryosu içindir):
@@ -11,8 +11,9 @@ destek senaryosu içindir):
     python manage.py app_password status
     python manage.py app_password enable            # parolayı sorar, kurtarma anahtarı basar
     python manage.py app_password resume            # yarım kalan geçişi tamamlar
-    python manage.py app_password disable           # parolayı kaldırır, alanları çözer
     python manage.py app_password recover           # kurtarma anahtarıyla yeni parola
+
+Parolayı KALDIRMA işlemi yoktur: yönetici parolası zorunludur (§6.3-6).
 
 Parolalar VARSAYILAN OLARAK gizli istemle (getpass) alınır — komut satırı
 geçmişine ve süreç listesine düşmez. `--password/--new-password/--recovery-key`
@@ -28,11 +29,11 @@ from django.core.management.base import BaseCommand, CommandError, CommandParser
 
 from apps.okul.services import app_password
 
-ACTIONS = ("status", "enable", "resume", "disable", "recover")
+ACTIONS = ("status", "enable", "resume", "recover")
 
 
 class Command(BaseCommand):
-    help = "Uygulama parolasını kurar, açar, kaldırır veya yarım kalan geçişi tamamlar."
+    help = "Yönetici parolasını kurar, açar ya da yarım kalan geçişi tamamlar."
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument("action", choices=ACTIONS, help="Yapılacak işlem.")
@@ -57,22 +58,26 @@ class Command(BaseCommand):
         durum = app_password.status()
         self.stdout.write(f"Parola kurulu    : {'evet' if durum['password_set'] else 'hayır'}")
         self.stdout.write(f"Kilitli          : {'evet' if durum['locked'] else 'hayır'}")
-        self.stdout.write(
-            "Yarım geçiş      : " + (durum["transition"] or "yok")  # SIFRELENIYOR / COZULUYOR / yok
-        )
+        if durum["security_file_missing"]:
+            self.stdout.write(
+                self.style.ERROR(
+                    "Güvenlik dosyası: KAYIP — " + app_password.SECURITY_FILE_MISSING_MESSAGE
+                )
+            )
+        self.stdout.write("Yarım geçiş      : " + (durum["transition"] or "yok"))
         self.stdout.write("Korunan alanlar  : " + ", ".join(durum["protected_fields"]))
         self.stdout.write(f"Güvenlik dosyası : {app_password.state_path()}")
 
     def _enable(self, options: dict[str, Any]) -> None:
-        parola = self._ask(options, "password", "Yeni uygulama parolası: ", confirm=True)
+        parola = self._ask(options, "password", "Yeni yönetici parolası: ", confirm=True)
         kurtarma = app_password.enable(password=parola)
-        self.stdout.write(self.style.SUCCESS("Parola kuruldu; hassas alanlar şifrelendi."))
+        self.stdout.write(self.style.SUCCESS("Yönetici parolası kuruldu."))
         self.stdout.write("")
         self.stdout.write("KURTARMA ANAHTARI (bir daha gösterilmez — yazdırın ve saklayın):")
         self.stdout.write(self.style.WARNING(f"    {kurtarma}"))
 
     def _resume(self, options: dict[str, Any]) -> None:
-        parola = self._ask(options, "password", "Uygulama parolası: ")
+        parola = self._ask(options, "password", "Yönetici parolası: ")
         app_password.unlock(password=parola)  # açılışta yarım geçiş kendiliğinden tamamlanır
         sonuc = app_password.resume_pending(force=bool(options.get("force")))
         if sonuc["resumed"]:
@@ -82,18 +87,9 @@ class Command(BaseCommand):
         else:
             self.stdout.write("Tamamlanacak geçiş yok.")
 
-    def _disable(self, options: dict[str, Any]) -> None:
-        parola = self._ask(options, "password", "Uygulama parolası: ")
-        app_password.disable(password=parola)
-        self.stdout.write(self.style.SUCCESS("Parola kaldırıldı; alanlar düz metne döndürüldü."))
-        self.stdout.write(
-            "Not: eski yedekler hâlâ eski anahtarla şifrelidir; arşivlenen "
-            "guvenlik-arsiv-*.json dosyasını silmeyin."
-        )
-
     def _recover(self, options: dict[str, Any]) -> None:
         anahtar = options.get("recovery_key") or input("Kurtarma anahtarı: ")
-        yeni = self._ask(options, "new_password", "Yeni uygulama parolası: ", confirm=True)
+        yeni = self._ask(options, "new_password", "Yeni yönetici parolası: ", confirm=True)
         app_password.unlock_with_recovery(recovery_key=anahtar, new_password=yeni)
         self.stdout.write(self.style.SUCCESS("Kurtarma başarılı; yeni parola geçerli."))
 

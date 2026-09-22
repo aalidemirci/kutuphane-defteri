@@ -165,9 +165,7 @@ def _sahte_servis(kayit: dict[str, Any], *, hata: str | None = None) -> Any:
         if hata is not None:
             raise SahteServisHatasi(hata)
         kayit["cagri"] = (yedek, db_path, password, recovery_key)
-        return SimpleNamespace(
-            encrypted=False, db_path=db_path, old_db_path=None, state_written=False
-        )
+        return SimpleNamespace(db_path=db_path, old_db_path=None, state_written=False)
 
     return SimpleNamespace(BackupRestoreError=SahteServisHatasi, restore_database=restore_database)
 
@@ -181,13 +179,15 @@ def sahte_ortam(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     return kayit
 
 
-def test_akis_duz_yedegi_servise_iletir(
+def test_akis_yedegi_ve_parola_bayragini_servise_iletir(
     tmp_path: Path, sahte_ortam: dict[str, Any], capsys: pytest.CaptureFixture[str]
 ) -> None:
     paths = _paths(tmp_path)
     yedek = paths.backups / "gunluk-2026-08-29.kdbak"
-    yedek.write_bytes(SQLITE_MAGIC + b"\x00" * 16)
-    args = main_mod.build_parser().parse_args(["--geri-yukle", str(yedek), "--evet"])
+    yedek.write_bytes(MAGIC + b"\x00" * 64)
+    args = main_mod.build_parser().parse_args(
+        ["--geri-yukle", str(yedek), "--evet", "--parola", "Gizli-Parola-1"]
+    )
 
     kod = restore_mod._restore_flow(paths, args)
 
@@ -195,7 +195,7 @@ def test_akis_duz_yedegi_servise_iletir(
     hedef_yedek, hedef_db, parola, anahtar = sahte_ortam["cagri"]
     assert hedef_yedek == yedek
     assert hedef_db == paths.db_path
-    assert parola is None and anahtar is None
+    assert parola == "Gizli-Parola-1" and anahtar is None
     assert "tamamlandı" in capsys.readouterr().out
 
 
@@ -204,25 +204,47 @@ def test_akis_yalniz_dosya_adiyla_yedek_klasorunde_arar(
 ) -> None:
     paths = _paths(tmp_path)
     yedek = paths.backups / "gunluk-2026-08-29.kdbak"
-    yedek.write_bytes(SQLITE_MAGIC)
-    args = main_mod.build_parser().parse_args(["--geri-yukle", yedek.name, "--evet"])
+    yedek.write_bytes(MAGIC)
+    args = main_mod.build_parser().parse_args(
+        ["--geri-yukle", yedek.name, "--evet", "--kurtarma-anahtari", "AAAA-BBBB"]
+    )
 
     assert restore_mod._restore_flow(paths, args) == EXIT_OK
     assert sahte_ortam["cagri"][0] == yedek
+    assert sahte_ortam["cagri"][3] == "AAAA-BBBB"
 
 
-def test_akis_sifreli_yedekte_bayrak_sirlarini_kullanir(
-    tmp_path: Path, sahte_ortam: dict[str, Any], capsys: pytest.CaptureFixture[str]
+def test_akis_sir_verilmezse_her_yedekte_sorar(
+    tmp_path: Path,
+    sahte_ortam: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Düz yedek dalı yok (tasarım §6.3-6): her geri yükleme sır ister."""
+    paths = _paths(tmp_path)
+    yedek = paths.backups / "gunluk.kdbak"
+    yedek.write_bytes(MAGIC + b"\x00" * 64)
+    monkeypatch.setattr(restore_mod, "_ask_secret", lambda: (None, "KURT-ARMA"))
+    args = main_mod.build_parser().parse_args(["--geri-yukle", str(yedek), "--evet"])
+
+    assert restore_mod._restore_flow(paths, args) == EXIT_OK
+    assert sahte_ortam["cagri"][2:] == (None, "KURT-ARMA")
+
+
+def test_akis_konsolsuz_ve_sirsiz_turkce_hatayla_biter(
+    tmp_path: Path, sahte_ortam: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     paths = _paths(tmp_path)
     yedek = paths.backups / "gunluk.kdbak"
     yedek.write_bytes(MAGIC + b"\x00" * 64)
-    args = main_mod.build_parser().parse_args(
-        ["--geri-yukle", str(yedek), "--evet", "--parola", "Gizli-Parola-1"]
-    )
+    hatalar: list[str] = []
+    monkeypatch.setattr(restore_mod, "ensure_console", lambda: False)
+    monkeypatch.setattr(restore_mod, "show_error", lambda baslik, mesaj: hatalar.append(mesaj))
+    args = main_mod.build_parser().parse_args(["--geri-yukle", str(yedek), "--evet"])
 
-    assert restore_mod._restore_flow(paths, args) == EXIT_OK
-    assert sahte_ortam["cagri"][2] == "Gizli-Parola-1"
+    assert restore_mod._restore_flow(paths, args) == EXIT_RESTORE_FAILED
+    assert "cagri" not in sahte_ortam
+    assert hatalar and "şifrelidir" in hatalar[0]
 
 
 def test_bulunamayan_yedek_hata_koduyla_biter(
@@ -244,12 +266,14 @@ def test_servis_hatasi_kullaniciya_mesajla_doner(
 ) -> None:
     paths = _paths(tmp_path)
     yedek = paths.backups / "gunluk.kdbak"
-    yedek.write_bytes(SQLITE_MAGIC)
+    yedek.write_bytes(MAGIC)
     monkeypatch.setattr(restore_mod, "prepare_django", lambda *a, **k: None)
     monkeypatch.setattr(
         restore_mod, "_load_service", lambda: _sahte_servis({}, hata="Yedek anahtarı yanlış.")
     )
-    args = main_mod.build_parser().parse_args(["--geri-yukle", str(yedek), "--evet"])
+    args = main_mod.build_parser().parse_args(
+        ["--geri-yukle", str(yedek), "--evet", "--parola", "Gizli-Parola-1"]
+    )
 
     kod = restore_mod._restore_flow(paths, args)
 
@@ -265,9 +289,11 @@ def test_onay_reddinde_servis_cagrilmaz(
 ) -> None:
     paths = _paths(tmp_path)
     yedek = paths.backups / "gunluk.kdbak"
-    yedek.write_bytes(SQLITE_MAGIC)
+    yedek.write_bytes(MAGIC)
     monkeypatch.setattr("builtins.input", lambda *args: "h")
-    args = main_mod.build_parser().parse_args(["--geri-yukle", str(yedek)])
+    args = main_mod.build_parser().parse_args(
+        ["--geri-yukle", str(yedek), "--parola", "Gizli-Parola-1"]
+    )
 
     kod = restore_mod._restore_flow(paths, args)
 
@@ -279,9 +305,51 @@ def test_onay_reddinde_servis_cagrilmaz(
 # ------------------------------------------------------------------ uçtan uca
 
 
+_E2E_PAROLA = "Uctan-Uca-Parola-1"
+
+
+def _gomulu_durum(dek: bytes, parola: str) -> bytes:
+    """`guvenlik.json` biçiminde kurtarma başlığı (app_password._build_state eşi).
+
+    Masaüstü testleri backend'i import edemediği için biçim burada ucuz Argon2
+    profiliyle elle kurulur; çekirdek yalnız `kdf` ve `parola` bölümünü okur.
+    """
+    import base64
+    import json
+
+    from argon2.low_level import Type, hash_secret_raw
+    from cryptography.fernet import Fernet
+
+    kdf = {"time_cost": 1, "memory_cost": 8, "parallelism": 1}
+    tuz = os.urandom(16)
+    sarmalama = hash_secret_raw(
+        secret=parola.encode("utf-8"),
+        salt=tuz,
+        time_cost=1,
+        memory_cost=8,
+        parallelism=1,
+        hash_len=32,
+        type=Type.ID,
+    )
+    sarmal = Fernet(base64.urlsafe_b64encode(sarmalama)).encrypt(dek).decode("ascii")
+    durum = {
+        "surum": 1,
+        "kdf": kdf,
+        "parola": {"salt": base64.b64encode(tuz).decode("ascii"), "sarmal": sarmal},
+        "gecis": "TAMAM",
+    }
+    return json.dumps(durum).encode("utf-8")
+
+
 @pytest.mark.slow
 def test_geri_yukleme_kipi_gercek_akista_calisir(tmp_path: Path) -> None:
-    """Gerçek zincir: kilit → prepare_django → çekirdek → dosya değişimi (pencere YOK)."""
+    """Gerçek zincir: kilit → prepare_django → çekirdek → dosya değişimi (pencere YOK).
+
+    Veri klasöründe `guvenlik.json` YOKTUR (GA-2 güvenlik dosyası kayıp senaryosu):
+    geri yükleme dosyayı yedeğin kurtarma başlığından yeniden yazar.
+    """
+    from desktop.backup_crypto import encrypt_bytes, private_key_from_data_key
+
     veri = tmp_path / "data"
     veri.mkdir(parents=True)
     yedek_dizini = tmp_path / "backups"
@@ -296,8 +364,18 @@ def test_geri_yukleme_kipi_gercek_akista_calisir(tmp_path: Path) -> None:
     sqlite_yaz(veri / "db.sqlite3", "eski-icerik")
     (veri / "db.sqlite3-wal").write_bytes(b"wal-kalintisi")
     (veri / "surum.json").write_text("{}", encoding="utf-8")
+    kaynak = tmp_path / "yeni.sqlite3"
+    sqlite_yaz(kaynak, "yeni-icerik")
+    dek = os.urandom(32)
+    baslik = _gomulu_durum(dek, _E2E_PAROLA)
     yedek = yedek_dizini / "gunluk-2026-08-29.kdbak"
-    sqlite_yaz(yedek, "yeni-icerik")
+    yedek.write_bytes(
+        encrypt_bytes(
+            kaynak.read_bytes(),
+            private_key_from_data_key(dek).public_key(),
+            recovery_header=baslik,
+        )
+    )
 
     sonuc = subprocess.run(  # noqa: S603 — sabit argümanlar, kabuk yok
         [
@@ -309,6 +387,8 @@ def test_geri_yukleme_kipi_gercek_akista_calisir(tmp_path: Path) -> None:
             "--geri-yukle",
             str(yedek),
             "--evet",
+            "--parola",
+            _E2E_PAROLA,
         ],
         cwd=REPO_ROOT,
         capture_output=True,
@@ -324,5 +404,8 @@ def test_geri_yukleme_kipi_gercek_akista_calisir(tmp_path: Path) -> None:
     assert (onceki[0].with_name(onceki[0].name + "-wal")).is_file()
     assert not (veri / "db.sqlite3-wal").exists()
     assert not (veri / "surum.json").exists()
+    # Kayıp güvenlik dosyası yedeğin kurtarma başlığından yazıldı; yedek anahtarı eşitlendi.
+    assert (veri / "guvenlik.json").read_bytes() == baslik
+    assert (veri / "yedekleme.json").is_file()
     # Yedeğin kendisine dokunulmaz.
     assert yedek.is_file()

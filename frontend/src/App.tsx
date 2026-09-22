@@ -3,7 +3,8 @@
 // ekranlarını taşır; katalog, dolaşım ve sayım ekranları kendi fazlarında
 // eklenir. Kilit ekranı (GuvenlikKapisi) kurulum kapısından ÖNCE gelir —
 // parola kuruluysa hiçbir veri ekranı (sihirbaz dahil) açılmadan kilit
-// çözülmelidir.
+// çözülmelidir. Kip kapısı (KipKapisi) en içtedir: görevli kipinde rotaların
+// yerine görevli ekranı durur (tasarım §4.4).
 
 import { Route, Routes } from "react-router-dom";
 
@@ -14,6 +15,7 @@ import GuvenlikKapisi from "./modules/guvenlik/GuvenlikKapisi";
 import YenidenBaslatEkrani from "./modules/guvenlik/YenidenBaslatEkrani";
 import HakkindaPage from "./modules/hakkinda/HakkindaPage";
 import KilavuzPage from "./modules/kilavuz/KilavuzPage";
+import KipKapisi from "./modules/kip/KipKapisi";
 import KisilerPage from "./modules/kisiler/KisilerPage";
 import KurulumPage from "./modules/kurulum/KurulumPage";
 import PanelPage from "./modules/panel/PanelPage";
@@ -26,18 +28,20 @@ export default function App() {
       <YenidenBaslatEkrani />
       <GuvenlikKapisi>
         <KurulumKapisi>
-          <Routes>
-            <Route path="/" element={<PanelPage />} />
-            {/* Kurulum sihirbazı — kapının izin verdiği tek rota (bkz. KurulumKapisi). */}
-            <Route path="/kurulum" element={<KurulumPage />} />
-            {/* Öğrenci + öğretmen sicili ve e-Okul içe aktarma. */}
-            <Route path="/kisiler" element={<KisilerPage />} />
-            {/* Ders yılı, şubeler, okul künyesi, güvenlik, güncelleme. */}
-            <Route path="/ayarlar" element={<AyarlarPage />} />
-            {/* Kullanım kılavuzu (statik içerik, çevrimdışı). */}
-            <Route path="/kilavuz" element={<KilavuzPage />} />
-            <Route path="/hakkinda" element={<HakkindaPage />} />
-          </Routes>
+          <KipKapisi>
+            <Routes>
+              <Route path="/" element={<PanelPage />} />
+              {/* Kurulum sihirbazı — kapının izin verdiği tek rota (bkz. KurulumKapisi). */}
+              <Route path="/kurulum" element={<KurulumPage />} />
+              {/* Öğrenci + öğretmen sicili ve e-Okul içe aktarma. */}
+              <Route path="/kisiler" element={<KisilerPage />} />
+              {/* Ders yılı, şubeler, okul künyesi, güvenlik, güncelleme. */}
+              <Route path="/ayarlar" element={<AyarlarPage />} />
+              {/* Kullanım kılavuzu (statik içerik, çevrimdışı). */}
+              <Route path="/kilavuz" element={<KilavuzPage />} />
+              <Route path="/hakkinda" element={<HakkindaPage />} />
+            </Routes>
+          </KipKapisi>
         </KurulumKapisi>
       </GuvenlikKapisi>
     </AppShell>

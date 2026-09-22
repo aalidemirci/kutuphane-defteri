@@ -39,7 +39,7 @@ describe("HakkindaPage", () => {
   it("teknik bilgiler kartı şifreleme yöntemlerini adıyla verir; fotoğraf şifrelemesi anlatılmaz", () => {
     render(<HakkindaPage />);
 
-    expect(screen.getByRole("heading", { level: 2, name: "Teknik bilgiler" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Teknik Bilgiler" })).toBeInTheDocument();
     expect(screen.getByText(/X25519 ve AES-256-GCM/)).toBeInTheDocument();
     expect(screen.getByText(/Argon2id/)).toBeInTheDocument();
     expect(screen.queryByText(/fotoğraf/i)).not.toBeInTheDocument();

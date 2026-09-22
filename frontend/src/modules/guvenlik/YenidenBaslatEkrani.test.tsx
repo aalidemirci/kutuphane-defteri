@@ -21,4 +21,17 @@ describe("YenidenBaslatEkrani", () => {
     // Kapatma düğmesi yok: tek çıkış programı yeniden başlatmaktır.
     expect(screen.queryByRole("button")).toBeNull();
   });
+
+  // Çarpı programı KAPATMAZ, tepsiye gizler (desktop/window.py::on_closing);
+  // program yalnız tepsi menüsündeki "Çık" ile kapanır.
+  it("pencereyi kapatmayı değil, tepsideki Çık'ı tarif eder", () => {
+    render(<YenidenBaslatEkrani />);
+    act(() => yenidenBaslatGerekliYayinla());
+
+    const ekran = screen.getByRole("alertdialog", { name: "Programı yeniden başlatın" });
+    expect(ekran).toHaveTextContent("Pencerenin çarpı düğmesi programı kapatmaz");
+    expect(ekran).toHaveTextContent("tepside");
+    expect(ekran).toHaveTextContent("“Çık”ı seçin");
+    expect(ekran).not.toHaveTextContent("pencereyi kapatın");
+  });
 });

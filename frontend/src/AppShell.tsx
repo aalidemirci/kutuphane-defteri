@@ -3,7 +3,11 @@ import type { ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 
 import UpdateBanner from "./modules/guncelleme/UpdateBanner";
+import { GOREVLI_EKRANI_BASLIGI } from "./modules/kip/GorevliEkrani";
+import KipGostergesi from "./modules/kip/KipGostergesi";
+import { useKip } from "./modules/kip/useKip";
 import DensitySwitcher from "./ui/DensitySwitcher";
+import { DurumBasligiSaglayici, useDurumBasligiYonetimi } from "./ui/DurumBasligi";
 import Icon from "./ui/Icon";
 import ThemeSwitcher from "./ui/ThemeSwitcher";
 
@@ -57,9 +61,12 @@ function navLinkClass(isActive: boolean, collapsed: boolean): string {
 
 function SidebarContent({
   collapsed,
+  gorevli,
   onNavigate,
 }: {
   collapsed: boolean;
+  /** Görevli kipinde yönetici ekranlarının bağlantıları gösterilmez (tasarım §4.4). */
+  gorevli: boolean;
   onNavigate?: () => void;
 }) {
   return (
@@ -87,7 +94,9 @@ function SidebarContent({
         </p>
       )}
       <nav aria-label="Ana gezinme" className="flex flex-1 flex-col gap-1.5 px-3 py-2">
-        {NAV_ITEMS.map((item) => (
+        {/* Görevli kipinde rotalar zaten görevli ekranına düşer (KipKapisi);
+            bağlantılar gösterilmez ki masadaki görevli boşuna tıklamasın. */}
+        {(gorevli ? [] : NAV_ITEMS).map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -114,17 +123,19 @@ function SidebarContent({
             <p className="mt-0.5 text-body-small text-on-sidebar-muted">Veriler bu cihazda</p>
           </div>
         )}
-        <NavLink
-          to="/hakkinda"
-          title={collapsed ? "Hakkında ve Lisans" : undefined}
-          aria-label={collapsed ? "Hakkında ve Lisans" : undefined}
-          onClick={onNavigate}
-          className={({ isActive }) => navLinkClass(isActive, collapsed)}
-        >
-          <span aria-hidden="true" className="state-layer" />
-          <Icon name="info" size="xl" filled className="relative z-10 shrink-0 opacity-95" />
-          {!collapsed && <span className="relative z-10 truncate">Hakkında ve Lisans</span>}
-        </NavLink>
+        {!gorevli && (
+          <NavLink
+            to="/hakkinda"
+            title={collapsed ? "Hakkında ve Lisans" : undefined}
+            aria-label={collapsed ? "Hakkında ve Lisans" : undefined}
+            onClick={onNavigate}
+            className={({ isActive }) => navLinkClass(isActive, collapsed)}
+          >
+            <span aria-hidden="true" className="state-layer" />
+            <Icon name="info" size="xl" filled className="relative z-10 shrink-0 opacity-95" />
+            {!collapsed && <span className="relative z-10 truncate">Hakkında ve Lisans</span>}
+          </NavLink>
+        )}
         <DensitySwitcher
           collapsed={collapsed}
           className="text-on-sidebar-muted hover:bg-on-sidebar/8 hover:text-on-sidebar"
@@ -148,7 +159,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
     () => window.localStorage.getItem(COLLAPSE_KEY) === "true",
   );
   const [mobileOpen, setMobileOpen] = useState(false);
-  const title = pageTitle(location.pathname);
+  const gorevli = useKip().ozet?.durum === "gorevli";
+  // Program durumu ekranları (kilitli, güvenlik dosyası kayıp, yeniden başlat)
+  // açıkken üst çubukta o ekranın h1'i yazar — sözlük §4.2. Adrese bağlı
+  // olmadıkları için başlığı kendileri bildirir (ui/DurumBasligi).
+  const { durumBasligi, yaz } = useDurumBasligiYonetimi();
+  // Görevli kipinde her rota görevli ekranını gösterir; başlık onun h1'idir.
+  const title = durumBasligi ?? (gorevli ? GOREVLI_EKRANI_BASLIGI : pageTitle(location.pathname));
 
   const toggleCollapsed = () => {
     setCollapsed((current) => {
@@ -165,7 +182,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           collapsed ? "w-[4.75rem]" : "w-60"
         }`}
       >
-        <SidebarContent collapsed={collapsed} />
+        <SidebarContent collapsed={collapsed} gorevli={gorevli} />
         <button
           type="button"
           onClick={toggleCollapsed}
@@ -199,15 +216,23 @@ export default function AppShell({ children }: { children: ReactNode }) {
               yoğunluk + tema; dar ekranda menü çekmecesinden erişilir). Eskiden
               burada ikinci bir kopyası vardı — aynı ayarın iki düğmesi hangisinin
               "asıl" olduğu sorusunu doğuruyordu. */}
+
+          {/* Kip göstergesi (tasarım §4.4): kip adı, görsel geri sayım,
+              "Görevli kipine geç" / "Yönetici kipine geç", "Kilitle". Kilitliyken
+              ve kip okunamazsa boştur. */}
+          <div className="ml-auto flex min-w-0 items-center">
+            <KipGostergesi />
+          </div>
         </header>
 
         <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-5 sm:px-5 lg:px-7 lg:py-6">
           <div className="mx-auto w-full max-w-[100rem]">
             {/* Güncelleme bandı açılışta DENETİM YAPMAZ (tasarım T11): yalnız
                 Ayarlar → Güncelleme'deki elle denetimin sonucunu gösterir.
-                Açılışta `/updates/` isteği çıkmadığı `App.test.tsx`'te sabittir. */}
-            <UpdateBanner />
-            {children}
+                Açılışta `/updates/` isteği çıkmadığı `App.test.tsx`'te sabittir.
+                Görevli kipinde gizlidir: indirme yönetici işidir (§4.4). */}
+            <UpdateBanner gizli={gorevli} />
+            <DurumBasligiSaglayici yaz={yaz}>{children}</DurumBasligiSaglayici>
           </div>
         </main>
       </div>
@@ -221,7 +246,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
             onClick={() => setMobileOpen(false)}
           />
           <aside className="kd-sidebar-glow relative flex h-full w-72 animate-dialog-in flex-col shadow-elevation-4">
-            <SidebarContent collapsed={false} onNavigate={() => setMobileOpen(false)} />
+            <SidebarContent
+              collapsed={false}
+              gorevli={gorevli}
+              onNavigate={() => setMobileOpen(false)}
+            />
           </aside>
         </div>
       )}

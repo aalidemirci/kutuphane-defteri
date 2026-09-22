@@ -1,8 +1,11 @@
 // Kurulum kapısı (DD kalıbı) — programın İLK açılışında kullanıcıyı kurulum
-// sihirbazına kilitler. Kapıyı açan tek koşul kurulumun tamamlanmış olmasıdır:
-// okul künyesi girilmeden resmî evrak antedi boş çıkar, aktif ders yılı olmadan
-// da şube kataloğu ve e-Okul aktarımı yanlış yıla bağlanır. Bu yüzden
-// `GET /setup/status/` `setup_completed=false` döndüğü sürece "/kurulum"
+// sihirbazına kilitler. Kapıyı açan koşul kurulumun tamamlanmış olması VE yönetici
+// parolasının kurulu olmasıdır (tasarım §6.3-1: parola sihirbazın atlanamaz ilk
+// adımıdır, isteğe bağlı değildir). Parola yoksa — kurulum eskiden tamamlanmış
+// bir veritabanında bile — kullanıcı sihirbaza, ilk eksik adım olan parola
+// adımına gider. Okul künyesi girilmeden resmî evrak antedi boş çıkar, aktif
+// ders yılı olmadan da şube kataloğu ve e-Okul aktarımı yanlış yıla bağlanır.
+// Bu yüzden `GET /setup/status/` bu iki koşulu sağlamadığı sürece "/kurulum"
 // dışındaki her rota oraya yönlendirilir. (Kilit ekranı ayrı kapıdır:
 // `modules/guvenlik/GuvenlikKapisi`, bu kapının dışında durur.)
 //
@@ -51,8 +54,11 @@ export default function KurulumKapisi({ children }: { children: ReactNode }) {
       .getSetupStatus()
       .then((s) => {
         if (iptal) return;
-        tamamRef.current = s.setup_completed;
-        setSonuc({ yol: pathname, tamam: s.setup_completed });
+        // Parola bir kez kurulunca kaldırılamaz; kurulum da geri alınmaz — kapı
+        // kalıcı açılabilir.
+        const tamam = s.setup_completed && s.password_set;
+        tamamRef.current = tamam;
+        setSonuc({ yol: pathname, tamam });
       })
       .catch(() => {
         // Fail-open (dosya başı notu): durum okunamıyorsa kapı açılır.

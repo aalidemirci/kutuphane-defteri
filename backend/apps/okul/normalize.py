@@ -5,6 +5,9 @@ TCKN/telefon/doğum tarihi/cinsiyet normalize edicileri YOKTUR — program bu
 verileri hiç toplamaz (tasarım §6.1). Sınıf/şube ayrıştırması seviye kümesiyle
 PARAMETRİKTİR; varsayılan küme okul içi sabittir (`GRADE_LEVELS`).
 
+Okul numarasının kör indeks normalleştirmesi (`normalize_student_number`) de
+buradadır: yazma (`Student.save`) ve arama (`selectors`) aynı kuralı kullanır.
+
 Saf fonksiyonlardır — kolay test edilir (tests/test_normalize). DB eşleştirme
 ve yazma `services/imports.py`'dadır.
 """
@@ -135,6 +138,34 @@ def normalize_class_section(
         return None
     section = tr_upper(section_m2.group())
     return level, section
+
+
+#: Yalnız ASCII rakam ('²' gibi Unicode basamaklar `str.isdigit()`'i geçer ama
+#: okul numarası değildir).
+_ASCII_DIGITS_RE = re.compile(r"[0-9]+")
+
+
+def normalize_student_number(value: object) -> str:
+    """Okul numarasının kör indeks biçimi (tasarım §6.3, T14): '0123' ≡ '123' ≡ ' 1 23 '.
+
+    Kör indeks tam eşleşmedir; bu yüzden aynı numaranın farklı yazımları AYNI
+    değere inmelidir. Kural bilinçli olarak dardır:
+
+    - bütün boşluklar atılır (Excel'den kopyalamada araya giren boşluk dahil);
+    - değer yalnız rakamsa baştaki sıfırlar atılır ('0123' → '123'; '000' → '0');
+    - harf içeren numara olduğu gibi kalır (e-Okul numaraları rakamdır; başka
+      biçimde tahmin yürütülmez).
+
+    Excel'in '123.0' biçimi burada ÇÖZÜLMEZ: ayrıştırıcı (`excel_ogrenci._str`)
+    onu zaten '123'e indirir; iki yerde çözmek iki ayrı kural doğururdu.
+    Yazmada (`Student.save`) ve aramada (`selectors`) aynı fonksiyon çağrılır.
+    """
+    if value is None:
+        return ""
+    sade = "".join(str(value).split())
+    if _ASCII_DIGITS_RE.fullmatch(sade):
+        return sade.lstrip("0") or "0"
+    return sade
 
 
 def split_full_name(value: object) -> tuple[str, str]:

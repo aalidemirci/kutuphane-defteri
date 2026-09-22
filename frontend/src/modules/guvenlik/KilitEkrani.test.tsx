@@ -13,7 +13,6 @@ const guvenlik = vi.hoisted(() => ({
   kilitle: vi.fn(),
   kurtar: vi.fn(),
   parolaDegistir: vi.fn(),
-  kaldir: vi.fn(),
 }));
 
 vi.mock("./api", () => ({ guvenlikApi: guvenlik }));
@@ -31,7 +30,7 @@ describe("KilitEkrani", () => {
     const onAcildi = vi.fn();
     render(<KilitEkrani onAcildi={onAcildi} />);
 
-    await kullanici.type(screen.getByLabelText(/Uygulama parolası/), "Deneme-Parola-1");
+    await kullanici.type(screen.getByLabelText(/Yönetici parolası/), "Deneme-Parola-1");
     await kullanici.click(screen.getByRole("button", { name: "Aç" }));
 
     await waitFor(() => expect(onAcildi).toHaveBeenCalledTimes(1));
@@ -44,7 +43,7 @@ describe("KilitEkrani", () => {
     const onAcildi = vi.fn();
     render(<KilitEkrani onAcildi={onAcildi} />);
 
-    await kullanici.type(screen.getByLabelText(/Uygulama parolası/), "yanlis-parola");
+    await kullanici.type(screen.getByLabelText(/Yönetici parolası/), "yanlis-parola");
     await kullanici.click(screen.getByRole("button", { name: "Aç" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Parola hatalı.");

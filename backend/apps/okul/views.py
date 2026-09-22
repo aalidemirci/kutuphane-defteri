@@ -1,8 +1,11 @@
 """`okul` API uçları — İNCE view'lar (View → Service → Model; ORM selectors'ta).
 
-Authsuz tek kullanıcılı program: izin sınıfı yok (settings AllowAny). Hata
-gövdesi `shared.exceptions.kd_exception_handler` ile `{code, message, fields}`
-sözleşmesine çevrilir; parser hataları ValidationError olarak yükseltilir.
+Hesapsız program (settings AllowAny; masadaki kişi ayrımı kiple yapılır,
+§4.4). Tek izin sınıfı kişi yazan uçlardadır: yönetici parolası kurulmadan
+yazma yöntemleri 409 `parola_gerekli` döner (`permissions.RequiresAdminPassword`,
+§6.3-2). Hata gövdesi `shared.exceptions.kd_exception_handler` ile
+`{code, message, fields}` sözleşmesine çevrilir; parser hataları
+ValidationError olarak yükseltilir.
 
 KS'den alındı (KS'de DD kalıbından budanmıştı: tatil/sınıf-sorumlusu/yıl-devri
 uçları yok). Zil/vardiya/şube kümesi/zümre/fotoğraf/cinsiyet uçları Kütüphane
@@ -17,7 +20,9 @@ from io import BytesIO
 from typing import Any
 
 from django.http import FileResponse
-from rest_framework import generics, serializers
+from django.views.decorators.debug import sensitive_variables
+from rest_framework import generics, serializers, status
+from rest_framework.exceptions import APIException
 from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -25,16 +30,22 @@ from rest_framework.views import APIView
 
 from apps.okul import selectors
 from apps.okul.excel_ogrenci import ParserError
+from apps.okul.kip import KIP
 from apps.okul.models import (
     ClassSection,
     Personnel,
     SchoolYear,
     Student,
 )
+from apps.okul.permissions import RequiresAdminPassword
 from apps.okul.serializers import (
     ClassSectionSerializer,
     ImportRequestSerializer,
+    PersonnelMergeSerializer,
     PersonnelSerializer,
+    RecoveryKeyPdfRequestSerializer,
+    RecoveryKeyRequestSerializer,
+    RoadmapUpdateSerializer,
     SchoolConfigSerializer,
     SchoolTermConfigurationSerializer,
     SchoolTermSerializer,
@@ -46,6 +57,7 @@ from apps.okul.services import encrypted_backup as encrypted_backup_service
 from apps.okul.services import imports as import_service
 from apps.okul.services import live_restore as live_restore_service
 from apps.okul.services import persons as persons_service
+from apps.okul.services import recovery_key_document
 from apps.okul.services import school_year as school_year_service
 from apps.okul.services import sections as section_service
 from apps.okul.services import setup as setup_service
@@ -71,18 +83,31 @@ def _service_errors() -> Iterator[None]:
 # ---------------------------------------------------------------------------
 # Kurulum sihirbazı
 # ---------------------------------------------------------------------------
+class SetupIncompleteResponse(APIException):
+    """`setup/complete/` eksik adım reddi — 400 `kurulum_eksik` (ileti hangi adımı söyler)."""
+
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_code = "kurulum_eksik"
+    default_detail = "Kurulum tamamlanamadı."
+
+
 class SetupStatusView(APIView):
-    """Kurulum durumu — masaüstü sağlık denetimi + arayüz kurulum kapısı."""
+    """Kurulum durumu — masaüstü sağlık denetimi + arayüz kurulum kapısı + yol haritası.
+
+    Hafif ve kişisel verisizdir (`services.setup.setup_status`).
+    """
 
     def get(self, request: Request) -> Response:
-        return Response(selectors.setup_status())
+        return Response(setup_service.setup_status())
 
 
 class GradeLevelsView(APIView):
     """`GET /api/v1/grade-levels/` — UI seçicileri için geçerli öğrenim seviyeleri.
 
     Liste okul içi sabitten gelir (`SchoolConfig.grade_levels`): 1-12, hazırlık
-    bayrağı açıksa başta 0 (Hazırlık). Kademeye göre daraltma F1'de gelir.
+    bayrağı açıksa başta 0 (Hazırlık). Kademe (`SchoolConfig.kademe`, F1)
+    seviyeleri KISITLAMAZ; Md. 19 bedeli ve sınıf kitaplığı kuralları F6/F7'de
+    ona bağlanır.
     """
 
     def get(self, request: Request) -> Response:
@@ -107,9 +132,41 @@ class SchoolConfigView(APIView):
 
 
 class SetupCompleteView(APIView):
+    """`POST setup/complete/` — yalnız üç adım da tamamsa (parola, okul, ders yılı).
+
+    1. adım kurtarma anahtarı doğrulanmadan tamam sayılmaz (F1 eki, karar 2).
+    Kurulum sürerken kip süreleri işlemez; tamamlanınca iki sayaç sıfırdan başlar
+    (`kip.KipDurumu.sureleri_yeniden_baslat`).
+    """
+
     def post(self, request: Request) -> Response:
-        config = setup_service.mark_setup_completed()
+        try:
+            config = setup_service.mark_setup_completed()
+        except setup_service.SetupIncomplete as exc:
+            raise SetupIncompleteResponse(detail=str(exc)) from exc
+        KIP.sureleri_yeniden_baslat()
         return Response({"setup_completed": config.setup_completed})
+
+
+class SetupRoadmapView(APIView):
+    """`POST setup/roadmap/` — Başlangıç Yol Haritası'nın kullanıcı işaretleri.
+
+    Gövde `{item, done}` (elle işaretlenen madde) ya da `{hidden}` (kartı gizle;
+    yalnız bütün maddeler tamamken). Yanıt güncel `{marks, hidden}`. Kişisel
+    veri yazmaz; görevli kipinde kapalıdır (izin listesinde yok).
+    """
+
+    def post(self, request: Request) -> Response:
+        req = RoadmapUpdateSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        with _service_errors():
+            if "hidden" in req.validated_data:
+                state = setup_service.set_roadmap_hidden(hidden=req.validated_data["hidden"])
+            else:
+                state = setup_service.set_roadmap_mark(
+                    req.validated_data["item"], done=req.validated_data["done"]
+                )
+        return Response(state)
 
 
 # ---------------------------------------------------------------------------
@@ -157,6 +214,7 @@ class SchoolYearActivateView(APIView):
 # ---------------------------------------------------------------------------
 class StudentListCreateView(generics.ListCreateAPIView[Student]):
     serializer_class = StudentSerializer
+    permission_classes = [RequiresAdminPassword]
 
     def get_queryset(self) -> Any:
         params = self.request.query_params
@@ -186,6 +244,7 @@ class StudentListCreateView(generics.ListCreateAPIView[Student]):
 
 class StudentDetailView(generics.RetrieveUpdateDestroyAPIView[Student]):
     serializer_class = StudentSerializer
+    permission_classes = [RequiresAdminPassword]
 
     def get_queryset(self) -> Any:
         return selectors.students_all()
@@ -202,6 +261,7 @@ class StudentDetailView(generics.RetrieveUpdateDestroyAPIView[Student]):
 
 class PersonnelListCreateView(generics.ListCreateAPIView[Personnel]):
     serializer_class = PersonnelSerializer
+    permission_classes = [RequiresAdminPassword]
 
     def get_queryset(self) -> Any:
         params = self.request.query_params
@@ -216,9 +276,10 @@ class PersonnelListCreateView(generics.ListCreateAPIView[Personnel]):
 
 class PersonnelDetailView(generics.RetrieveUpdateDestroyAPIView[Personnel]):
     serializer_class = PersonnelSerializer
+    permission_classes = [RequiresAdminPassword]
 
     def get_queryset(self) -> Any:
-        return selectors.personnel_list()
+        return selectors.personnel_all()
 
     def perform_update(self, serializer: serializers.BaseSerializer[Personnel]) -> None:
         assert serializer.instance is not None
@@ -228,6 +289,53 @@ class PersonnelDetailView(generics.RetrieveUpdateDestroyAPIView[Personnel]):
 
     def perform_destroy(self, instance: Personnel) -> None:
         persons_service.delete_personnel(instance)
+
+
+# ---------------------------------------------------------------------------
+# Ayrılış ve birleştirme (tasarım §6.1 unutma kancası, §8.3 mutabakat)
+# ---------------------------------------------------------------------------
+class StudentLeaveView(APIView):
+    """`POST students/<pk>/leave/` — "Ayrıldı olarak işaretle" (ayrılış yolu).
+
+    Kayıt SİLİNMEZ (F1 eki 7): LEFT + `left_at`, havuzdaysa havuzdan çıkar.
+    Yanıt ayrılmış öğrenci kaydıdır. Toplu karar `leave-pool/resolve/`'dadır.
+    """
+
+    permission_classes = [RequiresAdminPassword]
+
+    def post(self, request: Request, pk: int) -> Response:
+        student = get_object_or_404(selectors.students_all(), pk=pk)
+        return Response(StudentSerializer(persons_service.leave_student(student)).data)
+
+
+class PersonnelLeaveView(APIView):
+    """`POST personnel/<pk>/leave/` — "Ayrıldı olarak işaretle" (ayrılış yolu; kayıt kalır)."""
+
+    permission_classes = [RequiresAdminPassword]
+
+    def post(self, request: Request, pk: int) -> Response:
+        person = get_object_or_404(selectors.personnel_all(), pk=pk)
+        return Response(PersonnelSerializer(persons_service.leave_personnel(person)).data)
+
+
+class PersonnelMergeView(APIView):
+    """`POST personnel/<pk>/merge/` gövde `{into_id}` — "olası aynı kişi" birleştirmesi.
+
+    `<pk>` (kaynak: listede artık bulunmayan, ayrılış havuzundaki eski kayıt)
+    `into_id` (hedef: yeni adla gelen kayıt) kaydına birleşir; bağlar birleştirme
+    kancalarıyla taşınır, kaynak katı silinir. Aktarım sonucundan ya da ayrılış
+    havuzundan çağrılır. İki kayıt da canlı olmalıdır (silinmiş kayıt 404).
+    """
+
+    permission_classes = [RequiresAdminPassword]
+
+    def post(self, request: Request, pk: int) -> Response:
+        req = PersonnelMergeSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        source = get_object_or_404(selectors.personnel_all(), pk=pk)
+        target = get_object_or_404(selectors.personnel_all(), pk=req.validated_data["into_id"])
+        merged = persons_service.merge_personnel(source, target)
+        return Response(PersonnelSerializer(merged).data)
 
 
 class ClassSectionListCreateView(generics.ListCreateAPIView[ClassSection]):
@@ -265,33 +373,52 @@ class ClassSectionDetailView(generics.DestroyAPIView[ClassSection]):
 # İçe aktarma (dosya VEYA pano metni — aynı boru hattı)
 # ---------------------------------------------------------------------------
 class _BaseImportView(APIView):
-    """Ortak istek çözümü; alt sınıf servis fonksiyonlarını belirler."""
+    """Ortak istek çözümü; alt sınıf servis fonksiyonlarını belirler.
+
+    Önizleme de kişi verisi işlediği için (ve arayüzde uygulamanın ilk adımı
+    olduğu için) parola kurulmadan 409 döner.
+    """
+
+    permission_classes = [RequiresAdminPassword]
 
     file_handler: str = ""  # import_service fonksiyon adı (dosya yolu)
     text_handler: str = ""  # import_service fonksiyon adı (metin yolu)
 
+    def options_for(self, validated: dict[str, Any]) -> dict[str, Any]:
+        """Mutabakat seçenekleri (öğrenci: `full_list`; personelde seçenek yok — karar havuzda)."""
+        return {}
+
     def post(self, request: Request) -> Response:
         serializer = ImportRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        uploaded = serializer.validated_data.get("file")
+        validated = dict(serializer.validated_data)
+        uploaded = validated.get("file")
+        secenekler = self.options_for(validated)
         try:
             if uploaded is not None:
                 handler = getattr(import_service, self.file_handler)
-                report = handler(file_bytes=uploaded.read(), file_name=uploaded.name or "")
+                report = handler(
+                    file_bytes=uploaded.read(), file_name=uploaded.name or "", **secenekler
+                )
             else:
                 handler = getattr(import_service, self.text_handler)
-                report = handler(text=serializer.validated_data["text"])
+                report = handler(text=validated["text"], **secenekler)
         except ParserError as exc:
             raise serializers.ValidationError(str(exc)) from exc
         return Response(report.to_dict())
 
 
-class StudentImportPreviewView(_BaseImportView):
+class _StudentImportView(_BaseImportView):
+    def options_for(self, validated: dict[str, Any]) -> dict[str, Any]:
+        return {"full_list": bool(validated.get("full_list", False))}
+
+
+class StudentImportPreviewView(_StudentImportView):
     file_handler = "preview_students_file"
     text_handler = "preview_students_text"
 
 
-class StudentImportCommitView(_BaseImportView):
+class StudentImportCommitView(_StudentImportView):
     file_handler = "commit_students_file"
     text_handler = "commit_students_text"
 
@@ -330,12 +457,13 @@ class PersonnelTemplateView(APIView):
 
 
 # ---------------------------------------------------------------------------
-# Uygulama parolası / kilit (tasarım §5, DD F5-D5 kalıbı)
+# Yönetici parolası / kilit (tasarım §4.3, §4.4, §6.3)
 # ---------------------------------------------------------------------------
 # Bu uçlar `apps.okul.lock_middleware.AppLockMiddleware` tarafından KİLİT
 # KAPISINDAN MUAFTIR (`/api/v1/security/` ön eki) — kilidi açmanın tek yolu
-# bunlardır. Parolalar YALNIZ istek gövdesinde taşınır; hiçbir yanıtta,
-# günlükte veya hata mesajında yankılanmaz.
+# bunlardır. Güvenlik dosyası kayıpken yalnız durum ucu açıktır. Parolalar
+# YALNIZ istek gövdesinde taşınır; hiçbir yanıtta, günlükte veya hata
+# mesajında yankılanmaz. Parolayı kaldırma ucu YOKTUR (§6.3-6).
 class AppPasswordRequestSerializer(serializers.Serializer[dict[str, Any]]):
     password = serializers.CharField(trim_whitespace=False)
 
@@ -351,25 +479,29 @@ class AppPasswordRecoverSerializer(serializers.Serializer[dict[str, Any]]):
 
 
 class SecurityStatusView(APIView):
-    """`GET /api/v1/security/status/` — parola kurulu mu, kilitli mi, geçiş yarım mı."""
+    """`GET /api/v1/security/status/` — parola kurulu mu, kilitli mi, dosya kayıp mı."""
 
     def get(self, request: Request) -> Response:
         return Response(app_password_service.status())
 
 
 class SecurityEnableView(APIView):
-    """`POST /api/v1/security/enable/` — parolayı kurar, alanları şifreler.
+    """`POST /api/v1/security/enable/` — yönetici parolasını kurar (yalnız ilk kurulumda).
 
     Yanıttaki `recovery_key` TEK SEFERLİKTİR: sunucu onu bir daha üretemez
-    (yalnız sarmalı saklanır). Arayüz kullanıcıya yazdırtmadan diyaloğu kapatmaz.
+    (yalnız sarmalı saklanır); yanıt önbelleğe alınmaz. Sihirbaz anahtarı
+    saklatıp doğrulatmadan (`security/recovery-key/confirm/`) ilerlemez.
     """
 
+    @sensitive_variables("req", "kurtarma")
     def post(self, request: Request) -> Response:
         req = AppPasswordRequestSerializer(data=request.data)
         req.is_valid(raise_exception=True)
         with _service_errors():
             kurtarma = app_password_service.enable(password=req.validated_data["password"])
-        return Response({"recovery_key": kurtarma, **app_password_service.status()}, status=201)
+        yanit = Response({"recovery_key": kurtarma, **app_password_service.status()}, status=201)
+        yanit["Cache-Control"] = "no-store"
+        return yanit
 
 
 class SecurityUnlockView(APIView):
@@ -405,6 +537,101 @@ class SecurityRecoverView(APIView):
         return Response(app_password_service.status())
 
 
+class SecurityRecoveryKeyPdfView(APIView):
+    """`POST /api/v1/security/recovery-key/pdf/` `{recovery_key}` — E14 PDF'i.
+
+    Anahtar `guvenlik.json`'daki kurtarma sarmalını açmıyorsa (ya da bellekteki
+    anahtara ait değilse) 400 + kademeli gecikme; açıyorsa PDF. Kişi yazmaz.
+    Kilitliyken `security/` ön ekine rağmen kilit kapısı keser
+    (`lock_middleware.LOCKED_DENIED_PATHS`); görevli kipinde kapalıdır. Yanıt
+    önbelleğe alınmaz: içinde sır vardır.
+    """
+
+    @sensitive_variables("req", "icerik")
+    def post(self, request: Request) -> FileResponse:
+        req = RecoveryKeyPdfRequestSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        with _service_errors():
+            icerik = recovery_key_document.render_recovery_key_pdf(
+                req.validated_data["recovery_key"]
+            )
+        yanit = FileResponse(
+            BytesIO(icerik),
+            as_attachment=True,
+            filename=recovery_key_document.recovery_key_pdf_filename(),
+            content_type="application/pdf",
+        )
+        yanit["Cache-Control"] = "no-store"
+        return yanit
+
+
+class SecurityRecoveryKeyConfirmView(APIView):
+    """`POST /api/v1/security/recovery-key/confirm/` `{recovery_key}` — saklandı damgası.
+
+    Sihirbaz (ya da Ayarlar → Güvenlik) iki grubu istemcide denetledikten sonra
+    TAM anahtarı gönderir; anahtar kurtarma sarmalını açıyor ve bellekteki
+    anahtara aitse `guvenlik.json`'a doğrulama damgası yazılır (F1 eki, karar 2).
+    Yanlışsa 400 + kademeli gecikme. Kişi yazmaz. Kilitliyken kilit kapısı keser
+    (`LOCKED_DENIED_PATHS`), görevli kipinde kapalıdır (izin listesinde yok).
+    Yanıt güncel güvenlik durumudur (`recovery_key_confirmed: true`).
+    """
+
+    @sensitive_variables("req")
+    def post(self, request: Request) -> Response:
+        req = RecoveryKeyRequestSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        with _service_errors():
+            app_password_service.confirm_recovery_key(req.validated_data["recovery_key"])
+        return Response(app_password_service.status())
+
+
+class SecurityRecoveryKeyRenewView(APIView):
+    """`POST /api/v1/security/recovery-key/renew/` `{password}` — kurtarma anahtarını yeniler.
+
+    Yalnız kilit açık + yönetici kipinde (görevli izin listesinde yok; kilitliyken
+    423 — `LOCKED_DENIED_PATHS`). Yönetici parolası bellekteki anahtara karşı
+    doğrulanır (yanlışsa 400 "Parola hatalı." + kademeli gecikme). Yanıttaki
+    `recovery_key` TEK SEFERLİKTİR: sunucu onu saklamaz, bir daha üretemez; yanıt
+    önbelleğe alınmaz. Yeni anahtar doğrulanana dek `recovery_key_confirmed`
+    yanlıştır. Kişi yazmaz.
+    """
+
+    @sensitive_variables("req", "anahtar")
+    def post(self, request: Request) -> Response:
+        req = AppPasswordRequestSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        with _service_errors():
+            anahtar = app_password_service.renew_recovery_key(
+                password=req.validated_data["password"]
+            )
+        yanit = Response({"recovery_key": anahtar, **app_password_service.status()})
+        yanit["Cache-Control"] = "no-store"
+        return yanit
+
+
+class StateResetNotAllowedResponse(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_code = "sifirlama_uygun_degil"
+    default_detail = app_password_service.RESET_NOT_ALLOWED_MESSAGE
+
+
+class SecurityStateResetView(APIView):
+    """`POST /api/v1/security/state/reset/` — "Güvenlik dosyasını sıfırla ve kuruluma dön".
+
+    Yalnız güvenlik dosyası kullanılamıyor + parmak izi boş + şifreli tablolar
+    boşken (`app_password.state_reset_available`); aksi hâlde 409
+    `sifirlama_uygun_degil`. Güvenlik dosyası kayıp kilidinde açık kalan
+    uçlardandır (`lock_middleware.SECURITY_FILE_MISSING_ALLOWED_PATHS`).
+    """
+
+    def post(self, request: Request) -> Response:
+        try:
+            arsiv = app_password_service.reset_unusable_state()
+        except app_password_service.StateResetNotAllowed as exc:
+            raise StateResetNotAllowedResponse(detail=str(exc)) from exc
+        return Response({"archived_as": arsiv, **app_password_service.status()})
+
+
 class SecurityChangePasswordView(APIView):
     """`POST /api/v1/security/change-password/` — veri yeniden şifrelenmez, sarmal yenilenir."""
 
@@ -416,17 +643,6 @@ class SecurityChangePasswordView(APIView):
                 current_password=req.validated_data["current_password"],
                 new_password=req.validated_data["new_password"],
             )
-        return Response(app_password_service.status())
-
-
-class SecurityDisableView(APIView):
-    """`POST /api/v1/security/disable/` — parolayı kaldırır, alanları düz metne döndürür."""
-
-    def post(self, request: Request) -> Response:
-        req = AppPasswordRequestSerializer(data=request.data)
-        req.is_valid(raise_exception=True)
-        with _service_errors():
-            app_password_service.disable(password=req.validated_data["password"])
         return Response(app_password_service.status())
 
 
@@ -467,14 +683,17 @@ class BackupRestoreRequestSerializer(serializers.Serializer[dict[str, Any]]):
         dosya = attrs.get("file")
         if bool(ad) == bool(dosya):
             raise serializers.ValidationError(
-                "Yedek klasöründen bir dosya seçin YA DA bir .kdbak dosyası yükleyin."
+                "Yedek klasöründen bir dosya seçin YA DA elinizdeki yedek dosyasını yükleyin."
             )
         attrs["name"] = ad
         return attrs
 
 
 class BackupListView(APIView):
-    """`GET /api/v1/backups/` — yedek klasöründeki geri yüklenebilir dosyalar."""
+    """`GET /api/v1/backups/` — yedek klasöründeki geri yüklenebilir dosyalar.
+
+    Güvenlik dosyası kayıpken de açıktır (kayıp kilidinden çıkış yolu).
+    """
 
     def get(self, request: Request) -> Response:
         return Response(live_restore_service.list_backups())
@@ -485,7 +704,9 @@ class BackupRestoreView(APIView):
 
     Başarıda süreç "yeniden başlat" kapısına girer (`restart_gate`): sonraki
     tüm API istekleri 503 `restart_required` döner, kullanıcı programı kapatıp
-    yeniden açar. Hata hâlinde hedefe dokunulmaz ve kapı kurulmaz.
+    yeniden açar. Hata hâlinde hedefe dokunulmaz ve kapı kurulmaz. Güvenlik
+    dosyası kayıpken de açıktır: geri yükleme `guvenlik.json`'u yedeğin kurtarma
+    başlığından yeniden yazar.
     """
 
     def post(self, request: Request) -> Response:

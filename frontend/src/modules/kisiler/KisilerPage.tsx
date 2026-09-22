@@ -1,16 +1,18 @@
-// Kişiler sayfası (DD kalıbı) — öğrenci ve öğretmen sicillerinin tek ekranı.
-// Sicil sekmelerinde arama/filtre + sayfalama, Dialog içinde elle
-// ekleme-düzenleme-silme ve "e-Okul listesinden aktar" paneli (önizle → aktar).
-// KVKK (tasarım §6.1): TCKN, veli, cinsiyet ve fotoğraf bu programda HİÇ
-// YOKTUR — sicil ad-soyad + okul no + sınıf/şube ile yürür. Sekme URL'de
-// tutulur (`?tab=personel`): başka ekranlar doğrudan o sekmeye bağlanabilir.
+// Kişiler sayfası (DD kalıbı) — öğrenci, öğretmen ve diğer personel sicillerinin tek
+// ekranı. Sicil sekmelerinde arama/filtre + sayfalama, Dialog içinde elle
+// ekleme-düzenleme, "Ayrıldı olarak işaretle" (ayrılış yolu; kayıt silinmez) ve
+// silme; altta e-Okul listesinden aktarım paneli (önizle → mutabakat → aktar,
+// AktarimPaneli). Üçüncü sekme "Ayrılış Havuzu" (F1 eki 7): aktarım kimseyi ayırmaz,
+// listede bulunmayan kişi orada karar bekler (AyrilisHavuzu).
+// KVKK (tasarım §6.1): TCKN, veli, cinsiyet, fotoğraf, unvan ve branş bu programda
+// HİÇ YOKTUR — sicil ad-soyad + okul no + sınıf/şube (personelde üye türü) ile
+// yürür. Okul no şifreli saklanır: arama numaranın tamamıyla yapılır. Sekme URL'de
+// tutulur (`?tab=personel`, `?tab=havuz`): başka ekranlar doğrudan o sekmeye bağlanır.
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useFormErrors } from "../../hooks/useFormErrors";
 import { useTabParam } from "../../hooks/useTabParam";
-import { ApiError } from "../../lib/api";
-import { saveBlob } from "../../lib/download";
 import { formatNumber } from "../../lib/format";
 import { gradeLevelLabel } from "../../lib/gradeLevels";
 import type { Paginated } from "../../lib/pagination";
@@ -21,42 +23,44 @@ import DataTable from "../../ui/DataTable";
 import type { Column } from "../../ui/DataTable";
 import Dialog from "../../ui/Dialog";
 import EmptyState from "../../ui/EmptyState";
-import Icon from "../../ui/Icon";
 import Select from "../../ui/Select";
 import { SkeletonList } from "../../ui/Skeleton";
 import { useSnackbar } from "../../ui/SnackbarProvider";
 import Tabs, { tabPanelProps } from "../../ui/Tabs";
 import type { TabItem } from "../../ui/Tabs";
 import TextField from "../../ui/TextField";
-import {
-  importCounts,
-  okulApi,
-  PERSONNEL_TEMPLATE_FILENAME,
-  STUDENT_STATUS_TR,
-  STUDENT_TEMPLATE_FILENAME,
-} from "../okul/api";
+import { MEMBER_KIND_TR, okulApi } from "../okul/api";
 import type {
   GradeLevelOption,
-  ImportInput,
-  ImportReport,
+  MemberKind,
   Personnel,
   PersonnelWriteBody,
   Student,
-  StudentStatus,
   StudentWriteBody,
 } from "../okul/api";
+import AktarimPaneli from "./AktarimPaneli";
+import AyrilisHavuzu from "./AyrilisHavuzu";
+import { DurumRozeti, ErrorBand, hataOku } from "./ortak";
+import type { SayfaHatasi } from "./ortak";
 
 /** Sayfa başına kayıt (CLAUDE.md §7 — liste uçları limit/offset, varsayılan 25). */
 const PAGE_SIZE = 25;
 
 // TAB_KEYS[0] varsayılan sekmedir (useTabParam fallback) — başa yeni anahtar EKLEME.
-const TAB_KEYS = ["ogrenciler", "personel"] as const;
+const TAB_KEYS = ["ogrenciler", "personel", "havuz"] as const;
 type TabKey = (typeof TAB_KEYS)[number];
 
+// Sözlük: "personel" tek başına öğretmen anlamında kullanılmaz; üye türleri
+// "öğretmen" ve "diğer personel"dir. Sekme ikisini birden taşır.
 const TABS: TabItem[] = [
   { key: "ogrenciler", label: "Öğrenciler", icon: "school" },
-  { key: "personel", label: "Öğretmenler", icon: "badge" },
+  { key: "personel", label: "Öğretmenler ve Diğer Personel", icon: "badge" },
+  { key: "havuz", label: "Ayrılış Havuzu", icon: "pending_actions" },
 ];
+
+/** Ayrılış onayının ortak sonucu cümlesi (F1 eki 7: ayrılış kaydı silmez). */
+const AYRILIS_SONUCU =
+  "Kaydı silinmez; sicilde “Ayrıldı · gg.aa.yyyy” rozetiyle kalır, iade etmediği kitap varsa izlenebilir.";
 
 function emptyPage<T>(): Paginated<T> {
   return { count: 0, next: null, previous: null, results: [] };
@@ -91,8 +95,10 @@ export default function KisilerPage() {
         <div>
           <h1 className="kd-page-title">Kişiler</h1>
           <p className="kd-page-description">
-            Öğrenci ve öğretmen sicili. Kayıtlar e-Okul listesinden toplu aktarılabilir ya da tek
-            tek girilebilir. TCKN ve veli bilgisi bu programda tutulmaz.
+            Öğrenci, öğretmen ve diğer personel sicili. Kayıtlar e-Okul listesinden toplu
+            aktarılabilir ya da tek tek girilebilir. Aktarım kimseyi ayırmaz: listede bulunmayanlar
+            Ayrılış Havuzu&apos;nda karar bekler. TCKN, veli bilgisi, unvan ve branş bu programda
+            tutulmaz.
           </p>
         </div>
       </div>
@@ -108,6 +114,7 @@ export default function KisilerPage() {
       <div {...tabPanelProps("kisiler", active)}>
         {active === "ogrenciler" && <OgrencilerSekmesi />}
         {active === "personel" && <PersonelSekmesi />}
+        {active === "havuz" && <AyrilisHavuzu />}
       </div>
     </div>
   );
@@ -116,19 +123,6 @@ export default function KisilerPage() {
 // ---------------------------------------------------------------------------
 // Ortak parçalar
 // ---------------------------------------------------------------------------
-
-/** Hata bandı canlı bölgedir: başarısız yükleme/kaydetme/silme ekran okuyucuya duyurulur. */
-function ErrorBand({ message }: { message: string }) {
-  return (
-    <div
-      role="alert"
-      className="flex items-start gap-2 rounded-shape-sm bg-error-container px-4 py-3 text-body-medium text-on-error-container"
-    >
-      <Icon name="error" size="lg" />
-      <span>{message}</span>
-    </div>
-  );
-}
 
 function PaginationBar({
   count,
@@ -181,7 +175,7 @@ function OgrencilerSekmesi() {
   const [page, setPage] = useState<Paginated<Student>>(emptyPage<Student>());
   const [levels, setLevels] = useState<GradeLevelOption[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<SayfaHatasi | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [editing, setEditing] = useState<Student | null>(null);
   const [creating, setCreating] = useState(false);
@@ -222,7 +216,7 @@ function OgrencilerSekmesi() {
       })
       .catch((e: unknown) => {
         if (cancelled) return;
-        setError(e instanceof ApiError ? e.message : "Öğrenci listesi yüklenemedi.");
+        setError(hataOku(e, "Öğrenci listesi yüklenemedi."));
       })
       .finally(() => {
         if (!cancelled && !geriDusuluyor) setLoading(false);
@@ -236,14 +230,23 @@ function OgrencilerSekmesi() {
     { header: "Okul no", cell: (s) => s.student_number || "—" },
     { header: "Ad soyad", cell: (s) => s.full_name },
     { header: "Sınıf", cell: (s) => s.class_label || "—" },
-    { header: "Durum", cell: (s) => STUDENT_STATUS_TR[s.status] },
+    {
+      header: "Durum",
+      cell: (s) => (
+        <DurumRozeti
+          aktif={s.status === "ACTIVE"}
+          leftAt={s.left_at}
+          havuzda={s.leave_candidate_since !== null}
+        />
+      ),
+    },
   ];
 
   return (
     <div className="space-y-[var(--kd-page-gap)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-title-medium text-on-surface">Öğrenci sicili</p>
+          <p className="text-title-medium text-on-surface">Öğrenci Sicili</p>
           {!loading && (
             <p className="text-body-small text-on-surface-variant">
               {formatNumber(page.count)} kayıt
@@ -268,6 +271,7 @@ function OgrencilerSekmesi() {
             setOffset(0);
           }}
           placeholder="Ad soyad veya okul no…"
+          helperText="Okul numarası tam yazılarak aranır."
         />
         <Select
           className="min-w-40"
@@ -292,7 +296,7 @@ function OgrencilerSekmesi() {
         />
       </Card>
 
-      {error && <ErrorBand message={error} />}
+      {error && <ErrorBand hata={error} />}
 
       {loading ? (
         <SkeletonList rows={5} />
@@ -314,7 +318,7 @@ function OgrencilerSekmesi() {
         </>
       )}
 
-      <ImportPanel kind="students" onImported={reload} />
+      <AktarimPaneli kind="students" onImported={reload} />
 
       {(creating || editing !== null) && (
         <OgrenciFormDialog
@@ -345,7 +349,7 @@ function OgrenciFormDialog({
   onClose,
   onSaved,
 }: {
-  /** null → yeni kayıt; dolu → düzenleme (silme yalnız bu durumda görünür). */
+  /** null → yeni kayıt; dolu → düzenleme (ayrılış ve silme yalnız bu durumda görünür). */
   student: Student | null;
   levels: GradeLevelOption[];
   onClose: () => void;
@@ -358,12 +362,12 @@ function OgrenciFormDialog({
     student?.class_level == null ? "" : String(student.class_level),
   );
   const [section, setSection] = useState(student?.class_section ?? "");
-  const [status, setStatus] = useState<StudentStatus>(student?.status ?? "ACTIVE");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<SayfaHatasi | null>(null);
   const { errors, setFieldError, clearErrors, applyApiError } = useFormErrors();
   const snackbar = useSnackbar();
   const confirm = useConfirm();
+  const aktif = student === null || student.status === "ACTIVE";
 
   const submit = async () => {
     clearErrors();
@@ -380,7 +384,6 @@ function OgrenciFormDialog({
       student_number: studentNumber.trim(),
       class_level: level ? Number(level) : null,
       class_section: section.trim(),
-      status,
     };
     setBusy(true);
     try {
@@ -390,18 +393,37 @@ function OgrenciFormDialog({
       onSaved();
     } catch (e) {
       applyApiError(e);
-      setError(e instanceof ApiError ? e.message : "Öğrenci kaydedilemedi.");
+      setError(hataOku(e, "Öğrenci kaydedilemedi."));
+      setBusy(false);
+    }
+  };
+
+  const leave = async () => {
+    if (!student) return;
+    // Başlık soru, gövde sonuç (docs/sozluk.md §3); ad yalnız bu onay penceresinde görünür.
+    const ok = await confirm({
+      title: "Öğrenci ayrıldı olarak işaretlensin mi?",
+      message: `“${student.full_name}” okuldan ayrılmış sayılır ve seçicilerden düşer. ${AYRILIS_SONUCU}`,
+      confirmLabel: "Ayrıldı olarak işaretle",
+    });
+    if (!ok) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await okulApi.leaveStudent(student.id);
+      snackbar.success("Öğrenci ayrıldı olarak işaretlendi.");
+      onSaved();
+    } catch (e) {
+      setError(hataOku(e, "Öğrenci ayrıldı olarak işaretlenemedi."));
       setBusy(false);
     }
   };
 
   const remove = async () => {
     if (!student) return;
-    // Başlık soru, gövde sonuç (docs/sozluk.md §3). "soft delete" jargonu yerine
-    // ne olduğu söylenir; ad yalnız bu onay penceresinde görünür (hata metni değil).
     const ok = await confirm({
       title: "Öğrenci sicilden silinsin mi?",
-      message: `“${student.full_name}” listelerden kalkar. Kayıt silinmez, gizlenir. Yanlışlıkla silerseniz öğrenciyi yeniden ekleyebilir ya da e-Okul listesini yeniden içe aktarabilirsiniz.`,
+      message: `“${student.full_name}” kaydı kalıcı olarak silinir, geri alınamaz. Yanlış girilmiş kayıtlar içindir; okuldan ayrılan öğrenci için “Ayrıldı olarak işaretle”yi kullanın. Yanlışlıkla silerseniz öğrenciyi yeniden ekleyebilir ya da e-Okul listesini yeniden aktarabilirsiniz.`,
       confirmLabel: "Sil",
     });
     if (!ok) return;
@@ -412,7 +434,7 @@ function OgrenciFormDialog({
       snackbar.success("Öğrenci silindi.");
       onSaved();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Öğrenci silinemedi.");
+      setError(hataOku(e, "Öğrenci silinemedi."));
       setBusy(false);
     }
   };
@@ -430,6 +452,11 @@ function OgrenciFormDialog({
               Sil
             </Button>
           )}
+          {student && aktif && (
+            <Button variant="text" icon="logout" onClick={leave} disabled={busy}>
+              Ayrıldı olarak işaretle
+            </Button>
+          )}
           <Button variant="text" onClick={onClose} disabled={busy}>
             Vazgeç
           </Button>
@@ -440,7 +467,17 @@ function OgrenciFormDialog({
       }
     >
       <div className="space-y-4">
-        {error && <ErrorBand message={error} />}
+        {error && <ErrorBand hata={error} />}
+        {student && (!aktif || student.leave_candidate_since !== null) && (
+          <p className="text-body-medium text-on-surface-variant">
+            Durum:{" "}
+            <DurumRozeti
+              aktif={aktif}
+              leftAt={student.left_at}
+              havuzda={student.leave_candidate_since !== null}
+            />
+          </p>
+        )}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <TextField
@@ -482,15 +519,6 @@ function OgrenciFormDialog({
             error={errors.class_section}
             helperText="Türkçe harfler korunur ve büyütülür (ş → Ş, i → İ). 10/I ile 10/İ ayrı şubelerdir."
           />
-          <Select
-            label="Durum"
-            value={status}
-            onChange={(e) => setStatus(e.target.value as StudentStatus)}
-            options={(Object.entries(STUDENT_STATUS_TR) as [string, string][]).map(
-              ([value, label]) => ({ value, label }),
-            )}
-            error={errors.status}
-          />
         </div>
       </div>
     </Dialog>
@@ -498,7 +526,7 @@ function OgrenciFormDialog({
 }
 
 // ---------------------------------------------------------------------------
-// Personel sekmesi
+// Öğretmenler ve diğer personel sekmesi
 // ---------------------------------------------------------------------------
 
 function PersonelSekmesi() {
@@ -507,7 +535,7 @@ function PersonelSekmesi() {
   const [offset, setOffset] = useState(0);
   const [page, setPage] = useState<Paginated<Personnel>>(emptyPage<Personnel>());
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<SayfaHatasi | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [editing, setEditing] = useState<Personnel | null>(null);
   const [creating, setCreating] = useState(false);
@@ -533,7 +561,7 @@ function PersonelSekmesi() {
       })
       .catch((e: unknown) => {
         if (cancelled) return;
-        setError(e instanceof ApiError ? e.message : "Öğretmen listesi yüklenemedi.");
+        setError(hataOku(e, "Öğretmen ve diğer personel listesi yüklenemedi."));
       })
       .finally(() => {
         if (!cancelled && !geriDusuluyor) setLoading(false);
@@ -545,16 +573,24 @@ function PersonelSekmesi() {
 
   const columns: Column<Personnel>[] = [
     { header: "Ad soyad", cell: (p) => p.full_name },
-    { header: "Unvan", cell: (p) => p.title || "—" },
-    { header: "Branş", cell: (p) => p.branch || "—" },
-    { header: "Durum", cell: (p) => (p.is_active ? "Aktif" : "Pasif") },
+    { header: "Üye türü", cell: (p) => MEMBER_KIND_TR[p.member_kind] },
+    {
+      header: "Durum",
+      cell: (p) => (
+        <DurumRozeti
+          aktif={p.is_active}
+          leftAt={p.left_at}
+          havuzda={p.leave_candidate_since !== null}
+        />
+      ),
+    },
   ];
 
   return (
     <div className="space-y-[var(--kd-page-gap)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-title-medium text-on-surface">Öğretmen sicili</p>
+          <p className="text-title-medium text-on-surface">Öğretmen ve Diğer Personel Sicili</p>
           {!loading && (
             <p className="text-body-small text-on-surface-variant">
               {formatNumber(page.count)} kayıt
@@ -562,7 +598,7 @@ function PersonelSekmesi() {
           )}
         </div>
         <Button icon="person_add" onClick={() => setCreating(true)}>
-          Öğretmen ekle
+          Kişi ekle
         </Button>
       </div>
 
@@ -582,15 +618,15 @@ function PersonelSekmesi() {
         />
       </Card>
 
-      {error && <ErrorBand message={error} />}
+      {error && <ErrorBand hata={error} />}
 
       {loading ? (
         <SkeletonList rows={5} />
       ) : page.results.length === 0 ? (
         <EmptyState
           icon="badge"
-          title="Gösterilecek öğretmen yok"
-          description="Aramayı değiştirin ya da öğretmen listesini aşağıdaki panelden içe aktarın."
+          title="Gösterilecek kişi yok"
+          description="Aramayı değiştirin ya da e-Okul personel listesini aşağıdaki panelden içe aktarın."
         />
       ) : (
         <>
@@ -604,7 +640,7 @@ function PersonelSekmesi() {
         </>
       )}
 
-      <ImportPanel kind="personnel" onImported={reload} />
+      <AktarimPaneli kind="personnel" onImported={reload} />
 
       {(creating || editing !== null) && (
         <PersonelFormDialog
@@ -624,6 +660,10 @@ function PersonelSekmesi() {
   );
 }
 
+const MEMBER_KIND_OPTIONS = (Object.entries(MEMBER_KIND_TR) as [MemberKind, string][]).map(
+  ([value, label]) => ({ value, label }),
+);
+
 function PersonelFormDialog({
   personnel,
   onClose,
@@ -635,14 +675,13 @@ function PersonelFormDialog({
 }) {
   const [firstName, setFirstName] = useState(personnel?.first_name ?? "");
   const [lastName, setLastName] = useState(personnel?.last_name ?? "");
-  const [title, setTitle] = useState(personnel?.title ?? "");
-  const [branch, setBranch] = useState(personnel?.branch ?? "");
-  const [aktif, setAktif] = useState(personnel?.is_active ?? true);
+  const [memberKind, setMemberKind] = useState<MemberKind>(personnel?.member_kind ?? "TEACHER");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<SayfaHatasi | null>(null);
   const { errors, setFieldError, clearErrors, applyApiError } = useFormErrors();
   const snackbar = useSnackbar();
   const confirm = useConfirm();
+  const aktif = personnel === null || personnel.is_active;
 
   const submit = async () => {
     clearErrors();
@@ -655,19 +694,37 @@ function PersonelFormDialog({
     const body: PersonnelWriteBody = {
       first_name: firstName.trim(),
       last_name: lastName.trim(),
-      title: title.trim(),
-      branch: branch.trim(),
-      is_active: aktif,
+      member_kind: memberKind,
     };
     setBusy(true);
     try {
       if (personnel) await okulApi.updatePersonnel(personnel.id, body);
       else await okulApi.createPersonnel(body);
-      snackbar.success(personnel ? "Öğretmen güncellendi." : "Öğretmen eklendi.");
+      snackbar.success(personnel ? "Kayıt güncellendi." : "Kayıt eklendi.");
       onSaved();
     } catch (e) {
       applyApiError(e);
-      setError(e instanceof ApiError ? e.message : "Öğretmen kaydedilemedi.");
+      setError(hataOku(e, "Kayıt kaydedilemedi."));
+      setBusy(false);
+    }
+  };
+
+  const leave = async () => {
+    if (!personnel) return;
+    const ok = await confirm({
+      title: "Kişi ayrıldı olarak işaretlensin mi?",
+      message: `“${personnel.full_name}” okuldan ayrılmış sayılır ve seçicilerden düşer. ${AYRILIS_SONUCU}`,
+      confirmLabel: "Ayrıldı olarak işaretle",
+    });
+    if (!ok) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await okulApi.leavePersonnel(personnel.id);
+      snackbar.success("Kişi ayrıldı olarak işaretlendi.");
+      onSaved();
+    } catch (e) {
+      setError(hataOku(e, "Kişi ayrıldı olarak işaretlenemedi."));
       setBusy(false);
     }
   };
@@ -675,8 +732,8 @@ function PersonelFormDialog({
   const remove = async () => {
     if (!personnel) return;
     const ok = await confirm({
-      title: "Öğretmen sicilden silinsin mi?",
-      message: `“${personnel.full_name}” listelerden kalkar. Kayıt silinmez, gizlenir. Yanlışlıkla silerseniz öğretmeni yeniden ekleyebilir ya da personel listesini yeniden içe aktarabilirsiniz.`,
+      title: "Kişi sicilden silinsin mi?",
+      message: `“${personnel.full_name}” kaydı kalıcı olarak silinir, geri alınamaz. Yanlış girilmiş kayıtlar içindir; okuldan ayrılan kişi için “Ayrıldı olarak işaretle”yi kullanın.`,
       confirmLabel: "Sil",
     });
     if (!ok) return;
@@ -684,10 +741,10 @@ function PersonelFormDialog({
     setError(null);
     try {
       await okulApi.deletePersonnel(personnel.id);
-      snackbar.success("Öğretmen silindi.");
+      snackbar.success("Kayıt silindi.");
       onSaved();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Öğretmen silinemedi.");
+      setError(hataOku(e, "Kayıt silinemedi."));
       setBusy(false);
     }
   };
@@ -696,12 +753,17 @@ function PersonelFormDialog({
     <Dialog
       open
       onClose={onClose}
-      title={personnel ? "Öğretmeni düzenle" : "Yeni öğretmen"}
+      title={personnel ? "Kişiyi düzenle" : "Yeni kişi"}
       actions={
         <>
           {personnel && (
             <Button variant="text" icon="delete" onClick={remove} disabled={busy}>
               Sil
+            </Button>
+          )}
+          {personnel && aktif && (
+            <Button variant="text" icon="logout" onClick={leave} disabled={busy}>
+              Ayrıldı olarak işaretle
             </Button>
           )}
           <Button variant="text" onClick={onClose} disabled={busy}>
@@ -714,7 +776,17 @@ function PersonelFormDialog({
       }
     >
       <div className="space-y-4">
-        {error && <ErrorBand message={error} />}
+        {error && <ErrorBand hata={error} />}
+        {personnel && (!aktif || personnel.leave_candidate_since !== null) && (
+          <p className="text-body-medium text-on-surface-variant">
+            Durum:{" "}
+            <DurumRozeti
+              aktif={aktif}
+              leftAt={personnel.left_at}
+              havuzda={personnel.leave_candidate_since !== null}
+            />
+          </p>
+        )}
         <TextField
           label="Ad"
           required
@@ -729,289 +801,15 @@ function PersonelFormDialog({
           onChange={(e) => setLastName(e.target.value)}
           error={errors.last_name}
         />
-        <TextField
-          label="Unvan"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          error={errors.title}
-          helperText="Örn. Müdür Yardımcısı, Öğretmen, Memur."
-        />
-        <TextField
-          label="Branş"
-          value={branch}
-          onChange={(e) => setBranch(e.target.value)}
-          error={errors.branch}
-        />
         <Select
-          label="Durum"
-          value={aktif ? "1" : "0"}
-          onChange={(e) => setAktif(e.target.value === "1")}
-          options={[
-            { value: "1", label: "Aktif" },
-            { value: "0", label: "Pasif" },
-          ]}
+          label="Üye türü"
+          value={memberKind}
+          onChange={(e) => setMemberKind(e.target.value as MemberKind)}
+          options={MEMBER_KIND_OPTIONS}
+          error={errors.member_kind}
+          helperText="Ödünç sayı sınırı üye türüne göre uygulanır. Unvan ve branş tutulmaz."
         />
       </div>
     </Dialog>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// İçe aktarma paneli (dosya VEYA pano metni → önizle → aktar)
-// ---------------------------------------------------------------------------
-
-type ImportKind = "students" | "personnel";
-
-const IMPORT_LABEL: Record<ImportKind, { title: string; hint: string; template: string }> = {
-  students: {
-    title: "e-Okul raporundan veya şablondan öğrenci aktar",
-    hint: "e-Okul Öğrenci İşlemleri → Raporlar → OOG01001R020 — Sınıf/Şube Öğrenci Listesi raporunu Excel olarak indirip DEĞİŞTİRMEDEN yükleyin: şube blokları, sınıf başlıkları ve sayaç dipnotları otomatik çözülür. Alternatif olarak uygulama şablonu (sınıf, okul numarası, ad, soyad) doldurulabilir ya da tablo doğrudan panoya yapıştırılabilir. Cinsiyet ve pansiyon sütunları okunmaz.",
-    template: STUDENT_TEMPLATE_FILENAME,
-  },
-  personnel: {
-    title: "e-Okul raporundan veya şablondan öğretmen aktar",
-    hint: "e-Okul Kurum İşlemleri → Raporlar → OOK01001R1 — Personel Listesi raporunu Excel olarak indirip DEĞİŞTİRMEDEN yükleyin (ad-soyad, görev ve branş okunur; sayaç dipnotu atlanır). Alternatif olarak uygulama şablonu doldurulabilir ya da tablo panoya yapıştırılabilir.",
-    template: PERSONNEL_TEMPLATE_FILENAME,
-  },
-};
-
-function ImportPanel({ kind, onImported }: { kind: ImportKind; onImported: () => void }) {
-  const [file, setFile] = useState<File | null>(null);
-  const [text, setText] = useState("");
-  const [report, setReport] = useState<ImportReport | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const snackbar = useSnackbar();
-  const fileId = useId();
-  const textId = useId();
-  // Seçimi geri almak için gerçek DOM alanına erişim şart: `value` sıfırlanmadan
-  // aynı dosya yeniden seçilemez ve tarayıcı "dosya seçilmedi" durumuna dönmez.
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const labels = IMPORT_LABEL[kind];
-  // Dosya öncelikli: ikisi birden doluysa backend 400 döner, o yüzden tek girdi seçilir.
-  const input: ImportInput | null = file ? { file } : text.trim() ? { text } : null;
-  // Aktarma yalnız önizlemeden sonra açılır (dry_run raporu görülmeden yazma yok).
-  const canCommit = report !== null && report.dry_run;
-
-  const run = async (mode: "preview" | "commit") => {
-    if (!input) {
-      setError("Önce bir dosya seçin ya da listeyi yapıştırın.");
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      const result =
-        mode === "preview"
-          ? kind === "students"
-            ? await okulApi.previewStudentImport(input)
-            : await okulApi.previewPersonnelImport(input)
-          : kind === "students"
-            ? await okulApi.commitStudentImport(input)
-            : await okulApi.commitPersonnelImport(input);
-      setReport(result);
-      if (mode === "commit") {
-        snackbar.success("İçe aktarma tamamlandı.");
-        onImported();
-      }
-    } catch (e) {
-      setError(
-        e instanceof ApiError
-          ? e.message
-          : mode === "preview"
-            ? "Önizleme yapılamadı."
-            : "İçe aktarma yapılamadı.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const downloadTemplate = async () => {
-    setError(null);
-    try {
-      const blob =
-        kind === "students" ? await okulApi.studentTemplate() : await okulApi.personnelTemplate();
-      saveBlob(blob, labels.template);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Şablon indirilemedi.");
-    }
-  };
-
-  return (
-    <Card elevation={0} className="space-y-4 p-[var(--kd-panel-padding)]">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-title-medium text-on-surface">{labels.title}</p>
-          <p className="mt-0.5 max-w-3xl text-body-small text-on-surface-variant">{labels.hint}</p>
-        </div>
-        <Button variant="outlined" icon="download" onClick={downloadTemplate}>
-          Şablon indir
-        </Button>
-      </div>
-
-      <div>
-        <label htmlFor={fileId} className="mb-1 block text-label-large text-on-surface-variant">
-          Dosya (e-Okul .xls veya şablon .xlsx)
-        </label>
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            id={fileId}
-            ref={fileRef}
-            type="file"
-            /* e-Okul ihraçları BÜYÜK harfli .XLS uzantısıyla iner; tarayıcı
-               accept eşleşmesi büyük/küçük harfe duyarsızdır ama MIME tipini
-               tanımayan Windows kurulumları için uzantı listesi de verilir. */
-            accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            onChange={(e) => {
-              setFile(e.target.files?.[0] ?? null);
-              setReport(null);
-              setError(null);
-            }}
-            className="block min-h-[var(--kd-field-height)] flex-1 rounded-shape-sm border border-outline bg-surface-container-lowest px-3 py-2 text-body-medium text-on-surface file:mr-3 file:rounded-shape-sm file:border-0 file:bg-secondary-container file:px-3 file:py-1.5 file:text-label-large file:text-on-secondary-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          />
-          {file && (
-            <Button
-              variant="text"
-              icon="close"
-              onClick={() => {
-                if (fileRef.current) fileRef.current.value = "";
-                setFile(null);
-                setReport(null);
-                setError(null);
-              }}
-            >
-              Dosyayı kaldır
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div>
-        <label htmlFor={textId} className="mb-1 block text-label-large text-on-surface-variant">
-          Ya da tabloyu yapıştırın
-        </label>
-        <textarea
-          id={textId}
-          rows={3}
-          value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-            setReport(null);
-            setError(null);
-          }}
-          disabled={file !== null}
-          placeholder="Excel satırlarını kopyalayıp buraya yapıştırın…"
-          className="block w-full rounded-shape-xs border border-outline bg-surface px-4 py-3 text-body-medium text-on-surface outline-none placeholder:text-on-surface-variant/60 focus-visible:ring-2 focus-visible:ring-primary focus:border-primary disabled:opacity-50"
-        />
-      </div>
-
-      {error && <ErrorBand message={error} />}
-
-      <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="tonal" icon="visibility" onClick={() => run("preview")} disabled={busy}>
-          {busy ? "Çalışıyor…" : "Önizle"}
-        </Button>
-        <Button icon="upload" onClick={() => run("commit")} disabled={busy || !canCommit}>
-          Aktar
-        </Button>
-      </div>
-
-      {report && <ImportReportView report={report} />}
-    </Card>
-  );
-}
-
-function ImportReportView({ report }: { report: ImportReport }) {
-  const counts = importCounts(report);
-  const cells: { label: string; value: number }[] = [
-    { label: "Toplam satır", value: report.total_rows },
-    { label: "İşlenen", value: report.processed },
-    { label: "Yeni", value: counts.created },
-    { label: "Güncellenen", value: counts.updated },
-    { label: "Değişmeyen", value: counts.unchanged },
-  ];
-
-  return (
-    <div className="space-y-3 rounded-shape-md bg-surface-container-low p-4">
-      <p className="text-title-small text-on-surface">
-        {report.dry_run ? "Önizleme — hiçbir kayıt yazılmadı" : "İçe aktarma sonucu"}
-      </p>
-
-      {report.already_imported && (
-        <div className="flex items-start gap-2 rounded-shape-sm bg-tertiary-container px-4 py-3 text-body-medium text-on-tertiary-container">
-          <Icon name="info" size="lg" />
-          <span>
-            Bu içerik daha önce aktarılmış. Güncelleme amaçlı yeniden aktarma engellenmez.
-          </span>
-        </div>
-      )}
-
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        {cells.map((c) => (
-          <div key={c.label} className="rounded-shape-sm bg-surface-container px-3 py-2">
-            <dt className="text-label-small text-on-surface-variant">{c.label}</dt>
-            <dd className="text-title-medium text-on-surface">{formatNumber(c.value)}</dd>
-          </div>
-        ))}
-      </dl>
-
-      <IssueTable
-        title={`Uyarılar (${report.warnings.length})`}
-        issues={report.warnings}
-        emptyText="Uyarı yok."
-      />
-      <IssueTable
-        title={`Atlanan satırlar (${report.skipped.length})`}
-        issues={report.skipped}
-        emptyText="Atlanan satır yok."
-      />
-    </div>
-  );
-}
-
-function IssueTable({
-  title,
-  issues,
-  emptyText,
-}: {
-  title: string;
-  issues: ImportReport["warnings"];
-  emptyText: string;
-}) {
-  return (
-    <div>
-      <p className="text-label-large text-on-surface-variant">{title}</p>
-      {issues.length === 0 ? (
-        <EmptyState compact title={emptyText} icon="check_circle" />
-      ) : (
-        <div className="mt-2 overflow-x-auto">
-          <table className="w-full border-collapse text-body-small">
-            <thead>
-              <tr className="border-b border-outline-variant text-left text-label-medium text-on-surface-variant">
-                <th className="p-2">Satır</th>
-                <th className="p-2">Alan</th>
-                <th className="p-2">Sorun</th>
-                <th className="p-2">Değer</th>
-              </tr>
-            </thead>
-            <tbody>
-              {issues.map((issue, i) => (
-                <tr
-                  key={`${issue.row_number}-${issue.field}-${i}`}
-                  className="border-t border-outline-variant/50"
-                >
-                  <td className="p-2 text-on-surface-variant">{issue.row_number}</td>
-                  <td className="p-2 text-on-surface-variant">{issue.field || "—"}</td>
-                  <td className="p-2 text-on-surface">{issue.issue}</td>
-                  <td className="p-2 text-on-surface-variant">{issue.raw_value || "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
   );
 }

@@ -4,6 +4,9 @@
 // ekrana geçtiğinde de hatırlatır; "Daha sonra" o sürüm için bandı kapatır.
 // Ayarlar ekranında gizlidir: orada aynı bilgi ve indirme düğmesi zaten
 // Güncelleme panelindedir, iki kopya hangisinin "asıl" olduğunu sordururdu.
+// Görevli kipinde de gizlidir (`gizli`): güncellemeyi indirmek yönetici işidir,
+// uç görevli kipinde 403 döner (tasarım §4.4). Bant o sırada SÖKÜLMEZ, yalnız
+// görünmez; yönetici kipine dönülünce hatırlatma kaybolmamış olur.
 
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
@@ -18,7 +21,12 @@ import { DENETIM_OLAYI } from "./denetimOlayi";
 
 const DISMISSED_KEY = "kutuphane-defteri-dismissed-update";
 
-export default function UpdateBanner() {
+interface UpdateBannerProps {
+  /** Görevli kipinde true: bant durumunu korur ama hiçbir şey çizmez. */
+  gizli?: boolean;
+}
+
+export default function UpdateBanner({ gizli = false }: UpdateBannerProps) {
   const [update, setUpdate] = useState<UpdateStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const snackbar = useSnackbar();
@@ -34,7 +42,7 @@ export default function UpdateBanner() {
     return () => window.removeEventListener(DENETIM_OLAYI, dinleyici);
   }, []);
 
-  if (!update || pathname.startsWith("/ayarlar")) return null;
+  if (!update || gizli || pathname.startsWith("/ayarlar")) return null;
 
   const download = async () => {
     setBusy(true);

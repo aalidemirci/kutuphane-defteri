@@ -6,13 +6,15 @@
 // (3) açılışta güncelleme denetimi YOK — kabuk açılırken `/updates/` isteği
 // çıkmaz (tasarım T11); (4) M3 token bütünlüğü — kaynakta kullanılan
 // şekil/opaklık sınıflarının Tailwind çıktısında gerçekten üretildiği (DD F4-D5
-// bulgu 14/15 dersi).
+// bulgu 14/15 dersi); (5) kip (tasarım §4.4) — yönetici kipinde üst çubukta kip
+// göstergesi, görevli kipinde rotaların yerine görevli ekranı ve gezinmesiz
+// kabuk; kip okunamazsa FAIL-OPEN.
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import postcss from "postcss";
 import { MemoryRouter } from "react-router-dom";
@@ -23,6 +25,7 @@ import type { MockInstance } from "vitest";
 import { ConfirmProvider } from "./ui/ConfirmProvider";
 import { SnackbarProvider } from "./ui/SnackbarProvider";
 import type { SetupStatus } from "./modules/okul/api";
+import { KURULU_DURUM } from "./test/kurulumDurumu";
 
 const okulApiMock = vi.hoisted(() => ({
   getSetupStatus: vi.fn(),
@@ -35,6 +38,11 @@ const okulApiMock = vi.hoisted(() => ({
   listStudents: vi.fn(),
   listPersonnel: vi.fn(),
   listClassSections: vi.fn(),
+  listHolidays: vi.fn(),
+  markRoadmapItem: vi.fn(),
+  setRoadmapHidden: vi.fn(),
+  // Genel Bakış'taki "Ayrılış Havuzu" kartı yalnız sayıları okur.
+  getLeavePoolSummary: vi.fn(),
 }));
 
 vi.mock("./modules/okul/api", async (importOriginal) => {
@@ -42,22 +50,50 @@ vi.mock("./modules/okul/api", async (importOriginal) => {
   return { ...actual, okulApi: okulApiMock };
 });
 
+const kipApiMock = vi.hoisted(() => ({
+  durum: vi.fn(),
+  gorevliyeGec: vi.fn(),
+  yoneticiyeGec: vi.fn(),
+  kilitle: vi.fn(),
+}));
+
+vi.mock("./modules/kip/api", () => ({ kipApi: kipApiMock }));
+
 import App from "./App";
+import { denetimSonucunuYayinla } from "./modules/guncelleme/denetimOlayi";
+import type { KipOzeti } from "./modules/kip/api";
+
+const YONETICI_KIPI: KipOzeti = {
+  durum: "yonetici",
+  bosta_kalan_sn: 180,
+  mutlak_kalan_sn: 1800,
+  bosta_dk: 3,
+  mutlak_dk: 30,
+};
+
+const GOREVLI_KIPI: KipOzeti = {
+  ...YONETICI_KIPI,
+  durum: "gorevli",
+  bosta_kalan_sn: null,
+  mutlak_kalan_sn: null,
+};
 
 const KURULU: SetupStatus = {
-  setup_completed: true,
-  school_name: "Örnek Anadolu Lisesi",
-  has_active_school_year: true,
+  ...KURULU_DURUM,
   student_count: 482,
   personnel_count: 37,
   class_section_count: 18,
 };
 
+// Parola kurulu ama okul ve takvim adımları eksik (kurulum tamamlanmamış).
 const KURULMAMIS: SetupStatus = {
   ...KURULU,
   setup_completed: false,
   school_name: "",
+  school_info_complete: false,
   has_active_school_year: false,
+  active_school_year: null,
+  missing_steps: ["school", "calendar"],
   student_count: 0,
   personnel_count: 0,
 };
@@ -96,6 +132,10 @@ beforeEach(() => {
     district: "Örnek",
     principal_name: "",
     has_prep_class: false,
+    kademe: "ORTAOGRETIM",
+    kisa_ad: "Örnek AL",
+    demirbas_onayi: true,
+    demirbas_no: "",
     setup_completed: true,
   });
   okulApiMock.getGradeLevels.mockResolvedValue({
@@ -108,9 +148,96 @@ beforeEach(() => {
   okulApiMock.listSchoolYears.mockResolvedValue([]);
   okulApiMock.listSchoolTerms.mockResolvedValue([]);
   okulApiMock.listClassSections.mockResolvedValue([]);
+  okulApiMock.listHolidays.mockResolvedValue([]);
   const bosSayfa = { count: 0, next: null, previous: null, results: [] };
   okulApiMock.listStudents.mockResolvedValue(bosSayfa);
   okulApiMock.listPersonnel.mockResolvedValue(bosSayfa);
+  okulApiMock.getLeavePoolSummary.mockResolvedValue({ student_count: 0, personnel_count: 0 });
+  kipApiMock.durum.mockResolvedValue(YONETICI_KIPI);
+});
+
+describe("App — kip (görevli / yönetici)", () => {
+  it("yönetici kipinde üst çubukta kip göstergesi durur, sayfalar açılır", async () => {
+    ekranaBas("/");
+    expect(await screen.findByRole("heading", { name: "Genel Bakış" })).toBeInTheDocument();
+    const cubuk = ustCubuk();
+    expect(await within(cubuk).findByText("Yönetici kipi")).toBeInTheDocument();
+    expect(within(cubuk).getByRole("button", { name: "Görevli kipine geç" })).toBeInTheDocument();
+    expect(within(cubuk).getByRole("button", { name: "Kilitle" })).toBeInTheDocument();
+    expect(kipApiMock.durum).toHaveBeenCalledWith(false);
+  });
+
+  it("görevli kipinde rotaların yerine görevli ekranı durur ve gezinme boşalır", async () => {
+    kipApiMock.durum.mockResolvedValue(GOREVLI_KIPI);
+    ekranaBas("/kisiler");
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Görevli Kipi" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Kişiler" })).not.toBeInTheDocument();
+    expect(within(ustCubuk()).getByText("Görevli Kipi")).toBeInTheDocument();
+    const gezinme = screen.getByRole("navigation", { name: "Ana gezinme" });
+    expect(within(gezinme).queryAllByRole("link")).toHaveLength(0);
+    expect(screen.queryByRole("link", { name: "Hakkında ve Lisans" })).not.toBeInTheDocument();
+    expect(
+      within(ustCubuk()).getByRole("button", { name: "Yönetici kipine geç" }),
+    ).toBeInTheDocument();
+  });
+
+  it("Görevli kipine geç düğmesi ekranı görevli ekranına çevirir", async () => {
+    const user = userEvent.setup();
+    kipApiMock.gorevliyeGec.mockResolvedValue(GOREVLI_KIPI);
+    ekranaBas("/");
+    await screen.findByRole("heading", { name: "Genel Bakış" });
+
+    await user.click(await within(ustCubuk()).findByRole("button", { name: "Görevli kipine geç" }));
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Görevli Kipi" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Genel Bakış" })).not.toBeInTheDocument();
+  });
+
+  it("güncelleme bandı görevli kipinde görünmez (indirme yönetici işidir)", async () => {
+    const user = userEvent.setup();
+    kipApiMock.gorevliyeGec.mockResolvedValue(GOREVLI_KIPI);
+    ekranaBas("/");
+    await screen.findByRole("heading", { name: "Genel Bakış" });
+
+    // Yönetici Ayarlar → Güncelleme'de elle denetledi ve yeni sürüm bulundu.
+    act(() =>
+      denetimSonucunuYayinla({
+        current_version: "2026.9.0",
+        latest_version: "2026.10.0",
+        update_available: true,
+        release_name: "",
+        published_at: "",
+        release_url: "",
+        platform: "windows",
+        can_download: true,
+        installer_name: "kurulum.exe",
+        installer_size: 1,
+      }),
+    );
+    expect(await screen.findByText(/Kütüphane Defteri 2026\.10\.0 hazır\./)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Güncellemeyi indir" })).toBeInTheDocument();
+
+    await user.click(await within(ustCubuk()).findByRole("button", { name: "Görevli kipine geç" }));
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Görevli Kipi" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/2026\.10\.0 hazır/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Güncellemeyi indir" })).not.toBeInTheDocument();
+  });
+
+  it("kip okunamazsa sayfalar açılır, gösterge görünmez (fail-open)", async () => {
+    kipApiMock.durum.mockRejectedValue(new Error("ağ yok"));
+    ekranaBas("/");
+    expect(await screen.findByRole("heading", { name: "Genel Bakış" })).toBeInTheDocument();
+    await waitFor(() => expect(kipApiMock.durum).toHaveBeenCalled());
+    expect(screen.queryByRole("group", { name: "Kip" })).not.toBeInTheDocument();
+  });
 });
 
 describe("App — kurulum kapısı", () => {

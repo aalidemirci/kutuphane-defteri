@@ -11,14 +11,17 @@ from pathlib import Path
 
 import pytest
 
+from apps.okul import selectors
 from apps.okul.models import (
     ClassSection,
     ImportRun,
     ImportStatus,
+    MemberKind,
     Personnel,
     SchoolYear,
     Student,
     StudentStatus,
+    student_number_blind_index,
 )
 from apps.okul.services import imports as import_service
 
@@ -32,6 +35,17 @@ EOKUL_PERSONEL_LISTESI = VERI / "eokul_personel_listesi.xls"
 
 def _metin(*satirlar: str) -> str:
     return "\n".join([BASLIK, *satirlar])
+
+
+def _indeks(numara: str) -> str:
+    """Okul no şifrelidir (T14): DB'de kör indeksle aranır, düz numarayla değil."""
+    return student_number_blind_index(numara)
+
+
+def _no(numara: str) -> Student:
+    ogrenci = selectors.find_student_by_number(numara)
+    assert ogrenci is not None, numara
+    return ogrenci
 
 
 @pytest.fixture
@@ -53,7 +67,7 @@ class TestStudentCommit:
         )
         assert rapor.created_students == 2
         assert rapor.processed == 2
-        ogrenci = Student.objects.get(student_number="101")
+        ogrenci = _no("101")
         assert ogrenci.first_name == "EMRE CAN"
         assert ogrenci.class_label == "10/A"
 
@@ -62,7 +76,7 @@ class TestStudentCommit:
         rapor = import_service.commit_students_text(text=_metin("11/A\t101\tEMRE CAN YILMAZ"))
         assert rapor.updated_students == 1
         assert Student.objects.count() == 1
-        assert Student.objects.get(student_number="101").class_level == 11
+        assert _no("101").class_level == 11
 
     def test_degismeyen_satir_unchanged_sayilir(self, aktif_yil: SchoolYear) -> None:
         import_service.commit_students_text(text=_metin("10/A\t101\tEMRE CAN YILMAZ"))
@@ -101,17 +115,23 @@ class TestStudentCommit:
         assert rapor.created_students == 2 and rapor.skipped == []
         assert sorted(s.class_label for s in ClassSection.objects.all()) == ["1/A", "5/B"]
 
-    def test_ayrilmis_ogrenci_eslesmez_yeni_aktif_kayit_acilir(self, aktif_yil: SchoolYear) -> None:
-        """Numara yeniden kullanımı: LEFT kayıt upsert'e takılmaz (aktif-eşleşme)."""
-        Student.objects.create(
+    def test_ayrilmis_ogrenci_ayni_numarayla_donerse_yeniden_aktiflesir(
+        self, aktif_yil: SchoolYear
+    ) -> None:
+        """EK-21: ayrılmış (canlı, saklanan) kayıt aynı numarayla dönerse yeni kayıt AÇILMAZ."""
+        eski = Student.objects.create(
             first_name="ESKİ",
             last_name="ÖĞRENCİ",
             student_number="101",
             status=StudentStatus.LEFT,
+            left_at=date(2026, 6, 20),
         )
-        rapor = import_service.commit_students_text(text=_metin("9/A\t101\tYENİ ÖĞRENCİ"))
-        assert rapor.created_students == 1
-        assert Student.objects.filter(student_number="101").count() == 2
+        rapor = import_service.commit_students_text(text=_metin("9/A\t0101\tESKİ ÖĞRENCİ"))
+        assert (rapor.created_students, rapor.updated_students) == (0, 1)
+        assert rapor.reactivated_students == 1
+        assert Student.objects.filter(student_number_index=_indeks("101")).count() == 1
+        eski.refresh_from_db()
+        assert (eski.status, eski.left_at, eski.class_label) == (StudentStatus.ACTIVE, None, "9/A")
 
     def test_sube_katalogu_tohumlanir(self, aktif_yil: SchoolYear) -> None:
         import_service.commit_students_text(
@@ -131,7 +151,7 @@ class TestStudentCommit:
         SchoolConfig.objects.create(pk=SchoolConfig.SINGLETON_PK, has_prep_class=True)
         rapor = import_service.commit_students_text(text=_metin("HAZIRLIK/A\t101\tALİ VELİ"))
         assert rapor.created_students == 1
-        assert Student.objects.get(student_number="101").class_level == 0
+        assert _no("101").class_level == 0
 
 
 @pytest.mark.django_db
@@ -181,20 +201,21 @@ class TestPersonnelImport:
         assert rapor.created_personnel == 1
 
         rapor2 = import_service.commit_personnel_text(
-            text="Adı\tSoyadı\tGörevi\tBranşı\nAYŞE\tÖĞRETMEN\tMüdür Yardımcısı\tCoğrafya"
+            text="Adı\tSoyadı\tGörevi\tBranşı\nAYŞE\tÖĞRETMEN\tMemur\tCoğrafya"
         )
         assert rapor2.updated_personnel == 1
         assert Personnel.objects.count() == 1
         kisi = Personnel.objects.first()
-        assert kisi is not None and kisi.title == "Müdür Yardımcısı"
+        assert kisi is not None and kisi.member_kind == MemberKind.STAFF
 
     def test_bos_hucre_mevcut_veriyi_silmez(self) -> None:
-        import_service.commit_personnel_text(
-            text="Adı\tSoyadı\tGörevi\tBranşı\nAYŞE\tÖĞRETMEN\tÖğretmen\tCoğrafya"
-        )
-        import_service.commit_personnel_text(text="Adı\tSoyadı\tGörevi\tBranşı\nAYŞE\tÖĞRETMEN\t\t")
+        """Görev hücresi boşsa üye türü değişmez (tanınmayan görev mevcut veriyi silmez)."""
+        import_service.commit_personnel_text(text="Adı\tSoyadı\tGörevi\nAYŞE\tÖĞRETMEN\tHizmetli")
+        rapor = import_service.commit_personnel_text(text="Adı\tSoyadı\tGörevi\nAYŞE\tÖĞRETMEN\t")
         kisi = Personnel.objects.first()
-        assert kisi is not None and kisi.branch == "Coğrafya"
+        assert kisi is not None and kisi.member_kind == MemberKind.STAFF
+        assert rapor.unchanged_personnel == 1
+        assert [u.field for u in rapor.warnings] == ["member_kind"]
 
     def test_bos_ad_soyad_atlanir(self) -> None:
         rapor = import_service.commit_personnel_text(text="Adı\tSoyadı\n\t")
