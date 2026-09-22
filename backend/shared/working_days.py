@@ -16,7 +16,9 @@ Md. 18: "on beş gündür"; kaydırma yalnız son güne uygulanır).
    lehine bir uygulamadır; doğrudan uygulama değil kıyastır. Metin:
    `docs/mevzuat/6098-turk-borclar-kanunu-md92-93.md#madde-93`.
    İdari izin (`OTHER`) kanunen tatil sayılmaz ama o gün personel izinlidir,
-   kütüphane kapalıdır; iade fiilen alınamadığı için aynı kurala bağlandı.
+   kütüphane kapalıdır; iade fiilen alınamadığı için aynı DAVRANIŞA (her zaman
+   kapalı) bağlandı. Dayanağı TBK 93 DEĞİLDİR, programın kuralıdır: kullanıcı
+   metninde ayrı anılır (`docs/mevzuat/BENIOKU.md` §4 "Dayanağı olmayan kurallar").
 2. **Öğrenciye kapalı gün (ara tatil, yarıyıl — `SCHOOL_BREAK`) — bayrakla.** Bu
    günler kanunen tatil DEĞİLDİR, mesai sürer; kaydırmanın mevzuat dayanağı YOKTUR.
    Okulun tercihidir: öğrenci okulda değilken sahte gecikme doğmasın diye iade

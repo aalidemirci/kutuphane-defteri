@@ -46,6 +46,19 @@ def _class_label(class_level: int, class_section: str) -> str:
     return f"{class_level}/{class_section}"
 
 
+class SchoolLevel(models.TextChoices):
+    """Okulun kademesi (tasarım §3 "Okul türü", §6.1 `SchoolConfig.kademe`).
+
+    Md. 19 kayıp bedeli yalnız ortaöğretimde uygulanır; ilkokulda sınıf
+    kitaplığı zorunludur (Md. 4/1-i, 5/1). Bu kurallar F6/F7'de buna bağlanır.
+    F1'de kademe sınıf seviyelerini KISITLAMAZ (1-12 okul içi sabit kalır).
+    """
+
+    ILKOKUL = "ILKOKUL", "İlkokul"
+    ORTAOKUL = "ORTAOKUL", "Ortaokul"
+    ORTAOGRETIM = "ORTAOGRETIM", "Ortaöğretim (lise)"
+
+
 class SchoolConfig(BaseModel):
     """Kurum bilgisi — TEK satır (singleton, pk=1).
 
@@ -57,6 +70,19 @@ class SchoolConfig(BaseModel):
     tutar (`shared.crypto.key_fingerprint`). Parola/tuz/sarmal `guvenlik.json`
     dosyasındadır; DB ile güvenlik dosyasının eşleşmesi bu damgayla denetlenir
     ve alan şifreleme geçişi bu alanla AYNI işlemde damgalanır.
+
+    F1 sihirbaz alanları (tasarım §3, §6.1, §14.1): `kademe`, `kisa_ad`
+    (etiket ve kartlarda basılan kısa ad), `demirbas_onayi` + `demirbas_no`
+    (Bilgi ve Sistem Güvenliği Yönergesi 11/8, 11/23: program yalnız kurum
+    demirbaşı bilgisayara kurulur). Hiçbiri kişisel veri değildir, şifrelenmez.
+
+    `yol_haritasi`: Genel Bakış'taki "Başlangıç Yol Haritası" kartının
+    KULLANICININ İŞARETLEDİĞİ maddeleri (`{"isaretler": {madde: "gg-aa-yyyy"
+    ISO tarih}, "gizli": bool}`; biçim `services.setup` tek kaynağındadır).
+    Tarayıcı depolaması yerine burada durur: yönetim yüzeyi her açılışta
+    RASTGELE portta dinler, köken (origin) değiştiği için `localStorage`
+    açılışlar arasında taşınmaz; pencere profili de silinebilir önbellektedir.
+    Kişisel veri İÇERMEZ (madde anahtarı + tarih).
     """
 
     SINGLETON_PK = 1
@@ -66,6 +92,15 @@ class SchoolConfig(BaseModel):
     district = models.CharField("ilçe", max_length=64, blank=True, default="")
     principal_name = models.CharField("müdür adı", max_length=128, blank=True, default="")
     has_prep_class = models.BooleanField("hazırlık sınıfı var", default=False)
+    kademe = models.CharField(
+        "kademe", max_length=16, choices=SchoolLevel.choices, blank=True, default=""
+    )
+    kisa_ad = models.CharField("kısa okul adı", max_length=24, blank=True, default="")
+    demirbas_onayi = models.BooleanField("bilgisayar okul demirbaşıdır", default=False)
+    demirbas_no = models.CharField(
+        "bilgisayarın demirbaş no'su", max_length=64, blank=True, default=""
+    )
+    yol_haritasi = models.JSONField("başlangıç yol haritası işaretleri", default=dict, blank=True)
     setup_completed = models.BooleanField("kurulum tamamlandı", default=False)
     app_password_hash = models.CharField(
         "yönetici parolası parmak izi", max_length=255, blank=True, default=""
@@ -74,6 +109,13 @@ class SchoolConfig(BaseModel):
     class Meta:
         verbose_name = "kurum yapılandırması"
         verbose_name_plural = "kurum yapılandırması"
+        constraints = [
+            # Boş = sihirbazda henüz seçilmedi (kurulum tamamlanamaz).
+            models.CheckConstraint(
+                condition=models.Q(kademe__in=[*SchoolLevel.values, ""]),
+                name="ck_schoolconfig_kademe",
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.school_name or "Kurulmamış okul"

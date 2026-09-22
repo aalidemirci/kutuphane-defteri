@@ -56,9 +56,19 @@ const IMPORT_LABEL: Record<ImportKind, { title: string; hint: string; template: 
   },
 };
 
+/**
+ * Şube şube yüklemenin bilinen sınırı: öğrenci yalnız BU dosyada aranır. Kayıtlı
+ * olduğu şube dosyada olup kendisi başka şubeye geçtiği için dosyada olmayan
+ * öğrenci de ayrılacaklar listesine düşer (yıl başında bütün öğrenciler üst
+ * sınıfa geçer).
+ */
+const SUBE_DEGISIMI_UYARISI =
+  "Başka bir şubeye geçtiği için bu dosyada bulunmayan öğrenci de bu listeye düşer. Yıl başında ya da şube değişikliklerinden sonra okulun bütün şubelerini içeren listeyi tek dosyada yükleyin ve “Bu dosya okulun tam listesidir” kutusunu işaretleyin.";
+
 /** Rapor satır sorunlarındaki alan kodlarının kullanıcı adları. */
 const ALAN_ADI: Record<string, string> = {
   header: "Başlık",
+  leaving: "Ayrılış",
   number: "Okul no",
   class: "Sınıf/şube",
   student_name: "Ad-soyad",
@@ -109,9 +119,10 @@ export default function AktarimPaneli({
   const commitOnayi = async (): Promise<boolean> => {
     if (report === null) return false;
     if (isStudentReport(report) && report.leaving_students > 0) {
+      const subeUyarisi = report.full_list ? "" : ` ${SUBE_DEGISIMI_UYARISI}`;
       return confirm({
         title: "Aktarım uygulansın mı?",
-        message: `${formatNumber(report.leaving_students)} öğrenci okuldan ayrılmış sayılacak. Kütüphane üyeliği ve açık işlemi olmayanların kaydı silinir; bu işlem geri alınamaz.`,
+        message: `${formatNumber(report.leaving_students)} öğrenci okuldan ayrılmış sayılacak. Kütüphane üyeliği ve açık işlemi olmayanların kaydı silinir; bu işlem geri alınamaz.${subeUyarisi}`,
         confirmLabel: "Aktar",
       });
     }
@@ -283,7 +294,8 @@ export default function AktarimPaneli({
               <span className="block text-body-small text-on-surface-variant">
                 İşaretlemezseniz yalnız dosyada bulunan şubeler karşılaştırılır; diğer şubelere
                 dokunulmaz. İşaretlerseniz dosyada bulunmayan şubelerdeki öğrenciler de okuldan
-                ayrılmış sayılır.
+                ayrılmış sayılır. Yıl başında bütün şubeleri içeren listeyi tek dosyada yükleyip bu
+                kutuyu işaretleyin: üst sınıfa geçen öğrencinin kaydı böylece güncellenir.
               </span>
             </span>
           </label>
@@ -450,9 +462,17 @@ function OgrenciMutabakati({ report }: { report: StudentImportReport }) {
               : `Ayrılan öğrenciler (${formatNumber(report.leaving.length)})`}
           </p>
           <p className="text-body-small text-on-surface-variant">
-            Dosyada bulunmadıkları için okuldan ayrılmış sayılırlar. Kütüphane üyeliği ve açık
-            işlemi olmayanların kaydı silinir.
+            {report.full_list
+              ? "Okulun tam listesinde bulunmadıkları için okuldan ayrılmış sayılırlar."
+              : "Kayıtlı oldukları şube dosyada var ama kendileri dosyada bulunmadığı için okuldan ayrılmış sayılırlar."}{" "}
+            Kütüphane üyeliği ve açık işlemi olmayanların kaydı silinir.
           </p>
+          {!report.full_list && (
+            <p className="mt-1 flex items-start gap-2 rounded-shape-sm bg-tertiary-container px-3 py-2 text-body-small text-on-tertiary-container">
+              <Icon name="warning" />
+              <span>{SUBE_DEGISIMI_UYARISI}</span>
+            </p>
+          )}
           <div className="mt-2 overflow-x-auto">
             <table className="w-full border-collapse text-body-small">
               <thead>

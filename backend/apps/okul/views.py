@@ -20,7 +20,9 @@ from io import BytesIO
 from typing import Any
 
 from django.http import FileResponse
-from rest_framework import generics, serializers
+from django.views.decorators.debug import sensitive_variables
+from rest_framework import generics, serializers, status
+from rest_framework.exceptions import APIException
 from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -40,6 +42,8 @@ from apps.okul.serializers import (
     ImportRequestSerializer,
     PersonnelMergeSerializer,
     PersonnelSerializer,
+    RecoveryKeyPdfRequestSerializer,
+    RoadmapUpdateSerializer,
     SchoolConfigSerializer,
     SchoolTermConfigurationSerializer,
     SchoolTermSerializer,
@@ -51,6 +55,7 @@ from apps.okul.services import encrypted_backup as encrypted_backup_service
 from apps.okul.services import imports as import_service
 from apps.okul.services import live_restore as live_restore_service
 from apps.okul.services import persons as persons_service
+from apps.okul.services import recovery_key_document
 from apps.okul.services import school_year as school_year_service
 from apps.okul.services import sections as section_service
 from apps.okul.services import setup as setup_service
@@ -76,18 +81,31 @@ def _service_errors() -> Iterator[None]:
 # ---------------------------------------------------------------------------
 # Kurulum sihirbazı
 # ---------------------------------------------------------------------------
+class SetupIncompleteResponse(APIException):
+    """`setup/complete/` eksik adım reddi — 400 `kurulum_eksik` (ileti hangi adımı söyler)."""
+
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_code = "kurulum_eksik"
+    default_detail = "Kurulum tamamlanamadı."
+
+
 class SetupStatusView(APIView):
-    """Kurulum durumu — masaüstü sağlık denetimi + arayüz kurulum kapısı."""
+    """Kurulum durumu — masaüstü sağlık denetimi + arayüz kurulum kapısı + yol haritası.
+
+    Hafif ve kişisel verisizdir (`services.setup.setup_status`).
+    """
 
     def get(self, request: Request) -> Response:
-        return Response(selectors.setup_status())
+        return Response(setup_service.setup_status())
 
 
 class GradeLevelsView(APIView):
     """`GET /api/v1/grade-levels/` — UI seçicileri için geçerli öğrenim seviyeleri.
 
     Liste okul içi sabitten gelir (`SchoolConfig.grade_levels`): 1-12, hazırlık
-    bayrağı açıksa başta 0 (Hazırlık). Kademeye göre daraltma F1'de gelir.
+    bayrağı açıksa başta 0 (Hazırlık). Kademe (`SchoolConfig.kademe`, F1)
+    seviyeleri KISITLAMAZ; Md. 19 bedeli ve sınıf kitaplığı kuralları F6/F7'de
+    ona bağlanır.
     """
 
     def get(self, request: Request) -> Response:
@@ -112,9 +130,35 @@ class SchoolConfigView(APIView):
 
 
 class SetupCompleteView(APIView):
+    """`POST setup/complete/` — yalnız üç adım da tamamsa (parola, okul, ders yılı)."""
+
     def post(self, request: Request) -> Response:
-        config = setup_service.mark_setup_completed()
+        try:
+            config = setup_service.mark_setup_completed()
+        except setup_service.SetupIncomplete as exc:
+            raise SetupIncompleteResponse(detail=str(exc)) from exc
         return Response({"setup_completed": config.setup_completed})
+
+
+class SetupRoadmapView(APIView):
+    """`POST setup/roadmap/` — Başlangıç Yol Haritası'nın kullanıcı işaretleri.
+
+    Gövde `{item, done}` (elle işaretlenen madde) ya da `{hidden}` (kartı gizle;
+    yalnız bütün maddeler tamamken). Yanıt güncel `{marks, hidden}`. Kişisel
+    veri yazmaz; görevli kipinde kapalıdır (izin listesinde yok).
+    """
+
+    def post(self, request: Request) -> Response:
+        req = RoadmapUpdateSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        with _service_errors():
+            if "hidden" in req.validated_data:
+                state = setup_service.set_roadmap_hidden(hidden=req.validated_data["hidden"])
+            else:
+                state = setup_service.set_roadmap_mark(
+                    req.validated_data["item"], done=req.validated_data["done"]
+                )
+        return Response(state)
 
 
 # ---------------------------------------------------------------------------
@@ -490,6 +534,57 @@ class SecurityRecoverView(APIView):
                 new_password=req.validated_data["new_password"],
             )
         return Response(app_password_service.status())
+
+
+class SecurityRecoveryKeyPdfView(APIView):
+    """`POST /api/v1/security/recovery-key/pdf/` `{recovery_key}` — E14 PDF'i.
+
+    Anahtar `guvenlik.json`'daki kurtarma sarmalını açmıyorsa (ya da bellekteki
+    anahtara ait değilse) 400 + kademeli gecikme; açıyorsa PDF. Kişi yazmaz.
+    Kilitliyken `security/` ön ekine rağmen kilit kapısı keser
+    (`lock_middleware.LOCKED_DENIED_PATHS`); görevli kipinde kapalıdır. Yanıt
+    önbelleğe alınmaz: içinde sır vardır.
+    """
+
+    @sensitive_variables("req", "icerik")
+    def post(self, request: Request) -> FileResponse:
+        req = RecoveryKeyPdfRequestSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        with _service_errors():
+            icerik = recovery_key_document.render_recovery_key_pdf(
+                req.validated_data["recovery_key"]
+            )
+        yanit = FileResponse(
+            BytesIO(icerik),
+            as_attachment=True,
+            filename=recovery_key_document.recovery_key_pdf_filename(),
+            content_type="application/pdf",
+        )
+        yanit["Cache-Control"] = "no-store"
+        return yanit
+
+
+class StateResetNotAllowedResponse(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_code = "sifirlama_uygun_degil"
+    default_detail = app_password_service.RESET_NOT_ALLOWED_MESSAGE
+
+
+class SecurityStateResetView(APIView):
+    """`POST /api/v1/security/state/reset/` — "Güvenlik dosyasını sıfırla ve kuruluma dön".
+
+    Yalnız güvenlik dosyası kullanılamıyor + parmak izi boş + şifreli tablolar
+    boşken (`app_password.state_reset_available`); aksi hâlde 409
+    `sifirlama_uygun_degil`. Güvenlik dosyası kayıp kilidinde açık kalan
+    uçlardandır (`lock_middleware.SECURITY_FILE_MISSING_ALLOWED_PATHS`).
+    """
+
+    def post(self, request: Request) -> Response:
+        try:
+            arsiv = app_password_service.reset_unusable_state()
+        except app_password_service.StateResetNotAllowed as exc:
+            raise StateResetNotAllowedResponse(detail=str(exc)) from exc
+        return Response({"archived_as": arsiv, **app_password_service.status()})
 
 
 class SecurityChangePasswordView(APIView):

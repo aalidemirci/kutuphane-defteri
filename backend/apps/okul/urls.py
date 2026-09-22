@@ -3,7 +3,9 @@
 `setup/status/` hem arayüz kurulum kapısının hem masaüstü sağlık denetiminin
 (`desktop/server.py::HEALTH_PATH`) tek kaynağıdır — yolu değişirse üçü birlikte
 güncellenir. `security/` ön eki kilit kapısından muaftır
-(`lock_middleware.ALLOWED_PREFIXES` ile birebir aynı kalmalıdır).
+(`lock_middleware.ALLOWED_PREFIXES` ile birebir aynı kalmalıdır); tek istisna
+kurtarma anahtarı çıktısıdır (`LOCKED_DENIED_PATHS`: kilit açmanın yolu
+değildir, kilitliyken anahtar deneme kapısı olmasın).
 """
 
 from __future__ import annotations
@@ -17,6 +19,8 @@ urlpatterns = [
     path("setup/status/", views.SetupStatusView.as_view(), name="setup-status"),
     path("setup/school-config/", views.SchoolConfigView.as_view(), name="setup-school-config"),
     path("setup/complete/", views.SetupCompleteView.as_view(), name="setup-complete"),
+    # Genel Bakış "Başlangıç Yol Haritası" kartının kullanıcı işaretleri (kişisel veri yok)
+    path("setup/roadmap/", views.SetupRoadmapView.as_view(), name="setup-roadmap"),
     # Öğrenim seviyeleri (okul içi sabit 1-12 + hazırlık bayrağı)
     path("grade-levels/", views.GradeLevelsView.as_view(), name="grade-levels"),
     # Ders yılları + dönemler
@@ -92,6 +96,19 @@ urlpatterns = [
     path("security/unlock/", views.SecurityUnlockView.as_view(), name="security-unlock"),
     path("security/lock/", views.SecurityLockView.as_view(), name="security-lock"),
     path("security/recover/", views.SecurityRecoverView.as_view(), name="security-recover"),
+    # Kurtarma anahtarı çıktısı (E14): anahtar kurtarma sarmalını açıyorsa PDF.
+    # `security/` önekine rağmen KİLİTLİYKEN KAPALIDIR (lock_middleware.LOCKED_DENIED_PATHS).
+    path(
+        "security/recovery-key/pdf/",
+        views.SecurityRecoveryKeyPdfView.as_view(),
+        name="security-recovery-key-pdf",
+    ),
+    # "Güvenlik dosyasını sıfırla ve kuruluma dön" — yalnız korunan veri yokken (409 aksi).
+    path(
+        "security/state/reset/",
+        views.SecurityStateResetView.as_view(),
+        name="security-state-reset",
+    ),
     path(
         "security/change-password/",
         views.SecurityChangePasswordView.as_view(),

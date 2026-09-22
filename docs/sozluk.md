@@ -42,7 +42,7 @@ iç kavramları (karar, faz, evrak kodları) yüzeye çıkmaz.
 | Ödünç geçmişi | **ödünç kaydı**, **ödünç geçmişi** | **okuduğu kitaplar**, okuma karnesi, okuma puanı, okuma geçmişi | **Ödünç ≠ okuduğu kitap.** Öğrenci bazlı ödünç sayısı öğretmene ya da e-Okul'a aktarılmaz (tasarım §3) |
 | İade tarihi | **iade tarihi**; gecikmişte **gecikme**, **"… gün gecikti"** | son teslim tarihi, ceza, harç, uzatma | Programda uzatma, ceza ve harç yoktur. Kaydırılmış tarih "Md. 18 gereği" diye sunulmaz |
 | `Holiday.SCHOOL_BREAK` | **öğrenciye kapalı gün** (ara tatil, yarıyıl) | tatil (tek başına) | Kanunen tatil değildir; resmî ve dini tatil ayrı türdür |
-| `Holiday` diğer türler | **resmî tatil**, **dini bayram**, **idari izin / diğer**; hepsinin üst adı **kapalı gün** (sayfa: "Kapalı Günler") | tatil günü (genel anlamda) | İdari izin kütüphanenin de kapalı olduğu gündür; iade tarihi hesabında resmî tatil gibi sayılır. Tahmini bayram tarihinde **"tahmini"** rozeti |
+| `Holiday` diğer türler | **resmî tatil**, **dini bayram**, **idari izin / diğer**; hepsinin üst adı **kapalı gün** (sayfa: "Kapalı Günler") | tatil günü (genel anlamda) | İdari izin kütüphanenin de kapalı olduğu gündür; iade tarihi hesabında resmî tatil gibi her zaman kapalı sayılır. Bu programın kuralıdır, TBK 93 kıyası altında anılmaz (`docs/mevzuat/BENIOKU.md` §4). Tahmini bayram tarihinde **"tahmini"** rozeti |
 | `Delivery` (U11) | **teslim**: "sınıf kitaplığına teslim", "öğretmene teslim"; geri dönüşü **geri alma** | ödünç, emanet, zimmet | **Teslim ödünç değildir**, Md. 18 sayı sınırı uygulanmaz |
 | İlişik | **"Kütüphaneden ilişiği yoktur" belgesi**, **ilişik listesi** | borç, ilişik kesme | Karne ya da diplomanın ön koşulu diye SUNULMAZ; dayanağı yok |
 | `LossDamageCase` | **kayıp**, **hasar**, **onarım**; belge "Kayıp/hasar tutanağı" | zayi, telef | Bedel seçenekleri yalnız ortaöğretimde (Md. 19). Program tahsilat yapmaz |
@@ -124,7 +124,65 @@ testlerde kodlar serbesttir.
 ## 4. Sayfa ve gezinme adları
 
 Ekranlar fazlarla geldikçe buraya işlenir. Kural: gezinme etiketi kısa, sayfa
-başlığı (h1) tam addır ve üst çubuktaki başlıkla AYNIDIR.
+başlığı (h1) tam addır ve üst çubuktaki başlıkla AYNIDIR. Gezinme kartının
+(Genel Bakış) başlığı gittiği sayfanın h1'idir. Sekme adları Başlık
+Düzenindedir; sekme adreste `?tab=` ile tutulur, böylece başka ekranlar ve
+kılavuz doğrudan sekmeye bağlanır. Kılavuzda ekran, sekme ve düğme adları
+buradaki ve ekrandaki metinle birebir yazılır ("Ayarlar → Güvenlik").
+
+*Aşağıdaki tablolar F1 sonundaki durumdur (22.09.2026); kaynak `AppShell.tsx`
+(`NAV_ITEMS`, `PAGE_TITLES`), sayfaların h1'leri ve sekme tanımlarıdır.*
+
+### 4.1 Sayfalar
+
+| Gezinme etiketi | Sayfa başlığı (h1 = üst çubuk) | Adres | Not |
+|---|---|---|---|
+| Genel Bakış | Genel Bakış | `/` | Ana sayfanın tek adı |
+| Kişiler | Kişiler | `/kisiler` | |
+| Ayarlar | Ayarlar | `/ayarlar` | |
+| Kılavuz | Kullanım Kılavuzu | `/kilavuz` | |
+| Hakkında ve Lisans | Hakkında ve Lisans | `/hakkinda` | Kenar çubuğunun altında, ana gezinmenin dışında |
+| — | Kurulum Sihirbazı | `/kurulum` | Menüde yoktur. İlk açılışta kurulum kapısı buraya getirir; kurulumdan sonra Ayarlar'ın altındaki "Diğer ayarlar" bölümünde **Kurulum Sihirbazı** kartıyla açılır |
+
+Ana gezinmenin sırası: Genel Bakış · Kişiler · Ayarlar · Kılavuz. Görevli
+kipinde gezinme bağlantıları gösterilmez; her adreste görevli ekranı durur.
+
+### 4.2 Program durumu ekranları
+
+Bunlar adres değildir; program durumuna göre sayfanın yerine gelir.
+
+| Durum | Başlık |
+|---|---|
+| Kilitli | **Kayıtlar kilitli** |
+| Görevli kipi | **Görevli Kipi** (üst çubukta da bu ad yazar) |
+| Güvenlik dosyası yok ya da bozuk | **Güvenlik dosyası bulunamadı ya da okunamıyor** |
+| Yedekten geri yüklendi | **Programı kapatıp yeniden açın** |
+
+Üst çubuktaki kip göstergesinin adları: kip adı **Yönetici kipi** / **Görevli
+kipi**; düğmeler **Görevli kipine geç** (kısayol Ctrl+Shift+G), **Yönetici
+kipine geç**, **Kilitle**.
+
+### 4.3 Sekmeler
+
+İlk sekme varsayılandır.
+
+| Sayfa | Sekmeler, sırasıyla (`?tab=` değeri) |
+|---|---|
+| Kişiler | **Öğrenciler** (`ogrenciler`) · **Öğretmenler ve Diğer Personel** (`personel`) |
+| Ayarlar | **Ders Yılları** (`ders-yillari`) · **Kapalı Günler** (`kapali-gunler`) · **Şubeler** (`subeler`) · **Okul Bilgileri** (`okul`) · **Güvenlik** (`guvenlik`) · **Güncelleme** (`guncelleme`) |
+
+### 4.4 Kurulum Sihirbazı adımları
+
+Adım rayındaki adlar, sırasıyla: **Yönetici parolası** · **Okul bilgileri** ·
+**Ders yılı ve kapalı günler**. İlk adım atlanamaz. Adımlar arası düğmeler:
+**Geri**, **Devam** (1. adım), **Kaydet ve devam et** (2. adım), **Kurulumu
+tamamla** (son adım).
+
+### 4.5 Genel Bakış kartları
+
+**Başlangıç Yol Haritası** (kurulumdan sonra; bütün maddeler bitince
+gizlenebilir) · **Kişiler** · **Ayarlar** · **Katalog Excel Şablonu** (bir
+sayfaya gitmez, şablonu indirir).
 
 ## 5. Kişisel veri ve metin
 

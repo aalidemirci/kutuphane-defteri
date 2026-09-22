@@ -7,6 +7,9 @@
 - Aynı dosyanın ikinci uygulaması değişiklik üretmez.
 - Ayrılacaklar ayrılış yolundan geçer (kancalar + katı silme kararı).
 - Önizleme ve uygulama aynı sonucu verir; önizleme hiçbir şeyi değiştirmez.
+- Import silmez ilkesi: atlanan satırdaki numaranın öğrencisi ayrılmaz; numarası
+  boş öğrenci satırı ayrılışı durdurur; hiç satır işlenemeyen dosya kimseyi ayırmaz.
+- Okul no yeniden kullanımı: ayrılmış kayıt yalnız aynı adla yeniden aktifleşir.
 
 Personel mutabakatı: listede olmayanlar (`missing`) yalnız seçilince ayrılır,
 "olası aynı kişi" çiftleri, görev metninden üye türü sınıflaması.
@@ -338,6 +341,242 @@ class TestOgrenciAyrilisVeRapor:
         assert varsayilan.json()["full_list"] is False
         assert varsayilan.json()["leaving_students"] == 0
         assert _aktif_mi("201")  # önizleme yazmaz
+
+
+# ---------------------------------------------------------------------------
+# Öğrenci mutabakatı — import silmez ilkesi (ayrılış yalnız kanıtla)
+# ---------------------------------------------------------------------------
+
+
+def _satir_uyarilari(rapor: import_service.StudentImportReport) -> list[tuple[int, str]]:
+    return [(u.row_number, u.issue) for u in rapor.warnings]
+
+
+class TestImportSilmezIlkesi:
+    """KORUMA: atlanan ya da tanınamayan satır mevcut öğrenciyi ayrılmış saydırmaz."""
+
+    def test_adi_bos_satirdaki_ogrenci_ayrilmaz(self) -> None:
+        _ogrenci("101", 10, "A")
+        korunan = _ogrenci("102", 10, "A", ad="KORUNAN")
+
+        rapor = import_service.commit_students_text(
+            text=_ogrenci_metni("10/A\t101\tDENEME ÖĞRENCİ", "10/A\t102\t")
+        )
+
+        assert [(s.row_number, s.field) for s in rapor.skipped] == [(3, "student_name")]
+        assert rapor.leaving_students == 0
+        korunan.refresh_from_db()
+        assert (korunan.status, korunan.first_name) == (StudentStatus.ACTIVE, "KORUNAN")
+        assert _satir_uyarilari(rapor) == [(3, import_service.KEPT_ROW_MESSAGE)]
+
+    def test_sinifi_cozulemeyen_satirdaki_ogrenci_ayrilmaz(self) -> None:
+        _ogrenci("101", 10, "A")
+        korunan = _ogrenci("102", 10, "A")
+
+        rapor = import_service.commit_students_text(
+            text=_ogrenci_metni("10/A\t101\tDENEME ÖĞRENCİ", "10\t0102\tDENEME ÖĞRENCİ")
+        )
+
+        assert [(s.row_number, s.field) for s in rapor.skipped] == [(3, "class")]
+        assert rapor.leaving_students == 0
+        korunan.refresh_from_db()
+        assert (korunan.status, korunan.class_label) == (StudentStatus.ACTIVE, "10/A")
+
+    def test_tam_listede_sinifi_cozulemeyen_satirdaki_ogrenci_ayrilmaz(self) -> None:
+        _ogrenci("101", 10, "A")
+        korunan = _ogrenci("201", 11, "B")
+        _ogrenci("301", 12, "C")  # dosyada hiç yok → tam listede ayrılır
+
+        rapor = import_service.commit_students_text(
+            text=_ogrenci_metni("10/A\t101\tDENEME ÖĞRENCİ", "XX\t201\tDENEME ÖĞRENCİ"),
+            full_list=True,
+        )
+
+        assert rapor.leaving_students == 1
+        assert [a.student_number for a in rapor.leaving] == ["301"]
+        korunan.refresh_from_db()
+        assert korunan.status == StudentStatus.ACTIVE
+
+    def test_numarasi_bos_ogrenci_satiri_o_subede_ayrilisi_durdurur(self) -> None:
+        """Kim olduğu bilinmeyen satır o şubedeki herhangi bir öğrenci olabilir."""
+        _ogrenci("101", 10, "A")
+        _ogrenci("102", 10, "A")
+        _ogrenci("201", 10, "B")
+        _ogrenci("202", 10, "B")  # 10/B'de dosyada yok → ayrılır
+
+        rapor = import_service.commit_students_text(
+            text=_ogrenci_metni(
+                "10/A\t101\tDENEME ÖĞRENCİ", "10/A\t\tNUMARASIZ ÖĞRENCİ", "10/B\t201\tDENEME"
+            )
+        )
+
+        assert [a.student_number for a in rapor.leaving] == ["202"]
+        assert _aktif_mi("102")
+        assert [(s.row_number, s.issue) for s in rapor.skipped] == [
+            (3, import_service.UNIDENTIFIED_ROW_MESSAGE)
+        ]
+
+    def test_numarasi_ve_sinifi_bos_ogrenci_satiri_hic_ayrilis_uretmez(self) -> None:
+        _ogrenci("101", 10, "A")
+        _ogrenci("102", 10, "A")
+        _ogrenci("301", 12, "C")
+
+        rapor = import_service.commit_students_text(
+            text=_ogrenci_metni("10/A\t101\tDENEME ÖĞRENCİ", "\t\tKİMLİKSİZ ÖĞRENCİ"),
+            full_list=True,
+        )
+
+        assert rapor.leaving_students == 0
+        assert _aktif_mi("102") and _aktif_mi("301")
+        assert [s.issue for s in rapor.skipped] == [import_service.UNIDENTIFIED_ROW_ALL_MESSAGE]
+
+    def test_numara_ve_adi_olmayan_not_satiri_ayrilisi_durdurmaz(self) -> None:
+        """Yalnız sınıf hücresi dolu satır (not, sayaç artığı) öğrenci satırı sayılmaz."""
+        _ogrenci("101", 10, "A")
+        _ogrenci("102", 10, "A")
+
+        rapor = import_service.commit_students_text(
+            text=_ogrenci_metni("10/A\t101\tDENEME ÖĞRENCİ", "10/A\t\t")
+        )
+
+        assert [a.student_number for a in rapor.leaving] == ["102"]
+        assert [s.issue for s in rapor.skipped] == [import_service.NUMBER_MISSING_MESSAGE]
+
+    def test_hic_satir_islenemeyen_dosya_kimseyi_ayirmaz(self) -> None:
+        _ogrenci("101", 10, "A")
+        _ogrenci("201", 11, "B")
+
+        rapor = import_service.commit_students_text(
+            text=_ogrenci_metni("10/A\t999\t", "11/B\t998\t"), full_list=True
+        )
+
+        assert (rapor.processed, rapor.leaving_students) == (0, 0)
+        assert _aktif_mi("101") and _aktif_mi("201")
+        assert _satir_uyarilari(rapor) == [(1, import_service.NOTHING_PROCESSED_MESSAGE)]
+
+    def test_kalici_raporda_ham_hucre_degeri_yok(self) -> None:
+        """Kaymış sütunda sınıf hücresi kişi verisi taşıyabilir: yalnız API yanıtında kalır."""
+        metin = _ogrenci_metni(f"{SENTETIK_AD}\t101\tDENEME ÖĞRENCİ")
+
+        onizleme = import_service.preview_students_text(text=metin)
+        import_service.commit_students_text(text=metin)
+
+        assert [s.raw_value for s in onizleme.skipped] == [SENTETIK_AD]
+        raporlar = json.dumps([r.report for r in ImportRun.objects.all()], ensure_ascii=False)
+        assert ImportRun.objects.filter(status=ImportStatus.PREVIEWED).exists()
+        assert SENTETIK_AD not in raporlar
+        assert "raw_value" not in raporlar
+
+    def test_onizleme_gunluge_ayrilis_yazmaz(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Önizleme ayrılışı geri sarar: günlükte olmamış bir silme görünmemeli."""
+        _ogrenci("101", 10, "A")
+        _ogrenci("102", 10, "A")
+        _ogrenci("103", 10, "A")
+
+        with caplog.at_level(logging.DEBUG, logger="kutuphane_defteri.okul"):
+            rapor = import_service.preview_students_text(
+                text=_ogrenci_metni("10/A\t101\tDENEME ÖĞRENCİ")
+            )
+
+        assert rapor.leaving_students == 2
+        assert Student.objects.count() == 3
+        assert "ayrılışı işlendi" not in caplog.text
+        assert "silindi" not in caplog.text
+
+
+class TestOkulNoYenidenKullanimi:
+    """Okul no ayrılan öğrenciden sonra başka öğrenciye verilebilir (model teklik kısıtı)."""
+
+    def test_ayrilmis_kayit_baska_adla_aktiflesmez_yeni_kayit_acilir(
+        self, herkes_uye: None
+    ) -> None:
+        mezun = _ogrenci("777", 12, "A", ad=SENTETIK_AD)
+        persons.leave_student(mezun)  # üye olduğu için saklanır
+
+        rapor = import_service.commit_students_text(text=_ogrenci_metni("9/C\t777\tBAŞKA YENİ"))
+
+        assert (rapor.created_students, rapor.updated_students, rapor.reactivated_students) == (
+            1,
+            0,
+            0,
+        )
+        mezun.refresh_from_db()
+        assert (mezun.status, mezun.first_name, mezun.class_label) == (
+            StudentStatus.LEFT,
+            SENTETIK_AD,
+            "12/A",
+        )
+        yeni = selectors.find_student_by_number("777")
+        assert yeni is not None and yeni.pk != mezun.pk
+        assert _satir_uyarilari(rapor) == [(2, import_service.REUSED_NUMBER_MESSAGE)]
+        # Uyarı kişi adı ve numara taşımaz.
+        assert "777" not in json.dumps(rapor.to_dict()["warnings"], ensure_ascii=False)
+
+    def test_ayni_adla_donen_ogrenci_yazim_farkina_ragmen_aktiflesir(
+        self, herkes_uye: None
+    ) -> None:
+        donen = _ogrenci("555", 11, "B", ad="ŞÜKRÜ")
+        persons.leave_student(donen)
+
+        rapor = import_service.commit_students_text(
+            text=_ogrenci_metni("11/B\t0555\tŞükrü Öğrenci")
+        )
+
+        assert (rapor.created_students, rapor.reactivated_students) == (0, 1)
+        assert rapor.warnings == []
+        donen.refresh_from_db()
+        assert (donen.status, donen.left_at) == (StudentStatus.ACTIVE, None)
+
+    def test_ayni_numarada_birden_cok_ayrilmis_kayittan_adi_tutan_secilir(
+        self, herkes_uye: None
+    ) -> None:
+        eski = _ogrenci("888", 12, "A", ad="ESKİMEZUN")
+        persons.leave_student(eski)
+        donen = _ogrenci("888", 9, "A", ad="DÖNEN")
+        persons.leave_student(donen)
+
+        rapor = import_service.commit_students_text(
+            text=_ogrenci_metni("10/A\t888\tESKİMEZUN ÖĞRENCİ")
+        )
+
+        assert rapor.reactivated_students == 1
+        eski.refresh_from_db()
+        donen.refresh_from_db()
+        assert (eski.status, donen.status) == (StudentStatus.ACTIVE, StudentStatus.LEFT)
+
+
+class TestYilBasiAkisi:
+    """Yıl başında öğrenciler üst sınıfa geçer (tasarım §8.3 yıl başı akışı)."""
+
+    def test_tam_liste_tek_dosyada_sinif_atlayanlar_guncellenir_ayrilmaz(self) -> None:
+        onuncu = _ogrenci("101", 10, "A")
+        dokuzuncu = _ogrenci("050", 9, "A")
+        mezun = _ogrenci("301", 12, "A")
+
+        rapor = import_service.commit_students_text(
+            text=_ogrenci_metni("11/A\t101\tDENEME ÖĞRENCİ", "10/A\t050\tDENEME ÖĞRENCİ"),
+            full_list=True,
+        )
+
+        assert (rapor.updated_students, rapor.created_students) == (2, 0)
+        assert [a.id for a in rapor.leaving] == [mezun.pk]
+        for ogrenci, sinif in ((onuncu, "11/A"), (dokuzuncu, "10/A")):
+            ogrenci.refresh_from_db()
+            assert (ogrenci.status, ogrenci.class_label) == (StudentStatus.ACTIVE, sinif)
+
+    def test_sube_sube_yuklemede_ust_sinifa_gecen_ayrilacaklar_listesine_duser(self) -> None:
+        """BİLİNEN SINIR (kılavuz ve önizleme söyler): yeni 10/A listesi, geçen yıl
+        10/A'da olup bu yıl 11'e geçen öğrenciyi "ayrılacak" gösterir. Yıl başında
+        okulun tam listesi tek dosyada yüklenmelidir."""
+        _ogrenci("101", 10, "A")
+        _ogrenci("050", 9, "A")
+
+        onizleme = import_service.preview_students_text(
+            text=_ogrenci_metni("10/A\t050\tDENEME ÖĞRENCİ")
+        )
+
+        assert [a.student_number for a in onizleme.leaving] == ["101"]
+        assert _aktif_mi("101")  # önizleme yazmaz
 
 
 # ---------------------------------------------------------------------------

@@ -25,6 +25,7 @@ import type { MockInstance } from "vitest";
 import { ConfirmProvider } from "./ui/ConfirmProvider";
 import { SnackbarProvider } from "./ui/SnackbarProvider";
 import type { SetupStatus } from "./modules/okul/api";
+import { KURULU_DURUM } from "./test/kurulumDurumu";
 
 const okulApiMock = vi.hoisted(() => ({
   getSetupStatus: vi.fn(),
@@ -37,6 +38,9 @@ const okulApiMock = vi.hoisted(() => ({
   listStudents: vi.fn(),
   listPersonnel: vi.fn(),
   listClassSections: vi.fn(),
+  listHolidays: vi.fn(),
+  markRoadmapItem: vi.fn(),
+  setRoadmapHidden: vi.fn(),
 }));
 
 vi.mock("./modules/okul/api", async (importOriginal) => {
@@ -73,19 +77,21 @@ const GOREVLI_KIPI: KipOzeti = {
 };
 
 const KURULU: SetupStatus = {
-  setup_completed: true,
-  school_name: "Örnek Anadolu Lisesi",
-  has_active_school_year: true,
+  ...KURULU_DURUM,
   student_count: 482,
   personnel_count: 37,
   class_section_count: 18,
 };
 
+// Parola kurulu ama okul ve takvim adımları eksik (kurulum tamamlanmamış).
 const KURULMAMIS: SetupStatus = {
   ...KURULU,
   setup_completed: false,
   school_name: "",
+  school_info_complete: false,
   has_active_school_year: false,
+  active_school_year: null,
+  missing_steps: ["school", "calendar"],
   student_count: 0,
   personnel_count: 0,
 };
@@ -124,6 +130,10 @@ beforeEach(() => {
     district: "Örnek",
     principal_name: "",
     has_prep_class: false,
+    kademe: "ORTAOGRETIM",
+    kisa_ad: "Örnek AL",
+    demirbas_onayi: true,
+    demirbas_no: "",
     setup_completed: true,
   });
   okulApiMock.getGradeLevels.mockResolvedValue({
@@ -136,6 +146,7 @@ beforeEach(() => {
   okulApiMock.listSchoolYears.mockResolvedValue([]);
   okulApiMock.listSchoolTerms.mockResolvedValue([]);
   okulApiMock.listClassSections.mockResolvedValue([]);
+  okulApiMock.listHolidays.mockResolvedValue([]);
   const bosSayfa = { count: 0, next: null, previous: null, results: [] };
   okulApiMock.listStudents.mockResolvedValue(bosSayfa);
   okulApiMock.listPersonnel.mockResolvedValue(bosSayfa);

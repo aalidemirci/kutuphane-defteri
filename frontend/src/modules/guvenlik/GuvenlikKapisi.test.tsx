@@ -15,6 +15,7 @@ const guvenlik = vi.hoisted(() => ({
   kilitle: vi.fn(),
   kurtar: vi.fn(),
   parolaDegistir: vi.fn(),
+  sifirla: vi.fn(),
 }));
 
 vi.mock("./api", () => ({ guvenlikApi: guvenlik }));
@@ -25,7 +26,9 @@ vi.mock("./YedektenGeriYukleme", () => ({
   ),
 }));
 
+import { ApiError } from "../../lib/api";
 import { kilitKapisiYayinla } from "../../lib/kilit";
+import { ConfirmProvider } from "../../ui/ConfirmProvider";
 import GuvenlikKapisi, { kilitOlayiYayinla } from "./GuvenlikKapisi";
 
 const ACIK = {
@@ -37,13 +40,18 @@ const ACIK = {
   protected_fields: ["ad"],
 };
 const KILITLI = { ...ACIK, locked: true };
-const KAYIP = { ...ACIK, locked: true, security_file_missing: true };
+const KAYIP = { ...ACIK, locked: true, security_file_missing: true, reset_available: false };
+/** Kişi kaydı hiç girilmemiş kurulumda bozuk dosya: sıfırlama yolu açık. */
+const SIFIRLANABILIR = { ...KAYIP, reset_available: true };
+const KURULUMA_DONDU = { ...ACIK, password_set: false, locked: false };
 
 function icerikliKapi() {
   return render(
-    <GuvenlikKapisi>
-      <p>Gizli içerik</p>
-    </GuvenlikKapisi>,
+    <ConfirmProvider>
+      <GuvenlikKapisi>
+        <p>Gizli içerik</p>
+      </GuvenlikKapisi>
+    </ConfirmProvider>,
   );
 }
 
@@ -111,6 +119,61 @@ describe("GuvenlikKapisi", () => {
     expect(screen.getByText("geri yükleme kartı (kayıp kipi)")).toBeInTheDocument();
     // İç kodlar kullanıcı metnine girmez.
     expect(screen.queryByText(/GA-2|guvenlik_dosyasi_kayip/)).toBeNull();
+  });
+
+  it("sıfırlama yolu koşul sağlanmadıkça görünmez", async () => {
+    guvenlik.durum.mockResolvedValue(KAYIP);
+    icerikliKapi();
+    await screen.findByRole("heading", { name: "Güvenlik dosyası bulunamadı ya da okunamıyor" });
+    expect(
+      screen.queryByRole("button", { name: "Güvenlik dosyasını sıfırla ve kuruluma dön" }),
+    ).toBeNull();
+  });
+
+  it("korunan veri yokken sıfırlama onayla çalışır ve kuruluma döner", async () => {
+    const kullanici = userEvent.setup();
+    guvenlik.durum.mockResolvedValueOnce(SIFIRLANABILIR).mockResolvedValueOnce(KURULUMA_DONDU);
+    guvenlik.sifirla.mockResolvedValue({ ...KURULUMA_DONDU, archived_as: "guvenlik-arsiv-x.json" });
+    icerikliKapi();
+
+    await kullanici.click(
+      await screen.findByRole("button", { name: "Güvenlik dosyasını sıfırla ve kuruluma dön" }),
+    );
+    // Onay diyaloğu: başlık soru, gövde sonuç (sözlük §3).
+    const diyalog = await screen.findByRole("dialog", { name: "Güvenlik dosyası sıfırlansın mı?" });
+    expect(diyalog).toHaveTextContent(/arşivlenir/);
+    await kullanici.click(screen.getByRole("button", { name: "Sıfırla ve kuruluma dön" }));
+
+    await waitFor(() => expect(guvenlik.sifirla).toHaveBeenCalledTimes(1));
+    // Parola kurulmamış duruma dönüldü: içerik (içteki kurulum kapısı sihirbaza götürür).
+    expect(await screen.findByText("Gizli içerik")).toBeInTheDocument();
+  });
+
+  it("sıfırlamadan vazgeçilirse istek atılmaz", async () => {
+    const kullanici = userEvent.setup();
+    guvenlik.durum.mockResolvedValue(SIFIRLANABILIR);
+    icerikliKapi();
+
+    await kullanici.click(
+      await screen.findByRole("button", { name: "Güvenlik dosyasını sıfırla ve kuruluma dön" }),
+    );
+    await kullanici.click(await screen.findByRole("button", { name: "Vazgeç" }));
+    expect(guvenlik.sifirla).not.toHaveBeenCalled();
+  });
+
+  it("sıfırlama reddedilirse backend iletisini gösterir", async () => {
+    const kullanici = userEvent.setup();
+    guvenlik.durum.mockResolvedValue(SIFIRLANABILIR);
+    guvenlik.sifirla.mockRejectedValue(
+      new ApiError(409, "sifirlama_uygun_degil", "Güvenlik dosyası sıfırlanamaz.", {}),
+    );
+    icerikliKapi();
+
+    await kullanici.click(
+      await screen.findByRole("button", { name: "Güvenlik dosyasını sıfırla ve kuruluma dön" }),
+    );
+    await kullanici.click(await screen.findByRole("button", { name: "Sıfırla ve kuruluma dön" }));
+    expect(await screen.findByText("Güvenlik dosyası sıfırlanamaz.")).toBeInTheDocument();
   });
 
   it("dosya geri konunca “Yeniden denetle” olağan kilit ekranına geçer", async () => {

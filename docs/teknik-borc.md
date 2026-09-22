@@ -112,15 +112,16 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   checkpoint yapar. Kurucunun kapatma olayında dosyaların tutarlı kaldığı
   F12 saha provasında doğrulanacak.
 
-- **TB15 — F1'e devreden F0 kalıntıları:** `Personnel.title/branch` hâlâ
-  modelde ve arayüzde (tasarım §6.1 V2-01: alınmaz); sihirbazda parola ilk adım
-  değil. İkisi de F1 iş kalemi (kişi verisi kolu ve kurulum sihirbazı kolu).
-  *F1 eki (22.09.2026):* arayüz ve backend iletilerindeki "uygulama parolası"
-  metni, "Parolayı kaldır" akışı ve parolasız dal söküldü (§6.3-6). Kalan tek
-  iz `SchoolConfig.app_password_hash` alanının `verbose_name`'idir ("uygulama
-  parolası özeti"; kullanıcıya görünmez); değişmesi migration ister, kişi verisi
-  kolunun migration'ına bırakıldı.
-
 ## Kapanan
 
-*(henüz yok)*
+- **TB15 — F1'e devreden F0 kalıntıları** *(kapandı: 22.09.2026 — F1 dalga
+  2/3)*. Açıkken: `Personnel.title/branch` modelde ve arayüzde duruyordu
+  (tasarım §6.1 V2-01: alınmaz); sihirbazda parola ilk adım değildi;
+  `SchoolConfig.app_password_hash`'in `verbose_name`'i "uygulama parolası
+  özeti" idi. Kapanış: unvan ve branş modelden, serializer'dan, içe aktarımdan,
+  şablondan ve ön yüzden kalktı (göç 0003; `test_models.py`
+  `test_unvan_ve_brans_alani_yoktur`); `verbose_name` "yönetici parolası parmak
+  izi" oldu (göç 0003); sihirbazın ilk, atlanamaz adımı yönetici parolası ve
+  kurtarma anahtarıdır (tasarım §14.1 F1; `KurulumPage`, `setup/complete/`
+  kapısı). "Uygulama parolası" metni, "Parolayı kaldır" akışı ve parolasız dal
+  F1 dalga 1'de söküldü (§6.3-6).

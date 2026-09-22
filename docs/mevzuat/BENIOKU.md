@@ -124,6 +124,11 @@ mevzuat hükmü gibi sunulmaz:
 - **Ara tatil ve yarıyılda iade tarihinin kaydırılması** (tasarım §9-5, A23).
   Ara tatil ve yarıyıl kanunen tatil günü değildir, TBK 93 kapsamına girmez.
   Kaydırma okulun tercihidir ve ayarla kapatılabilir.
+- **İdari izin ve "diğer" kapalı günlerde iade tarihinin kaydırılması**
+  (tasarım §6.1 Holiday `OTHER`, §9-5). İdari izin kanunen tatil günü
+  değildir, TBK 93 kapsamına girmez. Kütüphane o gün kapalı olduğu için iade
+  alınamaz; kaydırma programın kuralıdır ve her zaman uygulanır. Kullanıcı
+  metninde TBK 93 kıyası altında anılmaz.
 - **Diğer personele ödünç için müdürlük kararı şartı ve sayı sınırı**
   (tasarım §6.2, §9-1). Yönetmelik diğer personele ödüncü düzenlemez.
 - **"Sayım için hizmet arası"** (tasarım §9-10). Yeni ödüncü durduran okul

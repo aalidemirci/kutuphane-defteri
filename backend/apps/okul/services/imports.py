@@ -11,8 +11,16 @@ mutabakatla genişletildi (tasarım §8.3, EK-20, EK-21):
   şubelik dosya diğer şubeleri ayrılmış saymaz; bütün okulla karşılaştırma yalnız
   `full_list` ("Bu dosya okulun tam listesidir") onayıyla yapılır. Şube değiştiren
   öğrenci "güncellendi"dir, ayrılmaz. Ayrılmış (canlı) kayıt aynı numarayla
-  dönerse yeniden aktifleşir. Ayrılacaklar AYRILIŞ YOLUNDAN geçer
-  (`persons.leave_student`: kancalar + gerekiyorsa katı silme).
+  ve AYNI ADLA dönerse yeniden aktifleşir; numara adı farklı birine verilmişse
+  eski kayıt dokunulmadan kalır, yeni kayıt açılır (okul no yeniden
+  kullanılabilir — başkasının kütüphane geçmişi yeni öğrenciye bağlanmaz).
+  Ayrılacaklar AYRILIŞ YOLUNDAN geçer (`persons.leave_student`: kancalar +
+  gerekiyorsa katı silme).
+- **Ayrılış yalnız kanıtla (import silmez ilkesi).** Okul numarası dosyada geçen
+  öğrenci, satırı başka sebeple atlansa da (ad boş, sınıf çözülemedi) ayrılmış
+  sayılmaz. Numarası boş bir öğrenci satırı kimin olduğu bilinemediği için o
+  satırın şubesinde (sınıfı da yoksa hiçbir yerde) ayrılışı durdurur; hiç satır
+  işlenemeyen dosya kimseyi ayırmaz. Her durum önizlemede satır no ile söylenir.
 - **Personel mutabakatı (EK-20):** eşleşme normalize ad-soyadla (Python; ad
   şifreli). Listede olmayan aktif personel `missing` olarak döner; yalnız
   kullanıcının seçtikleri (`mark_left_ids`) ayrılır, varsayılan hiçbiri. Ada göre
@@ -21,7 +29,10 @@ mutabakatla genişletildi (tasarım §8.3, EK-20, EK-21):
 - **Kişisel veri ve kalıcı iz:** ayrılacakların ve listede olmayanların ADLARI
   yalnız API yanıtında (yönetim yüzeyi, yönetici kipi) döner; `ImportRun.report`
   (kalıcı) yalnız SAYILARI taşır (`to_run_dict`). Satır sorunlarına ad, okul no
-  ve görev metni yazılmaz; günlüğe yalnız sayılar düşer.
+  ve görev metni yazılmaz; hücrenin ham değeri (`raw_value`) yalnız API
+  yanıtındadır, kalıcı rapordan silinir (kaymış sütunda kişi verisi taşıyabilir).
+  Günlüğe yalnız sayılar düşer; aktarımın ayrılışları kişi başına günlüğe
+  yazılmaz (önizlemenin geri sarılan ayrılışı "silindi" diye iz bırakmasın).
 - Excel (.xlsx ŞABLONU ve e-Okul'un .xls İHRACI) ile pano yapıştırması AYNI
   boru hattı: her girişten önce `rows` matrisi üretilir (`read_sheet` /
   `text_to_grid`), ardından `eokul.hazirla_*_matrisi` e-Okul'a özgü blok
@@ -76,6 +87,28 @@ MEMBER_KIND_CHECK_MESSAGE = (
     "açılır; mevcut kaydın üye türü değişmez."
 )
 DUPLICATE_ROW_MESSAGE = "Bu okul numarası dosyada daha önce geçti; satır atlandı."
+#: Numarası dosyada geçen ama satırı atlanan öğrenci ayrılmaz (satır no ile; ad ve no yok).
+KEPT_ROW_MESSAGE = (
+    "Satır atlandı; bu okul numarasıyla kayıtlı öğrenci değiştirilmedi ve ayrılmış sayılmadı."
+)
+NUMBER_MISSING_MESSAGE = "Okul numarası bulunamadı."
+#: Numarası boş öğrenci satırı: kim olduğu bilinmediği için ayrılış durdurulur.
+UNIDENTIFIED_ROW_MESSAGE = (
+    "Okul numarası boş; satır atlandı. Bu satırdaki öğrenci tanınamadığı için bu şubede "
+    "kimse ayrılmış sayılmadı."
+)
+UNIDENTIFIED_ROW_ALL_MESSAGE = (
+    "Okul numarası ve sınıfı boş; satır atlandı. Bu satırdaki öğrenci tanınamadığı için "
+    "hiçbir öğrenci ayrılmış sayılmadı."
+)
+NOTHING_PROCESSED_MESSAGE = (
+    "Dosyada işlenebilen öğrenci satırı bulunamadı; hiçbir öğrenci ayrılmış sayılmadı."
+)
+#: Okul no, adı farklı AYRILMIŞ bir kayıtta da geçiyor: o kayıt yeniden etkinleşmez.
+REUSED_NUMBER_MESSAGE = (
+    "Bu okul numarası adı farklı, ayrılmış bir öğrenci kaydında da geçiyor; o kayıt "
+    "yeniden etkinleştirilmedi, yeni kayıt açıldı."
+)
 
 #: "Olası aynı kişi" için normalize ad-soyad düzenleme uzaklığı üst sınırı.
 SIMILAR_NAME_MAX_DISTANCE = 2
@@ -83,12 +116,25 @@ SIMILAR_NAME_MAX_DISTANCE = 2
 
 @dataclass
 class ImportIssue:
-    """İçe aktarmada bir satır sorunu (atlama veya uyarı). Kişi adı taşımaz."""
+    """İçe aktarmada bir satır sorunu (atlama veya uyarı). Kişi adı taşımaz.
+
+    `raw_value` hücrenin ham değeridir (ör. çözülemeyen sınıf hücresi). Sütunları
+    kaymış bir dosyada ad ya da numara taşıyabilir: yalnız API yanıtında döner,
+    kalıcı rapordan `_strip_raw_values` ile silinir.
+    """
 
     row_number: int
     field: str
     issue: str
     raw_value: str = ""
+
+
+def _strip_raw_values(veri: dict[str, Any]) -> dict[str, Any]:
+    """Kalıcı `ImportRun.report` için satır sorunlarından ham hücre değerini siler."""
+    for anahtar in ("warnings", "skipped"):
+        for sorun in veri.get(anahtar, []):
+            sorun.pop("raw_value", None)
+    return veri
 
 
 @dataclass
@@ -147,10 +193,10 @@ class StudentImportReport:
         return asdict(self)
 
     def to_run_dict(self) -> dict[str, Any]:
-        """Kalıcı `ImportRun.report`: yalnız sayılar — ad listesi ÇIKARILIR."""
+        """Kalıcı `ImportRun.report`: yalnız sayılar — ad listesi ve ham hücreler ÇIKARILIR."""
         veri = asdict(self)
         veri.pop("leaving", None)
-        return veri
+        return _strip_raw_values(veri)
 
     def summary_tr(self) -> str:
         return (
@@ -219,11 +265,11 @@ class PersonnelImportReport:
         return asdict(self)
 
     def to_run_dict(self) -> dict[str, Any]:
-        """Kalıcı `ImportRun.report`: yalnız sayılar — ad listeleri ÇIKARILIR."""
+        """Kalıcı `ImportRun.report`: yalnız sayılar — ad listeleri ve ham hücreler ÇIKARILIR."""
         veri = asdict(self)
         veri.pop("missing", None)
         veri.pop("similar_pairs", None)
-        return veri
+        return _strip_raw_values(veri)
 
     def summary_tr(self) -> str:
         return (
@@ -367,6 +413,15 @@ class _StudentRun:
     seen_indexes: set[str] = field(default_factory=set)
     scope: set[ClassKey] = field(default_factory=set)
     impacts: dict[ClassKey, ClassImpact] = field(default_factory=dict)
+    #: Numarası okunan ama satırı atlanan öğrenciler: kör indeks → ilk satır no.
+    #: Bu indeksteki aktif öğrenci ayrılmış sayılmaz (import silmez ilkesi).
+    kept_indexes: dict[str, int] = field(default_factory=dict)
+    #: Numarası boş öğrenci satırlarının şubeleri: burada kimse ayrılmaz.
+    unidentified_scope: set[ClassKey] = field(default_factory=set)
+    #: Numarası ve sınıfı boş öğrenci satırı görüldü: hiçbir yerde kimse ayrılmaz.
+    unidentified_anywhere: bool = False
+    #: Genel uyarıların (satıra bağlı olmayan) yazılacağı başlık satırı.
+    header_row_number: int = 1
 
     def impact(self, key: ClassKey) -> ClassImpact:
         if key not in self.impacts:
@@ -393,7 +448,7 @@ def _ingest_students(
     for header_warning in mapping.warnings:
         report.add_warning(mapping.header_row + 1, "header", header_warning)
 
-    kosu = _StudentRun(report=report)
+    kosu = _StudentRun(report=report, header_row_number=mapping.header_row + 1)
     for row in rows:
         if row.class_level is not None:
             # Kapsam: dosyada GÖRÜLEN şubeler (satır başka sebeple atlansa da).
@@ -408,18 +463,34 @@ def _ingest_students(
 
 
 def _process_student_row(row: ParsedRow, kosu: _StudentRun) -> None:
-    """Tek satır: doğrula → kör indeksle bul (aktif / ayrılmış) → oluştur/güncelle."""
+    """Tek satır: doğrula → kör indeksle bul (aktif / ayrılmış) → oluştur/güncelle.
+
+    Atlanan satır da mutabakata iz bırakır (import silmez ilkesi): numarası
+    okunan satırın öğrencisi ayrılmaz; numarası boş öğrenci satırı ise kimin
+    olduğu bilinemediği için ayrılışı durdurur (`_reconcile_students`).
+    """
     report = kosu.report
+    has_name = bool(row.student_first or row.student_last)
     if not row.student_number:
-        report.add_skip(row.row_number, "number", "Okul numarası bulunamadı.")
-        return
-    if row.class_level is None:
-        report.add_skip(row.row_number, "class", "Sınıf/şube çözülemedi", row.raw_class)
-        return
-    if not row.student_first and not row.student_last:
-        report.add_skip(row.row_number, "student_name", "Öğrenci adı boş; satır atlandı.")
+        if not has_name:
+            # Ne numara ne ad: öğrenci satırı değil (not, sayaç, boş hücre artığı).
+            report.add_skip(row.row_number, "number", NUMBER_MISSING_MESSAGE)
+        elif row.class_level is None:
+            kosu.unidentified_anywhere = True
+            report.add_skip(row.row_number, "number", UNIDENTIFIED_ROW_ALL_MESSAGE)
+        else:
+            kosu.unidentified_scope.add((row.class_level, row.class_section))
+            report.add_skip(row.row_number, "number", UNIDENTIFIED_ROW_MESSAGE)
         return
     index = student_number_blind_index(row.student_number)
+    if row.class_level is None:
+        kosu.kept_indexes.setdefault(index, row.row_number)
+        report.add_skip(row.row_number, "class", "Sınıf/şube çözülemedi", row.raw_class)
+        return
+    if not has_name:
+        kosu.kept_indexes.setdefault(index, row.row_number)
+        report.add_skip(row.row_number, "student_name", "Öğrenci adı boş; satır atlandı.")
+        return
     if index in kosu.seen_indexes:
         # Numara (şifreli kişi verisi) rapora YAZILMAZ; satır no yeter.
         report.add_skip(row.row_number, "number", DUPLICATE_ROW_MESSAGE)
@@ -441,7 +512,7 @@ def _process_student_row(row: ParsedRow, kosu: _StudentRun) -> None:
     ).first()
     reactivated = False
     if student is None:
-        student = selectors.find_left_student_by_number(row.student_number)
+        student = _returning_student(row, report)
         if student is not None:
             persons.reactivate_student(student)
             reactivated = True
@@ -470,6 +541,26 @@ def _process_student_row(row: ParsedRow, kosu: _StudentRun) -> None:
     report.processed += 1
 
 
+def _returning_student(row: ParsedRow, report: StudentImportReport) -> Student | None:
+    """Aynı numarayla dönen AYRILMIŞ öğrenci — yalnız normalize ad-soyad da eşleşirse.
+
+    Okul no ayrılan öğrenciden sonra başka öğrenciye verilebilir. Numara tek
+    başına yeterli sayılsaydı saklanan eski kayıt (F6'dan sonra üyelik ve ödünç
+    geçmişiyle) yeni öğrencinin adına aktifleşirdi. Ad eşleşmezse eski kayıt
+    olduğu gibi kalır, çağıran yeni kayıt açar ve önizleme satır no ile uyarır
+    (uyarıda ad ve numara yok).
+    """
+    adaylar = selectors.left_students_by_number(row.student_number)
+    if not adaylar:
+        return None
+    anahtar = _name_key(f"{row.student_first} {row.student_last}")
+    for aday in adaylar:
+        if _name_key(aday.full_name) == anahtar:
+            return aday
+    report.add_warning(row.row_number, "number", REUSED_NUMBER_MESSAGE)
+    return None
+
+
 def _reconcile_students(kosu: _StudentRun) -> None:
     """Dosyada olmayan AKTİF öğrencileri ayrılış yolundan geçirir (EK-21).
 
@@ -477,12 +568,32 @@ def _reconcile_students(kosu: _StudentRun) -> None:
     verilmişse bütün aktif öğrenciler (sınıfsızlar dahil) karşılaştırılır.
     Bu dosyada eşleşen öğrenci (şube değiştirmiş olsa da) hiçbir durumda
     ayrılmaz.
+
+    Ayrılış yalnız KANITLA yapılır (import silmez ilkesi): numarası dosyada
+    geçen (satırı atlanmış olsa da) öğrenci ayrılmaz; numarası boş bir öğrenci
+    satırının şubesinde — sınıfı da boşsa hiçbir yerde — kimse ayrılmaz; hiç
+    satır işlenemeyen dosya kimseyi ayırmaz.
     """
     report = kosu.report
+    if report.processed == 0:
+        report.add_warning(kosu.header_row_number, "leaving", NOTHING_PROCESSED_MESSAGE)
+        return
     adaylar = Student.objects.filter(status=StudentStatus.ACTIVE).exclude(pk__in=kosu.matched_ids)
-    ayrilacaklar = [
-        s for s in adaylar if report.full_list or (s.class_level, s.class_section) in kosu.scope
-    ]
+    ayrilacaklar: list[Student] = []
+    korunan_satirlar: set[int] = set()
+    for aday in adaylar:
+        key = (aday.class_level, aday.class_section)
+        if not (report.full_list or key in kosu.scope):
+            continue
+        satir = kosu.kept_indexes.get(aday.student_number_index)
+        if satir is not None:
+            korunan_satirlar.add(satir)
+            continue
+        if kosu.unidentified_anywhere or key in kosu.unidentified_scope:
+            continue
+        ayrilacaklar.append(aday)
+    for satir in sorted(korunan_satirlar):
+        report.add_warning(satir, "number", KEPT_ROW_MESSAGE)
     for student in selectors.students_sorted(ayrilacaklar):
         kosu.impact((student.class_level, student.class_section)).leaving += 1
         report.leaving.append(
@@ -493,7 +604,9 @@ def _reconcile_students(kosu: _StudentRun) -> None:
                 class_label=student.class_label,
             )
         )
-        persons.leave_student(student)
+        # Kişi başına günlük satırı YOK: önizleme bu yolu geri sarar; uygulamanın
+        # sayısal özeti `_student_entry`'de yazılır.
+        persons.leave_student(student, log=False)
         report.leaving_students += 1
 
 
@@ -619,7 +732,7 @@ def _ingest_personnel(
 
     for person in missing:
         if person.pk in ayrilacak:
-            persons.leave_personnel(person)
+            persons.leave_personnel(person, log=False)
             report.left_personnel += 1
 
     _close_run(run, report.to_run_dict())

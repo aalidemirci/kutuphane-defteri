@@ -19,7 +19,7 @@ vi.mock("../../lib/api", () => ({
   ApiError: class ApiError extends Error {},
 }));
 
-import { HOLIDAY_KIND_TR, MEMBER_KIND_TR, okulApi } from "./api";
+import { HOLIDAY_KIND_TR, MEMBER_KIND_TR, SCHOOL_LEVEL_TR, okulApi } from "./api";
 
 afterEach(() => vi.clearAllMocks());
 
@@ -104,5 +104,33 @@ describe("okulApi — kişi ayrılışı, birleştirme ve mutabakat seçenekleri
 
   it("üye türü adları sözlüğe uyar: öğretmen / diğer personel", () => {
     expect(MEMBER_KIND_TR).toEqual({ TEACHER: "Öğretmen", STAFF: "Diğer personel" });
+  });
+});
+
+describe("okulApi — kurulum ve başlangıç yol haritası", () => {
+  it("markRoadmapItem → POST /setup/roadmap/ { item, done }", async () => {
+    await okulApi.markRoadmapItem("kurtarma_zarfi", true);
+    expect(apiMock.post).toHaveBeenLastCalledWith("/setup/roadmap/", {
+      item: "kurtarma_zarfi",
+      done: true,
+    });
+  });
+
+  it("setRoadmapHidden → POST /setup/roadmap/ { hidden }", async () => {
+    await okulApi.setRoadmapHidden(true);
+    expect(apiMock.post).toHaveBeenLastCalledWith("/setup/roadmap/", { hidden: true });
+  });
+
+  it("completeSetup → POST /setup/complete/", async () => {
+    await okulApi.completeSetup();
+    expect(apiMock.post).toHaveBeenLastCalledWith("/setup/complete/");
+  });
+
+  it("kademe adları sözlüğe uyar", () => {
+    expect(SCHOOL_LEVEL_TR).toEqual({
+      ILKOKUL: "İlkokul",
+      ORTAOKUL: "Ortaokul",
+      ORTAOGRETIM: "Ortaöğretim (lise)",
+    });
   });
 });

@@ -23,8 +23,8 @@ Bu hazırlıkları kurulumdan önce yapın; sonradan değiştirmek zahmetlidir.
 
 Program **yalnız kurum demirbaşı bir bilgisayara** kurulur (Bilgi ve Sistem
 Güvenliği Yönergesi md. 11/8, 11/23). Kurulum sihirbazı "bu bilgisayar okul
-demirbaşıdır" onayını ve bilgisayarın demirbaş numarasını ister. Kişisel
-bilgisayara kurmayın.
+demirbaşıdır" onayını ister; bilgisayarın demirbaş no'su isteğe bağlıdır.
+Kişisel bilgisayara kurmayın.
 
 ### 1.2 Kütüphane masası için ayrı Windows hesabı (önerilir)
 
@@ -55,9 +55,14 @@ küçük bir şubede kişi tahmin edilebilir. Tam koruma için bilgisayarın dis
 - Parolanın görevlendirilmiş **en az iki kişide** bulunması önerilir: sorumlu
   öğretmen ve kütüphanede görevli memur ya da sorumlu müdür yardımcısı.
 - Sihirbaz tek seferlik bir **kurtarma anahtarı** verir. Anahtarı yazdırın,
-  PDF olarak USB belleğe kaydedin ya da elle yazın; program bir parçasını geri
-  yazdırarak doğrular. Anahtar müdürlükte kapalı zarfta saklanır. Parola da
-  anahtar da kaybolursa şifreli veri açılamaz.
+  PDF olarak USB belleğe kaydedin ya da elle yazın; program anahtarın iki
+  grubunu sakladığınız kopyadan geri yazdırarak doğrular. Anahtar müdürlükte
+  kapalı zarfta saklanır. Parola da anahtar da kaybolursa şifreli veri
+  açılamaz.
+- Elinizdeki anahtarın temiz bir çıktısını sonradan Ayarlar → Güvenlik →
+  "Kurtarma anahtarı çıktısı"ndan alabilirsiniz; program anahtarı doğrular,
+  yanlış yazılmış anahtarı basmaz. Anahtar programda saklanmaz: kaybolduysa
+  yeniden üretilemez.
 
 ### 1.5 Elektrik kesintisi
 
@@ -158,6 +163,9 @@ Program içinden indirme yalnız Windows kurulum dosyası içindir.
 1. Sihirbaz sırayla sorar: **yönetici parolası ve kurtarma anahtarı** (§1.4),
    okul bilgileri (kademe, kısa ad, demirbaş onayı), ders yılı, dönemler ve
    öğrenciye kapalı günler (ara tatil, yarıyıl).
+   Kurulum bitince Genel Bakış'taki **Başlangıç Yol Haritası** sıradaki
+   işleri (e-Okul aktarımları, kapalı günler, katalog şablonu, anahtarın
+   saklanması, parolanın paylaşılması, BTR görüşmesi) gösterir.
 2. Kütüphane aydınlatma metni **e-Okul aktarımından önce** duyurulur.
 3. Öğrenci ve personel listelerini e-Okul'un Excel raporlarından aktarırsınız
    (TCKN istenmez ve tutulmaz): öğrenci için *OOG01001R020 — Sınıf/Şube
@@ -215,7 +223,8 @@ programı normal açın.
 Kayıtların anahtarı `data` klasöründeki `guvenlik.json` dosyasında durur.
 Dosya silinir, adı değişir ya da içi boşalır/bozulursa (ör. Not Defteri'nde
 açılıp yanlışlıkla kaydedilirse) program kayıtları açmaz ve bu ekranı
-gösterir; yeni parola da kurulamaz. İki çıkış yolu vardır:
+gösterir; yeni parola da kurulamaz. İki çıkış yolu vardır (üçüncüsü yalnız
+hiç kişi kaydı girilmemiş kurulumda görünür, aşağıda):
 
 1. Dosyanın sağlam bir kopyası varsa (taşıma sırasında alınan veri klasörü,
    USB bellek) `guvenlik.json`'u `data` klasörüne geri koyun (bozuk dosyanın
@@ -227,6 +236,16 @@ gösterir; yeni parola da kurulamaz. İki çıkış yolu vardır:
 Dosya kayıpken ya da bozukken program eski yedekleri silmez ve güvenlik
 dosyası olmayan yeni yedek almaz. Geri yükleme bozuk dosyayı silmez,
 `guvenlik-arsiv-<tarih>.json` adıyla kenara alır.
+
+**Henüz kişi kaydı girilmemiş kurulum.** Veritabanında hiç öğrenci, öğretmen
+ya da diğer personel kaydı yoksa, kayıtların anahtarı veritabanına henüz
+işlenmemişse (ör. parola kurulurken işlem yarıda kaldıysa) ve yedek
+klasöründe yedek bulunmuyorsa dosya korunan bir veriyi açmıyordur. Bu durumda
+aynı ekranda **Güvenlik dosyasını sıfırla ve kuruluma dön** düğmesi çıkar:
+bozuk dosya `guvenlik-arsiv-<tarih>.json` adıyla kenara alınır ve sihirbaz
+yönetici parolası adımından yeniden açılır. Kişi kaydı ya da yedek varsa bu
+düğme görünmez: veritabanı kaybolup boş yeniden oluştuysa eski kayıtlar
+yedeklerdedir ve doğru yol yedekten geri yüklemektir (yukarıdaki 2. madde).
 
 ## 7. Yeni bilgisayara taşıma — kontrol listesi
 

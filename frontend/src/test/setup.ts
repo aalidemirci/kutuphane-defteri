@@ -6,6 +6,8 @@ import "@testing-library/jest-dom/vitest";
 import { afterEach, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 
+import { bekleyenKurtarmaAnahtariniYaz } from "../modules/guvenlik/bekleyenAnahtar";
+
 // Tur 46: jsdom `window.matchMedia` sağlamıyor; ThemeSwitcher/`useTheme` sistem
 // tema sorgusu için ona ihtiyaç duyar. Varsayılan açık tema yanıtı ile mock.
 if (typeof window !== "undefined" && !window.matchMedia) {
@@ -27,4 +29,6 @@ if (typeof window !== "undefined" && !window.matchMedia) {
 // Her testten sonra render edilen DOM'u temizle (yan etki sızıntısını önler).
 afterEach(() => {
   cleanup();
+  // Modül belleğindeki bekleyen kurtarma anahtarı testten teste taşınmasın.
+  bekleyenKurtarmaAnahtariniYaz(null);
 });

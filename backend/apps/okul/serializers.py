@@ -20,6 +20,7 @@ from apps.okul.models import (
     MemberKind,
     Personnel,
     SchoolConfig,
+    SchoolLevel,
     SchoolTerm,
     SchoolYear,
     Student,
@@ -39,7 +40,36 @@ def _validate_level(value: int) -> int:
 
 
 class SchoolConfigSerializer(serializers.ModelSerializer[SchoolConfig]):
-    """Kurum künyesi — sihirbaz ve Okul Bilgileri ekranının ortak sözleşmesi."""
+    """Kurum künyesi — sihirbaz ve Okul Bilgileri ekranının ortak sözleşmesi.
+
+    Okul adı, kademe, kısa ad ve demirbaş onayı kurulumun ikinci adımında
+    ZORUNLUDUR (`setup/complete/` kapısı: `services.setup.missing_school_fields`).
+    Aynı zorunluluk burada da uygulanır, ama yalnız alan gövdede VARSA: kısmi
+    PUT gönderilmeyen alana dokunmaz (künyeyi silmez), gönderilen zorunlu alan
+    ise boşaltılamaz. Aksi hâlde kurulum bittikten sonra Okul Bilgileri
+    ekranından kademe ya da demirbaş beyanı sessizce geri alınabilirdi
+    (tamamlanmış ama okul adımı eksik kurulum). İletiler sihirbazın istemci
+    denetimiyle aynıdır (`frontend/src/modules/okul/okulBilgileri.ts`).
+    """
+
+    kademe = serializers.ChoiceField(
+        choices=SchoolLevel.choices,
+        required=False,
+        allow_blank=True,
+        error_messages={"invalid_choice": "Geçerli bir kademe seçin."},
+    )
+    kisa_ad = serializers.CharField(
+        max_length=24,
+        required=False,
+        allow_blank=True,
+        error_messages={"max_length": "Kısa ad en çok 24 karakter olabilir."},
+    )
+    demirbas_no = serializers.CharField(
+        max_length=64,
+        required=False,
+        allow_blank=True,
+        error_messages={"max_length": "Bilgisayarın demirbaş no'su en çok 64 karakter olabilir."},
+    )
 
     class Meta:
         model = SchoolConfig
@@ -49,9 +79,71 @@ class SchoolConfigSerializer(serializers.ModelSerializer[SchoolConfig]):
             "district",
             "principal_name",
             "has_prep_class",
+            "kademe",
+            "kisa_ad",
+            "demirbas_onayi",
+            "demirbas_no",
             "setup_completed",
         ]
         read_only_fields = ["setup_completed"]
+
+    def validate_school_name(self, value: str) -> str:
+        if not value.strip():
+            raise serializers.ValidationError("Okul adı zorunludur.")
+        return value
+
+    def validate_kademe(self, value: str) -> str:
+        if not value:
+            raise serializers.ValidationError("Kademe seçin.")
+        return value
+
+    def validate_kisa_ad(self, value: str) -> str:
+        if not value.strip():
+            raise serializers.ValidationError("Kısa ad zorunludur.")
+        return value
+
+    def validate_demirbas_onayi(self, value: bool) -> bool:
+        if not value:
+            raise serializers.ValidationError(
+                "Program yalnız okul demirbaşı bilgisayara kurulur; onay zorunludur."
+            )
+        return value
+
+
+class RoadmapUpdateSerializer(serializers.Serializer[dict[str, Any]]):
+    """`POST setup/roadmap/` — `{item, done}` (madde işareti) YA DA `{hidden}` (kartı gizle)."""
+
+    item = serializers.CharField(required=False)
+    done = serializers.BooleanField(required=False)
+    hidden = serializers.BooleanField(required=False)
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        madde, isaret, gizle = ("item" in attrs), ("done" in attrs), ("hidden" in attrs)
+        madde_istegi = madde and isaret and not gizle
+        gizleme_istegi = gizle and not madde and not isaret
+        if not (madde_istegi or gizleme_istegi):
+            raise serializers.ValidationError(
+                "Ya bir maddeyi (item + done) ya da kartın görünürlüğünü (hidden) gönderin."
+            )
+        return attrs
+
+
+class RecoveryKeyPdfRequestSerializer(serializers.Serializer[dict[str, Any]]):
+    """`POST security/recovery-key/pdf/` gövdesi. Anahtar yalnız gövdede taşınır.
+
+    Üst sınır bir savunmadır (anahtar 32 karakter + 7 tire); sınır aşımı iletisi
+    değeri yankılamaz.
+    """
+
+    recovery_key = serializers.CharField(
+        max_length=128,
+        trim_whitespace=False,
+        error_messages={
+            "required": "Kurtarma anahtarı gönderilmedi.",
+            "blank": "Kurtarma anahtarı gönderilmedi.",
+            "max_length": "Kurtarma anahtarı hatalı.",
+        },
+    )
 
 
 class SchoolYearSerializer(serializers.ModelSerializer[SchoolYear]):

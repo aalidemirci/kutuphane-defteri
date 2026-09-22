@@ -183,14 +183,14 @@ class TestEnable:
     def test_ogrenci_varken_reddedilir(self) -> None:
         ogrenci_olustur()
         parolasiz_yap()
-        with pytest.raises(app_password.AppPasswordError, match="öğrenci ya da personel"):
+        with pytest.raises(app_password.AppPasswordError, match="öğretmen ya da diğer personel"):
             app_password.enable(password=YENI_PAROLA)
         assert app_password.read_state() is None
 
     def test_personel_varken_reddedilir(self) -> None:
         Personnel.objects.create(first_name="AYŞE", last_name="KAYA")
         parolasiz_yap()
-        with pytest.raises(app_password.AppPasswordError, match="öğrenci ya da personel"):
+        with pytest.raises(app_password.AppPasswordError, match="öğretmen ya da diğer personel"):
             app_password.enable(password=YENI_PAROLA)
 
     def test_silinmis_ogrenci_varken_de_reddedilir(self) -> None:
@@ -198,7 +198,7 @@ class TestEnable:
         ogrenci_olustur().delete()
         assert not Student.objects.exists()
         parolasiz_yap()
-        with pytest.raises(app_password.AppPasswordError, match="öğrenci ya da personel"):
+        with pytest.raises(app_password.AppPasswordError, match="öğretmen ya da diğer personel"):
             app_password.enable(password=YENI_PAROLA)
 
     def test_guvenlik_dosyasi_kayipken_reddedilir(self, kayip: Path) -> None:
@@ -406,6 +406,24 @@ class TestVerifyPassword:
 # ---------------------------------------------------------------------------
 # Kurtarma anahtarı
 # ---------------------------------------------------------------------------
+
+#: Normalleştirme örnek tablosu — ön yüzde AYNI tablo sınanır
+#: (`frontend/src/modules/guvenlik/KurtarmaAnahtariPaneli.test.tsx`,
+#: "normalleştirme örnek tablosu"). Biri değişirse öteki de değişmeli.
+NORMALLESTIRME_ORNEKLERI: list[tuple[str, str]] = [
+    (" test-kurt ", "TESTKURT"),
+    ("o0i1b8", "OOIIBB"),
+    ("abci-ABCI-ABCİ-ABCı", "ABCIABCIABCIABCI"),
+    ("TARİ tarı Tari", "TARITARITARI"),
+    ("ŞAKA-12", "AKAI2"),
+]
+
+
+@pytest.mark.parametrize(("yazim", "beklenen"), NORMALLESTIRME_ORNEKLERI)
+def test_kurtarma_anahtari_normallestirme_ornek_tablosu(yazim: str, beklenen: str) -> None:
+    assert app_password.normalize_recovery_key(yazim) == beklenen
+
+
 @pytest.mark.django_db
 class TestRecovery:
     def test_kurtarma_anahtariyla_acilir_ve_parola_yenilenir(self, kilitli: Path) -> None:
@@ -423,6 +441,13 @@ class TestRecovery:
     def test_kurtarma_anahtari_bicimden_bagimsiz_kabul_edilir(self, kilitli: Path) -> None:
         bozuk_bicim = TEST_KURTARMA_ANAHTARI.replace("-", " ").lower()
         app_password.unlock_with_recovery(recovery_key=bozuk_bicim, new_password=YENI_PAROLA)
+        assert app_password.is_locked() is False
+
+    def test_turkce_klavyede_buyuk_harfle_yazilan_anahtar_kabul_edilir(self, kilitli: Path) -> None:
+        """Türkçe klavyede Shift/CapsLock + i noktalı "İ" (U+0130) üretir."""
+        turkce = TEST_KURTARMA_ANAHTARI.replace("I", "İ")
+        assert "İ" in turkce
+        app_password.unlock_with_recovery(recovery_key=turkce, new_password=YENI_PAROLA)
         assert app_password.is_locked() is False
 
     def test_yanlis_kurtarma_anahtari_reddedilir(self, kilitli: Path) -> None:
@@ -860,14 +885,25 @@ class TestKullanilamazGuvenlikDosyasi:
 
 def test_parmak_izi_yokken_bozuk_dosya_da_kayip_sayilir_ve_db_istemez() -> None:
     """Fail-closed: dosyanın neyi koruduğu bilinemez; kural parmak izinden bağımsızdır.
-    Dosya varken karar yalnız dosyadan verilir (DB'ye gidilmez — bu test DB istemez)."""
+    Dosya varken karar yalnız dosyadan verilir (DB'ye gidilmez — bu test DB istemez;
+    `security_file_missing` her API isteğinde çağrılır)."""
     app_password.state_path().write_bytes(b"")
     crypto.unload_key()
 
     assert app_password.security_file_missing() is True
+
+
+@pytest.mark.django_db
+def test_parmak_izi_yokken_bozuk_dosya_durum_ozetinde_kayip_ve_sifirlanabilir() -> None:
+    """Durum özeti kayıp hâlinde sıfırlama yolunun koşullarını da sorar (DB'ye gider:
+    parmak izi + şifreli tablolar; F1-E). Parmak izi boş ve kişi yokken yol açıktır."""
+    app_password.state_path().write_bytes(b"")
+    crypto.unload_key()
+
     durum = app_password.status()
     assert durum["security_file_missing"] is True
     assert durum["password_set"] is True
+    assert durum["reset_available"] is True
 
 
 def test_bozuk_dosya_iletisi_olmayan_otomatik_kopyayi_anmaz() -> None:

@@ -2,34 +2,23 @@
 // listesini katalog ekranlarını beklemeden bu şablonla Excel'de hazırlar; şablonun
 // sütunları ve kuralları backend'deki tek sözlükten gelir, doldurma kılavuzu
 // docs/katalog-excel-sablonu.md'dedir. Kart gezinme kartı değildir (bir sayfaya
-// gitmez), bu yüzden HubFeatureCard değil düz Card + düğmedir.
+// gitmez), bu yüzden HubFeatureCard değil düz Card + düğmedir. İndirme işlevi
+// `useKatalogSablonuIndirme` kancasındadır; "Başlangıç Yol Haritası" da onu kullanır
+// ve `onIndirildi` ile şablon maddesini işaretler.
 
-import { useState } from "react";
-
-import { ApiError } from "../../lib/api";
-import { saveBlob } from "../../lib/download";
 import Button from "../../ui/Button";
 import Card from "../../ui/Card";
 import Icon from "../../ui/Icon";
-import { useSnackbar } from "../../ui/SnackbarProvider";
-import { KATALOG_SABLONU_BELGE_ADI, katalogSablonuDosyaAdi, kutuphaneApi } from "./api";
+import { KATALOG_SABLONU_BELGE_ADI } from "./api";
+import { useKatalogSablonuIndirme } from "./useKatalogSablonu";
 
-export default function KatalogSablonuKarti() {
-  const snackbar = useSnackbar();
-  const [indiriliyor, setIndiriliyor] = useState(false);
+interface KatalogSablonuKartiProps {
+  /** Şablon başarıyla indirilince çağrılır (yol haritasının şablon maddesi). */
+  onIndirildi?: () => void;
+}
 
-  async function indir() {
-    setIndiriliyor(true);
-    try {
-      const sablon = await kutuphaneApi.catalogTemplate();
-      saveBlob(sablon, katalogSablonuDosyaAdi());
-      snackbar.success("Katalog Excel şablonu indirildi.");
-    } catch (error) {
-      snackbar.error(error instanceof ApiError ? error.message : "Şablon indirilemedi.");
-    } finally {
-      setIndiriliyor(false);
-    }
-  }
+export default function KatalogSablonuKarti({ onIndirildi }: KatalogSablonuKartiProps) {
+  const { indir, indiriliyor } = useKatalogSablonuIndirme(onIndirildi);
 
   return (
     <Card elevation={0} className="p-5">
@@ -53,7 +42,7 @@ export default function KatalogSablonuKarti() {
             variant="tonal"
             icon="download"
             className="mt-3"
-            onClick={indir}
+            onClick={() => void indir()}
             disabled={indiriliyor}
           >
             Şablonu indir

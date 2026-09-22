@@ -18,6 +18,9 @@ açılmamışken hassas alanlar zaten okunamaz (şifreli token döner) ve yazıl
    - `GET setup/status/` — açılış sağlık denetimi (`desktop/server.py::HEALTH_PATH`);
    - `GET security/status/` ve `GET security/mode/` — arayüzün hangi ekranı
      göstereceğini öğrendiği salt okur durum uçları;
+   - `POST security/state/reset/` — yalnız korunan veri yokken (parmak izi
+     boş + şifreli tablolar boş) bozuk dosyayı arşivleyip kuruluma döner; uç
+     koşulu kendisi denetler (aksi 409);
    - `GET backups/` ve `POST backups/restore/` — çıkış yolu: geri yükleme
      `guvenlik.json`'u yedeğin kurtarma başlığından yeniden yazar
      (`backup_restore._ensure_state_file`). Diğer çıkış yolu dosyanın yedeğini
@@ -26,7 +29,8 @@ açılmamışken hassas alanlar zaten okunamaz (şifreli token döner) ve yazıl
 2. **Kilitli** (`423 locked`): parola kurulu, anahtar bellekte değil.
    Açık kalanlar:
    - `/api/v1/security/` ön eki — durum, kilit açma, kurtarma anahtarı, kip
-     durumu (kilidi açmanın tek yolu bunlar);
+     durumu (kilidi açmanın tek yolu bunlar). İstisna `LOCKED_DENIED_PATHS`:
+     kurtarma anahtarı çıktısı kilitliyken kesilir (kilit açma yolu değildir);
    - `GET setup/status/` — açılış sağlık denetimi; yanıtı kişisel veri içermez
      ve istek zaten oturum belirteci gerektirir. Kurulum sihirbazının YAZMA
      uçları kapalı kalır;
@@ -62,12 +66,20 @@ ALLOWED_PREFIXES = (
     # Kişisel veri içermez; kilit ekranında başlayan otomatik sürüm denetimi (F8).
     "/api/v1/updates/",
 )
+# `security/` ön ekinde olup kilitliyken YİNE DE kesilen uçlar (TAM yol). Kurtarma
+# anahtarı çıktısı (E14) bellekteki anahtara karşı doğrular ve kilit açmanın bir
+# yolu değildir: kilitliyken açık kalsaydı kurtarma anahtarı için ikinci bir
+# deneme kapısı olurdu. Kurulum sihirbazında anahtar zaten açıktır.
+LOCKED_DENIED_PATHS = frozenset({"/api/v1/security/recovery-key/pdf/"})
 # Güvenlik dosyası kayıpken izin verilen uçlar (TAM yol eşleşmesi, sözleşme §3).
+# `security/state/reset/`: kayıp ekranındaki "sıfırla ve kuruluma dön" yolu; uç
+# kendi koşullarını (parmak izi boş + şifreli tablolar boş) denetler, aksi 409.
 SECURITY_FILE_MISSING_ALLOWED_PATHS = frozenset(
     {
         "/api/v1/setup/status/",
         "/api/v1/security/status/",
         "/api/v1/security/mode/",
+        "/api/v1/security/state/reset/",
         "/api/v1/backups/",
         "/api/v1/backups/restore/",
     }
@@ -102,6 +114,8 @@ class AppLockMiddleware:
             if app_password.security_file_missing():
                 if path not in SECURITY_FILE_MISSING_ALLOWED_PATHS:
                     return JsonResponse(_SECURITY_FILE_MISSING_BODY, status=423)
-            elif not path.startswith(ALLOWED_PREFIXES) and app_password.is_locked():
+            elif (
+                not path.startswith(ALLOWED_PREFIXES) or path in LOCKED_DENIED_PATHS
+            ) and app_password.is_locked():
                 return JsonResponse(_LOCKED_BODY, status=423)
         return self._get_response(request)

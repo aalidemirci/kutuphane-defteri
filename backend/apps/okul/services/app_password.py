@@ -33,6 +33,15 @@ başlıksız yedek almaz). Bu durumda yalnız durum uçları ve yedekten geri
 yükleme açıktır (`lock_middleware`); geri yükleme `guvenlik.json`'u yedeğin
 kurtarma başlığından yeniden yazar, bozuk dosyayı arşivler
 (`backup_restore._ensure_state_file`). `enable()` bu durumda reddeder.
+Tek istisna (F1-E): dosya kullanılamıyor AMA parmak izi boş ve şifreli alan
+taşıyan bütün tablolar boşsa korunacak veri yoktur; "güvenlik dosyasını sıfırla
+ve kuruluma dön" yolu dosyayı arşivleyip ilk açılış hâline döner
+(`state_reset_available`, `reset_unusable_state`).
+
+KURTARMA ANAHTARI ÇIKTISI (E14): `verify_recovery_key` anahtarı kurtarma
+sarmalına VE bellekteki anahtara karşı doğrular (yanlışta kademeli gecikme);
+yalnız o zaman PDF basılır (`services.recovery_key_document`). Anahtar
+sunucuda saklanmaz, hiçbir günlüğe ve hata iletisine yazılmaz.
 
 NEDEN GÜVENLİK DOSYASI VERİ DİZİNİNDE, DB'DE DEĞİL?
   * Yedekler (`backups/gunluk-*.kdbak`) X25519 + AES-256-GCM kapsayıcılarıdır;
@@ -74,6 +83,7 @@ from desktop.backup import database_snapshot, encrypt_legacy_backups
 from desktop.backup_crypto import (
     BACKUP_SUFFIX,
     BackupCryptoError,
+    config_path,
     encrypt_to_path,
     ensure_public_config,
     load_public_key,
@@ -84,6 +94,7 @@ from django.apps import apps as django_apps
 from django.conf import settings
 from django.db import connection, models, transaction
 from django.utils import timezone
+from django.views.decorators.debug import sensitive_variables
 
 from apps.okul.models import Personnel, SchoolConfig, Student
 from shared import crypto
@@ -111,6 +122,11 @@ RECOVERY_KEY_BYTES = 20
 RECOVERY_GROUP_SIZE = 4
 # Base32 alfabesinde 0/1/8/9 yoktur; elle yazımda en sık karışan ikili düzeltilir.
 _RECOVERY_FIXUPS = str.maketrans({"0": "O", "1": "I", "8": "B"})
+#: Türkçe klavyede büyük harfle yazılan "i" noktalı "İ" (U+0130) olur ve Python'un
+#: `upper()`'ı onu "I"ya çevirmez; noktasız "ı" da güvence için eşlenir. Anahtar
+#: alfabesi ASCII'dir (A-Z, 2-7): ikisi de "I"dır. Ön yüz aynı eşlemeyi uygular
+#: (`frontend/src/modules/guvenlik/kurtarma.ts`).
+_RECOVERY_TURKISH_I = str.maketrans({"İ": "I", "ı": "I"})
 
 # Art arda yanlış denemede uygulanan gecikme (saniye). Son değer tavandır.
 FAILURE_DELAYS: tuple[float, ...] = (0.0, 0.0, 1.0, 2.0, 4.0)
@@ -125,6 +141,15 @@ SECURITY_FILE_MISSING_MESSAGE = (
 )
 _NOT_SET_MESSAGE = "Yönetici parolası kurulu değil."
 _WRONG_PASSWORD_MESSAGE = "Parola hatalı."  # noqa: S105 — kullanıcı iletisi, parola değil
+_WRONG_RECOVERY_MESSAGE = (
+    "Kurtarma anahtarı hatalı. Yazdırdığınız kâğıttaki anahtarı olduğu gibi girin."
+)
+RESET_NOT_ALLOWED_MESSAGE = (
+    "Güvenlik dosyası sıfırlanamaz: bu yol yalnız hiç kişi kaydı girilmemiş ve kayıtların "
+    "anahtarı henüz veritabanına işlenmemiş bir kurulumda, güvenlik dosyası okunamıyorken "
+    "açıktır. Dosyanın sağlam bir kopyasını veri klasörüne geri koyun ya da bir yedekten "
+    "geri yükleyin."
+)
 
 
 class AppPasswordError(ValueError):
@@ -329,9 +354,20 @@ def generate_recovery_key() -> str:
 
 
 def normalize_recovery_key(value: str) -> str:
-    """Kullanıcının yazdığı anahtarı normalleştirir (tire/boşluk, küçük harf, 0/1/8)."""
-    sade = "".join(ch for ch in value.strip().upper() if ch.isalnum())
+    """Kullanıcının yazdığı anahtarı normalleştirir (tire/boşluk, küçük harf, İ/ı, 0/1/8).
+
+    Yalnız ASCII harf ve rakam kalır — ön yüzdeki `kurtarmaAnahtariniNormallestir`
+    ile birebir aynı kural (iki taraf aynı örnek tablosuyla sınanır).
+    """
+    buyuk = value.strip().translate(_RECOVERY_TURKISH_I).upper()
+    sade = "".join(ch for ch in buyuk if ch.isascii() and ch.isalnum())
     return sade.translate(_RECOVERY_FIXUPS)
+
+
+def recovery_key_groups(value: str) -> list[str]:
+    """Anahtarı dörtlü gruplara ayırır (çıktı ve ekranın ortak biçimi): ['ABCD', …]."""
+    sade = normalize_recovery_key(value)
+    return [sade[i : i + RECOVERY_GROUP_SIZE] for i in range(0, len(sade), RECOVERY_GROUP_SIZE)]
 
 
 # ---------------------------------------------------------------------------
@@ -396,6 +432,110 @@ def security_file_missing() -> bool:
     return bool(_stored_fingerprint())
 
 
+def _encrypted_rows_exist() -> bool:
+    """Şifreli alan taşıyan herhangi bir tabloda (silinmişler dahil) satır var mı?
+
+    Liste elle tutulmaz (`encrypted_field_map`): F6'da gelen üyelik/ödünç
+    tabloları da kendiliğinden kapsanır.
+    """
+    for model, _ in encrypted_field_map():
+        manager = getattr(model, "all_objects", model._default_manager)
+        if manager.exists():
+            return True
+    return False
+
+
+#: Parola kurulurken alınan geçiş yedeğinin adı (`take_transition_backup("acilis")`).
+#: `enable()` yalnız kişi tabloları boşken çalıştığı için bu yedek kişi verisi taşımaz.
+_TRANSITION_BACKUP_PREFIX = "pre-parola-"
+#: Yedek klasöründe veri taşıyabilen dosyalar: şifreli yedek ve (dönüştürülmemiş) eski düz yedek.
+_DATA_BACKUP_SUFFIXES = (BACKUP_SUFFIX, ".sqlite3")
+
+
+def _data_backups_exist() -> bool:
+    """Yedek klasöründe kişi verisi taşıyabilecek bir yedek var mı?
+
+    Parola kurulurken alınan geçiş yedeği (`pre-parola-*`) sayılmaz: o an kişi
+    tabloları boştur. Hangi anahtarla şifrelendiğine bakılmaz — yedeğin varlığı
+    "korunan veri olabilir" demektir (fail-closed).
+    """
+    dizin = backup_dir()
+    if not dizin.is_dir():
+        return False
+    return any(
+        yol.is_file()
+        and yol.suffix in _DATA_BACKUP_SUFFIXES
+        and not yol.name.startswith(_TRANSITION_BACKUP_PREFIX)
+        for yol in dizin.iterdir()
+    )
+
+
+def state_reset_available() -> bool:
+    """ "Güvenlik dosyasını sıfırla ve kuruluma dön" yolu açık mı? (F1-E, GA-2 eki)
+
+    DÖRT koşul birden (biri eksikse yol görünmez, uç 409 döner):
+
+    1. güvenlik dosyası VAR ama kullanılamıyor (boş, bozuk, bölümleri eksik —
+       `security_file_missing` ile aynı kural). Dosya hiç yoksa ve parmak izi
+       boşsa zaten "parola kurulmamış" hâlidir, sıfırlanacak bir şey yoktur;
+    2. DB'de anahtar parmak izi BOŞ: şifreleme geçişi hiç tamamlanmamış, yani
+       bu veritabanında o anahtarla şifrelenmiş kalıcı bir satır yoktur;
+    3. şifreli alan taşıyan bütün tablolar (silinmişler dahil) BOŞ;
+    4. yedek klasöründe veri taşıyabilen yedek YOK (`_data_backups_exist`).
+       Veritabanı kaybolup boş yeniden oluştuğunda 2 ve 3 sağlanır ama eski
+       kayıtlar yedeklerde durur; o zaman doğru yol yedekten geri yüklemedir.
+       Sıfırlama yeni anahtarla yeni günlük yedek zinciri başlatırdı ve 14 günlük
+       rotasyon eski anahtarla şifreli yedekleri sessizce silerdi.
+
+    Bu koşullarda bozuk dosya korunacak hiçbir veriyi açmıyordur; kullanıcıyı
+    yalnız dosyayı elle silebileceği bir çıkmazda bırakmak yerine dosya
+    ARŞİVLENİR (silinmez) ve program ilk açılış hâline döner.
+    """
+    yol = state_path()
+    if not yol.is_file() or _state_file_usable(yol):
+        return False
+    if _stored_fingerprint():
+        return False
+    if _encrypted_rows_exist():
+        return False
+    return not _data_backups_exist()
+
+
+class StateResetNotAllowed(AppPasswordError):
+    """Sıfırlama koşulları sağlanmıyor (görünüm 409 `sifirlama_uygun_degil` döner)."""
+
+
+def reset_unusable_state() -> str:
+    """Kullanılamayan güvenlik dosyasını arşivler, programı "parola kurulmamış" hâline döndürür.
+
+    Yalnız `state_reset_available()` doğruyken çalışır; aksi hâlde
+    `StateResetNotAllowed`. Dosya `guvenlik-arsiv-<damga>.json` adıyla kenara
+    alınır (geri yüklemenin arşiv adıyla aynı desen); eski yedek açık anahtarı
+    (`yedekleme.json`) da `yedekleme-arsiv-<damga>.json` olur — ilk açılışta
+    ikisi de yoktur ve yeni parola kurulurken yenisi yazılır. Arşiv dosyasının
+    adını döndürür.
+    """
+    if not state_reset_available():
+        raise StateResetNotAllowed(RESET_NOT_ALLOWED_MESSAGE)
+    damga = timezone.localtime().strftime("%Y-%m-%d-%H%M%S")
+    yol = state_path()
+    arsiv = yol.with_name(f"guvenlik-arsiv-{damga}.json")
+    sira = 2
+    while arsiv.exists():  # aynı saniyede geri yükleme arşivi varsa üstüne yazılmaz
+        arsiv = yol.with_name(f"guvenlik-arsiv-{damga}-{sira}.json")
+        sira += 1
+    yol.replace(arsiv)
+    yedek_ayari = config_path(_data_dir())
+    if yedek_ayari.is_file():
+        yedek_ayari.replace(yedek_ayari.with_name(f"yedekleme-arsiv-{damga}.json"))
+    crypto.unload_key()
+    _reset_failures()
+    logger.warning(
+        "Kullanılamayan güvenlik dosyası arşivlendi (%s); kurulum yeniden başlar.", arsiv.name
+    )
+    return arsiv.name
+
+
 def is_locked() -> bool:
     """Parola kurulu ve anahtar bellekte değil mi?"""
     return is_password_set() and not crypto.is_unlocked()
@@ -431,6 +571,8 @@ def status() -> dict[str, Any]:
         "password_set": kurulu,
         "locked": kurulu and not crypto.is_unlocked(),
         "security_file_missing": kayip,
+        # Kayıp ekranındaki "sıfırla ve kuruluma dön" yolu (yalnız korunan veri yokken).
+        "reset_available": kayip and state_reset_available(),
         "transition_pending": state is not None and gecis != TRANSITION_DONE,
         "transition": gecis if state is not None and gecis != TRANSITION_DONE else "",
         "protected_fields": protected_field_labels(),
@@ -496,8 +638,8 @@ def enable(*, password: str) -> str:
         )
     if _persons_exist():
         raise AppPasswordError(
-            "Kayıtlı öğrenci ya da personel varken yönetici parolası kurulamaz. Parola, "
-            "kurulum sihirbazının ilk adımında, kişi kaydından önce kurulur."
+            "Kayıtlı öğrenci, öğretmen ya da diğer personel varken yönetici parolası "
+            "kurulamaz. Parola, kurulum sihirbazının ilk adımında, kişi kaydından önce kurulur."
         )
     parola = _validate_password(password)
 
@@ -563,6 +705,31 @@ def verify_password(password: str) -> None:
         _delay_after_failure()
         raise AppPasswordError(_WRONG_PASSWORD_MESSAGE)
     _reset_failures()
+
+
+@sensitive_variables("recovery_key", "veri_anahtari")
+def verify_recovery_key(recovery_key: str) -> list[str]:
+    """Kurtarma anahtarını doğrular; anahtarın dörtlü gruplarını döndürür (E14 çıktısı).
+
+    İki denetim: anahtar `guvenlik.json`'daki KURTARMA SARMALINI açmalı (yanlış
+    yazılmış anahtarın kâğıda basılmasını önler) VE çıkan DEK bellekteki
+    anahtarla aynı olmalı (başka kurulumun dosyasıyla doğrulama yapılamaz;
+    `verify_password` ile aynı kural). Yanlışsa `AppPasswordError` + kademeli
+    gecikme — yanlış anahtar denemesi kaba kuvvete kapı olmasın. Kilitliyken
+    doğrulama yapılmaz (kilit ara katmanı zaten 423 ile keser).
+
+    Anahtar hiçbir iletiye, günlüğe ya da istisnaya yazılmaz.
+    """
+    state = _require_state()
+    aktif = crypto.active_fingerprint()
+    if aktif is None:
+        raise AppPasswordError("Kayıtlar kilitli. Önce yönetici parolasıyla kilidi açın.")
+    veri_anahtari = _unwrap_with_recovery(state, recovery_key)
+    if crypto.key_fingerprint(veri_anahtari) != aktif:
+        _delay_after_failure()
+        raise AppPasswordError(_WRONG_RECOVERY_MESSAGE)
+    _reset_failures()
+    return recovery_key_groups(recovery_key)
 
 
 def unlock_with_recovery(*, recovery_key: str, new_password: str) -> None:
@@ -677,12 +844,7 @@ def _unwrap_with_password(state: dict[str, Any], password: str) -> bytes:
 
 def _unwrap_with_recovery(state: dict[str, Any], recovery_key: str) -> bytes:
     bolum = dict(state.get("kurtarma", {}))
-    return _unwrap(
-        bolum,
-        state,
-        normalize_recovery_key(recovery_key),
-        "Kurtarma anahtarı hatalı. Yazdırdığınız kâğıttaki anahtarı olduğu gibi girin.",
-    )
+    return _unwrap(bolum, state, normalize_recovery_key(recovery_key), _WRONG_RECOVERY_MESSAGE)
 
 
 def _unwrap(bolum: dict[str, Any], state: dict[str, Any], secret: str, hata_mesaji: str) -> bytes:

@@ -52,9 +52,10 @@ export default function SifreliYedekleme({ parolaKurulu }: { parolaKurulu: boole
             yere kendiliğinden gönderilmez.
           </p>
           <p className="mt-2 text-body-small text-on-surface-variant">
-            İndirdiğiniz dosyayı USB belleğe, ağ diskine veya tercih ettiğiniz bulut klasörüne
-            kendiniz kopyalayın. Yedeği açmak için yönetici parolanız ya da kurtarma anahtarınız
-            gerekir; ikisini de güvenli biçimde saklayın.
+            İndirdiğiniz dosyayı USB belleğe ya da okulun ağ diskine kendiniz kopyalayın; bulut
+            depolama hizmetine yüklemeyin (Bilgi ve Sistem Güvenliği Yönergesi 11/23). Yedeği açmak
+            için yönetici parolanız ya da kurtarma anahtarınız gerekir; ikisini de güvenli biçimde
+            saklayın.
           </p>
           {!parolaKurulu && (
             <p className="mt-3 rounded-shape-md bg-error-container p-3 text-body-small text-on-error-container">

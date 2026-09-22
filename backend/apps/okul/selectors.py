@@ -23,6 +23,7 @@ from apps.okul.excel_ogrenci import normalize_header
 from apps.okul.models import (
     ClassSection,
     Holiday,
+    HolidayKind,
     ImportRun,
     Personnel,
     SchoolConfig,
@@ -264,13 +265,25 @@ def find_student_by_number(student_number: str) -> Student | None:
 
 def find_left_student_by_number(student_number: str) -> Student | None:
     """Aynı okul no'lu AYRILMIŞ canlı öğrenci (yeniden aktifleşme adayı); en son ayrılan."""
+    adaylar = left_students_by_number(student_number)
+    return adaylar[0] if adaylar else None
+
+
+def left_students_by_number(student_number: str) -> list[Student]:
+    """Aynı okul no'lu bütün AYRILMIŞ canlı öğrenciler — en son ayrılan önce.
+
+    Okul no ayrılan öğrenciden sonra başka öğrenciye verilebildiği için (model
+    teklik kısıtı yalnız aktif kayıtlardadır) aynı indekste birden çok ayrılmış
+    kayıt bulunabilir; hangisinin "dönen" öğrenci olduğuna çağıran ada bakarak
+    karar verir (e-Okul aktarımı).
+    """
     index = student_number_blind_index(student_number or "")
     if not index:
-        return None
-    return (
-        Student.objects.filter(student_number_index=index, status=StudentStatus.LEFT)
-        .order_by("-left_at", "-pk")
-        .first()
+        return []
+    return list(
+        Student.objects.filter(student_number_index=index, status=StudentStatus.LEFT).order_by(
+            "-left_at", "-pk"
+        )
     )
 
 
@@ -295,17 +308,14 @@ def import_runs(*, source_type: str = "") -> QuerySet[ImportRun]:
     return qs
 
 
-def setup_status() -> dict[str, Any]:
-    """Kurulum sihirbazı durum özeti (FE açılış yönlendirmesi bundan okur)."""
-    config = SchoolConfig.load()
-    return {
-        "setup_completed": config.setup_completed,
-        "school_name": config.school_name,
-        "has_active_school_year": active_school_year() is not None,
-        "student_count": Student.objects.count(),
-        "personnel_count": Personnel.objects.count(),
-        "class_section_count": class_sections().count(),
-    }
+def student_count() -> int:
+    """Canlı öğrenci sayısı (kurulum durumu ve yol haritası; kişisel veri yok)."""
+    return Student.objects.count()
+
+
+def personnel_count() -> int:
+    """Canlı personel sayısı (kurulum durumu ve yol haritası; kişisel veri yok)."""
+    return Personnel.objects.count()
 
 
 def distinct_class_levels() -> list[int]:
@@ -338,3 +348,18 @@ def holidays_sorted(*, year: int | None = None) -> list[Holiday]:
 
 def get_holiday(holiday_id: int) -> Holiday | None:
     return Holiday.objects.filter(pk=holiday_id).first()
+
+
+def school_break_count(*, start: date | str | None, end: date | str | None) -> int:
+    """[start, end] aralığıyla kesişen "öğrenciye kapalı gün" KAYDI sayısı.
+
+    Yol haritasının "öğrenciye kapalı günleri girin" maddesi aktif ders yılının
+    aralığıyla sorar. Aralık yoksa (aktif yıl yok) 0.
+    """
+    if start is None or end is None:
+        return 0
+    baslangic = date.fromisoformat(start) if isinstance(start, str) else start
+    bitis = date.fromisoformat(end) if isinstance(end, str) else end
+    return Holiday.objects.filter(
+        kind=HolidayKind.SCHOOL_BREAK, start_date__lte=bitis, end_date__gte=baslangic
+    ).count()

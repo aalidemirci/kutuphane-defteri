@@ -1,13 +1,16 @@
 // Güvenlik ayarları bölümü — Ayarlar sayfasına bir sekme/kart olarak takılır.
 //
-// Eylemler: yönetici parolasını kur (yalnız ilk kurulumda; asıl yeri kurulum
-// sihirbazının ilk adımıdır) / parolayı değiştir / "Kilitle". Yönetici parolası
-// zorunludur: "Parolayı kaldır" eylemi YOKTUR (tasarım §6.3). Metinler
-// `metinler.ts`'ten gelir ve DÜRÜSTTÜR: bu koruma alan şifrelemesidir, tam disk
-// şifrelemesi değildir.
+// Eylemler: yönetici parolasını değiştir / "Kilitle" / kurtarma anahtarı çıktısını
+// yeniden al. Yönetici parolası zorunludur ve YALNIZ kurulum sihirbazının ilk
+// adımında kurulur (kurtarma anahtarı orada gösterilir ve saklandığı doğrulanır);
+// bu ekranda "parolayı kur" ya da "parolayı kaldır" eylemi YOKTUR (tasarım §6.3).
+// Parola kurulmamışsa (kurulum kapısı bunu zaten sihirbaza yönlendirir) yalnız
+// sihirbaza giden bağlantı gösterilir. Metinler `metinler.ts`'ten gelir ve
+// DÜRÜSTTÜR: bu koruma alan şifrelemesidir, tam disk şifrelemesi değildir.
 
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { Link } from "react-router-dom";
 
 import Button from "../../ui/Button";
 import Card from "../../ui/Card";
@@ -16,35 +19,27 @@ import Icon from "../../ui/Icon";
 import { SkeletonList } from "../../ui/Skeleton";
 import { useSnackbar } from "../../ui/SnackbarProvider";
 import TextField from "../../ui/TextField";
-import KurtarmaAnahtariDiyalogu from "./KurtarmaAnahtariDiyalogu";
+import KurtarmaCiktisiKarti from "./KurtarmaCiktisiKarti";
 import SifreliYedekleme from "./SifreliYedekleme";
 import YedektenGeriYukleme from "./YedektenGeriYukleme";
 import { guvenlikApi } from "./api";
 import type { GuvenlikDurumu } from "./api";
 import { kilitOlayiYayinla } from "./GuvenlikKapisi";
-import { KAPSAM_DISI_METNI, KAPSAM_METNI, KURMA_UYARISI, YARIM_GECIS_METNI } from "./metinler";
-
-type Kip = "yok" | "kur" | "degistir";
+import { KAPSAM_DISI_METNI, KAPSAM_METNI, YARIM_GECIS_METNI } from "./metinler";
 
 function hataMesaji(err: unknown, varsayilan: string): string {
   return err instanceof Error && err.message ? err.message : varsayilan;
 }
 
-interface GuvenlikAyarlariProps {
-  /** Kurtarma anahtarı çıktısında görünsün diye (Ayarlar sayfası zaten okur). */
-  okulAdi?: string;
-}
-
-export default function GuvenlikAyarlari({ okulAdi = "" }: GuvenlikAyarlariProps) {
+export default function GuvenlikAyarlari() {
   const snackbar = useSnackbar();
   const [durum, setDurum] = useState<GuvenlikDurumu | null>(null);
-  const [kip, setKip] = useState<Kip>("yok");
+  const [degistirAcik, setDegistirAcik] = useState(false);
   const [parola, setParola] = useState("");
   const [parolaTekrar, setParolaTekrar] = useState("");
   const [yeniParola, setYeniParola] = useState("");
   const [hata, setHata] = useState<string | null>(null);
   const [calisiyor, setCalisiyor] = useState(false);
-  const [kurtarmaAnahtari, setKurtarmaAnahtari] = useState<string | null>(null);
 
   const oku = useCallback(() => {
     guvenlikApi
@@ -56,7 +51,7 @@ export default function GuvenlikAyarlari({ okulAdi = "" }: GuvenlikAyarlariProps
   useEffect(() => oku(), [oku]);
 
   function kapat() {
-    setKip("yok");
+    setDegistirAcik(false);
     setParola("");
     setParolaTekrar("");
     setYeniParola("");
@@ -66,20 +61,14 @@ export default function GuvenlikAyarlari({ okulAdi = "" }: GuvenlikAyarlariProps
   async function gonder(e: FormEvent) {
     e.preventDefault();
     setHata(null);
-    if (parolaTekrar !== (kip === "kur" ? parola : yeniParola)) {
+    if (parolaTekrar !== yeniParola) {
       setHata("Parolalar eşleşmedi.");
       return;
     }
     setCalisiyor(true);
     try {
-      if (kip === "kur") {
-        const sonuc = await guvenlikApi.kur(parola);
-        setKurtarmaAnahtari(sonuc.recovery_key);
-        snackbar.success("Yönetici parolası kuruldu.");
-      } else {
-        await guvenlikApi.parolaDegistir(parola, yeniParola);
-        snackbar.success("Yönetici parolası değiştirildi.");
-      }
+      await guvenlikApi.parolaDegistir(parola, yeniParola);
+      snackbar.success("Yönetici parolası değiştirildi.");
       kapat();
       oku();
     } catch (err) {
@@ -100,14 +89,11 @@ export default function GuvenlikAyarlari({ okulAdi = "" }: GuvenlikAyarlariProps
 
   if (durum === null) return <SkeletonList rows={2} />;
 
-  const baslikIkonu = durum.password_set ? "lock" : "lock_open";
-  const dialogBasligi = kip === "kur" ? "Yönetici parolasını kur" : "Parolayı değiştir";
-
   return (
     <div className="flex flex-col gap-4">
       <Card className="p-6">
         <div className="mb-2 flex items-center gap-3">
-          <Icon name={baslikIkonu} className="text-primary" />
+          <Icon name={durum.password_set ? "lock" : "lock_open"} className="text-primary" />
           <h2 className="text-title-large text-on-surface">
             {durum.password_set ? "Kişisel veri alanları şifreli" : "Yönetici parolası kurulmadı"}
           </h2>
@@ -129,10 +115,10 @@ export default function GuvenlikAyarlari({ okulAdi = "" }: GuvenlikAyarlariProps
           </p>
         )}
 
-        <div className="mt-6 flex flex-wrap gap-2">
+        <div className="mt-6 flex flex-wrap items-center gap-2">
           {durum.password_set ? (
             <>
-              <Button variant="tonal" icon="key" onClick={() => setKip("degistir")}>
+              <Button variant="tonal" icon="key" onClick={() => setDegistirAcik(true)}>
                 Parolayı değiştir
               </Button>
               <Button variant="outlined" icon="lock" onClick={kilitle}>
@@ -140,44 +126,49 @@ export default function GuvenlikAyarlari({ okulAdi = "" }: GuvenlikAyarlariProps
               </Button>
             </>
           ) : (
-            <Button icon="lock" onClick={() => setKip("kur")}>
-              Yönetici parolasını kur
-            </Button>
+            <>
+              <p className="text-body-medium text-on-surface-variant">
+                Yönetici parolası kurulum sihirbazının ilk adımında kurulur; kurtarma anahtarı da
+                orada verilir.
+              </p>
+              <Link
+                to="/kurulum"
+                className="inline-flex items-center gap-1.5 text-label-large font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Kurulum sihirbazına git
+                <Icon name="arrow_forward" size="sm" />
+              </Link>
+            </>
           )}
         </div>
       </Card>
+
+      {durum.password_set && <KurtarmaCiktisiKarti />}
 
       <SifreliYedekleme parolaKurulu={durum.password_set} />
 
       <YedektenGeriYukleme />
 
-      <Dialog open={kip !== "yok"} onClose={kapat} title={dialogBasligi}>
+      <Dialog open={degistirAcik} onClose={kapat} title="Parolayı değiştir">
         <form onSubmit={gonder} className="flex flex-col gap-4">
-          {kip === "kur" && (
-            <p className="text-body-small text-on-surface-variant">{KURMA_UYARISI}</p>
-          )}
-
           <TextField
-            label={kip === "kur" ? "Yeni parola" : "Mevcut parola"}
+            label="Mevcut parola"
             type="password"
             value={parola}
             onChange={(e) => setParola(e.target.value)}
-            autoComplete={kip === "kur" ? "new-password" : "current-password"}
-            helperText={kip === "kur" ? "En az 8 karakter." : undefined}
+            autoComplete="current-password"
             required
           />
 
-          {kip === "degistir" && (
-            <TextField
-              label="Yeni parola"
-              type="password"
-              value={yeniParola}
-              onChange={(e) => setYeniParola(e.target.value)}
-              autoComplete="new-password"
-              helperText="En az 8 karakter."
-              required
-            />
-          )}
+          <TextField
+            label="Yeni parola"
+            type="password"
+            value={yeniParola}
+            onChange={(e) => setYeniParola(e.target.value)}
+            autoComplete="new-password"
+            helperText="En az 8 karakter."
+            required
+          />
 
           <TextField
             // Etiket "Yeni parola (tekrar)" DEĞİL: iki alanın adı aynı ön ekle
@@ -201,13 +192,6 @@ export default function GuvenlikAyarlari({ okulAdi = "" }: GuvenlikAyarlariProps
           </div>
         </form>
       </Dialog>
-
-      <KurtarmaAnahtariDiyalogu
-        open={kurtarmaAnahtari !== null}
-        anahtar={kurtarmaAnahtari ?? ""}
-        okulAdi={okulAdi}
-        onKapat={() => setKurtarmaAnahtari(null)}
-      />
     </div>
   );
 }

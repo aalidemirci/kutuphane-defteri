@@ -193,15 +193,21 @@ def update_student(student: Student, **fields: Any) -> Student:
 
 
 @transaction.atomic
-def leave_student(student: Student) -> bool:
-    """Ayrılış yolu (§6.1). Kayıt katı silindiyse True, saklandıysa False döner."""
+def leave_student(student: Student, *, log: bool = True) -> bool:
+    """Ayrılış yolu (§6.1). Kayıt katı silindiyse True, saklandıysa False döner.
+
+    `log=False`: toplu çağıran (e-Okul aktarımı) kişi başına günlük satırı
+    yazdırmaz — önizleme bu yolu savepoint'te koşup GERİ SARAR ve günlük geri
+    sarılmaz; aktarım kendi sayısal özetini yalnız uygulamada yazar.
+    """
     if student.status == StudentStatus.LEFT:
         raise ValidationError(ALREADY_LEFT_MESSAGE)
     student.status = StudentStatus.LEFT
     student.left_at = timezone.localdate()
     student.save(update_fields=["status", "left_at", "updated_at"])
     silindi = _finish_leave(student)
-    logger.info("Öğrenci ayrılışı işlendi; kayıt %s.", "silindi" if silindi else "saklandı")
+    if log:
+        logger.info("Öğrenci ayrılışı işlendi; kayıt %s.", "silindi" if silindi else "saklandı")
     return silindi
 
 
@@ -245,15 +251,20 @@ def update_personnel(person: Personnel, **fields: Any) -> Personnel:
 
 
 @transaction.atomic
-def leave_personnel(person: Personnel) -> bool:
-    """Ayrılış yolu (§6.1). Kayıt katı silindiyse True, saklandıysa False döner."""
+def leave_personnel(person: Personnel, *, log: bool = True) -> bool:
+    """Ayrılış yolu (§6.1). Kayıt katı silindiyse True, saklandıysa False döner.
+
+    `log=False`: toplu çağıran kişi başına günlük satırı yazdırmaz (bkz.
+    `leave_student`).
+    """
     if not person.is_active:
         raise ValidationError(ALREADY_LEFT_MESSAGE)
     person.is_active = False
     person.left_at = timezone.localdate()
     person.save(update_fields=["is_active", "left_at", "updated_at"])
     silindi = _finish_leave(person)
-    logger.info("Personel ayrılışı işlendi; kayıt %s.", "silindi" if silindi else "saklandı")
+    if log:
+        logger.info("Personel ayrılışı işlendi; kayıt %s.", "silindi" if silindi else "saklandı")
     return silindi
 
 

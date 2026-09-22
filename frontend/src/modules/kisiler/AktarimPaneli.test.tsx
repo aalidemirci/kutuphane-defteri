@@ -206,6 +206,22 @@ describe("AktarimPaneli — öğrenci mutabakatı", () => {
     expect(onImported).not.toHaveBeenCalled();
   });
 
+  it("şube kapsamlı önizleme başka şubeye geçen öğrenci riskini söyler", async () => {
+    okulApiMock.previewStudentImport.mockResolvedValue({ ...OGRENCI_ONIZLEME, full_list: false });
+    const user = userEvent.setup();
+    kur("students");
+    await yapistirVeOnizle(user);
+    await screen.findByText("Önizleme — hiçbir kayıt yazılmadı");
+
+    expect(screen.getByText(/Kayıtlı oldukları şube dosyada var/)).toBeInTheDocument();
+    expect(screen.getByText(/Başka bir şubeye geçtiği için/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Aktar" }));
+    const onay = await screen.findByRole("dialog", { name: "Aktarım uygulansın mı?" });
+    expect(within(onay).getByText(/okulun bütün şubelerini içeren listeyi/)).toBeInTheDocument();
+    await user.click(within(onay).getByRole("button", { name: "Vazgeç" }));
+    expect(okulApiMock.commitStudentImport).not.toHaveBeenCalled();
+  });
+
   it("onaylanınca aktarılır, sonuç “Ayrılan” diye gösterilir", async () => {
     okulApiMock.previewStudentImport.mockResolvedValue(OGRENCI_ONIZLEME);
     okulApiMock.commitStudentImport.mockResolvedValue({ ...OGRENCI_ONIZLEME, dry_run: false });

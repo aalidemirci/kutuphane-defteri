@@ -338,6 +338,9 @@ yönetim sunucusu → sağlık denetimi → WebView2 → pencere. Farkları:
 | Görevli, kart numaralarını sırayla yazarak üye adlarını çıkarır (GA-7) | Kart no: 6 rastgele hane + sağlama hanesi · art arda 5 geçersiz kart → yönetici parolası | — |
 | Ağdan yük bindirilir ya da slowloris saldırısı yapılır (GA-12) | Kendi havuzu, `connection_limit`, kısa zaman aşımı, IP başına token-bucket · kabul anında IP başına eşzamanlı bağlantı sınırı (dispatcher alt sınıfı) | Kalan risk yalnız katalogun erişilemez olmasıdır, veri riski yoktur |
 
+*F1 eki (22.09.2026):* bozuk güvenlik dosyası da kayıp kilidine düşer; kayıp ekranında
+koşullu "Güvenlik dosyasını sıfırla ve kuruluma dön" yolu vardır (§14.1 F1 ekleri, 1).
+
 ### 4.4 İki kip: görevli ve yönetici (U5)
 
 **Terim.** "Kütüphane yöneticisi" kütüphaneci ya da kütüphaneden sorumlu öğretmen
@@ -808,6 +811,10 @@ bloklarını içerebilir.
 | `ImportRun` + e-Okul parser'ları | + öğrenci **ve personel** mutabakatı (§8.3) |
 | `Holiday` (DD — UYARLA) | + tür **`SCHOOL_BREAK`**: ara tatil ve yarıyıl. DD bu günleri disiplin sürelerinde iş günü sayar; kütüphanede bunlar "öğrenciye kapalı gün"dür (UY-13, SU-6) · + `next_open_day()` · takvim ekranı · 2027 ve sonrası bayramlar için TAHMİNİ uyarısı |
 
+*F1 eki (22.09.2026):* e-Okul personel aktarımı "Görevi" sütununu yalnız üye türü için
+geçici okur, saklamaz; `Holiday.OTHER` ("İdari izin / diğer") dayanaksız program
+kuralıyla her zaman kapalıdır (§14.1 F1 ekleri, 2 ve 3).
+
 **Unutma kancası** (KS'de öğrenci LEFT olunca hemen katı siler; burada uyarlanır):
 - Açık ödünç, açık dosya ya da teslim varken kişi silinmez.
 - Ayrılış yalnız üyeliği sonlandırır.
@@ -1070,6 +1077,8 @@ hattı kullanılır, `gender` alınmaz.
   onayıyla yapılır.
 - Önizleme şube bazında etkiyi gösterir.
 - Tek şubelik dosya diğer şubeleri LEFT yapmaz; bu testle sabitlenir.
+- *F1 eki (22.09.2026):* ayrılış yalnız kanıtla; yeniden aktifleşme numara + ad
+  eşleşmesiyle; şube şube yüklemenin bilinen sınırı (§14.1 F1 ekleri, 4).
 
 **Personel mutabakatı** (EK-20):
 - Önizlemede "N personel listede yok, ayrıldı sayılsın mı?" sorulur.
@@ -1430,6 +1439,42 @@ ifadeleri ters çevrilir: `settings.py:3-7`, `server.py:8`, `docs/kurulum.md:83-
 **Sıralama gerekçesi.** Ağ kataloğu (F5) dolaşımdan önce gelir. Katalog girildiği anda
 ağdan taranabilir ve en büyük belirsizlik erken sahaya çıkar. Dolaşım gelene kadar
 nüshalar "Rafta" görünür.
+
+**F1 ekleri (22.09.2026).** F1'de tasarımdan bilinçli sapmalar ve tasarımda yazmayan
+kararlar. İlgili bölümlerde bu listeye gönderme vardır.
+
+1. **§4.3, §4.4 — kayıp kilidi ve kip geçişi.** Güvenlik dosyası yalnız silinince değil,
+   var olup kullanılamadığında da (boş, bozuk JSON, bölümleri eksik) "güvenlik dosyası
+   kayıp" kilidine düşer; bu hâl parmak izinden bağımsızdır. Kilit açık değilken kip
+   geçişi isteği 409 `kip_gecisi_gecersiz` alır. Kayıp ekranına üçüncü çıkış yolu
+   eklendi: **"Güvenlik dosyasını sıfırla ve kuruluma dön"**. Yalnız dört koşul
+   birlikteyken açıktır: dosya var ama kullanılamıyor, DB'de parmak izi boş, şifreli
+   alan taşıyan bütün tablolar boş, yedek klasöründe (parola kurulurken alınan geçiş
+   yedeği dışında) yedek yok. Bozuk dosya silinmez, `guvenlik-arsiv-*` olarak kenara
+   alınır. Koşul dışında uç 409 döner.
+2. **§6.1 — personel görev sütunu.** e-Okul personel listesindeki "Görevi/Unvan" sütunu
+   yalnız `member_kind`'i (öğretmen / diğer personel) belirlemek için geçici okunur;
+   hiçbir yerde saklanmaz (kayıt, `ImportRun.report`, günlük). Tanınmayan görev
+   öğretmen sayılır ve önizlemede satır no ile "üye türünü denetleyin" uyarısı çıkar.
+   Branş sütunu hiç okunmaz. Saklanan veri §6.1'deki gibidir.
+3. **§6.1 Holiday — `OTHER` türü "İdari izin / diğer".** Her zaman kapalıdır ve iade
+   tarihini kaydırır. Dayanağı TBK 93 değildir (idari izin kanunen tatil sayılmaz),
+   programın kuralıdır: `docs/mevzuat/BENIOKU.md` §4'e işlendi, kılavuzda ayrı madde.
+4. **§8.3 — öğrenci mutabakatının ayrıntıları.** Ayrılış yalnız kanıtla yapılır:
+   okul numarası dosyada geçen öğrenci satırı atlansa da (ad boş, sınıf çözülemedi)
+   ayrılmaz; numarası boş öğrenci satırı o şubede (sınıfı da boşsa hiçbir yerde)
+   ayrılışı durdurur; hiç satır işlenemeyen dosya kimseyi ayırmaz. Ayrılmış kayıt aynı
+   okul no **ve aynı ad-soyadla** dönerse yeniden aktifleşir; numara adı farklı birine
+   verilmişse eski kayıt dokunulmadan kalır, yeni kayıt açılır (okul no yeniden
+   kullanılabilir). Bilinen sınır: şube şube yüklemede başka şubeye geçmiş öğrenci
+   ayrılacaklar listesine düşer (yeni şubesi o dosyada yoktur). Önizleme, onay metni
+   ve kılavuz bunu söyler ve yıl başında bütün şubeleri içeren tek dosyayı önerir.
+5. **§14.1 F1 — yol haritası işaretleri.** "Başlangıç Yol Haritası"nın kullanıcı
+   işaretleri tarayıcı deposunda değil `SchoolConfig.yol_haritasi` JSON alanında durur
+   (kişisel veri yok; pencere profili silinse de kaybolmaz).
+6. **§14.1 F1 — okul bilgileri.** Okul adı, kademe, kısa ad ve demirbaş onayı yalnız
+   `setup/complete/` anında değil, sonradan her kayıtta da zorunludur: Okul Bilgileri
+   ekranından ya da API'den boşaltılamaz (gönderilmeyen alana dokunulmaz).
 
 ### 14.2 Saha hazırlık hattı (kod dışı — F0 ile başlar)
 

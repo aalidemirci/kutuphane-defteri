@@ -18,17 +18,38 @@ export const KAPSAM_DISI_METNI =
   "Okul numarası şifrelidir; arama ve e-Okul eşleştirmesi numaranın tamamıyla " +
   "yapılır, numaranın bir parçasıyla arama yapılamaz.";
 
-/** Kurtarma anahtarı diyaloğunun uyarısı. */
+/** Kurtarma anahtarı panelinin uyarısı (kurulum sihirbazının ilk adımı). */
 export const KURTARMA_UYARISI =
-  "Bu anahtar bir daha gösterilmez. Parolanızı unutursanız kayıtlara ERİŞMENİN " +
-  "TEK YOLU budur. Yazdırın veya elle yazıp okul kasasında saklayın; " +
-  "bilgisayarın kendisinde saklamayın.";
+  "Bu anahtar bir daha gösterilmez. Yönetici parolası unutulursa kayıtlara erişmenin " +
+  "tek yolu budur. Şimdi saklayın: yazdırın, PDF olarak USB belleğe kaydedin ya da " +
+  "kâğıda elle yazın. Kâğıdı müdürlükte kapalı zarfta saklayın; anahtarı bu " +
+  "bilgisayarda bırakmayın.";
 
-/** Parola kurma açıklaması (yalnız ilk kurulumda; parola kaldırılamaz). */
+/** Elle yazma yönergesi — çıktıdaki ipucuyla aynı (anahtar alfabesinde 0/1/8/9 yok). */
+export const ELLE_YAZ_METNI =
+  "Elle yazacaksanız grupları sırasıyla, büyük harfle yazın. Anahtarda 0, 1, 8 ve 9 " +
+  "rakamları yoktur: O ve I her zaman harftir.";
+
+/** Doğrulama adımının açıklaması (iki grup, istemci tarafında; anahtar sunucuda saklanmaz). */
+export function dogrulamaMetni(birinci: number, ikinci: number): string {
+  return (
+    `Sakladığınız kopyaya bakarak anahtarın ${birinci}. ve ${ikinci}. grubunu yazın. ` +
+    "Böylece kopyanın doğru ve okunaklı olduğundan emin olursunuz."
+  );
+}
+
+/** Parola kurma açıklaması (yalnız ilk kurulumda, sihirbazın ilk adımı; kaldırılamaz). */
 export const KURMA_UYARISI =
-  "Yönetici parolası zorunludur: parola kurulmadan öğrenci ve personel kaydı " +
-  "yapılamaz. Kurulduktan sonra kaldırılamaz, yalnız değiştirilebilir. Kurulumdan " +
-  "sonra gösterilecek kurtarma anahtarını mutlaka saklayın.";
+  "Yönetici parolası zorunludur: parola kurulmadan öğrenci, öğretmen ve diğer " +
+  "personel kaydı yapılamaz. Kurulduktan sonra kaldırılamaz, yalnız değiştirilebilir. Parolayı en " +
+  "az iki görevlendirilmiş kişi bilsin; kütüphane görevlileri görevli kipinde çalışır " +
+  "ve parolayı bilmez.";
+
+/** Kurtarma anahtarı çıktısını yeniden alma kartı (Ayarlar → Güvenlik). */
+export const CIKTI_YENIDEN_METNI =
+  "Kurtarma anahtarı programda saklanmaz; yalnız parola kurulurken bir kez gösterilir. " +
+  "Elinizdeki anahtarı yazın: anahtar doğruysa yazdırılabilir çıktısı PDF olarak " +
+  "hazırlanır (ör. elle yazılmış kâğıdın temiz kopyası için).";
 
 /** Yarım kalan kurulum uyarısı (elektrik kesintisi vb.). */
 export const YARIM_GECIS_METNI =
@@ -57,3 +78,11 @@ export const DOSYA_KAYIP_YEDEKTEN =
   "içinde taşır ve geri yükleme dosyayı yeniden oluşturur. Yedeğin alındığı " +
   "dönemdeki yönetici parolası ya da kurtarma anahtarı gerekir; o yedekten sonra " +
   "girilen kayıtlar ekrandan kalkar.";
+
+/** Güvenlik dosyası kayıp ekranı: üçüncü çıkış yolu (yalnız korunan veri yokken görünür). */
+export const DOSYA_KAYIP_SIFIRLA_METNI =
+  "Bu veritabanında kişi kaydı yok, kayıtların anahtarı veritabanına işlenmemiş ve yedek " +
+  "klasöründe yedek bulunmuyor: okunamayan dosya korunan bir veriyi açmıyor. Dosyayı " +
+  "kenara alıp kurulum sihirbazına dönebilirsiniz. Dosya silinmez, veri klasöründe " +
+  "“guvenlik-arsiv” adıyla " +
+  "kalır; yönetici parolası yeniden kurulur ve yeni bir kurtarma anahtarı verilir.";

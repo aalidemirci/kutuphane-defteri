@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { KapiYonlendirmesi } from "./KurulumKapisi";
 import type { SetupStatus } from "./modules/okul/api";
+import { KURULU_DURUM } from "./test/kurulumDurumu";
 
 const okulApiMock = vi.hoisted(() => ({ getSetupStatus: vi.fn() }));
 
@@ -20,16 +21,16 @@ vi.mock("./modules/okul/api", async (importOriginal) => {
 
 import KurulumKapisi from "./KurulumKapisi";
 
-const TAMAM: SetupStatus = {
-  setup_completed: true,
-  school_name: "Okul",
-  has_active_school_year: true,
-  student_count: 1,
-  personnel_count: 1,
-  class_section_count: 1,
-};
+const TAMAM: SetupStatus = KURULU_DURUM;
 
 const EKSIK: SetupStatus = { ...TAMAM, setup_completed: false };
+
+/** Kurulumu eskiden tamamlanmış ama yönetici parolası olmayan veritabanı. */
+const PAROLASIZ_TAMAM: SetupStatus = {
+  ...TAMAM,
+  password_set: false,
+  missing_steps: ["password"],
+};
 
 /** Sihirbaz rotasına düşen yönlendirme sebebini ekrana yazar (sözleşme izi). */
 function SebepIzi() {
@@ -113,6 +114,15 @@ describe("KurulumKapisi", () => {
     await user.click(await screen.findByRole("link", { name: "Kişilere git" }));
     expect(await screen.findByRole("heading", { name: "Kişiler içeriği" })).toBeInTheDocument();
     expect(okulApiMock.getSetupStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it("kurulum tamamlanmış olsa bile yönetici parolası yoksa sihirbaza yönlendirir", async () => {
+    // Parola isteğe bağlı değildir (tasarım §6.3-1): kapı parolayı da sorar.
+    okulApiMock.getSetupStatus.mockResolvedValue(PAROLASIZ_TAMAM);
+    render(<Deneme yol="/kisiler" />);
+    expect(await screen.findByRole("heading", { name: "Sihirbaz içeriği" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Kişiler içeriği" })).not.toBeInTheDocument();
+    expect(screen.getByText("Yönlendiren yol: /kisiler")).toBeInTheDocument();
   });
 
   it("durum okunamazsa kapıyı açar (fail-open)", async () => {

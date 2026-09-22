@@ -26,8 +26,19 @@ export interface GuvenlikDurumu {
   transition_pending: boolean;
   /** "SIFRELENIYOR" | "" (yalnız yarım geçişte dolu). */
   transition: string;
+  /**
+   * Kayıp ekranında "Güvenlik dosyasını sıfırla ve kuruluma dön" yolu açık mı? Yalnız
+   * dosya okunamıyor + kayıtların anahtarı henüz veritabanına işlenmemiş + hiç kişi
+   * kaydı yokken (korunan veri yok). Aksi hâlde backend 409 döner.
+   */
+  reset_available: boolean;
   /** Korunan alanların Türkçe adları — arayüz metni bunları listeler. */
   protected_fields: string[];
+}
+
+/** `POST /security/state/reset/` yanıtı: kenara alınan bozuk dosyanın adı + yeni durum. */
+export interface SifirlamaSonucu extends GuvenlikDurumu {
+  archived_as: string;
 }
 
 /** `POST /security/enable/` yanıtı: durum + TEK SEFERLİK kurtarma anahtarı. */
@@ -69,6 +80,15 @@ export const guvenlikApi = {
     api.post<GuvenlikDurumu>("/security/recover/", { recovery_key, new_password }),
   parolaDegistir: (current_password: string, new_password: string) =>
     api.post<GuvenlikDurumu>("/security/change-password/", { current_password, new_password }),
+  /**
+   * Kurtarma anahtarı çıktısı (PDF). Anahtar yalnız gövdede gider; backend onu
+   * kurtarma sarmalına karşı doğrular, yanlışsa 400 (kademeli gecikmeyle). Anahtar
+   * sunucuda saklanmaz. Kilitliyken 423.
+   */
+  kurtarmaAnahtariPdf: (recovery_key: string) =>
+    api.postBlob("/security/recovery-key/pdf/", { recovery_key }),
+  /** Kayıp ekranındaki "sıfırla ve kuruluma dön" (yalnız `reset_available` iken). */
+  sifirla: () => api.post<SifirlamaSonucu>("/security/state/reset/"),
   // Yedekten geri yükleme (Güvenlik sekmesi; güvenlik dosyası kayıpken de açık).
   // Parola/kurtarma anahtarı yalnız form gövdesinde taşınır; `geriYukle` çok
   // parçalı gönderir (dosya yüklemesi ile aynı uç — kaynak `name` YA DA `file`).

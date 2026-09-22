@@ -98,3 +98,21 @@ it("beklenmeyen hatada genel iletiyi gösterir", async () => {
 
   expect(await screen.findByText("Şablon indirilemedi.")).toBeInTheDocument();
 });
+
+it("başarılı indirmede `onIndirildi` çağrılır (yol haritası maddesi), hatada çağrılmaz", async () => {
+  const onIndirildi = vi.fn();
+  mocks.catalogTemplate.mockRejectedValueOnce(new TypeError("ağ yok"));
+  render(
+    <SnackbarProvider>
+      <KatalogSablonuKarti onIndirildi={onIndirildi} />
+    </SnackbarProvider>,
+  );
+
+  await userEvent.click(screen.getByRole("button", { name: /Şablonu indir/ }));
+  await screen.findByText("Şablon indirilemedi.");
+  expect(onIndirildi).not.toHaveBeenCalled();
+
+  mocks.catalogTemplate.mockResolvedValue(new Blob(["xlsx"]));
+  await userEvent.click(screen.getByRole("button", { name: /Şablonu indir/ }));
+  await waitFor(() => expect(onIndirildi).toHaveBeenCalledTimes(1));
+});

@@ -18,7 +18,22 @@ export const GOREVLI_EKRANI_BASLIGI = "Görevli Kipi";
 export const GOREVLI_EKRANI_METNI =
   "Bu kipte yalnız masa işleri yapılır; yönetici işlemleri için yönetici kipine geçin.";
 
-export default function GorevliEkrani({ onGecti }: { onGecti: (ozet: KipOzeti) => void }) {
+/**
+ * Kurulum sırasında, kurtarma anahtarı doğrulanmadan görevli kipine düşülürse
+ * (boşta süre, Kilitle, kısayol) gösterilir: anahtar kaybolmadı, yönetici kipine
+ * dönülünce sihirbaz onu yeniden gösterir (`guvenlik/bekleyenAnahtar`).
+ */
+export const BEKLEYEN_ANAHTAR_METNI =
+  "Kurtarma anahtarınız henüz doğrulanmadı. Yönetici kipine geçtiğinizde Kurulum Sihirbazı anahtarı yeniden gösterir; programı kapatmayın.";
+
+export default function GorevliEkrani({
+  onGecti,
+  anahtarBekliyor = false,
+}: {
+  onGecti: (ozet: KipOzeti) => void;
+  /** Kurulumda doğrulanmamış kurtarma anahtarı bellekte bekliyor mu? */
+  anahtarBekliyor?: boolean;
+}) {
   const [diyalogAcik, setDiyalogAcik] = useState(false);
 
   return (
@@ -27,6 +42,12 @@ export default function GorevliEkrani({ onGecti }: { onGecti: (ozet: KipOzeti) =
         <Icon name="badge" size="5xl" className="text-primary" />
         <h1 className="mt-3 text-headline-small text-on-surface">{GOREVLI_EKRANI_BASLIGI}</h1>
         <p className="mt-3 text-body-medium text-on-surface-variant">{GOREVLI_EKRANI_METNI}</p>
+        {anahtarBekliyor && (
+          <p className="mt-4 flex items-start gap-2 rounded-shape-sm bg-tertiary-container px-4 py-3 text-left text-body-medium text-on-tertiary-container">
+            <Icon name="key" size="lg" />
+            <span>{BEKLEYEN_ANAHTAR_METNI}</span>
+          </p>
+        )}
         <div className="mt-6 flex justify-center">
           <Button icon="admin_panel_settings" onClick={() => setDiyalogAcik(true)}>
             Yönetici kipine geç

@@ -1,7 +1,8 @@
 // Ayarlar sayfası (DD kalıbı) — altı sekme: ders yılları (dönemlerle), kapalı
 // günler (resmî/dini tatil, öğrenciye kapalı gün; tasarım §6.1 Holiday), şube
-// kataloğu, okul bilgileri (evrak antedi + hazırlık sınıfı), güvenlik (yönetici
-// parolası, yedek) ve güncelleme (yalnız elle denetim, tasarım T11).
+// kataloğu, okul bilgileri (evrak antedi, hazırlık sınıfı, kademe, kısa ad,
+// demirbaş onayı ve no), güvenlik (yönetici parolası, kurtarma anahtarı çıktısı,
+// yedek) ve güncelleme (yalnız elle denetim, tasarım T11).
 
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
@@ -25,8 +26,16 @@ import type { TabItem } from "../../ui/Tabs";
 import TextField from "../../ui/TextField";
 import UpdatePanel from "../guncelleme/UpdatePanel";
 import GuvenlikAyarlari from "../guvenlik/GuvenlikAyarlari";
-import { okulApi } from "../okul/api";
-import type { ClassSection, GradeLevelOption, SchoolTerm, SchoolYear } from "../okul/api";
+import DemirbasAlanlari from "../okul/DemirbasAlanlari";
+import { KISA_AD_EN_COK, SCHOOL_LEVEL_TR, okulApi } from "../okul/api";
+import type {
+  ClassSection,
+  GradeLevelOption,
+  SchoolLevel,
+  SchoolTerm,
+  SchoolYear,
+} from "../okul/api";
+import { okulBilgileriHatalari } from "../okul/okulBilgileri";
 import KapaliGunlerPaneli from "../takvim/KapaliGunlerPaneli";
 
 // TABS[0] varsayılan sekmedir (useTabParam fallback) — başa yeni anahtar EKLEME.
@@ -99,22 +108,6 @@ export default function AyarlarPage() {
   }, []);
   useEffect(loadYears, [loadYears]);
 
-  // Okul adı yalnız Güvenlik sekmesi için: kurtarma anahtarı çıktısında hangi
-  // okula ait olduğu yazar. Okunamazsa boş geçilir (çıktı yine üretilir).
-  const [okulAdi, setOkulAdi] = useState("");
-  useEffect(() => {
-    let iptal = false;
-    okulApi
-      .getSchoolConfig()
-      .then((c) => {
-        if (!iptal) setOkulAdi(c.school_name);
-      })
-      .catch(() => undefined);
-    return () => {
-      iptal = true;
-    };
-  }, []);
-
   return (
     <div className="space-y-6">
       <div className="kd-page-header">
@@ -148,7 +141,7 @@ export default function AyarlarPage() {
         {tab === "kapali-gunler" && <KapaliGunlerPaneli />}
         {tab === "subeler" && <SubelerPanel years={years} yearsLoading={yearsLoading} />}
         {tab === "okul" && <OkulBilgileriPanel />}
-        {tab === "guvenlik" && <GuvenlikAyarlari okulAdi={okulAdi} />}
+        {tab === "guvenlik" && <GuvenlikAyarlari />}
         {tab === "guncelleme" && <UpdatePanel />}
       </div>
 
@@ -161,7 +154,7 @@ export default function AyarlarPage() {
             to="/kurulum"
             icon="checklist"
             title="Kurulum Sihirbazı"
-            description="Okul bilgileri, ders yılı ve kişi aktarma adımlarını yeniden gözden geçirin."
+            description="Yönetici parolası, okul bilgileri, ders yılı ve kapalı gün adımlarını yeniden gözden geçirin."
           />
         </div>
       </section>
@@ -658,8 +651,13 @@ function SubelerPanel({ years, yearsLoading }: { years: SchoolYear[]; yearsLoadi
 }
 
 // ---------------------------------------------------------------------------
-// 3. Okul bilgileri (kurum künyesi + hazırlık sınıfı)
+// 3. Okul bilgileri (kurum künyesi, hazırlık sınıfı, kademe, kısa ad, demirbaş)
 // ---------------------------------------------------------------------------
+
+const KADEME_SECENEKLERI = (Object.keys(SCHOOL_LEVEL_TR) as SchoolLevel[]).map((k) => ({
+  value: k,
+  label: SCHOOL_LEVEL_TR[k],
+}));
 
 function OkulBilgileriPanel() {
   const [okulAdi, setOkulAdi] = useState("");
@@ -667,6 +665,12 @@ function OkulBilgileriPanel() {
   const [ilce, setIlce] = useState("");
   const [mudur, setMudur] = useState("");
   const [hazirlikVar, setHazirlikVar] = useState(false);
+  const [kademe, setKademe] = useState<SchoolLevel | "">("");
+  // Kademe bir kez kaydedildiyse seçicide boş ("Seçin") seçeneği sunulmaz.
+  const [kademeKayitli, setKademeKayitli] = useState(false);
+  const [kisaAd, setKisaAd] = useState("");
+  const [demirbasOnayi, setDemirbasOnayi] = useState(false);
+  const [demirbasNo, setDemirbasNo] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -684,6 +688,11 @@ function OkulBilgileriPanel() {
         setIlce(c.district);
         setMudur(c.principal_name);
         setHazirlikVar(c.has_prep_class);
+        setKademe(c.kademe);
+        setKademeKayitli(c.kademe !== "");
+        setKisaAd(c.kisa_ad);
+        setDemirbasOnayi(c.demirbas_onayi);
+        setDemirbasNo(c.demirbas_no);
         setError(null);
       })
       .catch((e: unknown) =>
@@ -699,9 +708,16 @@ function OkulBilgileriPanel() {
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setBusy(true);
     setError(null);
-    setFieldErrors({});
+    // Sihirbazın 2. adımıyla aynı zorunlu alan kuralı: kurulum bittikten sonra
+    // kademe, kısa ad ya da demirbaş onayı buradan boşaltılamaz (backend de reddeder).
+    const hatalar = okulBilgileriHatalari({ okulAdi, kademe, kisaAd, demirbasOnayi });
+    setFieldErrors(hatalar);
+    if (Object.keys(hatalar).length > 0) {
+      setError("Zorunlu alanları doldurun.");
+      return;
+    }
+    setBusy(true);
     try {
       await okulApi.updateSchoolConfig({
         school_name: okulAdi.trim(),
@@ -709,7 +725,12 @@ function OkulBilgileriPanel() {
         district: ilce.trim(),
         principal_name: mudur.trim(),
         has_prep_class: hazirlikVar,
+        kademe,
+        kisa_ad: kisaAd.trim(),
+        demirbas_onayi: demirbasOnayi,
+        demirbas_no: demirbasNo.trim(),
       });
+      setKademeKayitli(true);
       snackbar.success("Okul bilgileri kaydedildi.");
     } catch (err) {
       const split = splitApiError(err, "Okul bilgileri kaydedilemedi.");
@@ -726,8 +747,8 @@ function OkulBilgileriPanel() {
     <Card elevation={1} className="p-6">
       <p className="text-title-medium text-on-surface">Okul bilgileri</p>
       <p className="mt-1 text-body-medium text-on-surface-variant">
-        Programın bastığı evrakın antedi bu bilgilerden üretilir. Hazırlık sınıfı varsa sınıf
-        düzeylerine Hazırlık eklenir.
+        Programın bastığı evrakın antedi, etiketler ve üye kartları bu bilgilerden üretilir.
+        Hazırlık sınıfı varsa sınıf düzeylerine Hazırlık eklenir.
       </p>
       {error && (
         <div className="mt-4">
@@ -771,6 +792,34 @@ function OkulBilgileriPanel() {
           ]}
           error={fieldErrors.has_prep_class}
         />
+        <Select
+          label="Kademe"
+          required
+          value={kademe}
+          onChange={(e) => setKademe(e.target.value as SchoolLevel | "")}
+          // Kayıtlı bir kademe varken boş seçenek sunulmaz (zorunlu alan geri alınamaz).
+          placeholder={kademeKayitli ? undefined : "Seçin"}
+          options={KADEME_SECENEKLERI}
+          error={fieldErrors.kademe}
+        />
+        <TextField
+          label="Kısa ad"
+          required
+          maxLength={KISA_AD_EN_COK}
+          value={kisaAd}
+          onChange={(e) => setKisaAd(e.target.value)}
+          error={fieldErrors.kisa_ad}
+          helperText={`Etiketlerde ve üye kartlarında basılır; en çok ${KISA_AD_EN_COK} karakter.`}
+        />
+        <div className="sm:col-span-2">
+          <DemirbasAlanlari
+            onay={demirbasOnayi}
+            no={demirbasNo}
+            errors={fieldErrors}
+            onOnay={setDemirbasOnayi}
+            onNo={setDemirbasNo}
+          />
+        </div>
         <div className="flex justify-end sm:col-span-2">
           <Button type="submit" icon="check" disabled={busy}>
             {busy ? "Kaydediliyor…" : "Kaydet"}

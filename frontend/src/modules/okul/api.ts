@@ -98,15 +98,69 @@ export interface HolidaySeedResult {
 // Kurulum sihirbazı / kurum künyesi
 // ---------------------------------------------------------------------------
 
-/** `GET /setup/status/` — sihirbaz kapısı + sicil doluluk sayaçları. */
+/**
+ * Sihirbaz adımları, sırasıyla — backend `services/setup.py::SETUP_STEPS` ile BİREBİR:
+ * yönetici parolası + kurtarma anahtarı → okul bilgileri → ders yılı ve kapalı günler.
+ */
+export type SetupStep = "password" | "school" | "calendar";
+
+export const SETUP_STEPS: readonly SetupStep[] = ["password", "school", "calendar"];
+
+/** Aktif ders yılının özeti (`setup/status/` içinde; kişisel veri yok). */
+export interface ActiveSchoolYearSummary {
+  id: number;
+  name: string;
+  start_date: string;
+  end_date: string;
+  /** İki dönemin tarihleri tanımlı mı? (kurulumu tamamlamanın koşulu) */
+  terms_ready: boolean;
+}
+
+/** Başlangıç Yol Haritası'nda kullanıcının işaretlediği maddeler (backend tek kaynak). */
+export type RoadmapManualItem =
+  "katalog_sablonu" | "kurtarma_zarfi" | "parola_paylasimi" | "btr_gorusmesi";
+
+export interface RoadmapState {
+  /** İşaretlenen madde → işaretlendiği gün (ISO). */
+  marks: Partial<Record<RoadmapManualItem, string>>;
+  /** Bütün maddeler tamamlanınca kullanıcı kartı gizleyebilir. */
+  hidden: boolean;
+}
+
+/**
+ * `GET /setup/status/` — sihirbaz kapısı, adım durumları, sicil sayaçları ve yol
+ * haritası. Masaüstü sağlık denetiminin de ucudur: hafiftir ve KİŞİSEL VERİ İÇERMEZ.
+ */
 export interface SetupStatus {
   setup_completed: boolean;
+  /** Yönetici parolası kurulu mu? Kurulu değilse sihirbaz ilk adımdan açılır. */
+  password_set: boolean;
   school_name: string;
+  /** Okul adı, kademe, kısa ad ve demirbaş onayı tamam mı? */
+  school_info_complete: boolean;
   has_active_school_year: boolean;
+  active_school_year: ActiveSchoolYearSummary | null;
+  /** Eksik adımlar, sırasıyla (hepsi tamamsa boş) — backend kapısıyla aynı hesap. */
+  missing_steps: SetupStep[];
   student_count: number;
   personnel_count: number;
   class_section_count: number;
+  /** Aktif ders yılıyla kesişen "öğrenciye kapalı gün" kaydı sayısı. */
+  school_break_count: number;
+  roadmap: RoadmapState;
 }
+
+/** Okulun kademesi — backend `SchoolLevel` ile birebir; boş = henüz seçilmedi. */
+export type SchoolLevel = "ILKOKUL" | "ORTAOKUL" | "ORTAOGRETIM";
+
+export const SCHOOL_LEVEL_TR: Record<SchoolLevel, string> = {
+  ILKOKUL: "İlkokul",
+  ORTAOKUL: "Ortaokul",
+  ORTAOGRETIM: "Ortaöğretim (lise)",
+};
+
+/** Kısa okul adının üst sınırı (etiket ve kartlarda basılır). */
+export const KISA_AD_EN_COK = 24;
 
 /** Kurum künyesi — evrak antedi buradan çözülür (`setup_completed` salt-okunur). */
 export interface SchoolConfig {
@@ -116,6 +170,13 @@ export interface SchoolConfig {
   principal_name: string;
   /** Açıksa sınıf düzeylerine Hazırlık (0) eklenir. */
   has_prep_class: boolean;
+  kademe: SchoolLevel | "";
+  /** Etiket ve kartlarda basılan kısa okul adı (en çok 24 karakter). */
+  kisa_ad: string;
+  /** "Bu bilgisayar okul demirbaşıdır" onayı (kurulumda zorunlu). */
+  demirbas_onayi: boolean;
+  /** Bilgisayarın demirbaş no'su (isteğe bağlı). */
+  demirbas_no: string;
   setup_completed: boolean;
 }
 
@@ -428,8 +489,17 @@ export const okulApi = {
   updateSchoolConfig: (body: SchoolConfigBody): Promise<SchoolConfig> =>
     api.put<SchoolConfig>("/setup/school-config/", body),
 
+  /** Eksik adımda 400 `kurulum_eksik` — ileti hangi adımın eksik olduğunu söyler. */
   completeSetup: (): Promise<{ setup_completed: boolean }> =>
     api.post<{ setup_completed: boolean }>("/setup/complete/"),
+
+  /** Yol haritasında elle işaretlenen bir maddeyi işaretler ya da işareti kaldırır. */
+  markRoadmapItem: (item: RoadmapManualItem, done: boolean): Promise<RoadmapState> =>
+    api.post<RoadmapState>("/setup/roadmap/", { item, done }),
+
+  /** Kartı gizler (yalnız bütün maddeler tamamken) ya da yeniden gösterir. */
+  setRoadmapHidden: (hidden: boolean): Promise<RoadmapState> =>
+    api.post<RoadmapState>("/setup/roadmap/", { hidden }),
 
   /** Öğrenim seviyeleri — okul içi sabit 1-12, hazırlık açıksa başta 0. */
   getGradeLevels: (): Promise<GradeLevelsResponse> => fetchGradeLevels(),
