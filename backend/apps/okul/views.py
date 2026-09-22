@@ -38,6 +38,7 @@ from apps.okul.permissions import RequiresAdminPassword
 from apps.okul.serializers import (
     ClassSectionSerializer,
     ImportRequestSerializer,
+    PersonnelMergeSerializer,
     PersonnelSerializer,
     SchoolConfigSerializer,
     SchoolTermConfigurationSerializer,
@@ -226,7 +227,7 @@ class PersonnelDetailView(generics.RetrieveUpdateDestroyAPIView[Personnel]):
     permission_classes = [RequiresAdminPassword]
 
     def get_queryset(self) -> Any:
-        return selectors.personnel_list()
+        return selectors.personnel_all()
 
     def perform_update(self, serializer: serializers.BaseSerializer[Personnel]) -> None:
         assert serializer.instance is not None
@@ -236,6 +237,59 @@ class PersonnelDetailView(generics.RetrieveUpdateDestroyAPIView[Personnel]):
 
     def perform_destroy(self, instance: Personnel) -> None:
         persons_service.delete_personnel(instance)
+
+
+# ---------------------------------------------------------------------------
+# Ayrılış ve birleştirme (tasarım §6.1 unutma kancası, §8.3 mutabakat)
+# ---------------------------------------------------------------------------
+class StudentLeaveView(APIView):
+    """`POST students/<pk>/leave/` — "Ayrıldı olarak işaretle" (ayrılış yolu).
+
+    Yanıt `{deleted, student}`: hiç üye olmamış ve açık yükümlülüğü olmayan
+    öğrenci o anda katı silinir (`deleted: true`, `student: null`); aksi hâlde
+    ayrılmış kayıt döner.
+    """
+
+    permission_classes = [RequiresAdminPassword]
+
+    def post(self, request: Request, pk: int) -> Response:
+        student = get_object_or_404(selectors.students_all(), pk=pk)
+        silindi = persons_service.leave_student(student)
+        return Response(
+            {"deleted": silindi, "student": None if silindi else StudentSerializer(student).data}
+        )
+
+
+class PersonnelLeaveView(APIView):
+    """`POST personnel/<pk>/leave/` — "Ayrıldı olarak işaretle" (ayrılış yolu)."""
+
+    permission_classes = [RequiresAdminPassword]
+
+    def post(self, request: Request, pk: int) -> Response:
+        person = get_object_or_404(selectors.personnel_all(), pk=pk)
+        silindi = persons_service.leave_personnel(person)
+        return Response(
+            {"deleted": silindi, "personnel": None if silindi else PersonnelSerializer(person).data}
+        )
+
+
+class PersonnelMergeView(APIView):
+    """`POST personnel/<pk>/merge/` gövde `{into_id}` — "olası aynı kişi" birleştirmesi.
+
+    `<pk>` (kaynak: listede artık bulunmayan eski kayıt) `into_id` (hedef: yeni
+    adla gelen kayıt) kaydına birleşir; bağlar birleştirme kancalarıyla taşınır,
+    kaynak katı silinir. İki kayıt da canlı olmalıdır (silinmiş kayıt 404).
+    """
+
+    permission_classes = [RequiresAdminPassword]
+
+    def post(self, request: Request, pk: int) -> Response:
+        req = PersonnelMergeSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        source = get_object_or_404(selectors.personnel_all(), pk=pk)
+        target = get_object_or_404(selectors.personnel_all(), pk=req.validated_data["into_id"])
+        merged = persons_service.merge_personnel(source, target)
+        return Response(PersonnelSerializer(merged).data)
 
 
 class ClassSectionListCreateView(generics.ListCreateAPIView[ClassSection]):
@@ -284,38 +338,56 @@ class _BaseImportView(APIView):
     file_handler: str = ""  # import_service fonksiyon adı (dosya yolu)
     text_handler: str = ""  # import_service fonksiyon adı (metin yolu)
 
+    def options_for(self, validated: dict[str, Any]) -> dict[str, Any]:
+        """Mutabakat seçenekleri (öğrenci: `full_list`, personel: `mark_left_ids`)."""
+        return {}
+
     def post(self, request: Request) -> Response:
         serializer = ImportRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        uploaded = serializer.validated_data.get("file")
+        validated = dict(serializer.validated_data)
+        uploaded = validated.get("file")
+        secenekler = self.options_for(validated)
         try:
             if uploaded is not None:
                 handler = getattr(import_service, self.file_handler)
-                report = handler(file_bytes=uploaded.read(), file_name=uploaded.name or "")
+                report = handler(
+                    file_bytes=uploaded.read(), file_name=uploaded.name or "", **secenekler
+                )
             else:
                 handler = getattr(import_service, self.text_handler)
-                report = handler(text=serializer.validated_data["text"])
+                report = handler(text=validated["text"], **secenekler)
         except ParserError as exc:
             raise serializers.ValidationError(str(exc)) from exc
         return Response(report.to_dict())
 
 
-class StudentImportPreviewView(_BaseImportView):
+class _StudentImportView(_BaseImportView):
+    def options_for(self, validated: dict[str, Any]) -> dict[str, Any]:
+        return {"full_list": bool(validated.get("full_list", False))}
+
+
+class _PersonnelImportView(_BaseImportView):
+    def options_for(self, validated: dict[str, Any]) -> dict[str, Any]:
+        return {"mark_left_ids": list(validated.get("mark_left_ids") or [])}
+
+
+class StudentImportPreviewView(_StudentImportView):
     file_handler = "preview_students_file"
     text_handler = "preview_students_text"
 
 
-class StudentImportCommitView(_BaseImportView):
+class StudentImportCommitView(_StudentImportView):
     file_handler = "commit_students_file"
     text_handler = "commit_students_text"
 
 
-class PersonnelImportPreviewView(_BaseImportView):
+class PersonnelImportPreviewView(_PersonnelImportView):
     file_handler = "preview_personnel_file"
     text_handler = "preview_personnel_text"
 
 
-class PersonnelImportCommitView(_BaseImportView):
+class PersonnelImportCommitView(_PersonnelImportView):
     file_handler = "commit_personnel_file"
     text_handler = "commit_personnel_text"
 

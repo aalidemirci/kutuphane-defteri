@@ -17,6 +17,7 @@ from apps.okul.models import (
     ClassSection,
     Holiday,
     HolidayKind,
+    MemberKind,
     Personnel,
     SchoolConfig,
     SchoolTerm,
@@ -169,7 +170,21 @@ class HolidaySeedRequestSerializer(serializers.Serializer[dict[str, Any]]):
 
 
 class PersonnelSerializer(serializers.ModelSerializer[Personnel]):
+    """Personel sicili. Unvan ve branş YOKTUR (V2-01).
+
+    `is_active` ve `left_at` salt okunurdur: ayrılış yalnız `personnel/<pk>/leave/`
+    ayrılış yolundan geçer (kancalar + katı silme kararı, tasarım §6.1); gövdeyle
+    gönderilen değer yok sayılır.
+    """
+
     full_name = serializers.CharField(read_only=True)
+    member_kind = serializers.ChoiceField(
+        choices=MemberKind.choices,
+        default=MemberKind.TEACHER,
+        error_messages={
+            "invalid_choice": "Geçerli bir üye türü seçin (öğretmen ya da diğer personel)."
+        },
+    )
 
     class Meta:
         model = Personnel
@@ -177,11 +192,12 @@ class PersonnelSerializer(serializers.ModelSerializer[Personnel]):
             "id",
             "first_name",
             "last_name",
-            "title",
-            "branch",
-            "is_active",
             "full_name",
+            "member_kind",
+            "is_active",
+            "left_at",
         ]
+        read_only_fields = ["is_active", "left_at"]
 
 
 class ClassSectionSerializer(serializers.ModelSerializer[ClassSection]):
@@ -230,8 +246,28 @@ class ClassSectionSerializer(serializers.ModelSerializer[ClassSection]):
 
 
 class StudentSerializer(serializers.ModelSerializer[Student]):
+    """Öğrenci sicili.
+
+    Okul no şifreli + kör indekslidir (T14). Teklik kısıtı kör indekstedir;
+    Türkçe teklik iletisi SERVİSTEN gelir (`persons.ensure_student_number_free`).
+    Alan elle tanımlanır (`validators=[]`): DRF tek alanlı kısıttan otomatik
+    UniqueValidator türetmesin (CLAUDE.md §3 tuzağı; şifreli sütunda zaten
+    çalışmazdı).
+
+    `status` ve `left_at` salt okunurdur: ayrılış `students/<pk>/leave/`
+    ayrılış yolundan, yeniden aktifleşme e-Okul aktarımından geçer.
+    """
+
     full_name = serializers.CharField(read_only=True)
     class_label = serializers.CharField(read_only=True)
+    student_number = serializers.CharField(
+        max_length=16,
+        required=False,
+        allow_blank=True,
+        default="",
+        validators=[],
+        error_messages={"max_length": "Okul no en çok 16 karakter olabilir."},
+    )
 
     class Meta:
         model = Student
@@ -245,7 +281,13 @@ class StudentSerializer(serializers.ModelSerializer[Student]):
             "class_section",
             "class_label",
             "status",
+            "left_at",
         ]
+        read_only_fields = ["status", "left_at"]
+        validators: list[Any] = []
+
+    def validate_student_number(self, value: str) -> str:
+        return value.strip()
 
     def validate_class_level(self, value: int | None) -> int | None:
         if value is None:
@@ -260,10 +302,24 @@ class StudentSerializer(serializers.ModelSerializer[Student]):
 
 
 class ImportRequestSerializer(serializers.Serializer[dict[str, Any]]):
-    """İçe aktarma girdisi: Excel dosyası (e-Okul .xls / şablon .xlsx) VEYA pano metni."""
+    """İçe aktarma girdisi: Excel dosyası (e-Okul .xls / şablon .xlsx) VEYA pano metni.
+
+    Mutabakat seçenekleri (tasarım §8.3; önizleme ve uygulama AYNI kodu koşar,
+    ikisi de kabul eder):
+
+    - `full_list` (öğrenci): "Bu dosya okulun tam listesidir" onayı. Verilmezse
+      karşılaştırma YALNIZ dosyada bulunan şubelerle yapılır (EK-21).
+    - `mark_left_ids` (personel): listede olmayan aktif personelden ayrıldı
+      sayılacaklar; varsayılan hiçbiri (EK-20). Çok parçalı gövdede alan
+      tekrarlanarak gönderilir.
+    """
 
     file = serializers.FileField(required=False)
     text = serializers.CharField(required=False, allow_blank=True, trim_whitespace=False)
+    full_list = serializers.BooleanField(required=False, default=False)
+    mark_left_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1), required=False, default=list
+    )
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         has_file = attrs.get("file") is not None
@@ -273,3 +329,15 @@ class ImportRequestSerializer(serializers.Serializer[dict[str, Any]]):
                 "Dosya (file) veya yapıştırılan metin (text) alanlarından tam olarak biri gerekli."
             )
         return attrs
+
+
+class PersonnelMergeSerializer(serializers.Serializer[dict[str, Any]]):
+    """`POST personnel/<pk>/merge/` — `<pk>` (kaynak) `into_id` (hedef) kaydına birleşir."""
+
+    into_id = serializers.IntegerField(
+        min_value=1,
+        error_messages={
+            "required": "Birleştirilecek hedef kayıt seçilmelidir.",
+            "invalid": "Hedef kayıt kimliği sayısal olmalıdır.",
+        },
+    )

@@ -18,7 +18,10 @@ STUDENT_TEMPLATE_HEADERS: tuple[str, ...] = (
     "Öğrenci Soyadı",
 )
 
-PERSONNEL_TEMPLATE_HEADERS: tuple[str, ...] = ("Adı", "Soyadı", "Görevi", "Branşı")
+#: Personel şablonunda unvan ve branş sütunu YOKTUR (tasarım §6.1, V2-01). "Üye
+#: Türü" yalnız "Öğretmen" ya da "Diğer personel" değerini bekler; ayrıştırıcı onu
+#: e-Okul'un "Görevi" sütunuyla aynı yoldan üye türüne çevirir, metnini saklamaz.
+PERSONNEL_TEMPLATE_HEADERS: tuple[str, ...] = ("Adı", "Soyadı", "Üye Türü")
 
 
 def _workbook_bytes(headers: tuple[str, ...], example: tuple[str, ...]) -> bytes:
@@ -51,5 +54,5 @@ def personnel_template_xlsx() -> bytes:
     """Örnek satırlı personel şablonu."""
     return _workbook_bytes(
         PERSONNEL_TEMPLATE_HEADERS,
-        ("ÖRNEK", "ÖĞRETMEN", "Öğretmen", "Matematik"),
+        ("ÖRNEK", "ÖĞRETMEN", "Öğretmen"),
     )

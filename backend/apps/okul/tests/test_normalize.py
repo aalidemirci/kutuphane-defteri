@@ -107,3 +107,36 @@ class TestSplitFullName:
     def test_ham_birakilir_title_case_uygulanmaz(self) -> None:
         """TR büyük harf tuzağı: görüntü biçimi başka katmanda (CLAUDE.md §2)."""
         assert normalize.split_full_name("emre can yılmaz") == ("emre can", "yılmaz")
+
+
+class TestStudentNumber:
+    """Okul no'nun kör indeks normalleştirmesi (T14): aynı numara aynı değere iner."""
+
+    def test_bastaki_sifirlar_atilir(self) -> None:
+        assert normalize.normalize_student_number("0123") == "123"
+        assert normalize.normalize_student_number("00123") == "123"
+
+    def test_bosluklar_atilir(self) -> None:
+        assert normalize.normalize_student_number(" 1 23 ") == "123"
+        assert normalize.normalize_student_number("\t0 1 2 3\n") == "123"
+
+    def test_yalniz_sifir_sifira_iner(self) -> None:
+        assert normalize.normalize_student_number("000") == "0"
+
+    def test_bos_ve_none_bos_doner(self) -> None:
+        assert normalize.normalize_student_number("") == ""
+        assert normalize.normalize_student_number("   ") == ""
+        assert normalize.normalize_student_number(None) == ""
+
+    def test_harfli_numaraya_dokunulmaz(self) -> None:
+        """Rakam dışı numarada sıfır atılmaz, tahmin yürütülmez ('A0123' kalır)."""
+        assert normalize.normalize_student_number("A0123") == "A0123"
+        assert normalize.normalize_student_number(" A 01 ") == "A01"
+
+    def test_unicode_basamak_rakam_sayilmaz(self) -> None:
+        """'²' `str.isdigit()`'i geçer ama okul numarası rakamı değildir."""
+        assert normalize.normalize_student_number("0²") == "0²"
+
+    def test_excel_ondalik_bicimi_burada_cozulmez(self) -> None:
+        """'123.0' ayrıştırıcıda çözülür (`excel_ogrenci._str`); iki ayrı kural olmasın."""
+        assert normalize.normalize_student_number("123.0") == "123.0"

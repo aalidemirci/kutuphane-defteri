@@ -30,12 +30,16 @@ from apps.okul.models import Student
 from apps.okul.permissions import RequiresAdminPassword
 
 # Kişi (öğrenci/personel; F6'da üyelik) yazan uçlar — izin sınıfını taşımalıdır.
+# Ayrılış (katı silme dahil) ve birleştirme de kişi yazar (F1-C).
 KISI_YAZAN_UCLAR = frozenset(
     {
         "student-list",
         "student-detail",
+        "student-leave",
         "personnel-list",
         "personnel-detail",
+        "personnel-leave",
+        "personnel-merge",
         "import-students-preview",
         "import-students-commit",
         "import-personnel-preview",
@@ -156,7 +160,8 @@ def test_parolasizken_kisi_yazan_her_uc_yazma_yontemiyle_409_doner(parolasiz: Pa
             assert yanit.json() == PAROLA_GEREKLI_GOVDESI, (ad, yontem)
             denenen += 1
     # 2 liste (POST) + 2 ayrıntı (PUT/PATCH/DELETE) + 4 içe aktarma (POST)
-    assert denenen == 2 + 2 * 3 + 4
+    # + 2 ayrılış (POST) + 1 birleştirme (POST)
+    assert denenen == 2 + 2 * 3 + 4 + 2 + 1
     assert not Student.all_objects.exists()
 
 

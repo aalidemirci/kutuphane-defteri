@@ -23,7 +23,7 @@ export default function PanelPage() {
           to="/kisiler"
           icon="group"
           title="Kişiler"
-          description="Öğrenci ve öğretmen sicili; e-Okul listelerinden içe aktarma."
+          description="Öğrenci, öğretmen ve diğer personel sicili; e-Okul listelerinden içe aktarma."
         />
         <HubFeatureCard
           to="/ayarlar"

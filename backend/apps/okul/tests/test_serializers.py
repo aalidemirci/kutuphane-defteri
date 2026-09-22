@@ -71,11 +71,12 @@ def client() -> APIClient:
                 "class_section",
                 "class_label",
                 "status",
+                "left_at",
             },
         ),
         (
             PersonnelSerializer,
-            {"id", "first_name", "last_name", "title", "branch", "is_active", "full_name"},
+            {"id", "first_name", "last_name", "full_name", "member_kind", "is_active", "left_at"},
         ),
         (
             ClassSectionSerializer,

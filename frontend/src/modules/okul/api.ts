@@ -1,8 +1,9 @@
 // `okul` modülü API istemcisi — kurum künyesi/kurulum, ders yılı + dönemler,
-// kapalı günler, kişi sicilleri (öğrenci + personel), şube kataloğu, toplu içe aktarma ve
-// şablon indirme uçları. Backend `apps/okul/{urls,views,serializers}.py` ile
-// BİREBİR. TCKN, veli, cinsiyet ve fotoğraf alanları YOKTUR — o veriler hiç
-// toplanmaz (tasarım §6.1).
+// kapalı günler, kişi sicilleri (öğrenci + personel; ayrılış ve birleştirme), şube
+// kataloğu, toplu içe aktarma (e-Okul mutabakatı dahil) ve şablon indirme uçları.
+// Backend `apps/okul/{urls,views,serializers}.py` ile BİREBİR. TCKN, veli,
+// cinsiyet, fotoğraf, unvan ve branş alanları YOKTUR — o veriler hiç toplanmaz
+// (tasarım §6.1).
 
 import { api } from "../../lib/api";
 import { getGradeLevels as fetchGradeLevels } from "../../lib/gradeLevels";
@@ -132,7 +133,11 @@ export const STUDENT_STATUS_TR: Record<StudentStatus, string> = {
   LEFT: "Ayrıldı",
 };
 
-/** Öğrenci sicili — StudentSerializer ile birebir (`full_name`/`class_label` türetilmiş). */
+/**
+ * Öğrenci sicili — StudentSerializer ile birebir (`full_name`/`class_label` türetilmiş).
+ * Okul no şifreli saklanır; arama ve eşleştirme numaranın tamamıyla yapılır.
+ * `status` ve `left_at` salt okunurdur: ayrılış `leaveStudent` ile yapılır.
+ */
 export interface Student {
   id: number;
   first_name: string;
@@ -143,35 +148,62 @@ export interface Student {
   class_section: string;
   class_label: string;
   status: StudentStatus;
+  /** Ayrılış tarihi (ISO); aktif öğrencide null. */
+  left_at: string | null;
 }
 
-/** Öğrenci yazma gövdesi — türetilmiş alanlar (full_name/class_label) gönderilmez. */
+/** Öğrenci yazma gövdesi — türetilmiş ve salt okunur alanlar gönderilmez. */
 export interface StudentWriteBody {
   first_name: string;
   last_name: string;
   student_number?: string;
   class_level?: number | null;
   class_section?: string;
-  status?: StudentStatus;
 }
 
-/** Personel sicili — PersonnelSerializer ile birebir (`full_name` türetilmiş). */
+/** Üye türü — backend `MemberKind` ile birebir. */
+export type MemberKind = "TEACHER" | "STAFF";
+
+/** Sözlük: "öğretmen" / "diğer personel" ("personel" tek başına öğretmen anlamında kullanılmaz). */
+export const MEMBER_KIND_TR: Record<MemberKind, string> = {
+  TEACHER: "Öğretmen",
+  STAFF: "Diğer personel",
+};
+
+/**
+ * Personel sicili — PersonnelSerializer ile birebir (`full_name` türetilmiş).
+ * Unvan ve branş bu programda YOKTUR (branş, küçük okulda öğretmeni kişiye bağlar).
+ * `is_active` ve `left_at` salt okunurdur: ayrılış `leavePersonnel` ile yapılır.
+ */
 export interface Personnel {
   id: number;
   first_name: string;
   last_name: string;
-  title: string;
-  branch: string;
-  is_active: boolean;
   full_name: string;
+  member_kind: MemberKind;
+  is_active: boolean;
+  /** Ayrılış tarihi (ISO); aktif kişide null. */
+  left_at: string | null;
 }
 
 export interface PersonnelWriteBody {
   first_name: string;
   last_name: string;
-  title?: string;
-  branch?: string;
-  is_active?: boolean;
+  member_kind?: MemberKind;
+}
+
+/**
+ * Ayrılış sonucu: hiç üye olmamış ve açık işlemi olmayan kişi o anda silinir
+ * (`deleted: true`, kayıt null); aksi hâlde ayrılmış kayıt döner.
+ */
+export interface StudentLeaveResult {
+  deleted: boolean;
+  student: Student | null;
+}
+
+export interface PersonnelLeaveResult {
+  deleted: boolean;
+  personnel: Personnel | null;
 }
 
 /** Şube kataloğu satırı — ClassSectionSerializer ile birebir. */
@@ -231,22 +263,85 @@ interface ImportReportBase {
   skipped: ImportIssue[];
 }
 
+/** Öğrenci aktarımının bir şubedeki etkisi (kişisiz sayılar). */
+export interface ClassImpact {
+  /** "10/A"; sınıfı olmayan öğrencilerde boş. */
+  class_label: string;
+  class_level: number | null;
+  class_section: string;
+  created: number;
+  updated: number;
+  unchanged: number;
+  /** Dosyada olmadığı için ayrılmış sayılacak öğrenci sayısı. */
+  leaving: number;
+}
+
+/** Ayrılacak öğrenci — ad yalnız bu yanıtta gelir, kalıcı rapora yazılmaz. */
+export interface LeavingStudent {
+  id: number;
+  full_name: string;
+  student_number: string;
+  class_label: string;
+}
+
 export interface StudentImportReport extends ImportReportBase {
   created_students: number;
   updated_students: number;
   unchanged_students: number;
+  /** Güncellenenlerin içinde: ayrılmışken aynı numarayla dönenler. */
+  reactivated_students: number;
+  leaving_students: number;
+  /** "Bu dosya okulun tam listesidir" onayıyla mı çalıştı? */
+  full_list: boolean;
+  classes: ClassImpact[];
+  leaving: LeavingStudent[];
+}
+
+/** Listede olmayan aktif kişi (ad yalnız bu yanıtta gelir). */
+export interface MissingPersonnel {
+  id: number;
+  full_name: string;
+}
+
+/**
+ * "Olası aynı kişi": ada göre eşleşmeyen yeni satır ↔ listede olmayan kayıt.
+ * `new_id` yalnız aktarımdan sonra dolar (önizlemede null); birleştirme
+ * `mergePersonnel(existing_id, new_id)` ile yapılır.
+ */
+export interface SimilarPair {
+  row_number: number;
+  row_name: string;
+  existing_id: number;
+  existing_name: string;
+  new_id: number | null;
 }
 
 export interface PersonnelImportReport extends ImportReportBase {
   created_personnel: number;
   updated_personnel: number;
   unchanged_personnel: number;
+  reactivated_personnel: number;
+  missing_count: number;
+  left_personnel: number;
+  similar_pair_count: number;
+  missing: MissingPersonnel[];
+  similar_pairs: SimilarPair[];
 }
 
 export type ImportReport = StudentImportReport | PersonnelImportReport;
 
 /** İçe aktarma girdisi — dosya yolu (multipart) veya pano metni (JSON). */
 export type ImportInput = { file: File } | { text: string };
+
+/** Öğrenci mutabakatı seçeneği: dosya okulun tam listesi mi? (varsayılan hayır) */
+export interface StudentImportOptions {
+  fullList?: boolean;
+}
+
+/** Personel mutabakatı seçeneği: listede olmayanlardan ayrılacak sayılanlar. */
+export interface PersonnelImportOptions {
+  markLeftIds?: number[];
+}
 
 /**
  * Öğrenci/personel raporlarının farklı adlandırılmış sayaçlarını (created_students
@@ -291,14 +386,35 @@ function asPage<T>(data: Paginated<T> | T[]): Paginated<T> {
     : data;
 }
 
-/** Dosya yolu multipart (`file`), metin yolu JSON (`text`) — backend tam olarak birini bekler. */
-function importRequest<R>(path: string, input: ImportInput): Promise<R> {
+type ImportExtra = Record<string, boolean | number[]>;
+
+/**
+ * Dosya yolu multipart (`file`), metin yolu JSON (`text`) — backend tam olarak birini
+ * bekler. Mutabakat seçenekleri (`full_list`, `mark_left_ids`) iki yolda da gider:
+ * çok parçalı gövdede liste alanı tekrarlanarak eklenir (DRF `ListField`).
+ */
+function importRequest<R>(path: string, input: ImportInput, extra: ImportExtra = {}): Promise<R> {
   if ("file" in input) {
     const form = new FormData();
     form.append("file", input.file);
+    for (const [key, value] of Object.entries(extra)) {
+      if (Array.isArray(value)) value.forEach((v) => form.append(key, String(v)));
+      else form.append(key, String(value));
+    }
     return api.postForm<R>(path, form);
   }
-  return api.post<R>(path, { text: input.text });
+  return api.post<R>(path, { text: input.text, ...extra });
+}
+
+/** Yalnız anlamlı seçenekler gönderilir (varsayılanlar backend'dedir). */
+function studentExtra(options: StudentImportOptions): ImportExtra {
+  return options.fullList ? { full_list: true } : {};
+}
+
+function personnelExtra(options: PersonnelImportOptions): ImportExtra {
+  return options.markLeftIds && options.markLeftIds.length > 0
+    ? { mark_left_ids: options.markLeftIds }
+    : {};
 }
 
 export const okulApi = {
@@ -383,7 +499,12 @@ export const okulApi = {
   updateStudent: (id: number, body: Partial<StudentWriteBody>): Promise<Student> =>
     api.patch<Student>(`/students/${id}/`, body),
 
+  /** Hiç üye olmamış ve açık işlemi olmayan öğrencinin kaydını siler (yoksa 400). */
   deleteStudent: (id: number): Promise<void> => api.del<void>(`/students/${id}/`),
+
+  /** "Ayrıldı olarak işaretle" — ayrılış yolu; kayıt silinebilir (bkz. `deleted`). */
+  leaveStudent: (id: number): Promise<StudentLeaveResult> =>
+    api.post<StudentLeaveResult>(`/students/${id}/leave/`),
 
   // --- Personel ---
 
@@ -407,6 +528,13 @@ export const okulApi = {
 
   deletePersonnel: (id: number): Promise<void> => api.del<void>(`/personnel/${id}/`),
 
+  leavePersonnel: (id: number): Promise<PersonnelLeaveResult> =>
+    api.post<PersonnelLeaveResult>(`/personnel/${id}/leave/`),
+
+  /** "Olası aynı kişi": `sourceId` (eski kayıt) `intoId` (yeni kayıt) kaydına birleşir. */
+  mergePersonnel: (sourceId: number, intoId: number): Promise<Personnel> =>
+    api.post<Personnel>(`/personnel/${sourceId}/merge/`, { into_id: intoId }),
+
   // --- Şube kataloğu ---
 
   listClassSections: async (schoolYear?: number): Promise<ClassSection[]> => {
@@ -425,17 +553,37 @@ export const okulApi = {
 
   // --- İçe aktarma (önizleme hiçbir şey yazmaz; commit gerçek yazar) ---
 
-  previewStudentImport: (input: ImportInput): Promise<StudentImportReport> =>
-    importRequest<StudentImportReport>("/imports/students/preview/", input),
+  previewStudentImport: (
+    input: ImportInput,
+    options: StudentImportOptions = {},
+  ): Promise<StudentImportReport> =>
+    importRequest<StudentImportReport>("/imports/students/preview/", input, studentExtra(options)),
 
-  commitStudentImport: (input: ImportInput): Promise<StudentImportReport> =>
-    importRequest<StudentImportReport>("/imports/students/commit/", input),
+  commitStudentImport: (
+    input: ImportInput,
+    options: StudentImportOptions = {},
+  ): Promise<StudentImportReport> =>
+    importRequest<StudentImportReport>("/imports/students/commit/", input, studentExtra(options)),
 
-  previewPersonnelImport: (input: ImportInput): Promise<PersonnelImportReport> =>
-    importRequest<PersonnelImportReport>("/imports/personnel/preview/", input),
+  previewPersonnelImport: (
+    input: ImportInput,
+    options: PersonnelImportOptions = {},
+  ): Promise<PersonnelImportReport> =>
+    importRequest<PersonnelImportReport>(
+      "/imports/personnel/preview/",
+      input,
+      personnelExtra(options),
+    ),
 
-  commitPersonnelImport: (input: ImportInput): Promise<PersonnelImportReport> =>
-    importRequest<PersonnelImportReport>("/imports/personnel/commit/", input),
+  commitPersonnelImport: (
+    input: ImportInput,
+    options: PersonnelImportOptions = {},
+  ): Promise<PersonnelImportReport> =>
+    importRequest<PersonnelImportReport>(
+      "/imports/personnel/commit/",
+      input,
+      personnelExtra(options),
+    ),
 
   // --- Şablon indirme (xlsx blob) ---
 

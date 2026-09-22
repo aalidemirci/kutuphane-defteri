@@ -264,14 +264,21 @@ class TestPersonelListesi:
         rows = personel_satirlari(temiz, mapping)
         assert len(rows) == 4  # dipnot ve tarih satırı personel sayılmadı
         assert {r.last_name for r in rows} == {"YURTSEVEN", "DALGIÇ", "IŞIKÇI", "ÖZGÜNEŞ"}
-        mudur = next(r for r in rows if r.last_name == "YURTSEVEN")
-        assert (mudur.title, mudur.branch) == ("Müdür", "Tarih")
+        # GÖREVİ sütunu yalnız üye türüne çevrilir; metni satıra girmez (V2-01).
+        assert {r.member_kind for r in rows} == {"TEACHER"}
+        assert not any(r.member_kind_unrecognized for r in rows)
 
-    def test_sozlesmeli_unvani_bozulmaz(self) -> None:
+    def test_gorev_metni_ve_brans_satira_girmez(self) -> None:
+        """e-Okul GÖREVİ ve BRANŞI sütunları satır nesnesinde iz bırakmaz."""
         from apps.okul.excel_personel import detect_columns as personel_sutunlari
         from apps.okul.excel_personel import parse_rows as personel_satirlari
 
         temiz, _ = eokul.hazirla_personel_matrisi(_matris(PERSONEL_LISTESI))
-        rows = personel_satirlari(temiz, personel_sutunlari(temiz))
+        mapping = personel_sutunlari(temiz)
+        assert set(mapping.fields) == {"full_name", "role"}  # BRANŞI eşlenmez
+        rows = personel_satirlari(temiz, mapping)
         sozlesmeli = next(r for r in rows if r.last_name == "ÖZGÜNEŞ")
-        assert sozlesmeli.title == "Sözleşmeli Öğretmen(657 S.K. 4/B)"
+        assert sozlesmeli.member_kind == "TEACHER"
+        degerler = " ".join(str(v) for r in rows for v in vars(r).values())
+        for iz in ("Sözleşmeli", "Müdür", "Tarih", "İngilizce", "KADROLU"):
+            assert iz not in degerler, iz

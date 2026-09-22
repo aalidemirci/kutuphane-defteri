@@ -19,8 +19,8 @@ import pytest
 from django.http import StreamingHttpResponse
 from rest_framework.test import APIClient
 
-from apps.okul import excel_ogrenci
-from apps.okul.models import ClassSection, Personnel, SchoolYear, Student
+from apps.okul import excel_ogrenci, selectors
+from apps.okul.models import ClassSection, MemberKind, Personnel, SchoolYear
 from apps.okul.services import imports as import_service
 from apps.okul.services import templates as template_service
 
@@ -78,7 +78,8 @@ def test_ogrenci_sablonu_ice_aktarma_ucundan_oldugu_gibi_gecer() -> None:
 
     assert rapor.skipped == []
     assert (rapor.total_rows, rapor.processed, rapor.created_students) == (1, 1, 1)
-    ogrenci = Student.objects.get(student_number="1001")
+    ogrenci = selectors.find_student_by_number("1001")
+    assert ogrenci is not None
     assert (ogrenci.first_name, ogrenci.last_name) == ("ÖRNEK", "ÖĞRENCİ")
     assert ogrenci.class_label == "9/A"
     # Şube kataloğu da tohumlanır: şablon yolu import yolunun TAMAMINI kullanır.
@@ -87,7 +88,7 @@ def test_ogrenci_sablonu_ice_aktarma_ucundan_oldugu_gibi_gecer() -> None:
 
 @pytest.mark.django_db
 def test_personel_sablonu_ice_aktarma_ucundan_oldugu_gibi_gecer() -> None:
-    """Ayrı 'Adı' / 'Soyadı' sütunları + 'Görevi' / 'Branşı' sinonimleri tanınır."""
+    """Ayrı 'Adı' / 'Soyadı' sütunları + 'Üye Türü' tanınır; unvan/branş sütunu yoktur."""
     rapor = import_service.commit_personnel_file(
         file_bytes=template_service.personnel_template_xlsx(), file_name="sablon-personel.xlsx"
     )
@@ -96,7 +97,8 @@ def test_personel_sablonu_ice_aktarma_ucundan_oldugu_gibi_gecer() -> None:
     assert (rapor.total_rows, rapor.processed, rapor.created_personnel) == (1, 1, 1)
     kisi = Personnel.objects.get()
     assert kisi.full_name == "ÖRNEK ÖĞRETMEN"
-    assert (kisi.title, kisi.branch) == ("Öğretmen", "Matematik")
+    assert kisi.member_kind == MemberKind.TEACHER
+    assert rapor.warnings == []
 
 
 @pytest.mark.parametrize(
@@ -128,3 +130,22 @@ def test_sablon_indirme_ucu_excel_eki_dondurur(
     assert "attachment" in yanit["Content-Disposition"]
     assert dosya_adi in yanit["Content-Disposition"]
     assert _dolu_satirlar(_govde(yanit))[0] == list(basliklar)
+
+
+def test_personel_sablonunda_unvan_ve_brans_sutunu_yoktur() -> None:
+    """V2-01: şablon unvan/branş istemez; "Üye Türü" yalnız öğretmen / diğer personel."""
+    basliklar = [
+        excel_ogrenci.normalize_header(b) for b in template_service.PERSONNEL_TEMPLATE_HEADERS
+    ]
+    assert not [b for b in basliklar for yasak in ("unvan", "brans", "gorev") if yasak in b]
+
+
+@pytest.mark.django_db
+def test_personel_sablonu_diger_personel_degerini_tanir() -> None:
+    rapor = import_service.commit_personnel_text(
+        text="Adı\tSoyadı\tÜye Türü\nÖRNEK\tKİŞİ\tDiğer personel\nÖRNEK\tİKİ\tÖğretmen"
+    )
+
+    assert rapor.warnings == []
+    turler = {p.last_name: p.member_kind for p in Personnel.objects.all()}
+    assert turler == {"KİŞİ": MemberKind.STAFF, "İKİ": MemberKind.TEACHER}

@@ -3,11 +3,14 @@
 KS'den alındı (KS bunu DD'nin `apps/okul/models.py` kalıbından türetmişti);
 Kütüphane Defteri için sadeleştirildi (tasarım §6.1, §12):
 
-- `Student`: yalnız ad-soyad + okul no + sınıf/şube + durum. TCKN, veli ve
-  cinsiyet alanları YOKTUR (tasarım §6.1 — en iyi KVKK önlemi veriyi hiç
-  edinmemek). Ad-soyad `EncryptedCharField`'dır; ad temelli arama Python
-  katmanındadır (teknik borç TB3; selectors katlayarak arar).
-- `Personnel`: DD kalıbı + `is_active` + şifreli ad-soyad.
+- `Student`: yalnız ad-soyad + okul no + sınıf/şube + durum + ayrılış tarihi.
+  TCKN, veli ve cinsiyet alanları YOKTUR (tasarım §6.1 — en iyi KVKK önlemi
+  veriyi hiç edinmemek). Ad-soyad VE okul no `EncryptedCharField`'dır (U9);
+  okul no'nun eşleştirmesi ve tekliği kör indeksledir (T14), ad temelli arama
+  ve bütün sıralamalar Python katmanındadır (selectors).
+- `Personnel`: DD kalıbı + `is_active` + şifreli ad-soyad + `member_kind` +
+  ayrılış tarihi. Unvan ve branş YOKTUR (V2-01: branş, küçük okulda öğretmeni
+  kişiye bağlar).
 - `ClassSection`: şube kataloğu — ders yılı içinde görülen (seviye, şube)
   çiftleri; içe aktarma sonrası tohumlanır.
 - `Holiday`: DD'nin tatil tablosu, UYARLANARAK — + `SCHOOL_BREAK` türü
@@ -21,11 +24,13 @@ Kütüphane Defteri için sadeleştirildi (tasarım §6.1, §12):
 
 from __future__ import annotations
 
+from typing import Any
+
 from django.db import models
 from django.utils import timezone
 
-from apps.okul.normalize import GRADE_LEVELS, PREP_LEVEL
-from shared.crypto import EncryptedCharField
+from apps.okul.normalize import GRADE_LEVELS, PREP_LEVEL, normalize_student_number
+from shared.crypto import EncryptedCharField, blind_index
 from shared.models import BaseModel
 
 
@@ -63,7 +68,7 @@ class SchoolConfig(BaseModel):
     has_prep_class = models.BooleanField("hazırlık sınıfı var", default=False)
     setup_completed = models.BooleanField("kurulum tamamlandı", default=False)
     app_password_hash = models.CharField(
-        "uygulama parolası özeti", max_length=255, blank=True, default=""
+        "yönetici parolası parmak izi", max_length=255, blank=True, default=""
     )
 
     class Meta:
@@ -228,19 +233,35 @@ class Holiday(BaseModel):
         return f"{self.name} ({self.start_date})"
 
 
-class Personnel(BaseModel):
-    """Okul personeli — login'siz sicil kaydı.
+class MemberKind(models.TextChoices):
+    """Personelin üye türü (sözlük: "öğretmen" / "diğer personel").
 
-    `is_active` okuldan ayrılan personeli sicilde tutarken seçicilerden düşürür.
-    Ad-soyad ŞİFRELİDİR (U3) — ada dayalı arama/teklik Python katmanında
-    yapılır (TB3), unvan/branş süzgeçleri DB tarafında kalır.
+    Md. 18 sayı sınırı (öğretmen 5) ve diğer personele ödünç kararı (F6) buna
+    bağlanır. Şifrelenmez (tasarım §6.3 "açık kalanlar"). Unvanın yerini
+    ALMAZ: e-Okul'daki görev metni yalnız bu iki değerden birini seçmek için
+    aktarım sırasında geçici okunur, saklanmaz (C sözleşmesi, F1 eki).
+    """
+
+    TEACHER = "TEACHER", "öğretmen"
+    STAFF = "STAFF", "diğer personel"
+
+
+class Personnel(BaseModel):
+    """Okul personeli — login'siz sicil kaydı (tasarım §6.1).
+
+    Ayrılışta `is_active=False` + `left_at` yazılır (`services.persons`
+    ayrılış yolu); hiç üye olmamış ve açık yükümlülüğü olmayan kişi o anda
+    KATI silinir. Ad-soyad ŞİFRELİDİR (U3) — ada dayalı arama, sıralama ve
+    eşleştirme Python katmanında yapılır. Unvan ve branş YOKTUR (V2-01).
     """
 
     first_name = EncryptedCharField("ad", max_length=100)
     last_name = EncryptedCharField("soyad", max_length=100)
-    title = models.CharField("unvan", max_length=64, blank=True, default="")
-    branch = models.CharField("branş", max_length=64, blank=True, default="")
+    member_kind = models.CharField(
+        "üye türü", max_length=16, choices=MemberKind.choices, default=MemberKind.TEACHER
+    )
     is_active = models.BooleanField("aktif", default=True)
+    left_at = models.DateField("ayrılış tarihi", null=True, blank=True)
 
     class Meta:
         verbose_name = "personel"
@@ -248,6 +269,12 @@ class Personnel(BaseModel):
         # Şifreli alanda DB sıralaması anlamsızdır (token sırası) — kayıt sırası
         # kararlı olsun diye pk; ad sıralaması selector'da Python ile yapılır.
         ordering = ["pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(member_kind__in=MemberKind.values),
+                name="ck_personnel_member_kind",
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.full_name
@@ -308,50 +335,91 @@ class StudentStatus(models.TextChoices):
     LEFT = "LEFT", "Ayrıldı"
 
 
+def student_number_blind_index(student_number: str) -> str:
+    """Okul numarasının kör indeksi (tasarım §6.3, T14); boş numara → ''.
+
+    Yazmada (`Student.save`) ve aramada (`selectors`) AYNI yol kullanılır:
+    `normalize_student_number` ('0123' ≡ '123') + `crypto.blind_index`.
+    Anahtar bellekte değilse `KeyMissingError` (fail-closed).
+    """
+    return blind_index(normalize_student_number(student_number))
+
+
 class Student(BaseModel):
     """Öğrenci — okul sicilinin kişi kaydı (tasarım §6.1).
 
     Evrak sözleşmesi: `full_name`, `student_number`, `class_label` — basılı
     belgeler ve anlık görüntüler (snapshot) bu üçünden beslenir.
 
-    ŞİFRELEME KAPSAMI (U3, tasarım §5): `first_name`/`last_name` şifrelidir;
-    okul no ve sınıf/şube AÇIKTIR (sıralama, teklik ve süzgeçler bunlara
-    dayanır; ad olmadan takma-adlıdırlar). TCKN, veli ve cinsiyet alanı YOKTUR.
+    ŞİFRELEME KAPSAMI (U9, tasarım §6.3): ad, soyad ve OKUL NO şifrelidir;
+    sınıf/şube ve durum AÇIKTIR. Okul no şifreli olduğu için DB'de onunla
+    süzülemez ve sıralanamaz: kimlik eşleştirmesi (e-Okul, arama, teklik)
+    `student_number_index` kör indeksiyle TAM EŞLEŞMEDİR, okul no'ya göre
+    sıralama selector'da Python'dadır. TCKN, veli ve cinsiyet alanı YOKTUR.
+
+    KÖR İNDEKS YALNIZ `save()` İLE YAZILIR: `QuerySet.update(student_number=…)`,
+    `bulk_update` ve `bulk_create` `save()`'i atlar, indeks eski numarada (ya da
+    boş) kalır ve eşleştirme sessizce bozulur. Okul no toplu yazılmaz (koruma
+    testi: `test_models.py::test_okul_no_toplu_yazilmaz`).
     """
 
     first_name = EncryptedCharField("ad", max_length=100)
     last_name = EncryptedCharField("soyad", max_length=100)
-    student_number = models.CharField("okul no", max_length=16, blank=True, default="")
+    student_number = EncryptedCharField("okul no", max_length=16, blank=True, default="")
+    student_number_index = models.CharField(
+        "okul no kör indeksi", max_length=64, blank=True, default="", editable=False
+    )
     class_level = models.PositiveSmallIntegerField("sınıf", null=True, blank=True)
     class_section = models.CharField("şube", max_length=8, blank=True, default="")
     status = models.CharField(
         "durum", max_length=16, choices=StudentStatus.choices, default=StudentStatus.ACTIVE
     )
+    left_at = models.DateField("ayrılış tarihi", null=True, blank=True)
 
     class Meta:
         verbose_name = "öğrenci"
         verbose_name_plural = "öğrenciler"
-        # Ad şifreli → DB'de ada sıralanamaz; sınıf/şube/no sıralaması yeter
-        # (okul no metin alanıdır, sayısal sıralama selector'da yapılır).
-        ordering = ["class_level", "class_section", "student_number"]
+        # Ad ve okul no şifreli → DB'de onlara sıralanamaz. Kararlı bir DB sırası
+        # yeter; kullanıcıya gösterilen sıra (sınıf, şube TR, okul no doğal)
+        # `selectors.students_sorted` ile Python'da kurulur.
+        ordering = ["class_level", "class_section", "pk"]
         indexes = [
             models.Index(fields=["class_level", "class_section"], name="okul_student_class_idx"),
+            # Eşleştirme (e-Okul, arama, yeniden aktifleşme) indeks üzerinden yapılır.
+            models.Index(fields=["student_number_index"], name="okul_student_numidx_idx"),
         ]
         constraints = [
-            # Okul numaralı AKTİF canlı kayıt tekil — içe aktarma upsert anahtarı.
-            # Ayrılan öğrencinin numarası ileride başka öğrenciye verilebilir.
+            # Okul numaralı AKTİF canlı kayıt tekil — içe aktarma eşleştirme anahtarı.
+            # Teklik KÖR İNDEKSE konur (T14): şifreli sütunda token her yazımda
+            # değiştiği için teklik orada çalışmaz. Ayrılan öğrencinin numarası
+            # ileride başka öğrenciye verilebilir.
             models.UniqueConstraint(
-                fields=["student_number"],
+                fields=["student_number_index"],
                 condition=(
                     models.Q(deleted_at__isnull=True, status="ACTIVE")
-                    & ~models.Q(student_number="")
+                    & ~models.Q(student_number_index="")
                 ),
-                name="uq_student_number_active_alive",
+                name="uq_student_number_index_active_alive",
             ),
         ]
 
     def __str__(self) -> str:
         return f"{self.full_name} ({self.class_label or 'sınıfsız'})"
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        """Okul no'nun kör indeksini günceller, sonra kaydeder.
+
+        `update_fields` verilmişse ve okul no içinde yoksa indeks yeniden
+        hesaplanmaz (numara değişmedi; anahtar gerekmez). Okul no içindeyse
+        indeks alanı da `update_fields`'e eklenir — aksi hâlde yeni numara
+        yazılır, indeks eskide kalırdı.
+        """
+        update_fields = kwargs.get("update_fields")
+        if update_fields is None or "student_number" in update_fields:
+            self.student_number_index = student_number_blind_index(self.student_number)
+            if update_fields is not None and "student_number_index" not in update_fields:
+                kwargs["update_fields"] = [*update_fields, "student_number_index"]
+        super().save(*args, **kwargs)
 
     @property
     def full_name(self) -> str:

@@ -1,9 +1,9 @@
 """apps.okul.excel_personel — SADELEŞMİŞ personel parser testleri.
 
-OYS şablonundan fark (tasarım §3.5): e-posta ve Rol/Kapsam çiftleri YOK —
-standalone'da personel login olmaz, roller (kurul üyelikleri) personel
-yüklendikten sonra ayrıca tanımlanır. Beklenen şablon: | Ad Soyad | Unvan | Branş |
-(yalnız Ad Soyad kritik; fuzzy başlık eşleme OYS kalıbıyla aynı).
+OYS şablonundan fark: e-posta ve Rol/Kapsam çiftleri YOK — personel hesabı yoktur.
+F1-C (tasarım §6.1, V2-01): unvan ve branş SAKLANMAZ. Branş sütunu hiç
+eşlenmez; "Görevi/Unvan" (şablonda "Üye Türü") yalnız üye türüne (öğretmen /
+diğer personel) çevrilir, metni satır nesnesine girmez.
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from openpyxl import Workbook
 
 from apps.okul import excel_personel
 from apps.okul.excel_ogrenci import ParserError
+from apps.okul.models import MemberKind
 
 STANDARD_HEADER = ["Ad Soyad", "Unvan", "Branş"]
 
@@ -37,40 +38,61 @@ def make_xlsx(
     return bio.getvalue()
 
 
-def test_standart_basliklar_eslenir() -> None:
+def test_tur_sabitleri_model_degerleriyle_ayni() -> None:
+    """Modül Django'suz kalsın diye düz metin tutar; model değerleriyle eşit olmalı."""
+    assert (excel_personel.KIND_TEACHER, excel_personel.KIND_STAFF) == (
+        MemberKind.TEACHER.value,
+        MemberKind.STAFF.value,
+    )
+
+
+def test_standart_basliklar_eslenir_brans_eslenmez() -> None:
     grid = excel_personel.read_sheet(make_xlsx([]))
     mapping = excel_personel.detect_columns(grid)
     assert mapping.is_usable
-    assert mapping.fields["full_name"] == 0
-    assert mapping.fields["title"] == 1
-    assert mapping.fields["branch"] == 2
+    assert mapping.fields == {"full_name": 0, "role": 1}
 
 
 def test_fuzzy_baslik_varyasyonlari() -> None:
-    header: list[object] = ["Adı Soyadı", "Görevi", "Alan"]
+    header: list[object] = ["Adı Soyadı", "Görevi", "Alan", "Branşı"]
     grid = excel_personel.read_sheet(make_xlsx([], header=header))
     mapping = excel_personel.detect_columns(grid)
     assert mapping.is_usable
-    assert mapping.fields["title"] == 1
-    assert mapping.fields["branch"] == 2
+    assert mapping.fields == {"full_name": 0, "role": 1}
 
 
-def test_yeni_sablon_ayri_ad_soyad_okunur() -> None:
-    header: list[object] = ["Adı", "Soyadı", "Görevi", "Branşı"]
-    data = make_xlsx([["ALİ", "ÖRNEK", "Müdür", "Coğrafya"]], header=header)
+def test_sablon_ayri_ad_soyad_ve_uye_turu_okunur() -> None:
+    header: list[object] = ["Adı", "Soyadı", "Üye Türü"]
+    data = make_xlsx([["ALİ", "ÖRNEK", "Diğer personel"]], header=header)
     mapping, parsed = excel_personel.parse_workbook(data)
     assert mapping.is_usable
-    assert parsed[0].first_name == "ALİ"
-    assert parsed[0].last_name == "ÖRNEK"
-    assert parsed[0].title == "Müdür"
-    assert parsed[0].branch == "Coğrafya"
+    assert (parsed[0].first_name, parsed[0].last_name) == ("ALİ", "ÖRNEK")
+    assert parsed[0].member_kind == MemberKind.STAFF
+    assert parsed[0].member_kind_unrecognized is False
 
 
-def test_yalniz_ad_soyad_da_yeterli() -> None:
-    """Unvan/branş sütunsuz düz isim listesi de kabul edilir (kritik alan tek)."""
-    grid = excel_personel.read_sheet(make_xlsx([], header=["Ad Soyad"]))
-    mapping = excel_personel.detect_columns(grid)
-    assert mapping.is_usable
+def test_satirda_gorev_ve_brans_metni_tutulmaz() -> None:
+    header: list[object] = ["Adı", "Soyadı", "Görevi", "Branşı"]
+    data = make_xlsx([["ALİ", "ÖRNEK", "Müdür", "Coğrafya"]], header=header)
+    _mapping, parsed = excel_personel.parse_workbook(data)
+    assert set(vars(parsed[0])) == {
+        "row_number",
+        "raw_full_name",
+        "first_name",
+        "last_name",
+        "member_kind",
+        "member_kind_unrecognized",
+    }
+    assert "Müdür" not in repr(parsed[0]) and "Coğrafya" not in repr(parsed[0])
+
+
+def test_yalniz_ad_soyad_da_yeterli_tur_bilgisi_yok() -> None:
+    """Görev sütunsuz düz isim listesi kabul edilir; tür bilgisi yok, uyarı da yok."""
+    _mapping, parsed = excel_personel.parse_workbook(
+        make_xlsx([["ALİ ÖRNEK"]], header=["Ad Soyad"])
+    )
+    assert parsed[0].member_kind is None
+    assert parsed[0].member_kind_unrecognized is False
 
 
 def test_ad_soyad_yoksa_parser_error() -> None:
@@ -86,11 +108,10 @@ def test_satir_ayristirma() -> None:
     ]
     _mapping, parsed = excel_personel.parse_workbook(make_xlsx(rows))
     assert len(parsed) == 2
-    assert parsed[0].first_name == "ALİ"
-    assert parsed[0].last_name == "ÖRNEK"
-    assert parsed[0].title == "Müdür"
-    assert parsed[0].branch == "Coğrafya"
-    assert parsed[1].title == ""
+    assert (parsed[0].first_name, parsed[0].last_name) == ("ALİ", "ÖRNEK")
+    assert parsed[0].member_kind == MemberKind.TEACHER
+    # Görev sütunu VAR ama hücre boş: tanınmadı → önizlemede denetim uyarısı.
+    assert (parsed[1].member_kind, parsed[1].member_kind_unrecognized) == (None, True)
 
 
 def test_bos_satir_atlanir() -> None:
@@ -108,3 +129,37 @@ def test_preamble_atlanir() -> None:
     mapping = excel_personel.detect_columns(grid)
     assert mapping.header_row == 2
     assert mapping.is_usable
+
+
+@pytest.mark.parametrize(
+    ("gorev", "beklenen"),
+    [
+        ("Öğretmen", "TEACHER"),
+        ("Sözleşmeli Öğretmen(657 S.K. 4/B)", "TEACHER"),
+        ("Ücretli Öğretmen", "TEACHER"),
+        ("Müdür", "TEACHER"),
+        ("Müdür Yardımcısı", "TEACHER"),
+        ("Müdür Başyardımcısı", "TEACHER"),
+        ("Rehber Öğretmen", "TEACHER"),
+        ("Psikolojik Danışman", "TEACHER"),
+        ("Usta Öğretici", "TEACHER"),
+        ("MEMUR", "STAFF"),
+        ("Ambar Memuru", "STAFF"),
+        ("Hizmetli", "STAFF"),
+        ("Yardımcı Hizmetli", "STAFF"),
+        ("Teknisyen", "STAFF"),
+        ("Aşçı", "STAFF"),
+        ("Bekçi", "STAFF"),
+        ("Şef", "STAFF"),
+        ("Sekreter", "STAFF"),
+        ("Şoför", "STAFF"),
+        ("Sürekli İşçi", "STAFF"),
+        ("Veri Hazırlama ve Kontrol İşletmeni", "STAFF"),
+        ("Diğer personel", "STAFF"),
+        ("", None),
+        (None, None),
+        ("Uzman Kaptan", None),
+    ],
+)
+def test_gorev_siniflamasi(gorev: object, beklenen: str | None) -> None:
+    assert excel_personel.classify_member_kind(gorev) == beklenen

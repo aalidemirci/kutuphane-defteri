@@ -42,8 +42,20 @@ urlpatterns = [
     # Öğrenciler / Personel / Şubeler
     path("students/", views.StudentListCreateView.as_view(), name="student-list"),
     path("students/<int:pk>/", views.StudentDetailView.as_view(), name="student-detail"),
+    # Ayrılış yolu ve "olası aynı kişi" birleştirmesi (tasarım §6.1, §8.3)
+    path("students/<int:pk>/leave/", views.StudentLeaveView.as_view(), name="student-leave"),
     path("personnel/", views.PersonnelListCreateView.as_view(), name="personnel-list"),
     path("personnel/<int:pk>/", views.PersonnelDetailView.as_view(), name="personnel-detail"),
+    path(
+        "personnel/<int:pk>/leave/",
+        views.PersonnelLeaveView.as_view(),
+        name="personnel-leave",
+    ),
+    path(
+        "personnel/<int:pk>/merge/",
+        views.PersonnelMergeView.as_view(),
+        name="personnel-merge",
+    ),
     path("class-sections/", views.ClassSectionListCreateView.as_view(), name="class-section-list"),
     path(
         "class-sections/<int:pk>/",

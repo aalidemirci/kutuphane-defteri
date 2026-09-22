@@ -57,10 +57,10 @@ describe("GuvenlikAyarlari", () => {
     expect(screen.getByText(/TAM DİSK ŞİFRELEME/)).toBeInTheDocument();
     expect(screen.getByText(/LUKS/)).toBeInTheDocument();
     expect(screen.getByText(/ad, soyad/)).toBeInTheDocument();
-    // Şifrelenmeyen alanlar da açıkça söylenir.
-    expect(
-      screen.getByText(/Okul numarası ve sınıf\/şube bilgisi şifrelenmez/),
-    ).toBeInTheDocument();
+    // Okul numarası artık şifrelidir; şifrelenmeyen alanlar da açıkça söylenir.
+    expect(screen.getByText(/öğrencilerin okul numaraları/)).toBeInTheDocument();
+    expect(screen.getByText(/Sınıf\/şube, üye türü ve tarihler şifrelenmez/)).toBeInTheDocument();
+    expect(screen.queryByText(/Okul numarası ve sınıf\/şube bilgisi şifrelenmez/)).toBeNull();
     // Fotoğraf ve sınav belgeleri bu programda yoktur; metin onlardan söz etmez.
     expect(screen.queryByText(/fotoğraf|oturma düzeni|Soru belgesi/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Öğrenci fotoğrafları" })).toBeNull();

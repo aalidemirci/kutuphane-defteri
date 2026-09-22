@@ -7,15 +7,16 @@
 
 /** Ayarlar ve kilit ekranında gösterilen kapsam açıklaması. */
 export const KAPSAM_METNI =
-  "Bu koruma, kayıtlardaki kişisel veri alanlarını (öğrenci ve öğretmen " +
-  "ad-soyadları) yönetici parolasıyla açılan bir anahtarla şifreler. TAM DİSK " +
-  "ŞİFRELEME DEĞİLDİR: bilgisayarın tamamını korumak için Windows'ta " +
-  "BitLocker, Pardus/Linux'ta LUKS kullanın.";
+  "Bu koruma, kayıtlardaki kişisel veri alanlarını (öğrenci, öğretmen ve diğer " +
+  "personelin ad-soyadları, öğrencilerin okul numaraları) yönetici parolasıyla açılan bir " +
+  "anahtarla şifreler. TAM DİSK ŞİFRELEME DEĞİLDİR: bilgisayarın tamamını korumak " +
+  "için Windows'ta BitLocker, Pardus/Linux'ta LUKS kullanın.";
 
 /** Şifrelenmeyen alanlar açıkça söylenir — sürpriz olmasın. */
 export const KAPSAM_DISI_METNI =
-  "Okul numarası ve sınıf/şube bilgisi şifrelenmez (sıralama, arama ve " +
-  "süzgeçler bunlara dayanır).";
+  "Sınıf/şube, üye türü ve tarihler şifrelenmez (süzgeçler bunlara dayanır). " +
+  "Okul numarası şifrelidir; arama ve e-Okul eşleştirmesi numaranın tamamıyla " +
+  "yapılır, numaranın bir parçasıyla arama yapılamaz.";
 
 /** Kurtarma anahtarı diyaloğunun uyarısı. */
 export const KURTARMA_UYARISI =

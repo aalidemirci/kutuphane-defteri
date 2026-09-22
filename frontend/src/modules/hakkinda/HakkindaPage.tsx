@@ -115,8 +115,11 @@ export default function HakkindaPage() {
                 bastığınızda yayımlanan son sürümü soran anonim denetimdir.
               </li>
               <li>
-                Öğrenci ve öğretmen ad-soyadları Fernet (AES-128-CBC + HMAC-SHA256) ile şifrelenir;
-                şifreleme anahtarı, yönetici parolasından Argon2id ile türetilen anahtarla korunur.
+                Öğrenci, öğretmen ve diğer personelin ad-soyadları ile öğrencilerin okul numaraları
+                Fernet (AES-128-CBC + HMAC-SHA256) ile şifrelenir; şifreleme anahtarı, yönetici
+                parolasından Argon2id ile türetilen anahtarla korunur. Okul numarasıyla arama ve
+                e-Okul eşleştirmesi, aynı anahtardan türetilen HMAC-SHA256 kör indeksle numaranın
+                tamamı üzerinden yapılır.
               </li>
               <li>
                 Şifreli yedekler (<span className="font-mono">.kdbak</span>) X25519 ve AES-256-GCM

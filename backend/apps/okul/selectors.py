@@ -1,14 +1,18 @@
 """`okul` salt-okunur sorguları — view'lar ORM'e buradan erişir (katman disiplini).
 
 Arama Türkçe-katlamalı yapılır: `normalize_header` (Türkçe→ASCII küçük harf) iki
-tarafı da katlar. Ad-soyad alanları ŞİFRELİ olduğundan (U3) ada dokunan her
-arama/sıralama ZORUNLU olarak Python tarafındadır (TB3) — yeni ad sorgusu ORM
-filtresiyle YAZILMAZ; yerel ölçek (≤1000 kayıt) bunu ucuzlatır. Okul no, sınıf
-ve şube düz alanlardır; süzgeçleri DB tarafında kalır.
+tarafı da katlar. Ad-soyad VE okul no ŞİFRELİDİR (U9): ada dokunan her arama ve
+kullanıcıya gösterilen her sıralama ZORUNLU olarak Python tarafındadır — yeni
+ad sorgusu ORM filtresiyle YAZILMAZ; yerel ölçek (≤2000 kayıt) bunu ucuzlatır.
+Okul no ile arama ve eşleştirme KÖR İNDEKSLE, tam eşleşmedir (T14): düz okul no
+üzerinden DB sorgusu yazılmaz (şifreli sütunda her yazım farklı token'dır).
+Sınıf, şube ve durum düz alanlardır; süzgeçleri DB tarafında kalır.
 """
 
 from __future__ import annotations
 
+import re
+from collections.abc import Iterable
 from datetime import date
 from typing import Any
 
@@ -26,6 +30,7 @@ from apps.okul.models import (
     SchoolYear,
     Student,
     StudentStatus,
+    student_number_blind_index,
 )
 
 
@@ -78,31 +83,42 @@ def grade_level_values() -> tuple[int, ...]:
     return SchoolConfig.load().grade_levels
 
 
-def personnel_list(
-    *, search: str = "", only_active: bool = False
-) -> list[Personnel] | QuerySet[Personnel]:
-    """Personel listesi; ad sıralaması ve araması Python tarafında (şifreli ad)."""
+def _personnel_sort_key(person: Personnel) -> tuple[Any, ...]:
+    """Ad-soyad Türk alfabesiyle ('C' < 'Ç', 'I' < 'İ'); eşitlikte kayıt sırası."""
+    return (normalize.tr_sort_key(person.full_name), person.pk)
+
+
+def personnel_sorted(
+    rows: Iterable[Personnel] | None = None, *, only_active: bool = False
+) -> list[Personnel]:
+    """Ada göre Türk alfabesiyle sıralı personel (listeler, seçiciler).
+
+    `rows` verilmezse canlı personelin tamamı (ya da yalnız aktifler) okunur.
+    Ad şifreli olduğu için sıralama Python'dadır (DB sırası token sırasıdır).
+    """
+    if rows is None:
+        rows = Personnel.objects.filter(is_active=True) if only_active else Personnel.objects.all()
+    return sorted(rows, key=_personnel_sort_key)
+
+
+def personnel_list(*, search: str = "", only_active: bool = False) -> list[Personnel]:
+    """Personel listesi — ad araması ve sıralaması Python tarafında (şifreli ad).
+
+    Unvan ve branş YOKTUR (V2-01); arama yalnız ad-soyad üzerindedir.
+    """
     qs = Personnel.objects.all()
     if only_active:
         qs = qs.filter(is_active=True)
+    rows: Iterable[Personnel] = qs
     if search.strip():
         needle = normalize_header(search)
-        return [
-            p
-            for p in qs
-            if needle in normalize_header(p.full_name)
-            or needle in normalize_header(p.title)
-            or needle in normalize_header(p.branch)
-        ]
-    return qs
+        rows = [p for p in qs if needle in normalize_header(p.full_name)]
+    return personnel_sorted(rows)
 
 
-def personnel_sorted(*, only_active: bool = False) -> list[Personnel]:
-    """Ada göre TR-katlamalı sıralı personel (listeler, seçiciler)."""
-    rows = list(
-        Personnel.objects.filter(is_active=True) if only_active else Personnel.objects.all()
-    )
-    return sorted(rows, key=lambda p: normalize_header(p.full_name))
+def personnel_all() -> QuerySet[Personnel]:
+    """Canlı personel (ayrıntı uçlarının `get_queryset`'i — tek kayıt çözümü)."""
+    return Personnel.objects.all()
 
 
 def class_sections(*, school_year_id: int | None = None) -> QuerySet[ClassSection]:
@@ -135,18 +151,76 @@ def get_class_section(section_id: int) -> ClassSection | None:
     return ClassSection.objects.filter(pk=section_id).first()
 
 
+#: Okul no'nun doğal sıralaması: '9' < '10' < '100' (metin sırasında '10' < '9').
+_NUMBER_PARTS_RE = re.compile(r"(\d+)")
+
+
+def _natural_number_key(student_number: str) -> tuple[Any, ...]:
+    """Okul no'nun doğal sıra anahtarı; boş numara sona düşer."""
+    sade = normalize.normalize_student_number(student_number)
+    if not sade:
+        return (1,)
+    parcalar = _NUMBER_PARTS_RE.split(sade)
+    return (
+        0,
+        tuple(
+            (0, int(p), "") if p.isdigit() else (1, 0, normalize.tr_sort_key(p))
+            for p in parcalar
+            if p
+        ),
+    )
+
+
+def student_sort_key(student: Student) -> tuple[Any, ...]:
+    """Sınıf (sınıfsız sonda) → şube (Türk alfabesi) → okul no (doğal) → ad → kayıt sırası."""
+    return (
+        student.class_level is None,
+        student.class_level if student.class_level is not None else 0,
+        normalize.tr_sort_key(student.class_section),
+        _natural_number_key(student.student_number),
+        normalize.tr_sort_key(student.full_name),
+        student.pk,
+    )
+
+
+def students_sorted(rows: Iterable[Student] | None = None) -> list[Student]:
+    """Kullanıcıya gösterilen öğrenci sırası — Python'da (okul no şifrelidir, T14).
+
+    SQLite'ın BINARY sırası şubede 'Ç/İ/Ş'yi 'Z'den sonraya atar, okul no'yu
+    ise hiç sıralayamaz (token sırası). `rows` verilmezse canlı öğrencilerin
+    tamamı okunur.
+    """
+    if rows is None:
+        rows = Student.objects.all()
+    return sorted(rows, key=student_sort_key)
+
+
+def number_search_index(search: str) -> str:
+    """Arama metni okul no'ya benziyorsa kör indeksi; değilse ''.
+
+    Yalnız rakam (boşluk ve baştaki sıfırlar serbest) içeren arama okul no
+    aramasıdır ve TAM eşleşmedir: '10' yazan '101'i bulmaz (kör indeks ön ek
+    araması yapamaz; T14).
+    """
+    sade = normalize.normalize_student_number(search)
+    if not sade or not sade.isascii() or not sade.isdigit():
+        return ""
+    return student_number_blind_index(sade)
+
+
 def student_list(
     *,
     class_level: int | None = None,
     class_section: str = "",
     search: str = "",
     only_active: bool = False,
-) -> list[Student] | QuerySet[Student]:
-    """Öğrenci listesi. `only_active` VARSAYILAN OLARAK KAPALIDIR.
+) -> list[Student]:
+    """Öğrenci listesi (sıralı). `only_active` VARSAYILAN OLARAK KAPALIDIR.
 
     Sicil ekranı ayrılmış öğrenciyi de göstermek zorundadır (geçmiş kayıtların
     öğrencisi kaybolmasın); süzgeci yalnız YENİ kayıt bağlayan seçiciler
-    (autocomplete) açar.
+    (autocomplete) açar. Arama: ad-soyad Python'da TR katlamalı; okul no ise
+    kör indeksle tam eşleşme (`number_search_index`).
     """
     qs = Student.objects.all()
     if only_active:
@@ -157,15 +231,17 @@ def student_list(
         # Kayıtlar import/serializer'da tr_upper ile büyütülür ('ş' → 'Ş');
         # filtre de AYNI katlamadan geçmeli, yoksa Türkçe harfli şube bulunamaz.
         qs = qs.filter(class_section=normalize.tr_upper(class_section.strip()))
+    rows: Iterable[Student] = qs
     if search.strip():
         needle = normalize_header(search)
-        return [
+        number_index = number_search_index(search)
+        rows = [
             s
             for s in qs
-            if needle in normalize_header(s.full_name)
-            or needle in normalize_header(s.student_number)
+            if (number_index and s.student_number_index == number_index)
+            or (needle and needle in normalize_header(s.full_name))
         ]
-    return qs
+    return students_sorted(rows)
 
 
 def get_student(student_id: int) -> Student | None:
@@ -174,15 +250,28 @@ def get_student(student_id: int) -> Student | None:
 
 
 def find_student_by_number(student_number: str) -> Student | None:
-    """Okul numarasıyla AKTİF canlı öğrenci arar (upsert eşleştirme kanalı).
+    """Okul numarasıyla AKTİF canlı öğrenci arar — kör indeksle tam eşleşme (T14).
 
-    Okul no DÜZ alandır — DB filtresi şifreli kipte de çalışır (DD'deki TCKN
-    Python-dolambacı burada gerekmez; tasarım §6).
+    Aynı numaranın farklı yazımları ('0123', ' 123 ') aynı indekse iner
+    (`normalize.normalize_student_number`). Kart okutma (F6) ve e-Okul
+    eşleştirmesi bu kanalı kullanır.
     """
-    aranan = (student_number or "").strip()
-    if not aranan:
+    index = student_number_blind_index(student_number or "")
+    if not index:
         return None
-    return Student.objects.filter(student_number=aranan, status=StudentStatus.ACTIVE).first()
+    return Student.objects.filter(student_number_index=index, status=StudentStatus.ACTIVE).first()
+
+
+def find_left_student_by_number(student_number: str) -> Student | None:
+    """Aynı okul no'lu AYRILMIŞ canlı öğrenci (yeniden aktifleşme adayı); en son ayrılan."""
+    index = student_number_blind_index(student_number or "")
+    if not index:
+        return None
+    return (
+        Student.objects.filter(student_number_index=index, status=StudentStatus.LEFT)
+        .order_by("-left_at", "-pk")
+        .first()
+    )
 
 
 def get_personnel(personnel_id: int) -> Personnel | None:
