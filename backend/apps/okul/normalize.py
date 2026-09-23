@@ -15,6 +15,7 @@ ve yazma `services/imports.py`'dadır.
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections.abc import Collection
 
 from shared.text import tr_upper as _tr_upper
@@ -77,11 +78,93 @@ def tr_upper(value: str) -> str:
     return _tr_upper(value)  # tek uygulama: shared/text.py
 
 
+#: Türk alfabesinin KENDİ harfleri: aksan ayıklamasından MUAFTIR. NFD ayrışması
+#: 'İ'yi 'I' + birleşen noktaya, 'Ç'yi 'C'ye indirir; ayıklama bu harfleri
+#: yutarsa Türkçenin AYRI harfleri tek harfe çöker — `tr_upper`'ın gerekçesinin
+#: aynısı (10/I ile 10/İ iki ayrı şubedir).
+_KORUNAN_HARFLER = frozenset("ÇĞIİÖŞÜçğıiöşü")
+
+#: NFD ayrışmasının Türkçe için YANLIŞ ya da eksik sonuç verdiği harfler.
+#: 'Î' ayrışınca NOKTASIZ 'I'ya iner; oysa düzeltme işaretli î Türkçede
+#: NOKTALI i'dir ("millî", "Kâmil"). Ayrışmayan Latin harfleri (Ø, Æ, Ł…) da
+#: elle eşlenir: ayıklama onlara dokunmaz, alfabe dışında kalırlardı.
+_AKSAN_ISTISNALARI = {
+    "Î": "İ",
+    "Í": "İ",
+    "Ì": "İ",
+    "Ï": "İ",
+    "Ĩ": "İ",
+    "Ī": "İ",
+    "Į": "İ",
+    "Ø": "O",
+    "Œ": "O",
+    "Æ": "A",
+    "Đ": "D",
+    "Ð": "D",
+    "Ł": "L",
+    "Þ": "T",
+    "ø": "o",
+    "œ": "o",
+    "æ": "a",
+    "đ": "d",
+    "ð": "d",
+    "ł": "l",
+    "þ": "t",
+}
+
+#: Karakter başına bir kez hesaplanan katlama (her kayıt ve her arama çağırır).
+_AKSAN_ONBELLEGI: dict[str, str] = {}
+
+
+def _harf_katla(ch: str) -> str:
+    """Tek karakterin aksansız karşılığı; çözülemiyorsa karakterin kendisi."""
+    if ch in _KORUNAN_HARFLER:
+        return ch
+    eslenik = _AKSAN_ISTISNALARI.get(ch)
+    if eslenik is not None:
+        return eslenik
+    ayrisik = unicodedata.normalize("NFD", ch)
+    temiz = "".join(parca for parca in ayrisik if not unicodedata.combining(parca))
+    # Uzunluk 1:1 KALMALI: anahtar alanları girdiyle aynı boyda saklanır
+    # (`Work.sort_key` 500 hane) ve Hangul gibi yazılar NFD'de birden çok
+    # birleşmeyen parçaya ayrılır. Ayrışma tek harfe inmiyorsa dokunulmaz.
+    return temiz if len(temiz) == 1 else ch
+
+
+def fold_diacritics(value: object) -> str:
+    """Düzeltme işaretli ve aksanlı Latin harflerini düz karşılığına indirir.
+
+    'Kâmil' → 'Kamil', 'Rüzgâr' → 'Rüzgar', 'Émile' → 'Emile'. TÜRK ALFABESİNİN
+    HARFLERİNE DOKUNMAZ: Ç/Ğ/I/İ/Ö/Ş/Ü olduğu gibi kalır, yani 'ılık' ile
+    'ilik' ayrı kalmayı sürdürür (T7).
+
+    Gerekçe iki yönlüdür: düzeltme işareti çoğu klavyede zahmetlidir, kullanıcı
+    "rüzgar" yazar ama künye "Rüzgâr" girilmiştir (arama); ve 'Â' Türk
+    alfabesinde bulunmadığı için sıralamada harflerin önüne düşerdi (sıralama).
+    """
+    metin = "" if value is None else str(value)
+    sonuc: list[str] = []
+    for ch in metin:
+        katlanmis = _AKSAN_ONBELLEGI.get(ch)
+        if katlanmis is None:
+            katlanmis = _harf_katla(ch)
+            _AKSAN_ONBELLEGI[ch] = katlanmis
+        sonuc.append(katlanmis)
+    return "".join(sonuc)
+
+
 #: Türk alfabesi sırası — şube harfi artık katlanmadığı için sıralama da
 #: Türkçeleşmek ZORUNDA: kod noktası sırasında Ç/Ğ/İ/Ö/Ş/Ü harfleri 'Z'den
 #: BÜYÜKTÜR, yani '10/Ç' ile '10/İ' basılan evrakta listenin sonuna düşer ve
 #: '10/I' ile '10/İ' iki uca ayrılırdı.
-_TR_ALFABE = "0123456789ABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ"
+#:
+#: Q/W/X Türk alfabesinde YOKTUR ama Türkçe metinde sıradandır: okul
+#: kütüphanesinin İngilizce bölümü ("Wuthering Heights", "Quo Vadis") ve
+#: yabancı yazar adları (Woolf, Wilde) bu harflerle başlar. Alfabe dışı
+#: sayılsalardı 0 önceliğiyle listenin EN BAŞINA düşerlerdi; bu yüzden Latin
+#: sırasındaki yerlerine konurlar (…P Q R… ve …V W X Y Z), ICU'nun Türkçe
+#: sıralamasıyla aynı.
+_TR_ALFABE = "0123456789ABCÇDEFGĞHIİJKLMNOÖPQRSŞTUÜVWXYZ"
 _TR_SIRA = {harf: sira for sira, harf in enumerate(_TR_ALFABE)}
 
 
@@ -93,9 +176,11 @@ def tr_sort_key(value: object) -> tuple[tuple[int, int], ...]:
     karakterler (boşluk, '/', '-') 0 önceliğiyle harflerden ÖNCE gelir — ASCII
     sezgisiyle aynı ('A Blok' < 'AB Blok'), aksi hâlde ayraç
     sınırındaki adlar birbirine karışırdı. Karşılaştırma büyük harf üzerinden
-    yapılır (`tr_upper`).
+    yapılır (`tr_upper`) ve aksanlar düz karşılıklarına katlanır
+    (`fold_diacritics`): 'Kâmil' ile 'Kamil' yan yana sıralanır, alfabe dışına
+    düşmez.
     """
-    buyuk = tr_upper("" if value is None else str(value))
+    buyuk = fold_diacritics(tr_upper("" if value is None else str(value)))
     return tuple(
         (1, _TR_SIRA[ch]) if ch in _TR_SIRA else (0, ord(ch))  #
         for ch in buyuk

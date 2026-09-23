@@ -1664,6 +1664,53 @@ kararlar. İlgili bölümlerde bu listeye gönderme vardır.
       `lib/api.ts`in kip için zaten tuttuğu etkileşim saatinden okunur (yeni küresel
       dinleyici yok, panele ait olan yalnız yoklama zamanlayıcısıdır).
 
+**F2 ekleri (23.09.2026).** F2'de tasarımdan bilinçli sapmalar ve tasarımda yazmayan
+kararlar. Kod kapısı (§14.1 F2 satırı) ve `bash scripts/gates.sh` yeşildir.
+
+1. **§4.4, §6.2 — `kip_sureleri()` HÂLÂ SABİT; iki alan bağlanmadı.** `LibraryPolicy`
+   `idle_minutes` (3) ve `admin_max_minutes` (30) alanlarını taşır ve `library/policy/`
+   ucu ikisini yazar, ama `apps/okul/kip.py::kip_sureleri()` hâlâ A10 varsayılanlarını
+   döndürür. Bağlama yapılmadı çünkü sağlayıcı HER kip değerlendirmesinde çağrılır ve
+   DB'ye bağlamak F1 ekleri 8/10'da bilinçle azaltılmış sıcak yol sorgularını geri
+   getirir. Kullanıcıya "ayar var, etkisi yok" görünmesin diye iki alan **Kütüphane
+   Politikası ekranına konmadı**. Karar (önbellekli okuma mı, F6'ya erteleme mi) açıktır;
+   o güne dek geçerli olan A10 varsayılanlarıdır ve `kip.py` docstring'i "F6'da
+   bağlanacak" der.
+2. **§6.2 — nüsha süzgeçlerinde "danışma" ayrı bir eksen DEĞİL.** Sunucudaki süzgeç
+   `only_loanable`'dır ve `LOANABLE_Q`'nun dört koşulunu birden uygular (danışma,
+   piyasada mevcudu yok, süreli yayın, durum ≠ Rafta); arayüzde **"Yalnız ödünç
+   verilebilenler"** olarak sunulur. Yalnız danışma kaynaklarını süzen bir eksen
+   istenirse `selectors.copies()`'e ayrı parametre eklenmelidir.
+3. **§6.2, D2 — arama TEK kutudur.** OYS'nin eksen bazlı parametreleri (`title`,
+   `author`, `subject`, `isbn`) ALINMADI: KD'de arama `search_key` üzerindedir (T7) ve
+   ham sütunda Türkçe arama zaten çalışmaz. Sorgu sözcüklere bölünür, hepsi birden
+   aranır; ISBN yazımı ('978-605-…') rakamlarına indirilir. Sıralama ekseni ayrı
+   parametredir (`?order=title|author|subject|newest`).
+4. **§6.2 — Bölüm listesi BOŞ başlar.** Varsayılan DOS bölümleri tohumlanmaz; bölümler
+   Ayarlar → Bölümler'den elle açılır. İlk açılışta katalogdaki "Bölüm" seçicileri
+   boştur. Bir tohum listesi gerekiyorsa kararı F3 içe aktarımıyla birlikte verilir.
+5. **§8.1 — `library/copies/bulk/` yanıtı `{count, results}`.** Liste uçlarının
+   `{count, next, previous, results}` biçiminden FARKLIDIR: sayfalama değil, işlem
+   sonucudur. Her nüsha ayrı numara alır; `count > 1` iken eski kayıt no dolu olamaz.
+6. **§6.2 — bağış kararının gövdesi.** `donation-intakes/<pk>/decision/` içinde
+   `rejected`, kalem kimliğinden ret gerekçesine bir EŞLEMEDİR (liste değil): liste aynı
+   kalemi iki gerekçeyle göndermeye izin verirdi. Reddedilen her kalemde gerekçe
+   zorunludur ve karar geri alınamaz.
+7. **§18 sözlük — Genel Bakış'a Katalog kartı eklenmedi.** Sözlük §4.5 kart listesini
+   sabitler ve `PanelPage` testi kartları sayar; Katalog'a yalnız kenar çubuğundan
+   girilir. Kart istenirse sözlük §4.5 ile kılavuzun o cümlesi birlikte güncellenir.
+8. **§18 sözlük — "Geçici olarak kullanım dışı"nın model karşılığı yok.** Nüsha durumları
+   satırında geçen bu ifade `CopyStatus` değerlerinden hiçbirine denk düşmez ("Onarımda"
+   ayrıca listededir); en yakın hâl `Copy.is_out_of_print` bayrağıdır ve gerekçesi
+   "Piyasada mevcudu yok — ödünç verilmez." metnidir. İfade ya bir hâle bağlanmalı ya da
+   sözlükten düşürülmelidir (F5 Ağ Kataloğu metinlerinden önce).
+9. **§14.1 F3 uyarısı — toplu yazım anahtarları atlar.** `Work`'ün TR anahtarları ve
+   `isbn13` `save()`'de türer; `bulk_create` kullanan bir içe aktarım yolu onları ELLE
+   doldurmak zorundadır. `tests/test_tr_anahtarlari.py::test_anahtar_alanlari_toplu_yazimla_atlanmaz`
+   kaynak ağacını AST ile tarar ve böyle bir yol eklenirse kırmızıya döner. Ayrıca
+   `import_schema`'daki `shelf_location` anahtarı Excel SÜTUN adıdır; modeldeki karşılığı
+   `Copy.section` FK'sidir, eşleme F3'ün işidir.
+
 ### 14.2 Saha hazırlık hattı (kod dışı — F0 ile başlar)
 
 | # | İş | Kim |

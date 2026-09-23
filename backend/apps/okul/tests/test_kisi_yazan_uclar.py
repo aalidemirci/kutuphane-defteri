@@ -62,7 +62,31 @@ DIGER_UCLAR = frozenset(
         "holiday-seed",
         # Havuz listesi yalnız okur (GET); karar ucu yukarıdaki listededir.
         "leave-pool",
+        # Katalog uçları (F2) kişi SİCİLİ yazmaz: eser, nüsha, edinim, bölüm ve
+        # bağış ön kaydı kütüphane kayıtlarıdır. Bağışçı ve komisyon başkanı adı
+        # şifreli alanlardır; parola kurulmadan onlara yazan istek izin sınıfı
+        # OLMADAN da 409 `parola_gerekli` alır (fail-closed, §6.3-3) — kanıt
+        # `apps/kutuphane/tests/test_uc_kapilari.py`.
+        "library-acquisition-detail",
+        "library-acquisition-list",
+        "library-commission-decision-detail",
+        "library-commission-decision-list",
+        "library-copy-bulk",
+        "library-copy-detail",
+        "library-copy-list",
+        "library-donation-intake-cancel",
+        "library-donation-intake-decision",
+        "library-donation-intake-detail",
+        "library-donation-intake-item-detail",
+        "library-donation-intake-items",
+        "library-donation-intake-list",
         "library-import-template",
+        "library-policy",
+        "library-section-detail",
+        "library-section-list",
+        "library-stats",
+        "library-work-detail",
+        "library-work-list",
         "school-year-activate",
         "school-year-list",
         "school-year-terms",

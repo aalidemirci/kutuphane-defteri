@@ -387,8 +387,25 @@ yenilemesi · Başlangıç Yol Haritası · katalog Excel şablonu ve sütun sö
 kılavuz bölümleri. Tasarımdan sapmalar ve F1'de alınan kararlar: tasarım §14.1
 **"F1 ekleri"**; kalan riskler `docs/teknik-borc.md` (TB16-TB19).
 
-Sıradaki: F2 Katalog (eser/nüsha/edinim, TR arama ve sıralama, ISBN, barkod).
-Tam tablo: tasarım §14.1. Saha hazırlık hattı (S1-S13, kod dışı): §14.2.
+**F2 Katalog — kod tarafı bitti (23.09.2026).** `LibraryPolicy` (ödünç süresi
+alanı YOK — Md. 18 sabit), `Section`, `Work`, `Copy`, `CopyCounter`,
+`Acquisition`, `DonationIntake` + kalemleri, `CommissionDecision`,
+`CatalogImportRun`, `LabelSheetTemplate` + `LabelCalibration` modelleri (tek
+göç `0001_initial`) · Türkçe arama anahtarı ve üç eksenli TR sıralama
+(`search_key`, `sort_key`, `author_sort_key`, `subject_sort_key`; katlama tek
+kaynaktan — `apps/kutuphane/keys.py`) · ISBN normalleştirme ve ISBN-10 → 13
+çevrimi (sağlama hatası kaydı ENGELLEMEZ, uyarı döner) · barkod ve kayıt no tek
+sayaçtan, yıl `localdate()` ile, asla yeniden kullanılmaz · nüsha kuralları
+(dijital kaynakta nüsha açılmaz, süreli yayın ciltliyse kayda girer,
+`is_loanable` tek türetim + DB eşi `LOANABLE_Q`) · bağış ön kaydı ve komisyon
+kararıyla toplu kataloglama (karar TÜRÜ denetlenir) · sayfalı `library/…`
+uçları (hiçbiri görevli kipi izin listesinde DEĞİL) · Katalog, Eser Ayrıntısı,
+Edinimler ve Bağışlar ekranları, Ayarlar'a Kütüphane Politikası ve Bölümler
+sekmeleri · kılavuzun Katalog bölümü · sözlük §4. D2, D6, D7, D11 kapandı.
+Tasarımdan sapmalar ve F2'de alınan kararlar: tasarım §14.1 **"F2 ekleri"**.
+
+Sıradaki: F3 İçe aktarma (Excel eşleme, önizleme = uygulama, kovalar, AI JSON
+köprüsü). Tam tablo: tasarım §14.1. Saha hazırlık hattı (S1-S13, kod dışı): §14.2.
 
 ---
 

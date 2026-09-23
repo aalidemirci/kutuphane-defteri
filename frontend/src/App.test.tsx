@@ -59,6 +59,25 @@ const kipApiMock = vi.hoisted(() => ({
 
 vi.mock("./modules/kip/api", () => ({ kipApi: kipApiMock }));
 
+// Katalog ekranları (F2) kendi uçlarına gider; burada yalnız rota ve başlık
+// kablolaması sınanır, davranışları modules/kutuphane testlerindedir.
+const kutuphaneApiMock = vi.hoisted(() => ({
+  catalogTemplate: vi.fn(),
+  listWorks: vi.fn(),
+  listCopies: vi.fn(),
+  listSections: vi.fn(),
+  listAcquisitions: vi.fn(),
+  listCommissionDecisions: vi.fn(),
+  listDonationIntakes: vi.fn(),
+  getWork: vi.fn(),
+  getPolicy: vi.fn(),
+}));
+
+vi.mock("./modules/kutuphane/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./modules/kutuphane/api")>();
+  return { ...actual, kutuphaneApi: { ...actual.kutuphaneApi, ...kutuphaneApiMock } };
+});
+
 import App from "./App";
 import { denetimSonucunuYayinla } from "./modules/guncelleme/denetimOlayi";
 import type { KipOzeti } from "./modules/kip/api";
@@ -154,6 +173,42 @@ beforeEach(() => {
   okulApiMock.listPersonnel.mockResolvedValue(bosSayfa);
   okulApiMock.getLeavePoolSummary.mockResolvedValue({ student_count: 0, personnel_count: 0 });
   kipApiMock.durum.mockResolvedValue(YONETICI_KIPI);
+  for (const liste of [
+    kutuphaneApiMock.listWorks,
+    kutuphaneApiMock.listCopies,
+    kutuphaneApiMock.listSections,
+    kutuphaneApiMock.listAcquisitions,
+    kutuphaneApiMock.listCommissionDecisions,
+    kutuphaneApiMock.listDonationIntakes,
+  ]) {
+    liste.mockResolvedValue(bosSayfa);
+  }
+  kutuphaneApiMock.getWork.mockResolvedValue({
+    id: 3,
+    title: "Kayıp Çiçekler",
+    authors: "",
+    translator: "",
+    edition: "",
+    publisher: "",
+    publish_year: null,
+    isbn: "",
+    isbn13: "",
+    isbn_warning: "",
+    subjects: "",
+    classification_code: "",
+    classification_source: "MANUAL",
+    classification_source_display: "Elle girildi",
+    call_number: "",
+    resource_type: "BOOK",
+    resource_type_display: "Kitap",
+    language: "",
+    section: null,
+    section_name: null,
+    is_digital: false,
+    copy_count: 0,
+    available_copy_count: 0,
+    created_at: "2026-09-21T09:00:00+03:00",
+  });
 });
 
 describe("App — kip (görevli / yönetici)", () => {
@@ -273,7 +328,7 @@ describe("App — kurulum kapısı", () => {
 });
 
 describe("App — kabuk gezinmesi", () => {
-  it("gezinme tam olarak Genel Bakış, Kişiler, Ayarlar ve Kılavuz'dur (bu sırayla)", async () => {
+  it("gezinme tam olarak Genel Bakış, Kişiler, Katalog, Ayarlar ve Kılavuz'dur (bu sırayla)", async () => {
     ekranaBas("/");
     await screen.findByRole("heading", { name: "Genel Bakış" });
     const gezinme = screen.getByRole("navigation", { name: "Ana gezinme" });
@@ -281,6 +336,7 @@ describe("App — kabuk gezinmesi", () => {
     const beklenen: Array<[ad: string, yol: string]> = [
       ["Genel Bakış", "/"],
       ["Kişiler", "/kisiler"],
+      ["Katalog", "/katalog"],
       ["Ayarlar", "/ayarlar"],
       ["Kılavuz", "/kilavuz"],
     ];
@@ -293,6 +349,14 @@ describe("App — kabuk gezinmesi", () => {
       "href",
       "/hakkinda",
     );
+  });
+
+  it("Katalog bağlantısına tıklayınca katalog sayfası açılır", async () => {
+    const user = userEvent.setup();
+    ekranaBas("/");
+    const gezinme = await screen.findByRole("navigation", { name: "Ana gezinme" });
+    await user.click(within(gezinme).getByRole("link", { name: "Katalog" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Katalog" })).toBeInTheDocument();
   });
 
   it("Kişiler bağlantısına tıklayınca sicil sayfası açılır", async () => {
@@ -334,6 +398,10 @@ describe("App — kabuk gezinmesi", () => {
   it.each([
     ["/", "Genel Bakış"],
     ["/kisiler", "Kişiler"],
+    ["/katalog", "Katalog"],
+    // Alt sayfaların başlığı kökünkinden ÖNCE eşleşir (AppShell sıralaması).
+    ["/katalog/eser/3", "Eser Ayrıntısı"],
+    ["/katalog/edinimler", "Edinimler ve Bağışlar"],
     ["/ayarlar", "Ayarlar"],
     ["/kilavuz", "Kullanım Kılavuzu"],
     ["/hakkinda", "Hakkında ve Lisans"],

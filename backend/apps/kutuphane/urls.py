@@ -1,7 +1,18 @@
 """`kutuphane` URL'leri — OYS öneki `library/` ve `library-…` adları korunur.
 
 Ad alanı (`app_name`) YOKTUR: `apps.okul.urls` ile aynı düzen; kip izin listesi
-ve URL'leri dolaşan koruma testleri düz URL adlarıyla çalışır.
+ve URL'leri dolaşan koruma testleri düz URL adlarıyla çalışır. OYS bu uçları
+`DefaultRouter` ile kuruyordu; router'ın ürettiği adlar (`library-work-list`,
+`library-work-detail`) burada açık `path()` girdileriyle birebir korunmuştur —
+böylece API yüzeyi aynı kalır, ad uzayı düz kalır ve `?format=` son ekleri
+(DRF içerik müzakeresine ayrılmıştır) URL yüzeyine karışmaz.
+
+**Ad teklikliği şarttır** (`test_kip_koruma.py::test_api_uc_adlari_tekildir`):
+bu dosyadaki adlar `apps.okul.urls` ile AYNI düz ad uzayındadır.
+
+Uçların HİÇBİRİ görevli kipi izin listesinde değildir (varsayılan kapalı —
+CLAUDE.md §2-4): katalog düzenlemek, edinim açmak ve bağış kararı işlemek
+yönetici işidir.
 """
 
 from __future__ import annotations
@@ -16,5 +27,77 @@ urlpatterns = [
         "library/import/template/",
         views.CatalogImportTemplateView.as_view(),
         name="library-import-template",
+    ),
+    # Kütüphane politikası (tek satır; PUT kısmidir — gönderilmeyen alana dokunulmaz)
+    path("library/policy/", views.LibraryPolicyView.as_view(), name="library-policy"),
+    # Koleksiyon özeti ve sıradaki nüsha numarası (kişisel veri yok)
+    path("library/stats/", views.LibraryStatsView.as_view(), name="library-stats"),
+    # Bölümler (kontrollü liste)
+    path("library/sections/", views.SectionListCreateView.as_view(), name="library-section-list"),
+    path(
+        "library/sections/<int:pk>/",
+        views.SectionDetailView.as_view(),
+        name="library-section-detail",
+    ),
+    # Eserler
+    path("library/works/", views.WorkListCreateView.as_view(), name="library-work-list"),
+    path("library/works/<int:pk>/", views.WorkDetailView.as_view(), name="library-work-detail"),
+    # Nüshalar (`bulk/` ayrıntı deseninden ÖNCE: '<int:pk>' onu yakalamaz ama
+    # okuyucu için de sıra anlamlıdır — toplu açma tekil nüsha değildir)
+    path("library/copies/", views.CopyListCreateView.as_view(), name="library-copy-list"),
+    path("library/copies/bulk/", views.CopyBulkCreateView.as_view(), name="library-copy-bulk"),
+    path("library/copies/<int:pk>/", views.CopyDetailView.as_view(), name="library-copy-detail"),
+    # Seçim ve Ayıklama Komisyonu kararları
+    path(
+        "library/commission-decisions/",
+        views.CommissionDecisionListCreateView.as_view(),
+        name="library-commission-decision-list",
+    ),
+    path(
+        "library/commission-decisions/<int:pk>/",
+        views.CommissionDecisionDetailView.as_view(),
+        name="library-commission-decision-detail",
+    ),
+    # Edinimler
+    path(
+        "library/acquisitions/",
+        views.AcquisitionListCreateView.as_view(),
+        name="library-acquisition-list",
+    ),
+    path(
+        "library/acquisitions/<int:pk>/",
+        views.AcquisitionDetailView.as_view(),
+        name="library-acquisition-detail",
+    ),
+    # Bağış ön kaydı ve komisyon kararının uygulanması (SU-23, Md. 10/3)
+    path(
+        "library/donation-intakes/",
+        views.DonationIntakeListCreateView.as_view(),
+        name="library-donation-intake-list",
+    ),
+    path(
+        "library/donation-intakes/<int:pk>/",
+        views.DonationIntakeDetailView.as_view(),
+        name="library-donation-intake-detail",
+    ),
+    path(
+        "library/donation-intakes/<int:pk>/items/",
+        views.DonationIntakeItemCreateView.as_view(),
+        name="library-donation-intake-items",
+    ),
+    path(
+        "library/donation-intakes/<int:pk>/items/<int:item_pk>/",
+        views.DonationIntakeItemDetailView.as_view(),
+        name="library-donation-intake-item-detail",
+    ),
+    path(
+        "library/donation-intakes/<int:pk>/decision/",
+        views.DonationIntakeDecisionView.as_view(),
+        name="library-donation-intake-decision",
+    ),
+    path(
+        "library/donation-intakes/<int:pk>/cancel/",
+        views.DonationIntakeCancelView.as_view(),
+        name="library-donation-intake-cancel",
     ),
 ]
