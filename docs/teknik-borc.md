@@ -268,7 +268,7 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   (`libQt6WebEngineCore` `gbm_bo_get_fd_for_plane` sembolünü ister); sürüm `6.8.3`'e
   sabitlendi. Bedeli: Pardus 21 desteklendiği sürece Qt ve Chromium güvenlik yamaları
   alınamaz. İkinci bedel boyuttur: PySide6 kurulumu ~645 MB (PyQt5 ~150 MB idi), `.deb`
-  ve taşınabilir arşiv büyür. Azaltma seçenekleri (henüz uygulanmadı): dil dosyalarının
+  İlk CI derlemesinde ölçüldü (23.09.2026): `.deb` 188 MB (sıkıştırılmış), kurulu boyut daha büyük. Azaltma seçenekleri (henüz uygulanmadı): dil dosyalarının
   Türkçe ve İngilizceyle sınırlanması, gereksiz Qt eklentilerinin dışlanması. İlk CI
   derlemesinde gerçek boyut ölçülecek. **Karar kullanıcıdadır:** Pardus 21 desteği
   bırakılırsa tavan kalkar (TB5 ile aynı karar).

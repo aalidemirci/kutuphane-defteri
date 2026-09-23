@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Güvenlik açığı bildirimi
+    url: https://github.com/aalidemirci/kutuphane-defteri/blob/main/SECURITY.md
+    about: Güvenlik açıklarını issue olarak açmayın; SECURITY.md'deki yolu izleyin.
