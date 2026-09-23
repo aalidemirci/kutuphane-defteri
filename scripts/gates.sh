@@ -53,6 +53,20 @@ git ls-files -z > "$DEPO_LISTESI"
 kapi "depo sızıntısı (KVKK)" depo_sizinti backend "python packaging/depo_sizintisi.py --kok /repo --liste /repo/$DEPO_LISTESI" -w /repo
 
 kapi "pytest" pytest backend "pytest"
+
+# Ölçüm kapısı (F3, tasarım §14.1): 10.000 satırlık sentetik dosya + 10.000
+# nüshada liste/arama/sayfalama + tepe bellek. Her koşuda yapılmaz (dakikalar
+# sürer ve 10.000 kayıt yazar), ama "yalnız elle koşulabilen kapı maddesi" de
+# kapı değildir: `KD_YAVAS=1` verildiğinde koşar ve CI'da gecelik iş bunu verir
+# (.github/workflows/kapilar.yml).
+if [ "${KD_YAVAS:-0}" = "1" ]; then
+  kapi "ölçüm (yavaş)" olcum backend \
+    "pytest apps/kutuphane/tests/test_ice_aktarma_olcum.py -m yavas -q --no-cov -s" \
+    -e KD_YAVAS=1
+else
+  echo "== ölçüm kapısı atlandı (KD_YAVAS=1 ile koşar) =="
+fi
+
 kapi "ruff check" ruff backend "ruff check ."
 kapi "ruff format --check" ruff_format backend "ruff format --check ."
 kapi "mypy" mypy backend "mypy ."

@@ -472,6 +472,22 @@ Eski yedekler eski parola ve anahtarla açılabilir kalır; kılavuz bunu anlat�
 - **Linux:** `QSystemTrayIcon`, `webview.start`'tan önce **ana iş parçacığında**, var
   olan `QApplication` örneğiyle kurulur. `isSystemTrayAvailable()` yanlışsa pencere
   küçültülür (okulzili yedeği) (UY-7).
+  - Bağlayıcı **PySide6**'dır (LGPLv3), PyQt5 değil — 23.09.2026 yayın denetimi:
+    PyQt5/PyQtWebEngine GPLv3'tür, GPLv3 dağıtılan bütüne ek kısıtlama konmasını
+    yasaklar, ürünün lisansı (PolyForm Noncommercial) ise ticari kullanımı
+    kısıtlar; ikisi aynı pakette dağıtılamaz. LGPLv3 yükümlülüğü (dinamik
+    bağlama + kütüphanenin değiştirilebilmesi) onedir yapısıyla karşılanır;
+    lisans metinlerinin pakete girmesi F12'dedir (`packaging/README.md`).
+  - pywebview bağlayıcıya `qtpy` üzerinden ulaşır; seçim `QT_API` ile ilk
+    `import qtpy`'den önce, `desktop/tray.py::load_qt` içinde sabitlenir. `qtpy`
+    pywebview'ın Linux bağımlılığı değildir, ayrıca pinlenir.
+  - **Sürüm tavanı 6.8.x:** PySide6 6.9.1+ `libQt6WebEngineCore`'da
+    `gbm_bo_get_fd_for_plane` ister; sembol Mesa 21.1 ile geldi ve Pardus 21'in
+    tabanındaki (bullseye, Mesa 20.3.5) libgbm1'de YOKTUR. Yükseltmeden önce
+    sembol denetlenir.
+  - Qt5'ten Qt6'ya geçişte `.deb` bağımlılıklarına `libxkbfile1`
+    (libQt6WebEngineCore) ve `libxcb-cursor0` (xcb platform eklentisi) eklendi;
+    ikisi de Debian 11/12 ana deposundadır.
 - **F0 spike'ı** bu iki yolu gerçek pencerede sınar.
 
 **Otomatik başlatma.**
@@ -1247,9 +1263,19 @@ birkaç aday listelenip seçtirilir.
 
 **Çevrimdışı yol** (kütüphane masasında internet yoksa; U13'ün ikinci yarısı). Künyesi
 eksik eserlerin **ISBN listesi dışa aktarılır** → internetli **başka bir cihazda**
-doldurulur → dosya geri aktarılır. Geri aktarım F3'ün içe aktarma hattını kullanır
-(eşleşme ISBN üzerindendir, aynı ön izleme ve onay ekranı çalışır). Dosya kişisel veri
-taşımaz. **Kurum bilgisayarına telefon, mobil modem ya da kişisel erişim noktası
+doldurulur → dosya geri aktarılır. Geri aktarım **ayrı bir künye tamamlama hattı**
+kullanır (eşleşme ISBN üzerindendir; ön izleme + alan alan onay akışı ve dili katalog
+içe aktarımıyla aynıdır). Dosya kişisel veri taşımaz.
+
+*F3 eki (23.09.2026):* bu paragraf önce "F3'ün içe aktarma hattını kullanır" diyordu;
+uygulama bilinçli olarak ayrıldı ve metin koda göre düzeltildi. Gerekçe: içe aktarma
+hattı her satır için **nüsha açar**, oysa çevrimdışı dosya var olan eserlerin
+künyesini tamamlar — aynı hattan geçseydi 500 satırlık bir künye dosyası 500 yeni
+nüsha açardı. Dosyanın sayfa adı da bu yüzden "Katalog" değil "Künye"dir
+(`import_schema.CATALOG_SHEET` yalnız "Katalog" sayfasını okur; ayrı ad kazayı baştan
+keser). Kod: `apps/kutuphane/kunye/offline.py`, uçlar
+`library/metadata/offline-export|offline-preview/`, ekran `CevrimdisiKunyePaneli`.
+Kullanıcıya görünen iki ekranın dili ve onay akışı aynı kalır (sözlük). **Kurum bilgisayarına telefon, mobil modem ya da kişisel erişim noktası
 bağlanarak internet alınamaz** (Yönerge 11/18): bu yol *ayrı cihaz* demektir, aynı
 cihaza ikinci hat değil. Taşımada Yönerge 10/4-10/5'teki taşınabilir bellek kuralları
 geçerlidir.
@@ -1856,6 +1882,30 @@ kararlar. Kod kapısı (§14.1 F2 satırı) ve `bash scripts/gates.sh` yeşildir
     ikisi de salt rakam barkod şemasının (U7, T8) doğrudan sonucudur ve kabul edilmiş
     kalan risktir. Kalem `docs/teknik-borc.md` TB22'dedir, `barcode.py::classify_scan`
     docstring'i oraya gönderme yapar.
+
+**F3 ekleri (23.09.2026).** F3'te tasarımdan bilinçli sapmalar ve tasarımda yazmayan
+kararlar.
+
+1. **§8.5 — çevrimdışı künye yolu, F3'ün içe aktarma hattını KULLANMAZ.** §8.5'teki
+   paragraf düzeltildi (gerekçe orada): içe aktarma hattı her satır için nüsha açar,
+   çevrimdışı dosya ise var olan eserlerin künyesini tamamlar. Ayrı hat, ayrı uçlar
+   (`library/metadata/offline-export|offline-preview/`), ayrı sayfa adı ("Künye"), ayrı
+   ekran (`CevrimdisiKunyePaneli`) — ama kullanıcıya görünen dil ve onay akışı aynıdır.
+2. **§8.1 — fikirdeşlik anahtarı BAYT değil İÇERİK özetidir.** `payload_sha256`,
+   ayrıştırılmış satırların kanonik dökümünden hesaplanır
+   (`import_service.content_hash`). Ham bayt özeti "aynı dosya" sorusuna değil "aynı
+   dosya, aynı baytlarla" sorusuna cevap veriyordu: sahadaki olağan akış (önizle →
+   Excel'de birkaç satırı düzelt → kaydet → yeniden uygula) ve tek boşluk farkı olan
+   bir kopya engeli deliyordu.
+3. **§14.1 F3 ölçüm kapısı artık otomatik koşabiliyor.** Ölçüm testi süreye ek olarak
+   **tepe belleği** de raporlar ve kaba bir tavan uygular. `scripts/gates.sh`
+   `KD_YAVAS=1` verildiğinde ölçüm kapısını da koşar; `.github/workflows/kapilar.yml`
+   bu değişkeni gecelik koşuda (ve elle tetiklemede) verir. Varsayılan kapı koşusu
+   değişmedi — her PR'da 10.000 kayıt yazmak zinciri gereksiz uzatırdı.
+4. **§8.1 — aktarım kütüğüne (`CatalogImportRun.report`) ham hücre metni yazılmaz.**
+   Kütük kalıcıdır ve koşu satırının silme ucu yoktur; sütunu kaymış bir okul
+   listesinde ham "Eser Adı" hücresi bir kişi adı olabilir. Kütüğe satır numarası,
+   kova ve sayılar girer; ham metin API yanıtında (geçici, ekranda) kalır.
 
 ### 14.2 Saha hazırlık hattı (kod dışı — F0 ile başlar)
 

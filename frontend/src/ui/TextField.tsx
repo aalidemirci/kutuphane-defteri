@@ -1,6 +1,10 @@
 // Masaüstü metin alanı. Yoğunluk ölçüsü CSS değişkeninden gelir.
+//
+// `ref` İÇ `<input>`e gider (F3): masa akışlarında odak yönetimi şarttır —
+// hızlı kayıtta kayıttan sonra imleç yeniden okutma kutusuna döner, yoksa
+// kullanıcı her kitapta fareye uzanır. Sarmalayıcı `div`in ref'i işe yaramaz.
 
-import { useId } from "react";
+import { forwardRef, useId } from "react";
 import type { InputHTMLAttributes, ReactNode } from "react";
 
 interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "id"> {
@@ -9,14 +13,10 @@ interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "id
   error?: string;
 }
 
-export default function TextField({
-  label,
-  helperText,
-  error,
-  className = "",
-  required,
-  ...rest
-}: TextFieldProps) {
+const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function TextField(
+  { label, helperText, error, className = "", required, ...rest },
+  ref,
+) {
   const id = useId();
   const describedBy = error || helperText ? `${id}-desc` : undefined;
   const ring = error
@@ -41,6 +41,7 @@ export default function TextField({
       >
         <input
           id={id}
+          ref={ref}
           required={required}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
@@ -64,4 +65,6 @@ export default function TextField({
       )}
     </div>
   );
-}
+});
+
+export default TextField;

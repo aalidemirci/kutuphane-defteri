@@ -73,7 +73,7 @@ def test_sablon_ayri_ad_soyad_ve_uye_turu_okunur() -> None:
 
 def test_satirda_gorev_ve_brans_metni_tutulmaz() -> None:
     header: list[object] = ["Adı", "Soyadı", "Görevi", "Branşı"]
-    data = make_xlsx([["ALİ", "ÖRNEK", "Müdür", "Coğrafya"]], header=header)
+    data = make_xlsx([["ALİ", "ÖRNEK", "Müdür", "Matematik"]], header=header)
     _mapping, parsed = excel_personel.parse_workbook(data)
     assert set(vars(parsed[0])) == {
         "row_number",
@@ -83,7 +83,7 @@ def test_satirda_gorev_ve_brans_metni_tutulmaz() -> None:
         "member_kind",
         "member_kind_unrecognized",
     }
-    assert "Müdür" not in repr(parsed[0]) and "Coğrafya" not in repr(parsed[0])
+    assert "Müdür" not in repr(parsed[0]) and "Matematik" not in repr(parsed[0])
 
 
 def test_yalniz_ad_soyad_da_yeterli_tur_bilgisi_yok() -> None:
@@ -103,7 +103,7 @@ def test_ad_soyad_yoksa_parser_error() -> None:
 
 def test_satir_ayristirma() -> None:
     rows: list[list[object]] = [
-        ["ALİ ÖRNEK", "Müdür", "Coğrafya"],
+        ["ALİ ÖRNEK", "Müdür", "Matematik"],
         ["AYŞE ÖĞRETMEN", "", "Matematik"],
     ]
     _mapping, parsed = excel_personel.parse_workbook(make_xlsx(rows))
@@ -116,7 +116,7 @@ def test_satir_ayristirma() -> None:
 
 def test_bos_satir_atlanir() -> None:
     rows: list[list[object]] = [
-        ["ALİ ÖRNEK", "Müdür", "Coğrafya"],
+        ["ALİ ÖRNEK", "Müdür", "Matematik"],
         [None, None, None],
     ]
     _mapping, parsed = excel_personel.parse_workbook(make_xlsx(rows))

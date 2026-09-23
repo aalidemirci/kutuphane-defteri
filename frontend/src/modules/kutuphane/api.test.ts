@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
+  postForm: vi.fn(),
   patch: vi.fn(),
   put: vi.fn(),
   del: vi.fn(),
@@ -305,5 +306,99 @@ describe("edinim, komisyon ve bağış uçları", () => {
     expect(mocks.post).toHaveBeenCalledWith("/library/donation-intakes/11/cancel/", {
       reason: "Bağış geri verildi",
     });
+  });
+});
+
+describe("toplu katalog aktarımı", () => {
+  /** Son `postForm` çağrısının FormData'sı. */
+  function sonForm(): FormData {
+    const cagrilar = mocks.postForm.mock.calls;
+    return cagrilar[cagrilar.length - 1][1] as FormData;
+  }
+
+  it("dosyalı önizleme ÇOK PARÇALI gider; kararlar JSON METNİ olarak yazılır", async () => {
+    mocks.postForm.mockResolvedValue({});
+    const dosya = new File(["x"], "katalog.xlsx");
+
+    await kutuphaneApi.aktarimOnizle({
+      file: dosya,
+      source: "EXCEL",
+      decisions: { 12: { action: "attach", work: 7 } },
+      section_map: { Edebiyat: 1 },
+      new_sections: ["Tarih"],
+    });
+
+    expect(sonYol(mocks.postForm)).toBe("/library/import/preview/");
+    const form = sonForm();
+    expect(form.get("file")).toBe(dosya);
+    expect(form.get("source")).toBe("EXCEL");
+    // Çok parçalı istekte her alan metindir; sunucu JSON'u kendisi çözer.
+    expect(form.get("decisions")).toBe('{"12":{"action":"attach","work":7}}');
+    expect(form.get("section_map")).toBe('{"Edebiyat":1}');
+    expect(form.get("new_sections")).toBe('["Tarih"]');
+    // Önizlemede edinim alanı GÖNDERİLMEZ: parti yalnız uygulamada açılır.
+    expect(form.get("method")).toBeNull();
+  });
+
+  it("gönderilmeyen karar alanı gövdede HİÇ bulunmaz (servis varsayılanı tek yerdedir)", async () => {
+    mocks.postForm.mockResolvedValue({});
+    await kutuphaneApi.aktarimOnizle({ file: new File(["x"], "katalog.xlsx") });
+
+    const form = sonForm();
+    expect(form.get("decisions")).toBeNull();
+    expect(form.get("section_map")).toBeNull();
+    expect(form.get("new_sections")).toBeNull();
+  });
+
+  it("yapıştırılan JSON düz gövdeyle gider (dosya yok)", async () => {
+    mocks.post.mockResolvedValue({});
+    await kutuphaneApi.aktarimOnizle({ payload: '{"schema_version":"v1","items":[]}' });
+
+    expect(mocks.post).toHaveBeenCalledWith("/library/import/preview/", {
+      payload: '{"schema_version":"v1","items":[]}',
+    });
+    expect(mocks.postForm).not.toHaveBeenCalled();
+  });
+
+  it("uygulama aynı gövdeyi taşır, üstüne edinim alanlarını ekler", async () => {
+    mocks.postForm.mockResolvedValue({});
+    await kutuphaneApi.aktarimiUygula({
+      file: new File(["x"], "katalog.xlsx"),
+      method: "PURCHASE",
+      date: "2026-09-23",
+      source_note: "Kitapçı",
+      unit_price: "45.00",
+      commission_decision: null,
+      notes: "",
+    });
+
+    expect(sonYol(mocks.postForm)).toBe("/library/import/apply/");
+    const form = sonForm();
+    expect(form.get("method")).toBe("PURCHASE");
+    expect(form.get("date")).toBe("2026-09-23");
+    expect(form.get("source_note")).toBe("Kitapçı");
+    expect(form.get("unit_price")).toBe("45.00");
+    // Boş bırakılan ilişki alanı "null" DİYE YAZILMAZ (sunucu metin olarak okurdu).
+    expect(form.get("commission_decision")).toBeNull();
+  });
+
+  it("geçmiş, iptal ve komut uçları backend yollarıyla birebirdir", async () => {
+    mocks.get.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
+    await kutuphaneApi.aktarimGecmisi({ limit: 25, offset: 25, status: "APPLIED" });
+    expect(sonYol(mocks.get)).toBe("/library/import/runs/?limit=25&offset=25&status=APPLIED");
+
+    mocks.post.mockResolvedValue({});
+    await kutuphaneApi.aktarimiIptalEt(11);
+    expect(mocks.post).toHaveBeenCalledWith("/library/import/runs/11/discard/", {});
+
+    mocks.get.mockResolvedValue({ schema_version: "v1", prompt: "", notes: [] });
+    await kutuphaneApi.kopruKomutu();
+    expect(sonYol(mocks.get)).toBe("/library/import/ai-prompt/");
+  });
+
+  it("nüsha listesi edinim partisine göre süzülebilir (F4 etiket kuyruğu)", async () => {
+    mocks.get.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
+    await kutuphaneApi.listCopies({ acquisition: 3, onlyUnlabeled: true });
+    expect(sonYol(mocks.get)).toBe("/library/copies/?acquisition=3&only_unlabeled=true");
   });
 });

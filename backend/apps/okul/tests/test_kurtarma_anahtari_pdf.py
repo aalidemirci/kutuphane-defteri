@@ -123,9 +123,10 @@ def test_sayfa_butcesi_uzun_okul_adi_ve_demirbas_no_ile_tek_sayfa(client: APICli
     """Sayfa bütçesi gerçek uzunlukta verilerle (CLAUDE.md §3): en uzun künye tek sayfa."""
     setup_service.update_school_config(
         fields={
+            # Uydurma ad: gerçek bir kuruma ait değildir, yalnız uzunluk içindir.
             "school_name": (
                 "Örnek Mahallesi Cumhuriyet Mesleki ve Teknik Anadolu Lisesi "
-                "Çok Programlı Pansiyonlu Ek Binası"
+                "Çok Programlı Pansiyonlu Ek Hizmet Binası"
             ),
             "district": "Örnekkaraağaç",
             "demirbas_no": "255.01.02.03-2026/000123-BİLGİSAYAR-MASAÜSTÜ-KÜTÜPHANE",

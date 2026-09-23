@@ -249,16 +249,16 @@ def is_legacy_xls(file_bytes: bytes) -> bool:
     return file_bytes[:8] == _OLE2_MAGIC
 
 
-def _read_xlsx(file_bytes: bytes) -> list[list[Any]]:
+def _read_xlsx(file_bytes: bytes, sheet_name: str | None = None) -> list[list[Any]]:
     wb = load_workbook(BytesIO(file_bytes), read_only=True, data_only=True)
     try:
-        ws = wb.active
+        ws = wb[sheet_name] if sheet_name and sheet_name in wb.sheetnames else wb.active
         return [list(row) for row in ws.iter_rows(values_only=True)]
     finally:
         wb.close()
 
 
-def _read_xls(file_bytes: bytes) -> list[list[Any]]:
+def _read_xls(file_bytes: bytes, sheet_name: str | None = None) -> list[list[Any]]:
     """Eski BIFF (.xls) baytlarını matrise çevirir — e-Okul ihraçlarının biçimi.
 
     e-Okul'un "Excel" düğmesi .xlsx DEĞİL, Excel 97-2003 (.xls) üretir; openpyxl
@@ -286,7 +286,10 @@ def _read_xls(file_bytes: bytes) -> list[list[Any]]:
     try:
         if wb.nsheets == 0:
             raise ParserError("Excel dosyasında sayfa yok.")
-        sh = wb.sheet_by_index(0)
+        # Adlı sayfa istendiyse (katalog aktarımı yalnız "Katalog" sayfasını
+        # okur) o sayfa alınır; yoksa ilk sayfaya düşülür.
+        sayfalar = wb.sheet_names()
+        sh = wb.sheet_by_name(sheet_name) if sheet_name in sayfalar else wb.sheet_by_index(0)
         return [[sh.cell_value(r, c) for c in range(sh.ncols)] for r in range(sh.nrows)]
     except ParserError:
         raise
@@ -298,13 +301,18 @@ def _read_xls(file_bytes: bytes) -> list[list[Any]]:
         wb.release_resources()
 
 
-def read_sheet(file_bytes: bytes) -> list[list[Any]]:
+def read_sheet(file_bytes: bytes, *, sheet_name: str | None = None) -> list[list[Any]]:
     """Excel baytlarını satır-listesine çevirir (ilk/etkin sayfa, salt-okunur).
 
     Kap imzasına göre yol seçilir: `.xls` (OLE2) → xlrd, `.xlsx` (zip) → openpyxl.
     Uzantıya GÜVENİLMEZ — e-Okul dosyaları büyük harfli `.XLS` uzantısıyla iner
     ve kullanıcılar bunları elle `.xlsx` diye yeniden adlandırabiliyor.
+
+    `sheet_name` verilirse O SAYFA okunur, bulunamazsa ilk/etkin sayfaya düşülür
+    (F3 katalog aktarımı yalnız "Katalog" sayfasını okur — şablonun "Sütunlar" ve
+    "Örnek" sayfaları içe aktarılmaz; okulun kendi hazırladığı dosyada ise böyle
+    bir sayfa adı bulunmayabilir).
     """
     if is_legacy_xls(file_bytes):
-        return _read_xls(file_bytes)
-    return _read_xlsx(file_bytes)
+        return _read_xls(file_bytes, sheet_name)
+    return _read_xlsx(file_bytes, sheet_name)

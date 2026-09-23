@@ -370,3 +370,77 @@ def test_katalog_dosyalarinda_url_ve_load_etiketi_yok() -> None:
 )
 def test_sablon_etiketi_denetimi_dogru_ayirt_eder(metin: str, yasak: bool) -> None:
     assert bool(_YASAK_SABLON_ETIKETI.search(metin)) is yasak
+
+
+# ============================================================== §5.10-20
+# Ağ Kataloğu süreci HİÇ dış bağlantı açmaz (§4.1 değişmezi, §8.5-8). ISBN ile
+# künye getirme (U13) yönetim yüzeyinin bir özelliğidir: katalog kaynağında ne
+# künye paketi ne de giden bağlantı açan bir standart kütüphane modülü bulunur.
+# Katalog sunucusunun DİNLEYEN soketi `desktop/katalog_server.py`dedir; bu paket
+# yalnız WSGI uygulamasıdır ve soket açmaz.
+
+_DIS_BAGLANTI_MODULLERI = frozenset(
+    {
+        "urllib",
+        "http",
+        "socket",
+        "ssl",
+        "ftplib",
+        "smtplib",
+        "poplib",
+        "imaplib",
+        "telnetlib",
+        "webbrowser",
+        "requests",
+        "httpx",
+        "urllib3",
+    }
+)
+#: Künye paketinin içe aktarıldığını yakalayan desen (ad alanı değişse de görünür).
+_KUNYE_IMPORTU = re.compile(r"\bkunye\b")
+
+
+def _dis_baglanti_importlari(kaynak: str) -> list[str]:
+    bulunan: list[str] = []
+    for dugum in ast.walk(ast.parse(kaynak)):
+        adlar: list[str] = []
+        if isinstance(dugum, ast.Import):
+            adlar = [alias.name for alias in dugum.names]
+        elif isinstance(dugum, ast.ImportFrom) and not dugum.level:
+            adlar = [dugum.module or ""]
+        bulunan.extend(ad for ad in adlar if ad.split(".", 1)[0] in _DIS_BAGLANTI_MODULLERI)
+    return bulunan
+
+
+def test_katalog_kaynaginda_dis_baglanti_cagrisi_ve_kunye_modulu_yok() -> None:
+    bulunan: dict[str, list[str]] = {}
+    for dosya in _katalog_kaynaklari():
+        if dosya.suffix != ".py":
+            continue
+        kaynak = dosya.read_text(encoding="utf-8")
+        sorunlar = _dis_baglanti_importlari(kaynak)
+        if _KUNYE_IMPORTU.search(kaynak):
+            sorunlar.append("kunye")
+        if sorunlar:
+            bulunan[str(dosya.relative_to(BACKEND_DIR))] = sorunlar
+
+    assert bulunan == {}
+
+
+@pytest.mark.parametrize(
+    "kaynak",
+    [
+        "import urllib.request",
+        "from urllib.request import urlopen",
+        "import socket",
+        "import http.client",
+        "import requests",
+    ],
+)
+def test_dis_baglanti_tarayicisi_yakalar(kaynak: str) -> None:
+    assert _dis_baglanti_importlari(kaynak) != []
+
+
+@pytest.mark.parametrize("kaynak", ["import sqlite3", "from django.template import Engine"])
+def test_dis_baglanti_tarayicisi_izinli_importa_takilmaz(kaynak: str) -> None:
+    assert _dis_baglanti_importlari(kaynak) == []

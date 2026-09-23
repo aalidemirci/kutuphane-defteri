@@ -98,3 +98,59 @@ describe("Kütüphane Politikası", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Kütüphane politikası yüklenemedi.");
   });
 });
+
+// ISBN ile künye getirme (U13, §8.5-1): tek dış kapı ayarı. Varsayılan KAPALI
+// olduğu ve kapalıyken kaynak seçimlerinin kilitli geldiği burada sabitlenir —
+// kullanıcı "işaretledim ama çalışmıyor" durumuna düşmesin.
+describe("Kütüphane Politikası — Künye Getirme", () => {
+  it("varsayılan kapalıdır ve kaynak seçimleri kilitli gelir", async () => {
+    ekranaBas();
+
+    const ana = await screen.findByLabelText("ISBN ile künye getirme açık");
+    expect(ana).not.toBeChecked();
+    expect(
+      screen.getByLabelText("Kültür ve Turizm Bakanlığı halk kütüphaneleri kataloğunda ara"),
+    ).toBeDisabled();
+    expect(screen.getByLabelText("Bulunamazsa Open Library'de ara")).toBeDisabled();
+  });
+
+  it("dışarıya yalnız numaranın gittiğini ve önerinin onay istediğini yazar", async () => {
+    ekranaBas();
+    await screen.findByLabelText("ISBN ile künye getirme açık");
+
+    expect(screen.getByText(/dışarıya yalnız numaranın kendisi gider/)).toBeInTheDocument();
+    expect(screen.getByText(/çevirmen alanı dışarıdan doldurulmaz/)).toBeInTheDocument();
+  });
+
+  it("açıldığında kaynak seçimleri açılır ve üç alan birlikte kaydedilir", async () => {
+    const user = userEvent.setup();
+    kapi.updatePolicy.mockResolvedValue(politika({ metadata_lookup_enabled: true }));
+    ekranaBas();
+
+    await user.click(await screen.findByLabelText("ISBN ile künye getirme açık"));
+    const openLibrary = screen.getByLabelText("Bulunamazsa Open Library'de ara");
+    expect(openLibrary).toBeEnabled();
+    await user.click(openLibrary);
+    await user.click(screen.getByRole("button", { name: "Kaydet" }));
+
+    await waitFor(() => expect(kapi.updatePolicy).toHaveBeenCalled());
+    expect(kapi.updatePolicy.mock.calls[0][0]).toMatchObject({
+      metadata_lookup_enabled: true,
+      metadata_lookup_ministry: true,
+      metadata_lookup_openlibrary: false,
+    });
+  });
+
+  it("iki kaynak da kapalıyken uyarır (sebep internet değil, ayardır)", async () => {
+    const user = userEvent.setup();
+    ekranaBas();
+
+    await user.click(await screen.findByLabelText("ISBN ile künye getirme açık"));
+    await user.click(
+      screen.getByLabelText("Kültür ve Turizm Bakanlığı halk kütüphaneleri kataloğunda ara"),
+    );
+    await user.click(screen.getByLabelText("Bulunamazsa Open Library'de ara"));
+
+    expect(await screen.findByText(/Hiçbir kaynak seçili değil/)).toBeInTheDocument();
+  });
+});

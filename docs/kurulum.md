@@ -163,14 +163,22 @@ duvarı kuralı kurulu programın yoluna bağlıdır) ve otomatik başlatma yokt
 
 ## 4. Pardus / Linux kurulumu
 
+Paket **Pardus 21 ve Pardus 23** ile bu sürümlerin dayandığı Debian 11 ve
+Debian 12 üzerinde çalışacak biçimde üretilir.
+
 ### 4.1 `.deb` paketi ile (önerilen)
 
 ```bash
 sudo apt install ./kutuphane-defteri_<sürüm>_amd64.deb
 ```
 
-Bağımlılıklar dağıtımın deposundan kurulur. Program menüde "Kütüphane Defteri"
+Bağımlılıklar dağıtımın deposundan kurulur; bu yüzden kurulum sırasında
+bilgisayarın depoya erişimi olmalıdır. Program menüde "Kütüphane Defteri"
 olarak görünür; uçbirimden `kutuphane-defteri` ile de açılır.
+
+Linux sürümü, pencereyi çizen kütüphaneleri LGPLv3 lisansıyla birlikte
+dağıtır. Bu dosyalar kurulum klasöründe (`/opt/kutuphane-defteri`) ayrı ayrı
+durur; isteyen kendi sürümüyle değiştirebilir.
 
 ### 4.2 Taşınabilir arşiv ile (yönetici parolası olmadan)
 

@@ -48,6 +48,13 @@ import { OduncDurumu, bolumSecenekleri, kodSecenekleri, useBolumler } from "./or
 /** Edinimler ve Bağışlar ekranının adresi (katalogdan girilir). */
 export const EDINIMLER_ADRESI = "/katalog/edinimler";
 
+/** Katalog başlığındaki yan ekranlar: toplu aktarım ve kitap kitap giriş (F3). */
+const YAN_EKRANLAR: { to: string; label: string; icon: string }[] = [
+  { to: "/katalog/hizli-kayit", label: "Hızlı Kayıt", icon: "bolt" },
+  { to: "/katalog/ice-aktarma", label: "İçe Aktarma", icon: "upload_file" },
+  { to: EDINIMLER_ADRESI, label: "Edinimler ve Bağışlar", icon: "local_shipping" },
+];
+
 /** Bir eserin ayrıntı adresi. */
 export function eserAdresi(id: number): string {
   return `/katalog/eser/${id}`;
@@ -77,13 +84,18 @@ export default function KatalogPage() {
             ve ISBN üzerinde çalışır.
           </p>
         </div>
-        <Link
-          to={EDINIMLER_ADRESI}
-          className="inline-flex min-h-[var(--kd-control-height)] items-center gap-2 rounded-shape-md border border-outline-variant bg-surface-container-lowest px-4 text-label-large font-semibold text-primary transition hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          <Icon name="local_shipping" size="lg" />
-          Edinimler ve Bağışlar
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          {YAN_EKRANLAR.map((ekran) => (
+            <Link
+              key={ekran.to}
+              to={ekran.to}
+              className="inline-flex min-h-[var(--kd-control-height)] items-center gap-2 rounded-shape-md border border-outline-variant bg-surface-container-lowest px-4 text-label-large font-semibold text-primary transition hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <Icon name={ekran.icon} size="lg" />
+              {ekran.label}
+            </Link>
+          ))}
+        </div>
       </div>
 
       <Tabs
@@ -233,7 +245,7 @@ function EserlerSekmesi({ bolumler }: { bolumler: Section[] }) {
         <EmptyState
           icon="menu_book"
           title="Gösterilecek eser yok"
-          description="Süzgeçleri değiştirin ya da yeni bir eser ekleyin. Toplu giriş için Genel Bakış'taki Katalog Excel Şablonu'nu kullanabilirsiniz."
+          description="Süzgeçleri değiştirin ya da yeni bir eser ekleyin. Kitap elinizdeyken Hızlı Kayıt, eldeki liste için İçe Aktarma ekranını kullanabilirsiniz."
         />
       ) : (
         <>

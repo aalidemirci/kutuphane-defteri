@@ -707,7 +707,7 @@ def test_api_personel_uye_turu_dogrulanir_unvan_brans_yok_sayilir(client: APICli
 
     yanit = client.post(
         PERSONEL_URL,
-        {"first_name": "A", "last_name": "B", "title": "Müdür", "branch": "Coğrafya"},
+        {"first_name": "A", "last_name": "B", "title": "Müdür", "branch": "Matematik"},
         format="json",
     )
     assert yanit.status_code == 201

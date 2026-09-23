@@ -214,11 +214,35 @@ programın ne kabul edeceğini söyler.
 
 ## İçe aktarırken ne olur?
 
-Dosyanızı programa aktardığınızda program önce bir önizleme gösterir, onayınız
-olmadan hiçbir şeyi kaydetmez:
+Doldurduğunuz dosya programa **Katalog → İçe Aktarma → Excel Aktarımı**
+sekmesinden alınır. Sıra şudur:
 
-- bölüm adları programın bölüm listesiyle eşleştirilir, eşleşmeyenler size
-  sorulur;
-- ders kitabı olduğu için danışma kaynağı sayılan satırlar gösterilir;
-- katalogda zaten bulunan ya da bulunabilecek eserler ayrıca belirtilir;
-- aynı dosya ikinci kez uygulanmak istenirse program uyarır.
+1. **Dosyayı seçin** ve **Önizle** deyin. Önizleme hiçbir kayıt yazmaz; program
+   işin kendisini prova edip geri sarar, yani ekrandaki sayılar uygulamanın
+   gerçekten yazacağı sayılardır.
+2. **Eksikleri tamamlayın.** Program iki şeyi sorar:
+   - *karar bekleyen satırlar*: künye katalogdaki bir esere benziyor ama tam
+     eşleşmiyorsa "yeni eser aç" mı, "şu esere nüsha ekle" mi diye sorar;
+   - *bölüm karşılıkları*: bölüm listenizde bulunmayan bir "Bölüm" değeri varsa
+     var olan bir bölümle eşleştirir ya da yeni bölüm açarsınız. Karşılığı
+     verilmeyen değerle aktarım yazmaz — kitabın rafta nerede durduğu bilgisi
+     kaybolmasın.
+   Kararları verdikten sonra **Yeniden önizle** deyin.
+3. **Edinim partisini** seçin (edinim yolu ve tarihi) ve **Uygula** deyin.
+   Aktarılan bütün nüshalar tek bir partiden doğar; uygulamadan sonra program
+   kaç nüsha açıldığını ve barkod aralığını yazar.
+
+Önizlemede ayrıca şunlar gösterilir:
+
+- ders kitabı olduğu için danışma kaynağı sayılan satırlar (bu nüshalar ödünç
+  verilmez);
+- tanınmayan sütun başlıkları ve dosyada bulunmayan sütunlar;
+- aktarılamayan satırlar, satır numarasıyla ve gerekçesiyle.
+
+**Aynı dosya ikinci kez uygulanamaz.** Program dosyanın içeriğini tanır ve "Bu
+dosya … tarihinde zaten aktarıldı" der; yoksa kitaplar kayda iki kez girerdi.
+Yeni kitaplar için yalnız onları içeren bir dosya hazırlayın.
+
+Elinizde hazır bir liste yoksa Excel'le uğraşmanız gerekmez: **Katalog → Hızlı
+Kayıt** ekranında kitabı elinize alıp ISBN barkodunu okutarak tek tek giriş
+yapabilirsiniz.

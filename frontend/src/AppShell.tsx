@@ -38,6 +38,8 @@ const PAGE_TITLES: Array<[prefix: string, title: string]> = [
   // "/katalog" desenine de uyar, önce kendi başlığını bulmalıdır.)
   ["/katalog/eser", "Eser Ayrıntısı"],
   ["/katalog/edinimler", "Edinimler ve Bağışlar"],
+  ["/katalog/ice-aktarma", "İçe Aktarma"],
+  ["/katalog/hizli-kayit", "Hızlı Kayıt"],
   ["/katalog", "Katalog"],
   ["/ayarlar", "Ayarlar"],
   ["/kilavuz", "Kullanım Kılavuzu"],

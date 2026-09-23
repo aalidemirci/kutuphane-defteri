@@ -7,6 +7,12 @@
 //
 // Kaydetme KISMİDİR: yalnız buradaki alanlar gönderilir, politikanın öbür
 // alanlarına dokunulmaz (sunucu sözleşmesi).
+//
+// KÜNYE GETİRME (U13, tasarım §8.5) bu panelin son bölümüdür ve VARSAYILAN
+// OLARAK KAPALIDIR: ana bayrak kapalıyken program ISBN sorgusu için dışarıya
+// hiçbir istek atmaz (sunucu 409 `kunye_kapali` döner). Kaynak seçimleri ana
+// bayrak kapalıyken etkisizdir; panel onları o durumda kilitler ki kullanıcı
+// "işaretledim ama çalışmıyor" durumuna düşmesin.
 
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
@@ -50,18 +56,21 @@ function Onay({
   checked,
   onChange,
   helperText,
+  disabled = false,
 }: {
   label: string;
   checked: boolean;
   onChange: (next: boolean) => void;
   helperText?: string;
+  disabled?: boolean;
 }) {
   return (
-    <div>
+    <div className={disabled ? "opacity-60" : undefined}>
       <label className="flex min-h-11 cursor-pointer items-center gap-2 text-body-medium text-on-surface">
         <input
           type="checkbox"
           checked={checked}
+          disabled={disabled}
           onChange={(e) => onChange(e.target.checked)}
           className="size-5 shrink-0 accent-primary"
         />
@@ -96,6 +105,9 @@ export default function KutuphanePolitikasiPaneli() {
   const [saklamaOdunc, setSaklamaOdunc] = useState("");
   const [saklamaDosya, setSaklamaDosya] = useState("");
   const [saklamaTeslim, setSaklamaTeslim] = useState("");
+  const [kunyeAcik, setKunyeAcik] = useState(false);
+  const [kunyeBakanlik, setKunyeBakanlik] = useState(true);
+  const [kunyeOpenLibrary, setKunyeOpenLibrary] = useState(true);
 
   const doldur = (p: LibraryPolicy) => {
     setPolitika(p);
@@ -114,6 +126,9 @@ export default function KutuphanePolitikasiPaneli() {
     setSaklamaOdunc(String(p.retention_years_returned_loans));
     setSaklamaDosya(String(p.retention_years_closed_cases));
     setSaklamaTeslim(String(p.retention_years_closed_deliveries));
+    setKunyeAcik(p.metadata_lookup_enabled);
+    setKunyeBakanlik(p.metadata_lookup_ministry);
+    setKunyeOpenLibrary(p.metadata_lookup_openlibrary);
   };
 
   useEffect(() => {
@@ -163,6 +178,9 @@ export default function KutuphanePolitikasiPaneli() {
         saklamaTeslim,
         politika.retention_years_closed_deliveries,
       ),
+      metadata_lookup_enabled: kunyeAcik,
+      metadata_lookup_ministry: kunyeBakanlik,
+      metadata_lookup_openlibrary: kunyeOpenLibrary,
     };
     setBusy(true);
     try {
@@ -314,6 +332,48 @@ export default function KutuphanePolitikasiPaneli() {
               error={errors.retention_years_closed_deliveries}
             />
           </div>
+        </Bolum>
+
+        <Bolum baslik="Künye Getirme">
+          <p className="text-body-medium text-on-surface-variant">
+            Kitabın arka kapağındaki ISBN numarasıyla künye bilgilerini internetten getirir.
+            Kapalıyken program bu iş için hiçbir bağlantı kurmaz. Açıksanız dışarıya yalnız
+            numaranın kendisi gider: okul adı, kitap listesi ya da kişi bilgisi gönderilmez. Gelen
+            künye bir öneridir; onaylamadan hiçbir alan değişmez ve çevirmen alanı dışarıdan
+            doldurulmaz.
+          </p>
+          <Onay
+            label="ISBN ile künye getirme açık"
+            checked={kunyeAcik}
+            onChange={setKunyeAcik}
+            helperText="Varsayılan olarak kapalıdır. İnterneti olmayan masada kapalı bırakın; künyeyi Katalog → İçe Aktarma → Çevrimdışı Künye yoluyla da tamamlayabilirsiniz."
+          />
+          <Onay
+            label="Kültür ve Turizm Bakanlığı halk kütüphaneleri kataloğunda ara"
+            checked={kunyeBakanlik}
+            onChange={setKunyeBakanlik}
+            disabled={!kunyeAcik}
+            helperText="Önce burası aranır; Türkçe kayıtlar ve sınıflama kodu buradan gelir."
+          />
+          <Onay
+            label="Bulunamazsa Open Library'de ara"
+            checked={kunyeOpenLibrary}
+            onChange={setKunyeOpenLibrary}
+            disabled={!kunyeAcik}
+            helperText="Yedek kaynaktır; Türkçe kayıtlarında eksik harf ve yanlış tarih görülebilir, gelen künyeyi kitaptan doğrulayın."
+          />
+          {/* Ana anahtar açıkken iki kutu da boşsa sorgu her seferinde
+              "bulunamadı" döner; sebep internet değil bu ayardır. Uyarı
+              olmasaydı kullanıcı ağı ya da BTR'yi suçlardı. */}
+          {kunyeAcik && !kunyeBakanlik && !kunyeOpenLibrary && (
+            <p
+              role="alert"
+              className="rounded-shape-sm bg-tertiary-container px-4 py-3 text-body-small text-on-tertiary-container"
+            >
+              Hiçbir kaynak seçili değil: künye getirme açık görünse de sorgu hiçbir yere gitmez ve
+              program “İnternetten getirilemedi” der. En az bir kaynak seçin.
+            </p>
+          )}
         </Bolum>
 
         <div className="flex justify-end">

@@ -1,6 +1,6 @@
 """Sistem tepsisi testleri (tasarım §4.4 F0 menüsü, §4.5, UY-7).
 
-GUI kütüphaneleri (pystray, PyQt5) Docker imajında yoktur: ikisi de sahte
+GUI kütüphaneleri (pystray, PySide6) Docker imajında yoktur: ikisi de sahte
 modülle sınanır. Gerçek tepsi davranışı (Windows'ta pystray iş parçacığı,
 Linux'ta Qt ana iş parçacığı) F0 spike'ında elle doğrulanır
 (packaging/windows/NOTLAR.md).
@@ -37,9 +37,15 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture(autouse=True)
-def _qt_stil_degiskeni_geri_alinir(monkeypatch: pytest.MonkeyPatch) -> None:
-    """`prepare_qt_application` `QT_STYLE_OVERRIDE`'ı yazar; test sonunda eski hâline döner."""
+def _qt_ortam_degiskenleri_geri_alinir(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Qt ortam değişkenleri test sonunda eski hâline döner.
+
+    `prepare_qt_application` `QT_STYLE_OVERRIDE`'ı, `load_qt` ise bağlayıcıyı
+    seçen `QT_API`'yi yazar. `QT_API` sıfırlanır (silinir) ki `setdefault`
+    davranışı sınanabilsin; monkeypatch teardown'da yazılan değeri kaldırır.
+    """
     monkeypatch.setenv("QT_STYLE_OVERRIDE", "test-oncesi")
+    monkeypatch.delenv("QT_API", raising=False)
 
 
 class _Sayac:
@@ -214,7 +220,7 @@ class _Sinyal:
 
 
 class _SahteQt:
-    """PyQt5'in kullandığımız yüzeyi; kurulum sırasını kaydeder."""
+    """PySide6'nın kullandığımız yüzeyi; kurulum sırasını kaydeder."""
 
     def __init__(self, *, tepsi_var: bool = True, uygulama_var: bool = False) -> None:
         self.sira: list[str] = []
@@ -406,7 +412,7 @@ def test_qt_tepsi_yoksa_kurulmaz_ama_uygulama_hazirdir(
 
 def test_qt_yuklenemezse_tepsisiz(kd_gunlugu: list[logging.LogRecord]) -> None:
     def yok() -> Any:
-        raise ImportError("PyQt5 yok")
+        raise ImportError("PySide6 yok")
 
     tepsi = QtTray(_Sayac().eylemler(), qt_loader=yok, signal_installer=_SinyalKaydi())
 
@@ -512,7 +518,7 @@ def test_tepsi_ikonu_varsayilan_olarak_paket_yolundan_cozulur(
 
 
 def test_qt_yukleyici_webengine_i_once_ice_aktarir(monkeypatch: pytest.MonkeyPatch) -> None:
-    """PyQt5 kuralı: QtWebEngineWidgets, QApplication kurulmadan ÖNCE aktarılmalı."""
+    """Qt kuralı: QtWebEngineWidgets, QApplication kurulmadan ÖNCE aktarılmalı."""
     sira: list[str] = []
 
     def sahte_import(ad: str) -> Any:
@@ -530,7 +536,41 @@ def test_qt_yukleyici_webengine_i_once_ice_aktarir(monkeypatch: pytest.MonkeyPat
 
     tray_mod.load_qt()
 
-    assert sira[0] == "PyQt5.QtWebEngineWidgets"
+    assert sira[0] == "PySide6.QtWebEngineWidgets"
+    assert sira[1:] == ["PySide6.QtCore", "PySide6.QtGui", "PySide6.QtWidgets"]
+
+
+def _qt_modulu_taklidi(_ad: str) -> SimpleNamespace:
+    """`load_qt`'nin okuduğu bütün sınıfları taşıyan boş taklit modül."""
+    return SimpleNamespace(
+        QApplication=object,
+        QSystemTrayIcon=object,
+        QMenu=object,
+        QIcon=object,
+        QPixmap=object,
+        QTimer=object,
+    )
+
+
+def test_qt_yukleyici_baglayiciyi_pyside6_ye_sabitler(monkeypatch: pytest.MonkeyPatch) -> None:
+    """qtpy kurulu ilk bağlayıcıyı seçer; seçim `QT_API` ile ilk import'tan önce sabitlenir."""
+    monkeypatch.setattr(tray_mod, "importlib", SimpleNamespace(import_module=_qt_modulu_taklidi))
+
+    tray_mod.load_qt()
+
+    assert os.environ["QT_API"] == "pyside6"
+
+
+def test_qt_yukleyici_disaridan_verilen_baglayiciyi_ezmez(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Sahada teşhis için elle verilmiş `QT_API` korunur (`setdefault`)."""
+    monkeypatch.setenv("QT_API", "pyqt6")
+    monkeypatch.setattr(tray_mod, "importlib", SimpleNamespace(import_module=_qt_modulu_taklidi))
+
+    tray_mod.load_qt()
+
+    assert os.environ["QT_API"] == "pyqt6"
 
 
 def test_tepsi_geri_cagrisi_pystray_ve_qt_ile_uyumlu() -> None:

@@ -13,8 +13,19 @@
 // F2 bölümü "Katalog", kapalı günlerle Excel şablonunun arasına girer: eser/nüsha
 // ayrımı, bölümler, sınıflama kodu ve yer numarası, ISBN, barkod ve kayıt no,
 // ödünç verilmeyen kaynaklar, edinim yolları ve bağış ön kaydı, Kütüphane
-// Politikası. Şablon bölümü ondan SONRA gelir: şablon toplu hazırlıktır ve içe
-// aktarımı sonraki sürüme bakar.
+// Politikası.
+//
+// F3 iki bölüm ekler ve sıra SAHADAKİ iş sırasıdır (tasarım §8.1, S8 cevabı):
+// "Hızlı Kayıt" kataloğun HEMEN ardından gelir, çünkü okulda hazır liste yoktur
+// ve katalog kitap kitap kurulur; "Katalog Excel Şablonu" ile "İçe Aktarma" ondan
+// sonra, liste yolu olarak anlatılır. Yapay zekâ köprüsü İçe Aktarma bölümünün
+// SONUNDA ve uyarılarıyla durur: okulun kitap listesi dışarı çıkar, asıl yol
+// Excel'dir, künye eksiği için ISBN yolu daha güvenlidir (§8.2 U13 eki).
+//
+// İki geçiş yolu ("önce liste" / "önce etiket", §8.1 tablosu) Hızlı Kayıt
+// bölümünün BAŞINDA karşılaştırılır: kullanıcı hangi yolu izleyeceğine, ekranlar
+// anlatılmadan önce karar verir. Yolların adı kullanıcı dilindedir; "yöntem A/B"
+// iç adlandırması kılavuza girmez.
 //
 // Metin kuralları (docs/sozluk.md — bağlayıcı): düğme, sekme ve alan adları
 // ekrandaki metinle BİREBİR yazılır (depodan doğrulandı; test bir kısmını ekran
@@ -34,6 +45,8 @@ import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 
+import { YONERGE, YONETMELIK } from "../../lib/mevzuat";
+
 import Card from "../../ui/Card";
 import Icon from "../../ui/Icon";
 
@@ -45,7 +58,9 @@ const BOLUMLER = {
   kisiler: { baslik: "Kişiler ve e-Okul Listeleri", ikon: "group" },
   "kapali-gunler": { baslik: "Kapalı Günler", ikon: "event_busy" },
   katalog: { baslik: "Katalog", ikon: "menu_book" },
+  "hizli-kayit": { baslik: "Hızlı Kayıt", ikon: "bolt" },
   "katalog-sablonu": { baslik: "Katalog Excel Şablonu", ikon: "table_view" },
+  "ice-aktarma": { baslik: "İçe Aktarma", ikon: "upload_file" },
   yedek: { baslik: "Yedek ve Güvenlik Dosyası", ikon: "backup" },
   "ag-katalogu": { baslik: "Ağ Kataloğu", ikon: "lan" },
 } as const;
@@ -132,9 +147,6 @@ function Tus({ children }: { children: ReactNode }) {
 function Kod({ children }: { children: ReactNode }) {
   return <code className="break-all font-mono text-body-small text-on-surface">{children}</code>;
 }
-
-const YONERGE = "Millî Eğitim Bakanlığı Bilgi ve Sistem Güvenliği Yönergesi";
-const YONETMELIK = "Millî Eğitim Bakanlığı Okul Kütüphaneleri Yönetmeliği";
 
 /**
  * Başka bir ekrandan çapalı adresle gelindiğinde (ör. yol haritasındaki BTR
@@ -682,9 +694,11 @@ export default function KilavuzPage() {
         </p>
         <Ipucu>
           <p>
-            Çok sayıda kitabı tek tek yazmak yerine Excel&apos;de hazırlamak için aşağıdaki Katalog
-            Excel Şablonu bölümüne bakın. Şablonla hazırladığınız dosyanın programa topluca
-            aktarılması sonraki sürümde gelecek; bugün katalog kayıtları bu ekrandan girilir.
+            Bu ekran tek tek kayıt içindir. Kitabı elinize alıp ISBN barkodunu okutarak girmek için{" "}
+            <Ekran to="/katalog/hizli-kayit">Katalog → Hızlı Kayıt</Ekran>, hazır bir listeyi
+            topluca almak için <Ekran to="/katalog/ice-aktarma">Katalog → İçe Aktarma</Ekran>{" "}
+            ekranını kullanın. İkisi de aşağıda anlatılır; iki bağlantı da Katalog sayfasının sağ
+            üstündedir.
           </p>
         </Ipucu>
 
@@ -915,13 +929,123 @@ export default function KilavuzPage() {
       </Bolum>
 
       {/* ------------------------------------------------------------------ */}
+      <Bolum id="hizli-kayit">
+        <p>Raftaki kitapları programa geçirmenin iki yolu vardır; kılavuz ikisini de anlatır:</p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong>Önce liste:</strong> kitaplar Excel&apos;de yazılır, dosya programa aktarılır,
+            sonra etiketler basılıp raf raf yapıştırılır. Elinizde hazır bir liste varsa (eski bir
+            defter, bir bağış listesi ya da başka bir okuldan gelen dosya) bu yol hızlıdır; aşağıda
+            Katalog Excel Şablonu ve İçe Aktarma bölümlerinde anlatılır.
+          </li>
+          <li>
+            <strong>Önce etiket:</strong> boş barkodlu etiketler önceden basılır; kitap elde ISBN
+            okutulur, künye yazılır, nüsha açılır ve etiket kitaba yapıştırılır.{" "}
+            <strong>Okulun asıl yolu budur</strong>, çünkü okulda hazır bir kitap listesi yoktur ve
+            katalog kitap kitap kurulur. Bu yolun ekranı{" "}
+            <Ekran to="/katalog/hizli-kayit">Katalog → Hızlı Kayıt</Ekran>&apos;tır.
+          </li>
+        </ul>
+        <p>
+          İki yol birbirini dışlamaz: listesi olan bölümleri aktarıp gerisini kitap kitap
+          girebilirsiniz. Etiket basımı sonraki sürümde gelecek; o zamana kadar açtığınız nüshalar
+          etiketsiz kalır ve <Ekran to="/katalog?tab=nushalar">Katalog → Nüshalar</Ekran>{" "}
+          sekmesindeki “Yalnız etiketlenmemişler” kutusunda birikir.
+        </p>
+        <Ipucu>
+          <p>
+            Geçiş dönemindeki kural: ödünç istenen etiketsiz bir kitap masaya geldiğinde onu
+            bekletmeyin, Hızlı Kayıt&apos;la o an kaydedip tek etiketini basın. Dönüşüm bitene kadar
+            kâğıt defter açık kalır, bittiğinde kapatılır.
+          </p>
+        </Ipucu>
+
+        <AltBaslik>Kitabı okutmak</AltBaslik>
+        <p>
+          Ekran açıldığında imleç “ISBN barkodu” kutusundadır. Kitabın arka kapağındaki ISBN
+          barkodunu okutun; okuyucunuz yoksa numarayı yazıp <Tus>Enter</Tus>&apos;a ya da “Künyeyi
+          getir” düğmesine basın. Nüsha açıldıktan sonra künye ve nüsha alanları boşalır ve imleç
+          yeniden bu kutuya döner, böylece sıradaki kitabı doğrudan okutabilirsiniz; edinim ve bölüm
+          seçiminiz korunur, çünkü aynı parti arka arkaya girilir. Yanlış bir kayda başladıysanız
+          “Formu temizle” deyin.
+        </p>
+        <p>
+          Program ne okuttuğunuzu tanır: kütüphane etiketi ya da üye kartı okutulursa kayıt
+          başlamaz, “Bu bir kütüphane etiketi. Hızlı kayıtta kitabın arka kapağındaki ISBN barkodu
+          okutulur.” der.
+        </p>
+        <AltBaslik>Künye nereden gelir</AltBaslik>
+        <p>
+          <strong>ISBN ile künye getirme</strong> açıksa program numarayı iki dış katalogda arar ve
+          künye <strong>önerisi</strong> getirir: önce Kültür ve Turizm Bakanlığı&apos;nın halk
+          kütüphaneleri kataloğuna, orada bulunamazsa Open Library&apos;ye bakar. Öneri bir kaynak
+          ve tarih etiketiyle (“Bakanlık kataloğu, 23.09.2026”) ve “Dış kaynaktan alındı,
+          doğrulayın” rozetiyle gelir. Her alanın yanında bir kutu vardır: işaretini kaldırdığınız
+          alan forma yazılmaz, “Seçilenleri forma yaz” dediğinizde yalnız işaretlediğiniz alanlar
+          dolar ve dolu bir alanın üzerine sessizce yazılmaz.
+        </p>
+        <p>
+          <strong>Gelen künyeyi kitabın künye sayfasından doğrulayın.</strong> Bu kayıtlar başka
+          kurumların kataloglarından gelir, okulun kendi kaydı değildir ve hatalı olabilir: Open
+          Library&apos;nin Türkçe kayıtlarında düşen harfler, yanlış yayın tarihleri ve yazar
+          sanılmış çevirmenler görülmüştür. <strong>Çevirmen alanı dışarıdan doldurulmaz</strong>:
+          kaynaklar çevirmeni yazardan ayırmadığı için çeviri eserlerde çevirmeni siz yazarsınız.
+          Aynı numarayla birden çok kayıt bulunursa program kaç kayıt bulduğunu yazar ve en
+          ayrıntılısını getirir.
+        </p>
+        <p>
+          Bir numara ikinci kez sorulduğunda program dışarıya çıkmaz, ilk gelen künyeyi gösterir ve
+          “daha önce sorulduğu için yeniden sorulmadı” der. Gelen künye bozuk ya da eksikse
+          <strong> “Yeniden getir”</strong> deyin: program o numarayı kaynağa yeniden sorar. Form
+          doluysa gelen alanlar kendiliğinden yazılmaz; hangilerini istediğinizi işaretleyip
+          “Seçilenleri forma yaz” dersiniz.
+        </p>
+        <p>
+          Ayar <Ekran to="/ayarlar?tab=politika">Ayarlar → Kütüphane Politikası</Ekran> ekranının
+          “Künye Getirme” bölümündedir: “ISBN ile künye getirme açık” anahtarı{" "}
+          <strong>varsayılan olarak kapalıdır</strong> ve kaynak seçenekleri o anahtar açılmadan
+          işaretlenemez. Kapalıyken program bu iş için hiçbir bağlantı kurmaz; künyeyi elle yazmak
+          her koşulda tam işlevlidir. Açtığınızda dışarıya yalnız numaranın kendisi gider: okul adı,
+          kitap listesi, kişi bilgisi ya da kitabın kütüphane barkodu gönderilmez. İnternet yoksa ya
+          da adres kapalıysa program aksamaz, “İnternetten getirilemedi, elle girebilirsiniz.” der.
+        </p>
+        <Ipucu>
+          <p>
+            Kütüphane masasında internet yoksa ayarı kapalı bırakın. Künye eksiğini dosyayla da
+            kapatabilirsiniz:{" "}
+            <Ekran to="/katalog/ice-aktarma?tab=cevrimdisi">
+              Katalog → İçe Aktarma → Çevrimdışı Künye
+            </Ekran>{" "}
+            (aşağıda anlatılır). Kurum bilgisayarına telefon ya da mobil modem bağlayarak internet
+            alınmaz.
+          </p>
+        </Ipucu>
+        <AltBaslik>Aynı kitabın ikinci nüshası</AltBaslik>
+        <p>
+          Okuttuğunuz numara katalogda zaten varsa program bunu söyler ve “Bu esere nüsha ekle”
+          düğmesini gösterir; düğmeye bastığınızda künye formu kapanır, çünkü künye yeniden
+          yazılmaz. Aynı kitabı ikinci kez kataloglamayın: künye tektir, her kitap onun bir
+          nüshasıdır. Bu arama yerel kataloğunuzda yapılır, dışarıya bir şey sorulmaz.
+        </p>
+        <p>
+          Sonra “Nüsha” bölümünde edinimi, nüsha sayısını, bölümü ve gerekiyorsa eski kayıt
+          numarasını yazıp “Nüshayı aç” deyin; ders kitabı gibi ödünç verilmeyecek bir kaynaksa
+          “Danışma kaynağı (ödünç verilmez)” kutusunu işaretleyin. Barkod ve kayıt numarasını
+          program verir; numara asla yeniden kullanılmaz. Açılan nüsha etiketsizdir:{" "}
+          <Ekran to="/katalog?tab=nushalar">Katalog → Nüshalar</Ekran> sekmesinde “Yalnız
+          etiketlenmemişler” kutusuyla etiket bekleyenleri bir arada görürsünüz.
+        </p>
+      </Bolum>
+
+      {/* ------------------------------------------------------------------ */}
       <Bolum id="katalog-sablonu">
         <p>
           Çok sayıda kitabı tek tek yazmak yerine listenizi Excel&apos;de hazırlayabilirsiniz;
-          hazırladığınız dosya katalog içe aktarımı geldiğinde olduğu gibi kullanılır. Şablonu{" "}
+          hazırladığınız dosyayı sonra İçe Aktarma ekranından kataloğa alırsınız. Şablonu{" "}
           <Ekran to="/">Genel Bakış</Ekran>&apos;taki “Katalog Excel Şablonu” kartında (ya da
-          Başlangıç Yol Haritası&apos;nda) “Şablonu indir” düğmesiyle alın. Dosyanın adı indirildiği
-          günün tarihini taşır.
+          Başlangıç Yol Haritası&apos;nda) “Şablonu indir” düğmesiyle alın; aynı dosya İçe Aktarma
+          ekranının sağ üstündeki “Katalog Excel şablonu” düğmesinden de iner. Dosyanın adı
+          indirildiği günün tarihini taşır.
         </p>
         <p>
           Şablonda üç sayfa vardır: <strong>Katalog</strong> kitapları yazacağınız sayfadır ve
@@ -958,6 +1082,134 @@ export default function KilavuzPage() {
             Dosyayı Excel çalışma kitabı olarak kaydedin ve çalışırken ara ara yedeğini alın.
           </p>
         </Ipucu>
+      </Bolum>
+
+      {/* ------------------------------------------------------------------ */}
+      <Bolum id="ice-aktarma">
+        <p>
+          Hazır listeyi kataloğa almak{" "}
+          <Ekran to="/katalog/ice-aktarma">Katalog → İçe Aktarma</Ekran> ekranındadır. Dört sekmesi
+          vardır: <strong>Excel Aktarımı</strong>, <strong>Yapay Zekâ Köprüsü</strong>,{" "}
+          <strong>Çevrimdışı Künye</strong> ve <strong>Aktarım Geçmişi</strong>.
+        </p>
+        <AltBaslik>Excel aktarımı: önce önizleme</AltBaslik>
+        <p>
+          Dosyayı seçip “Önizle” deyin. Önizleme <strong>hiçbir kayıt yazmaz</strong> ama işin
+          kendisini prova eder: ekrandaki sayılar uygulamanın gerçekten yazacağı sayılardır. Üstteki
+          kutular toplamı verir; “Satır listesi”ni açtığınızda her satırın “Durum” sütununda ne
+          olacağı yazar:
+        </p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>
+            <strong>Yeni eser</strong> — katalogda karşılığı yok, künye açılacak;
+          </li>
+          <li>
+            <strong>Mevcut esere nüsha</strong> — künye katalogda var, yalnız nüsha eklenecek;
+          </li>
+          <li>
+            <strong>Şüpheli</strong> — katalogdaki bir esere benziyor ama tam eşleşmiyor; bu satır
+            karar bekler;
+          </li>
+          <li>
+            <strong>Aktarılmadı</strong> — satır okunamadı (ör. kaynak adı boş); gerekçesi “Notlar”
+            sütunundadır.
+          </li>
+        </ul>
+        <p>
+          Program iki eksiği tek tek sorar; ikisi de giderilmeden “Uygula” düğmesi açılmaz ve ekran
+          neyin eksik olduğunu yazar:
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong>“Karar bekleyen satırlar”:</strong> şüpheli her satır için “Yeni eser aç” ya da
+            benzeyen kayıtlardan birini seçersiniz (“… eserine nüsha ekle”). Aynı dosyanın başka bir
+            satırına da bağlayabilirsiniz. Kararları verdikten sonra “Yeniden önizle” deyin.
+          </li>
+          <li>
+            <strong>“Bölüm listesinde bulunmayan değerler”:</strong> dosyadaki “Bölüm” değeri
+            kontrollü listede yoksa karşılığı sorulur; var olan bir bölümü seçer ya da “Yeni bölüm
+            aç” dersiniz. Değer karşılıksız kaldığı sürece aktarım yazmaz — kitabın rafta nerede
+            durduğu bilgisi kaybolmasın.
+          </li>
+        </ul>
+        <p>
+          Önizleme ayrıca tanınmayan sütun başlıklarını, dosyada bulunmayan sütunları,{" "}
+          <strong>ders kitabı olduğu için danışma kaynağı sayılan</strong> satırları (“Danışma
+          Kaynağı” sütunu boş bırakılmış olanlar; bu nüshalar ödünç verilmez) ve sınıflama kodu
+          “tahmini” işaretlenen satırları sayar.
+        </p>
+        <p>
+          Eksik kalmadıysa “Açılacak Edinim Partisi” bölümünde edinim yolunu ve tarihi seçip
+          “Uygula” deyin. Aktarılan bütün nüshalar tek bir edinim partisinden doğar; uygulamadan
+          sonra kaç nüsha açıldığı ve barkodların hangi iki numara arasında olduğu yazılır. Bu
+          nüshaların hiçbiri etiketli değildir.
+        </p>
+        <p>
+          Toplu aktarımda program <strong>internetten künye getirmez</strong>: dosyada ne yazıyorsa
+          o aktarılır. Künye eksiğini sonradan Hızlı Kayıt ekranından ya da aşağıdaki Çevrimdışı
+          Künye yolundan tamamlarsınız.
+        </p>
+        <Ipucu>
+          <p>
+            <strong>Aynı dosya ikinci kez uygulanamaz.</strong> Program dosyanın içeriğini tanır ve
+            “Bu dosya … tarihinde zaten aktarıldı” der; yoksa kitaplar kayda iki kez girerdi. Yeni
+            kitaplar için yalnız onları içeren bir dosya hazırlayın.
+          </p>
+        </Ipucu>
+        <AltBaslik>Çevrimdışı künye: dosyayla gidip gelen bilgi</AltBaslik>
+        <p>
+          Kütüphane masasında internet yoksa künye eksiğini dosyayla kapatabilirsiniz. “ISBN
+          listesini indir” deyin: program künyesi eksik eserlerin listesini{" "}
+          <strong>ISBN Künye Listesi</strong> adıyla indirir. Boş hücreleri internete bağlı{" "}
+          <strong>başka bir cihazda</strong> doldurun ve dosyayı aynı sekmedeki “Doldurulmuş dosya”
+          kutusundan geri yükleyin. “Eser No” ve “ISBN” sütunlarını değiştirmeyin: eşleşme o iki
+          sütundan yapılır. Dosyada çevirmen sütunu yoktur; çeviri eserlerde çevirmeni programda
+          elle yazarsınız.
+        </p>
+        <p>
+          Program önce önizleme gösterir ve hiçbir kaydı değiştirmez: her alanın kendi kutusu
+          vardır, <strong>dolu alanlar işaretsiz gelir</strong> — yani mevcut künyenin üzerine
+          sessizce yazılmaz. “Seçilenleri kaydet” dediğinizde yalnız işaretlediğiniz alanlar
+          eserlere yazılır. Dosyaya öğrenci, veli ya da personel bilgisi yazılmaz; dosya yalnız
+          kitap künyesi taşır.
+        </p>
+        <Mevzuat kaynak={`${YONERGE}, md. 11/18`}>
+          “Bakanlık merkez ve taşra teşkilatında tanımı Başkanlık tarafından yapılan MEBNET ağı
+          dışında bir ağ kullanılamaz. Kullanıcı Bakanlık merkez ve taşra teşkilatında bulunan
+          bilgisayarlardan MEBNET ağı dışında cep telefonu, ADSL, VDSL, fiber, mobil modem, kişisel
+          erişim noktası, kablosuz bağlantı alanı cihazı vb. cihazlarını kullanamaz.”
+        </Mevzuat>
+        <p>
+          Bu yüzden “başka cihaz” gerçekten ayrı bir cihazdır: okul bilgisayarına telefon ya da
+          mobil modem bağlayarak internet alınmaz. Dosyayı taşınabilir bellekle taşırken
+          Yönerge&apos;nin taşınabilir bellek kuralları geçerlidir.
+        </p>
+        <AltBaslik>Yapay zekâ köprüsü: isteğe bağlı ve dikkatli kullanılır</AltBaslik>
+        <p>
+          Bu sekme <strong>isteğe bağlıdır</strong>; kullanmadan da katalog kurulur. Dağınık bir
+          listeniz varsa (başlıksız bir tablo, karışık satırlar) köprü sekmesindeki “Komut metni”
+          kutusu işe yarar: “Komutu kopyala” deyip metni kullandığınız araca yapıştırır, listenizi
+          de altına eklersiniz; aracın verdiği metni “Yapay zekâ aracının verdiği JSON” kutusuna
+          yapıştırıp aynı önizlemeden geçirirsiniz.{" "}
+          <strong>Program hiçbir yapay zekâ servisine bağlanmaz</strong> ve bu iş için internete
+          çıkmaz; metni bir yerden bir yere siz taşırsınız.
+        </p>
+        <p>
+          <strong>Listeye kişisel veri yazılmaz:</strong> öğrenci, veli, personel ya da bağışçı adı
+          bu listeye girmez, köprüye yalnız kitapların künye bilgileri verilir.
+        </p>
+        <p>
+          Bu adımda okulun kitap listesi dışarıya çıkar; ekrandaki uyarılar bunu ve Yönerge&apos;yle
+          çatışabileceğini söyler. Asıl yol Excel ile içe aktarmadır; künye eksiğini kapatmak için
+          ISBN ile künye getirme daha güvenlidir, çünkü orada dışarıya yalnız kitabın arka
+          kapağındaki numara çıkar.
+        </p>
+        <p>
+          <strong>Aktarım Geçmişi</strong> sekmesinde hangi dosyanın ne zaman aktarıldığı yazar. Her
+          önizleme de buraya bir satır bırakır; yarım kalan bir denemeyi “Önizlemeyi iptal et” ile
+          düşürebilirsiniz. Uygulanmış aktarım listede kalır: aynı dosyanın ikinci kez uygulanmasını
+          engelleyen iz odur.
+        </p>
       </Bolum>
 
       {/* ------------------------------------------------------------------ */}

@@ -28,6 +28,7 @@ from apps.kutuphane.models import (
     DIGITAL_RESOURCE_TYPES,
     TERMINAL_COPY_STATUSES,
     Acquisition,
+    CatalogImportRun,
     CommissionDecision,
     Copy,
     CopyStatus,
@@ -128,6 +129,7 @@ def copies(
     *,
     work_id: int | None = None,
     section_id: int | None = None,
+    acquisition_id: int | None = None,
     status: str = "",
     barcode: object = "",
     old_register_no: object = "",
@@ -135,7 +137,13 @@ def copies(
     only_unlabeled: bool = False,
     include_terminal: bool = True,
 ) -> QuerySet[Copy]:
-    """Nüsha listesi (eser, bölüm, durum, barkod süzgeçleriyle); kayıt no sırasında.
+    """Nüsha listesi (eser, bölüm, edinim, durum, barkod süzgeçleriyle); kayıt no sırasında.
+
+    `acquisition_id` PARTİ süzgecidir: toplu aktarımdan sonra çıkan "bu partinin
+    etiketlerini bas" kısayolunun (§8.1, F4) bağlanacağı yer burasıdır —
+    `?acquisition=<id>&only_unlabeled=true` o partinin etiketlenmemiş
+    nüshalarını verir. Aktarım raporu parti kimliğini `label_batch` alanında
+    döndürür.
 
     `include_terminal=False` kayıttan düşülmüş ve devredilmiş nüshaları eler —
     etiket kuyruğu ve sayım gibi "elimizdekiler" listeleri bunu ister.
@@ -151,6 +159,8 @@ def copies(
         qs = qs.filter(work_id=work_id)
     if section_id is not None:
         qs = qs.filter(section_id=section_id)
+    if acquisition_id is not None:
+        qs = qs.filter(acquisition_id=acquisition_id)
     if status:
         qs = qs.filter(status=status)
     if barcode:
@@ -250,6 +260,35 @@ def get_donation_intake(intake_id: int) -> DonationIntake | None:
     )
 
 
+# ---------------------------------------------------------------------------
+# Künye getirme (U13, §8.5) — çevrimdışı yolun sorguları
+# ---------------------------------------------------------------------------
+def works_missing_metadata() -> QuerySet[Work]:
+    """Künyesi eksik ve **ISBN'i olan** eserler (çevrimdışı ISBN listesi, §8.5).
+
+    ISBN'siz eser listeye GİRMEZ: dosyanın eşleşme anahtarı ISBN'dir, numarasız
+    satır internetli cihazda da doldurulamaz, geri aktarımda da eşleşmez.
+
+    "Eksik" ölçütü kullanıcının gözüyle tanımlıdır: yayınevi, yayın yılı, konu
+    ya da sınıflama kodundan biri boşsa künye tamamlanmamıştır. Eser adı zaten
+    zorunludur, ölçüte girmez.
+
+    Sıra Türkçedir (`Meta.ordering` = `sort_key`), sayfalamaya uygundur.
+    """
+    return Work.objects.exclude(isbn13="").filter(
+        Q(publisher="") | Q(publish_year__isnull=True) | Q(subjects="") | Q(classification_code="")
+    )
+
+
+def works_by_isbn13(numaralar: Any) -> QuerySet[Work]:
+    """Verilen ISBN-13 listesine sahip canlı eserler (çevrimdışı dosya eşleşmesi).
+
+    Aynı ISBN'li birden çok eser olabilir (teklik kısıtı YOKTUR, §6.2): çağıran
+    çokluğu görür ve kullanıcıya sorar, program sessizce ilkini seçmez.
+    """
+    return Work.objects.filter(isbn13__in=list(numaralar))
+
+
 def collection_summary() -> dict[str, Any]:
     """Koleksiyon özeti — kişisiz sayaçlar (pano kartı ve Md. 7 eşiği için).
 
@@ -281,3 +320,20 @@ def collection_summary() -> dict[str, Any]:
         },
         "section_count": Section.objects.count(),
     }
+
+
+def catalog_import_runs(*, status: str = "", source: str = "") -> QuerySet[CatalogImportRun]:
+    """Toplu katalog aktarımlarının geçmişi (en yeniden eskiye; F3, §8.1).
+
+    Koşu satırı dosya adını, içerik özetini, sayıları ve sorunlu satırların
+    NUMARALARINI tutar; dosyadaki ham eser adı ve ham hücre değeri gömen hata
+    iletileri kütüğe YAZILMAZ (`ImportRowReport.to_run_dict`). Geçmiş iki soruya
+    cevap verir — bu dosya daha önce uygulandı mı (fikirdeşlik kütüğü) ve hangi
+    edinim partisi hangi aktarımdan doğdu (F4 etiket kısayolu).
+    """
+    qs = CatalogImportRun.objects.select_related("acquisition")
+    if status:
+        qs = qs.filter(status=status)
+    if source:
+        qs = qs.filter(source=source)
+    return qs
