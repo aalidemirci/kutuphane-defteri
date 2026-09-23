@@ -543,7 +543,7 @@ function NushaEklemeFormu({
             value={tkys}
             onChange={(e) => setTkys(e.target.value)}
             error={errors.external_asset_ref}
-            helperText="Taşınır Kayıt ve Yönetim Sistemi (TKYS) karşılığı; program doğrulamaz."
+            helperText="Taşınır Kayıt ve Yönetim Sistemi (TKYS) karşılığı; program doğrulamaz. Okulunuz TKYS’de nüsha bazında kayıt tutmuyorsa boş bırakın."
           />
         </div>
 
@@ -676,7 +676,7 @@ function NushaDuzenlemeFormu({
             value={tkys}
             onChange={(e) => setTkys(e.target.value)}
             error={errors.external_asset_ref}
-            helperText="Taşınır Kayıt ve Yönetim Sistemi (TKYS) karşılığı; program doğrulamaz."
+            helperText="Taşınır Kayıt ve Yönetim Sistemi (TKYS) karşılığı; program doğrulamaz. Okulunuz TKYS’de nüsha bazında kayıt tutmuyorsa boş bırakın."
           />
         </div>
 

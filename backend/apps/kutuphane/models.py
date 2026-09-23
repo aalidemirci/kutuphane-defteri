@@ -533,7 +533,7 @@ class Copy(BaseModel):
     |---|---|---|
     | `barcode` | barkod | Programın ürettiği 10 hane (`2026000123`), basılı `2026-000123` |
     | `accession_no` | kayıt no | Aynı sayının tamsayı hâli; TMY defterinin sıra numarası |
-    | `external_asset_ref` | TKYS kodu | Taşınır kaydındaki karşılık (doğrulanmaz) |
+    | `external_asset_ref` | TKYS kodu | Taşınır kaydındaki karşılık (doğrulanmaz). **Hiçbir akışta zorunlu değildir** ve arayüzde geri plandadır: saha cevabına göre (S8, 23.09.2026) okullar TKYS'de nüsha bazında kayıt fiilen tutmuyor |
     | `old_register_no` | eski kayıt no | Kitaptaki eski damga ya da defter no (isteğe bağlı) |
 
     İkisi de TEK sayaçtan (`CopyCounter`) doğar ve **asla yeniden kullanılmaz**:

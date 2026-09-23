@@ -26,8 +26,11 @@ aktarır.
 Tek bir yerel veritabanı; bulut ve telemetri yok. Yönetici parolası
 zorunludur: öğrenci ve personel adları, okul numaraları ve kart numaraları
 şifreli saklanır, yedekler de şifrelidir. TC kimlik numarası, veli bilgisi ve
-cinsiyet hiç toplanmaz. Programın okul dışına yaptığı tek istek, kullanıcı
-"Denetle" düğmesine bastığında yayımlanan son sürümü sormaktır.
+cinsiyet hiç toplanmaz. Program açılışta internete çıkmaz; okul dışına istek
+yalnız kullanıcının başlattığı iki durumda gider: "Denetle" düğmesine
+basıldığında yayımlanan son sürümü sormak ve — varsayılan kapalı olan ayar
+açıldıysa — bir kitabın ISBN'inden künye getirmek. İkincisinde dışarı yalnız
+kitabın numarası gider; kişisel veri hiçbir durumda çıkmaz.
 
 ## Ağ Kataloğu
 

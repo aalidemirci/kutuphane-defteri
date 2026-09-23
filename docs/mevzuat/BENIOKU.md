@@ -94,6 +94,10 @@ Mal Yönetmeliği · **OKY** Ortaöğretim Kurumları Yönetmeliği. Bölüm num
 | §3 | Yönerge 11/9 · 11/20-21 · 11/25 · 14/3 | Uzaktan erişim (yönetim erişimi); erişim noktası, DHCP, DNS, proxy yok; veri toplayan form yok; internet sitesi bağlamı |
 | §3, sihirbaz | Yönerge 11/8 · 11/23 | Program yalnız kurum demirbaşı bilgisayara kurulur |
 | §8.2 AI köprüsü | Yönerge 11/23 · 11/3-h, ı | Veriyi dış hizmete taşıma; asıl yol Excel'dir |
+| §3, §8.5 ISBN künye getirme | Yönerge 5/8 · 6/7 | **Kişisel veri paylaşımı yasağını kuran hükümler bunlardır.** 5/8 öğretmen, öğrenci ve veliye ait bilgilerin 3. şahıslarla paylaşılmasını yasaklar; 6/7 gizlilik içeren bilgi ve kişisel veri için aynısını söyler. **11/8 DEĞİL** — 11/8 kişisel bilişim kaynaklarıyla ilgilidir ve bu depoda demirbaş bilgisayar bağlamında kullanılır (yukarıdaki satır). Künye sorgusunda dışarı yalnız normalize ISBN çıkar |
+| §8.5 ISBN künye getirme | Yönerge 11/23 · 11/3-h | **Çatışmaz:** 11/23 dışarı veri aktarımını yasaklar, ISBN sorgusu veri çıkarmaz, getirir. 11/3-h "resmî işlemler dışındaki" erişimi yasaklar; kataloglama Yönetmelik md. 8/1-a ile kurulmuş resmî bir iştir |
+| §8.5, §5.9 E3 | Yönerge 11/12 · 11/19 · 11/22 | Operasyonel engel: kategorisiz adrese erişim izni verilmez, talep Yardım Masası'ndan açılır (11/12) · MEBNET'te SSL denetimli proxy ve MEB kök sertifikası (11/19) · port önceliği 21/80/443 (11/22), Bakanlık ucu 210 portundadır |
+| §8.5 çevrimdışı yol | Yönerge 11/18 · 10/4 · 10/5 | Kurum bilgisayarına cep telefonu, mobil modem ya da kişisel erişim noktası bağlanamaz: çevrimdışı yol **ayrı cihaz** demektir. Dosya taşımada taşınabilir bellek kuralları |
 
 ### 3.4 KVKK ve Aydınlatma Tebliği
 
@@ -102,6 +106,7 @@ Mal Yönetmeliği · **OKY** Ortaöğretim Kurumları Yönetmeliği. Bölüm num
 | §3 dayanak | KVKK 5/2-ç | Hukuki yükümlülük |
 | §3 profil yasağı | KVKK 6 · 6/3 | Özel nitelikli veri; 6/3'te genel bir hukuki yükümlülük bendi yoktur. Ödünç verisinin md. 6'ya kaymaması için profil yasağı |
 | §3 aydınlatma metni (E13) | KVKK 10/1 · Aydınlatma Tebliği | Aydınlatmanın asgari unsurları ve usulü |
+| §8.5 ISBN künye getirme | KVKK 3/1-d · 10 · 9 | Kişisel veri "gerçek kişiye ilişkin"dir (3/1-d); dışarı çıkan ISBN esere aittir, bu yüzden kişisel veri işlenmez. Md. 10 aydınlatma yükümlülüğü kişisel verinin **elde edilmesine** bağlı olduğu için **doğmaz — E13'e satır eklenmez**; md. 9 (yurt dışına aktarım) tetiklenmez |
 | §8.4 kişi dökümü, E13 | KVKK 11 | İlgili kişinin hakları |
 | §6.4 saklama | KVKK 4/2 · 7 | Amaçla sınırlılık; sebep ortadan kalkınca silme, yok etme ya da anonimleştirme. Ayrıntılı usul için eksik Yönetmeliğe bakın (§2) |
 | E19 masa kartı | KVKK 12/1 | Veri güvenliği önlemleri (görevli öğrencinin bilgilendirilmesi) |

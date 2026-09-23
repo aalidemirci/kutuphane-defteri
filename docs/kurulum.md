@@ -10,10 +10,19 @@ da kütüphaneden sorumlu öğretmen) ile okulun bilişim teknolojileri rehber
 > programın gerçek davranışıyla adım adım yeniden doğrulanır. "Hazırlanıyor"
 > diye işaretli bölümün içeriği henüz yazılmadı.
 
-Veri okulda kalır: tek bir yerel veritabanı dosyası, telemetri yok, bulut
-yok. Programın okul dışına yaptığı **tek istek**, siz Ayarlar → Güncelleme'de
-"Denetle" düğmesine bastığınızda yayımlanan son sürümü soran istektir. Kişisel
-veri taşımaz; program açılışta kendiliğinden denetim yapmaz.
+Veri okulda kalır: tek bir yerel veritabanı dosyası, telemetri yok, bulut yok.
+Program **açılışta internete çıkmaz** ve okul dışına kişisel veri göndermez.
+Dışarıya istek yalnız **sizin başlattığınız iki durumda** gider:
+
+1. **Güncelleme denetimi** — Ayarlar → Güncelleme'de "Denetle" düğmesine
+   bastığınızda yayımlanan son sürümü sorar.
+2. **ISBN ile künye getirme** — kitabın numarasından eser bilgilerini getirir.
+   Bu özellik **varsayılan olarak kapalıdır**, ayarlardan siz açarsınız ve her
+   sorguyu siz başlatırsınız. Dışarı yalnız kitabın numarası (ISBN) gider;
+   okulun adı, kitap listeniz ya da kişi bilgisi gitmez. Kapalıyken program bu
+   yönde hiçbir bağlantı kurmaz.
+
+Ağ kataloğu hiçbir durumda internete çıkmaz.
 
 ## 1. Kurulumdan önce
 
@@ -320,6 +329,33 @@ Bu bölüm özellik geldiğinde yazılacak: güvenlik duvarı ve Ağ Doktoru, IP
 seçimi ve DHCP rezervasyonu, tahta ağından erişim, yer imi dağıtımı, üçüncü
 parti güvenlik duvarları, Pardus'ta ufw/firewalld. BTR için ayrıntılı ağ
 kılavuzu `docs/ag-kurulumu.md` olarak hazırlanacak.
+
+Ağ Kataloğu yalnız **hizmet verir**, internete hiç çıkmaz: giden bağlantı bu
+bölümün konusu değildir (bkz. belgenin başındaki iki kapı).
+
+### 8.1 ISBN ile künye getirme — BTR sınaması (hazırlanıyor)
+
+Bu özellik kitabın numarasından eser bilgilerini getirir, **varsayılan olarak
+kapalıdır** ve ayarlardan açılır. Açmadan önce okul ağından iki adrese
+erişilebildiğini BTR ile sınayın. Windows'ta PowerShell'de:
+
+```powershell
+Test-NetConnection koha.ekutuphane.gov.tr -Port 210
+Test-NetConnection openlibrary.org -Port 443
+```
+
+- İkisi de `TcpTestSucceeded : True` verirse özellik okul ağında çalışabilir.
+- Biri ya da ikisi başarısızsa adres okul ağının içerik filtresinde kategorisiz
+  olabilir; erişim talebi **Yardım Masası Modülü** (`yardimmasasi.meb.gov.tr`)
+  üzerinden açılır (Bilgi ve Sistem Güvenliği Yönergesi md. 11/12). Kararı okul
+  vermez, bu yüzden süre okulun elinde değildir.
+- Hiç açılmazsa program yine çalışır: künyeyi elle girebilir ya da eksik ISBN
+  listesini dışa aktarıp **internete bağlı başka bir cihazda** doldurup dosyayı
+  geri aktarabilirsiniz.
+
+**Kütüphane bilgisayarına telefon, mobil modem ya da kişisel erişim noktası
+bağlayarak internet almayın**; Yönerge md. 11/18 bunu açıkça yasaklar. Çözüm
+ayrı bir cihazdır, aynı cihaza ikinci hat değildir.
 
 ## 9. İndirilen dosyayı doğrulama
 

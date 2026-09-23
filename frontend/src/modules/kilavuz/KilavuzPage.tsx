@@ -760,7 +760,8 @@ export default function KilavuzPage() {
           Kitabın üzerinde eski bir damga ya da defter numarası varsa “Eski kayıt no” alanına yazın;
           programın verdiği numarayla karışmaz. Taşınır kaydındaki karşılığı biliyorsanız Taşınır
           Kayıt ve Yönetim Sistemi (TKYS) kodunu “TKYS kodu” alanına yazabilirsiniz; program bu kodu
-          doğrulamaz.
+          doğrulamaz. Bu alan hiçbir işlemde zorunlu değildir: okulunuz TKYS’de nüsha bazında kayıt
+          tutmuyorsa boş bırakın.
         </p>
 
         <AltBaslik>Ödünç verilmeyen kaynaklar</AltBaslik>

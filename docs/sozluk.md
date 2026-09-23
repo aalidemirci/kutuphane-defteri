@@ -21,6 +21,7 @@ iç kavramları (karar, faz, evrak kodları) yüzeye çıkmaz.
 | `Work.title` | **kaynak adı** | kitap adı, eser adı (form etiketi olarak) | Yönetmeliğin terimi (Md. 11/1 "kaynak adı"). Excel şablonundaki sütun adı **Eser Adı**'dır, orada korunur |
 | `Work.resource_type` | **kaynak türü**: Kitap · Süreli yayın · Görsel-işitsel materyal · E-kitap · E-veri tabanı | tür (tek başına), format, materyal türü | E-kitap ve e-veri tabanında **nüsha açılmaz**; süreli yayın ödünç verilmez (Md. 16/1-c) |
 | `Work.isbn`, `isbn13` | **ISBN** | barkod (ISBN anlamında), kitap numarası | Sağlama hatası kaydı ENGELLEMEZ: numara olduğu gibi saklanır, ekranda **"ISBN uyarısı"** bandı durur. Kitabın arkasındaki 13 haneli 978/979 kodu **ISBN barkodu**dur, kütüphane etiketi değildir |
+| ISBN'den künye doldurma (U13, F3) | **"Künyeyi internetten getir"**; sonuç **"öneri"**dir ve rozeti **"Dış kaynaktan alındı, doğrulayın"** · kaynak adı ve tarih yazılır ("Bakanlık kataloğu, 23.09.2026") | "otomatik künye", "resmî künye", "Bakanlık sisteminden çekildi", "sorgula", "API" | Özellik varsayılan KAPALI'dır; kullanıcı onaylamadan hiçbir alan dolmaz (tasarım §8.5). Konum dili §3'e bağlıdır: program Bakanlık sisteminin yerine geçtiğini ima etmez |
 | Katalog sıralaması (`WorkOrder`) | **"Sırala"** seçicisi: Kaynak adına göre · Yazar adına göre · Konuya göre · En yeni eklenen | alfabetik sıra (tek başına), A-Z | İlk üçü Md. 11/1'in katalog eksenleridir; sıralama Türkçe alfabeyedir |
 | `Copy` | **nüsha** | kopya, demirbaş, materyal | Rafta duran fiziksel kitap. Masa iletilerinde gündelik "kitap" serbesttir: "Kitabın kütüphane etiketini okutun." |
 | `Copy.barcode` | **barkod** (10 hane, basılı `2026-000123`) | etiket no, kod | Salt rakamdır |
@@ -79,7 +80,7 @@ iç kavramları (karar, faz, evrak kodları) yüzeye çıkmaz.
 ## 2. İç kodlar yüzeye çıkmaz
 
 Tasarımın karar, faz ve bulgu kodları kullanıcı metninde, hata mesajında ve
-evrakta GEÇMEZ: `U1`-`U12`, `T1`-`T17`, `A1`-`A23`, `F0`-`F12`, `S1`-`S13`,
+evrakta GEÇMEZ: `U1`-`U13`, `T1`-`T17`, `A1`-`A23`, `F0`-`F12`, `S1`-`S15`,
 `D1`-`D21`, `E1`-`E20`, `GA-`, `KM-`, `UY-`, `SU-`, `EK-`, `AT-`, `V2-`. İç
 kimlikler (`id=…`, `pk`) de geçmez. Evrak kodunun yerine belgenin adı yazılır:
 

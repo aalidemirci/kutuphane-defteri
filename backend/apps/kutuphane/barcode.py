@@ -126,10 +126,12 @@ def classify_scan(value: object) -> ScanKind:
     görünmeyen 10 haneli bir numara sağlaması tutuyorsa ISBN-10 sayılır ve
     kullanıcı "nüsha bulunamadı" yerine doğru iletiyi görür.
 
-    **Kabul edilen kalan belirsizlik:** ilk dört hanesi 2000-2999 aralığına
-    düşen ISBN-10'lar (Fransızca grup, "20…") nüsha barkodundan ayrılamaz.
-    Salt rakamdan oluşan 10 haneli iki şema arasında bu kaçınılmazdır; ISBN-10
+    **Kabul edilen kalan belirsizlik (TB22):** ilk dört hanesi 2000-2999
+    aralığına düşen ISBN-10'lar (Fransızca grup, "20…") nüsha barkodundan
+    ayrılamaz; `SCAN_YEAR_MAX = 2999` üst duvarı da bir varsayımdır. Salt
+    rakamdan oluşan 10 haneli iki şema arasında bu kaçınılmazdır; ISBN-10
     zaten 2007'den beri basılmıyor ve okulun elindeki numaralar 13 hanelidir.
+    Kütükteki kalem: `docs/teknik-borc.md` TB22.
     """
     digits = normalize_scan(value)
     if len(digits) == BARCODE_LENGTH:

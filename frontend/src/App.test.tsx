@@ -491,6 +491,11 @@ describe("App — açılışta dış istek yok", () => {
     // Casus gerçekten ağ katmanını görüyor: kilit kapısı güvenlik durumunu sordu.
     expect(yollar.some((y) => y.includes("/security/status/"))).toBe(true);
     expect(yollar.filter((y) => y.includes("/updates/"))).toEqual([]);
+    // T11 (23.09.2026): dış istek yalnız kullanıcının başlattığı İKİ kapıdan
+    // çıkar — güncelleme denetimi ve ISBN künye sorgusu (tasarım §8.5, F3'te
+    // gelir, varsayılan kapalı). Açılışta ikisi de olmaz: kabuk hiçbir mutlak
+    // adrese istek atmaz, bütün istekler yerel sunucuya göreli yollardır.
+    expect(yollar.filter((y) => /^[a-z]+:\/\//i.test(y))).toEqual([]);
   });
 
   it("gezinme boyunca da /updates/ isteği çıkmaz", async () => {
