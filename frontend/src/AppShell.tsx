@@ -24,6 +24,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Genel Bakış", icon: "space_dashboard" },
   { to: "/kisiler", label: "Kişiler", icon: "group" },
+  { to: "/katalog", label: "Katalog", icon: "menu_book" },
   { to: "/ayarlar", label: "Ayarlar", icon: "settings" },
   { to: "/kilavuz", label: "Kılavuz", icon: "auto_stories" },
 ];
@@ -33,6 +34,11 @@ const NAV_ITEMS: NavItem[] = [
 // `App.test.tsx` "üst çubuk başlığı" testiyle korunur.
 const PAGE_TITLES: Array<[prefix: string, title: string]> = [
   ["/kisiler", "Kişiler"],
+  // Sıra anlamlıdır: alt sayfalar köke göre ÖNCE gelir ("/katalog/eser/3"
+  // "/katalog" desenine de uyar, önce kendi başlığını bulmalıdır.)
+  ["/katalog/eser", "Eser Ayrıntısı"],
+  ["/katalog/edinimler", "Edinimler ve Bağışlar"],
+  ["/katalog", "Katalog"],
   ["/ayarlar", "Ayarlar"],
   ["/kilavuz", "Kullanım Kılavuzu"],
   ["/hakkinda", "Hakkında ve Lisans"],

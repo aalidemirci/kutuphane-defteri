@@ -3,7 +3,14 @@
 
 import { describe, expect, it } from "vitest";
 
-import { formatDate, formatDateTime, formatNumber, formatPercent, todayIso } from "./format";
+import {
+  formatDate,
+  formatDateTime,
+  formatNumber,
+  formatPercent,
+  formatPrice,
+  todayIso,
+} from "./format";
 
 describe("formatDate", () => {
   it("ISO 8601 tarihini gg.aa.yyyy biçimine çevirir", () => {
@@ -106,6 +113,10 @@ describe("todayIso", () => {
 // Doğru yol `todayIso()` (yerel saat). Bu test yeni bir sızıntıyı derlemede değil,
 // testte yakalar.
 describe("tarih disiplini", () => {
+  // Tarama BÜTÜN kaynak ağacını okur; Docker'ın bind mount'unda dosya okuma
+  // yavaştır ve ağaç büyüdükçe varsayılan 5 sn eşiğine dayanır (F2'de dayandı).
+  // Süre açıkça verilir: testin YAVAŞ olması kusur değil, zaman aşımıyla
+  // kırılması yanıltıcı olurdu (App.test.tsx'teki token taramasıyla aynı kalıp).
   it("kaynak ağacında UTC'den tarih türeten kullanım yok", async () => {
     const { readdirSync, readFileSync } = await import("node:fs");
     const { join } = await import("node:path");
@@ -125,5 +136,25 @@ describe("tarih disiplini", () => {
     tara(join(__dirname, ".."));
 
     expect(suclular).toEqual([]);
+  }, 60_000);
+});
+
+describe("formatPrice", () => {
+  it("DRF'in metin ondalığını Türkçe para biçimine çevirir", () => {
+    // Boşluk, ICU'nun ayırıcısıdır (dar kırılmaz boşluk olabilir) — sayı ve
+    // simgenin varlığı sınanır, aradaki boşluk karakteri değil.
+    expect(formatPrice("45.00")).toMatch(/45,00/);
+    expect(formatPrice("45.00")).toContain("₺");
+  });
+
+  it("sayı da kabul eder", () => {
+    expect(formatPrice(1234.5)).toMatch(/1\.234,50/);
+  });
+
+  it("boş, null ve sayı olmayan değerde tire döner", () => {
+    expect(formatPrice(null)).toBe("—");
+    expect(formatPrice(undefined)).toBe("—");
+    expect(formatPrice("")).toBe("—");
+    expect(formatPrice("abc")).toBe("—");
   });
 });

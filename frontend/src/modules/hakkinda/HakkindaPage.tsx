@@ -111,8 +111,12 @@ export default function HakkindaPage() {
             <ul className="mt-2 list-disc space-y-1 pl-5 text-body-medium text-on-surface-variant">
               <li>
                 Program çevrimdışı çalışır; veriler yalnız bu bilgisayarda tutulur. Program açılışta
-                internete çıkmaz. Tek dış istek, Ayarlar → Güncelleme'de “Şimdi denetle” düğmesine
-                bastığınızda yayımlanan son sürümü soran anonim denetimdir.
+                internete çıkmaz. Dış istek yalnız sizin başlattığınız iki durumda gider: Ayarlar →
+                Güncelleme'de “Şimdi denetle” düğmesine bastığınızda yayımlanan son sürümü soran
+                anonim denetim ve — ayarlardan açtıysanız — bir kitabın numarasından künye getiren
+                ISBN sorgusu. İkincisi varsayılan olarak kapalıdır ve dışarı yalnız kitabın
+                numarasını gönderir. Hiçbir durumda kişisel veri dışarı çıkmaz, ağ kataloğu ise
+                internete hiç çıkmaz.
               </li>
               <li>
                 Öğrenci, öğretmen ve diğer personelin ad-soyadları ile öğrencilerin okul numaraları

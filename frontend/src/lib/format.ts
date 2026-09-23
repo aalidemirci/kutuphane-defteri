@@ -17,6 +17,19 @@ export function formatNumber(value: number | null | undefined): string {
   return nf.format(value);
 }
 
+const pf = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" });
+
+/**
+ * Birim fiyat → Türkçe para biçimi. DRF ondalık alanı METİN gönderir ("45.00"),
+ * bu yüzden girdi metin de olabilir. Boş, null ve sayı olmayan değer → "—".
+ */
+export function formatPrice(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "—";
+  const sayi = typeof value === "number" ? value : Number(value);
+  if (Number.isNaN(sayi)) return "—";
+  return pf.format(sayi);
+}
+
 /** Yüzde değişim → "+12,5%" / "-3%". null → "—". */
 export function formatPercent(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";

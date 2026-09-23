@@ -20,12 +20,17 @@ masaüstü programıdır** (Windows 10/11 + Pardus). Kapsadığı işler: katalo
 etiket; üyelik, ödünç ve iade, sınıf kitaplığına teslim; sayım; komisyon ve
 ayıklama; Taşınır Mal Yönetmeliği (TMY) hazırlık çıktıları.
 
+**Çevrimdışı ne demek:** açılışta ağ yok, telemetri yok, bulut yok; dışarı
+kişisel veri çıkmaz. Dış istek yalnız kullanıcının başlattığı iki kapıdan
+çıkar — güncelleme denetimi ve ISBN künye sorgusu (varsayılan kapalı). Ayrıntı
+§3'teki T11 maddesindedir.
+
 Kardeşlerinden tek farkı **iki yüzeyi** olmasıdır:
 
 | Yüzey | Kim | Nerede dinler | Ne sunar |
 |---|---|---|---|
 | **Yönetim** | Masadaki kütüphane yöneticisi ve öğrenci görevli | `127.0.0.1`, rastgele port, oturum belirteçli | Django + DRF API + React SPA (pywebview penceresi) |
-| **Ağ Kataloğu** | Okul ağındaki bilgisayarlar ve etkileşimli tahtalar | ayarla açılır, port 8765, varsayılan KAPALI | Ayrı WSGI uygulaması, sunucuda üretilen sade HTML, JavaScript yok, **salt okur, kişisel veri yok** |
+| **Ağ Kataloğu** | Okul ağındaki bilgisayarlar ve etkileşimli tahtalar | ayarla açılır, port 8765, varsayılan KAPALI | Ayrı WSGI uygulaması, sunucuda üretilen sade HTML, JavaScript yok, **salt okur, kişisel veri yok, dış bağlantı açmaz** |
 
 **Köken** (tasarım §1, §12):
 - İş mantığı: OYS'nin (`../okulapp`) `apps/kutuphane` modülü, uyarlanarak.
@@ -69,6 +74,10 @@ Kütüphaneleri Yönetmeliği (RG 23.11.2024/32731) ile TMY'ye bağlıdır. Meti
      geçmez.
    - Katalog `HTTP_COOKIE` okumaz, çerez yazmaz. Yalnız GET/HEAD; gövde 1 KB'ı
      aşamaz.
+   - **Katalog hiçbir dış bağlantı açmaz:** katalog uygulamasında ve
+     şablonlarında giden istek (`urllib.request`, `http.client`, soket
+     bağlantısı) ve ISBN künye modülü bulunmaz. Program tek süreç olduğu için
+     bu bir **kod yolu değişmezidir** (§5.10-20).
    - Katalog yalnız `prepare_django` tamamlandıktan sonra kalkar. F0-F4'te
      yalnız 127.0.0.1'de dinler; `0.0.0.0` güvenlik duvarı denetimiyle F5'te
      gelir.
@@ -258,9 +267,13 @@ Kütüphaneleri Yönetmeliği (RG 23.11.2024/32731) ile TMY'ye bağlıdır. Meti
 - **`version_key` iki kopyadır** (`desktop/version.py`,
   `apps/okul/services/updates.py`) ve aynı kalmalıdır; ön sürüm eki doğal
   sıralanır (`beta.10 > beta.9`).
-- **Tek dış istek güncelleme denetimidir** ve yalnız "Denetle" düğmesiyle,
-  `indir.okulapp.org` manifestinden yapılır (T11). MEB ağında GitHub engellidir.
-  Açılışta dış istek atan kod eklenmez.
+- **Dış istek yalnız kullanıcının başlattığı İKİ kapıdan çıkar** (T11, 23.09.2026):
+  (1) güncelleme denetimi — "Denetle" düğmesiyle, `indir.okulapp.org`
+  manifestinden (MEB ağında GitHub engellidir); (2) ISBN ile künye sorgusu
+  (U13, tasarım §8.5) — ayarla açılır, **varsayılan kapalıdır**, her sorguyu
+  kullanıcı başlatır ve dışarı yalnız normalize ISBN gider. **Açılışta ağ yok,
+  telemetri yok, kişisel veri çıkmaz.** Açılışta, arka planda ya da toplu içe
+  aktarımda dış istek atan kod eklenmez; Ağ Kataloğu hiçbir dış bağlantı açmaz.
 - **Gün değişimi kapısı** (T9). Program tepside günlerce açık kalabilir;
   "her gün yeniden açılır" varsayımı geçersizdir. Günlük yedek, rotasyon,
   saklama taraması, IP denetimi ve çok okunanlar açılışta ve saatte bir koşan
@@ -387,8 +400,27 @@ yenilemesi · Başlangıç Yol Haritası · katalog Excel şablonu ve sütun sö
 kılavuz bölümleri. Tasarımdan sapmalar ve F1'de alınan kararlar: tasarım §14.1
 **"F1 ekleri"**; kalan riskler `docs/teknik-borc.md` (TB16-TB19).
 
-Sıradaki: F2 Katalog (eser/nüsha/edinim, TR arama ve sıralama, ISBN, barkod).
-Tam tablo: tasarım §14.1. Saha hazırlık hattı (S1-S13, kod dışı): §14.2.
+**F2 Katalog — kod tarafı bitti (23.09.2026).** `LibraryPolicy` (ödünç süresi
+alanı YOK — Md. 18 sabit), `Section`, `Work`, `Copy`, `CopyCounter`,
+`Acquisition`, `DonationIntake` + kalemleri, `CommissionDecision`,
+`CatalogImportRun`, `LabelSheetTemplate` + `LabelCalibration` modelleri (tek
+göç `0001_initial`) · Türkçe arama anahtarı ve üç eksenli TR sıralama
+(`search_key`, `sort_key`, `author_sort_key`, `subject_sort_key`; katlama tek
+kaynaktan — `apps/kutuphane/keys.py`) · ISBN normalleştirme ve ISBN-10 → 13
+çevrimi (sağlama hatası kaydı ENGELLEMEZ, uyarı döner) · barkod ve kayıt no tek
+sayaçtan, yıl `localdate()` ile, asla yeniden kullanılmaz · nüsha kuralları
+(dijital kaynakta nüsha açılmaz, süreli yayın ciltliyse kayda girer,
+`is_loanable` tek türetim + DB eşi `LOANABLE_Q`) · bağış ön kaydı ve komisyon
+kararıyla toplu kataloglama (karar TÜRÜ denetlenir) · sayfalı `library/…`
+uçları (hiçbiri görevli kipi izin listesinde DEĞİL) · Katalog, Eser Ayrıntısı,
+Edinimler ve Bağışlar ekranları, Ayarlar'a Kütüphane Politikası ve Bölümler
+sekmeleri · kılavuzun Katalog bölümü · sözlük §4. D2, D6, D7, D11 kapandı.
+Tasarımdan sapmalar ve F2'de alınan kararlar: tasarım §14.1 **"F2 ekleri"**.
+
+Sıradaki: F3 İçe aktarma (Excel eşleme, önizleme = uygulama, kovalar, AI JSON
+köprüsü · **hızlı kayıt akışı Excel'le eşit öncelikte** ve **ISBN ile künye
+getirme** — U13, tasarım §8.5). Tam tablo: tasarım §14.1. Saha hazırlık hattı
+(S1-S15, kod dışı): §14.2.
 
 ---
 

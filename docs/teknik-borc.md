@@ -178,6 +178,61 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   kendiliğinden kilitlenmez ve anahtar bellekte durur; askıyı yalnız bekleyen anahtar varken
   uygulamak ölçüyü daraltırdı ama kullanıcı kararını değiştirir, ertelendi.
 
+- **TB20 — Bakanlık kataloğu ucu belgesiz ve şartsız (U13, tasarım §8.5; 23.09.2026):**
+  ISBN künye getirmenin birincil kaynağı olan KYGM halk kütüphaneleri Koha kataloğunun
+  SRU ucu (`koha.ekutuphane.gov.tr:210`) 23.09.2026'da çalışır durumdaydı ve Türkçe
+  veriyi kusursuz verdi, ama **yayımlanmış bir kullanım şartı, API belgesi, lisansı,
+  atıf kuralı ya da hizmet taahhüdü yoktur**; arandı, bulunamadı. Aynı sunucunun web
+  yüzeyi WAF ile korunuyor (OAI-PMH "Request Rejected", OPAC bot denetimine
+  yönlendiriyor), yani açık portun bilinçli bir hizmet değil gözden kaçmış bir
+  yapılandırma olma ihtimali gerçektir: **uç her an kapanabilir.** Üç ayrı bedel: (1)
+  uç yalnız **düz HTTP** konuşuyor, TLS yok — yol üzerindeki bir aktör sorgulanan
+  ISBN'i görebilir ve dönen künyeyi değiştirebilir (künye zehirlenmesi); (2) tek ISBN
+  için **yüzlerce mükerrer kayıt** dönebiliyor (ölçülen en yüksek değer 123), kayıt
+  seçimi programın sorumluluğundadır; (3) MEB ağında standart dışı 210 portunun ve düz
+  HTTP'nin açık olup olmadığı **doğrulanamadı** (Yönerge 11/22 önceliği 21/80/443'e
+  verir). Azaltma: özellik varsayılan KAPALI ve fail-open · gelen künye ön izleme +
+  onay olmadan hiçbir alana yazılmaz · yerel önbellek · bulunamayan ISBN için Open
+  Library yedeği · toplu indirme ve yeniden dağıtım YAPILMAZ, yalnız tek tek sorgu ·
+  yazılı izin ve atıf koşulu kuruma sorulur (S14) · erişim BTR ile sınanır (S15).
+  **Kalan risk:** uç kapanırsa özellik sessizce yalnız Open Library'ye düşer ve onun
+  Türkçe verisi kusurludur (TB21); künye zehirlenmesine karşı tek katman kullanıcının
+  onay ekranındaki dikkatidir.
+
+- **TB21 — Open Library'nin Türkçe veri kusurları (U13, tasarım §8.5; 23.09.2026):**
+  yedek kaynağın Türkçe kayıtlarında ölçülmüş beş kusur var: (1) **Türkçe harf
+  düşmesi** — "Yap Kredi Yaynlar", "Destek Yaynlar"; (2) **ham HTML varlığı** —
+  `Do&#x11F;an Kitap` (aynı kayıtta üç varyant); (3) **ayrışık (NFD) kod noktaları** —
+  "İletişim" ayrık birleştirici işaretlerle geliyor ve `apps/okul/normalize.py`
+  katlaması bu biçimi kullanıcının yazdığı biçimle **eşleştiremiyor**; (4) **çevirmen
+  yazar sayılmış** — Orhan Pamuk kitaplarına Kazak ve İspanyol çevirmenler yazar
+  alanında eklenmiş, yazar iki kez yinelenmiş; (5) **uydurma tarihler** — Amazon
+  kaynaklı kayıtlarda "13 Nisan"/"28 Ekim" günleri anormal sıklıkta. Bu veri onaysız
+  kataloğa girerse deponun TR katlama disiplinini (T7: `search_key`, `sort_key`,
+  `author_sort_key`) ve `docs/sozluk.md` yazım kurallarını **sessizce** bozar: kullanıcı
+  "İletişim" yazıp arar, kendi kataloğundaki kitabı bulamaz. Azaltma: Open Library
+  **yalnız yedek kaynaktır** · içe alma sınırında **NFC normalleştirmesi zorunludur** ve
+  koruma testi vardır (§5.10-19) · HTML varlıkları çözülür · **çevirmen alanı dışarıdan
+  doldurulmaz**, kullanıcıya sorulur · tarihten yalnız yıl alınır · hiçbir alan onaysız
+  yazılmaz, gelen metinde Türkçe harf yoksa kullanıcıya uyarı çıkar. **Kalan risk:**
+  düzeltme kullanıcının gözüne dayanır; program "Kurk Mantolu Madonna"nın yanlış
+  olduğunu kendi başına bilemez.
+
+- **TB22 — Elle yazılan ISBN-10 ile nüsha barkodu tam ayrılamıyor (F2 düzelticisinden
+  devreden; `apps/kutuphane/barcode.py::classify_scan`):** iki şema da salt rakam ve 10
+  hanedir, ayrım yalnız yıl ön ekiyledir (`SCAN_YEAR_MIN`…`SCAN_YEAR_MAX` = 2000-2999).
+  Bedeli iki kalem: (1) ilk dört hanesi 2000-2999 aralığına düşen ISBN-10'lar (ör.
+  Fransızca "20…" grubu) **nüsha barkodu sanılır**; (2) üst duvar `SCAN_YEAR_MAX = 2999`
+  keyfîdir — barkod yılı `localdate().year`'dan gelir, yani 3000 yılına kadar sorun
+  çıkmaz ama duvarın kendisi bir varsayımdır ve sınama dışıdır. Ayrım yalnız ELLE
+  yazımda gerekir: okutulan ISBN barkodu 13 hanedir ve 978/979 ön ekiyle kesin ayrılır.
+  Azaltma: okul U7 gereği **yeniden etiketleniyor**, elindeki numaralar 13 hanelidir;
+  ISBN-10 zaten 2007'den beri basılmıyor; yıl gibi görünmeyen 10 haneli numara
+  sağlaması tutuyorsa ISBN-10 sayılır ve kullanıcı "nüsha bulunamadı" yerine doğru
+  iletiyi görür. **Kalan risk:** salt rakamdan oluşan iki 10 haneli şema arasında bu
+  belirsizlik kaçınılmazdır; kapatmanın tek yolu barkod şemasını değiştirmektir (U7 ve
+  T8 kararı, açılmaz).
+
 ## Kapanan
 
 - **TB15 — F1'e devreden F0 kalıntıları** *(kapandı: 22.09.2026 — F1 dalga

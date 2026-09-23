@@ -50,7 +50,7 @@ Kapı zinciri `scripts/gates.sh` KS'den gelir ve **F0'dan itibaren** CI'da koşa
 
 ## 2. Verilmiş kararlar
 
-### 2.1 Kullanıcı kararları (21.09.2026)
+### 2.1 Kullanıcı kararları (21.09.2026; U13 23.09.2026)
 
 | # | Konu | Karar | Sonucu |
 |---|---|---|---|
@@ -66,6 +66,7 @@ Kapı zinciri `scripts/gates.sh` KS'den gelir ve **F0'dan itibaren** CI'da koşa
 | U10 | Ağ kataloğu izni | **Okul BTR'sinin bilgisi yeterli** | Program, BTR ve müdür imzalı bir "Ağ Hizmeti Bilgi Notu" üretir, not okulda saklanır. Yönerge metni ve ilçe yolu kullanıcıya sunuldu; bu seçim bilinçli bir karardır (§3, §16) |
 | U11 | Sınıf kitaplığı / öğretmene toplu teslim | **v1'e alınır** | "Teslim" ödünç değildir, Md. 18 sayı sınırı uygulanmaz. Teslim listesi basılır, geri alma toplu okutmayla yapılır. Sayımdaki yeri TMY 32/5'e **kıyasen** belirlenir, sayım kurulu seçer (§9-11) |
 | U12 | Kartını unutan öğrenci | **Kartsız ödünç yalnız yönetici kipinde** | Görevli kipinde kart şarttır. Yönetici kipinde okul no ile ve gerekçeli ödünç verilebilir. "Kartı yenile" akışı eski numarayı iptal eder (§4.4) |
+| U13 *(23.09.2026)* | ISBN ile künye getirme | **İki kaynak + iki yol, varsayılan KAPALI, F3 ile** | Kaynak sırası: önce Kültür ve Turizm Bakanlığı halk kütüphaneleri kataloğu, bulunamazsa Open Library. Çalışma yeri: hem program içinde (ayarla açılır) hem de internetsiz masa için "ISBN listesini dışa aktar → internetli cihazda doldur → geri aktar" dosya yolu. Zamanlama: F3 (§8.5, §14.1) |
 
 ### 2.2 Teknik kararlar (bu belgenin önerisi — itiraz edilebilir)
 
@@ -81,7 +82,7 @@ Kapı zinciri `scripts/gates.sh` KS'den gelir ve **F0'dan itibaren** CI'da koşa
 | T8 | Barkod **salt rakamdır**, Code128-C ile basılır. Üreteç bağımlılıksızdır: `shared/barcode128.py`, bilinen test vektörleriyle | TR-Q klavyede okuyucunun "-" karakteri "*" olur (R3 §2). Harfli kodlarda ı/i karışması da beklenir. Rakam bu sorunları ortadan kaldırır |
 | T9 | Celery yoktur. Periyodik işler **"gün değişimi kapısından"** geçer: açılışta ve süreç içinde saatte bir, son çalışma tarihi bugünden eskiyse günlük yedek, rotasyon, saklama taraması ve IP denetimi koşar | Program tepside günlerce açık kalabilir. KS'nin "her gün yeniden açılır" varsayımı geçersizdir (SU-17, EK-17) |
 | T10 | SMS, veli bildirimi ve bildirim modülü yoktur. Yerine **tek kişilik iade hatırlatma pusulası** gelir | Veli verisi toplanmaz |
-| T11 | Güncelleme denetimi **yalnız kullanıcı "Denetle" düğmesine basınca** çalışır ve indir.okulapp.org manifestini okur. Açılışta denetim yapılmaz | MEB ağında GitHub engelli (R6 §4). KS'nin UpdateBanner'ı her açılışta dış istek atıyor (EK-5). Programın tek dış bağlantısı budur |
+| T11 *(v3: 23.09.2026)* | **Dış istek yalnız kullanıcının başlattığı iki kapıdan çıkar:** (1) **güncelleme denetimi** — "Denetle" düğmesiyle, indir.okulapp.org manifestinden; (2) **ISBN ile künye sorgusu** (U13, §8.5) — ayarla açılır, **varsayılan kapalıdır**, her sorguyu kullanıcı başlatır. Başka hiçbir dış bağlantı yoktur: **açılışta ağ yok, telemetri yok, kişisel veri çıkmaz** | MEB ağında GitHub engelli (R6 §4). KS'nin UpdateBanner'ı her açılışta dış istek atıyor (EK-5). U13'ten önce tek kapı vardı; künye sorgusu ikinci kapıyı açar, ama ilkenin özü (kullanıcı başlatır, açılışta ağ yok, dışarı kişisel veri çıkmaz) korunur. Cümlenin bütün kopyaları eşitlenir: CLAUDE.md §3, `docs/kurulum.md`, `HakkindaPage.tsx`, `denetimOlayi.ts`, §5.9 E3 |
 | T12 | Servis katmanı baştan alt modüllere bölünür | KS'de `services.py` 2.800 satıra şişti (TB12) |
 | T13 | OpenAPI ve drf-spectacular yoktur. Tipler elle yazılır, serializer alan listesi anlık görüntüyle test edilir | KS/DD kalıbı |
 | T14 | **Kör indeks.** Okul no ve kart no için `HMAC-SHA256(HKDF(DEK, "kd-kor-indeks"), normalize(değer))` hesaplanır. Tam eşleşme bu indeksle yapılır, sıralama Python'da yapılır | U9. KS'nin "BLIND INDEX YOKTUR" kararından (crypto.py:28) bilinçli sapmadır. Okuma geçmişi okul no ve kart no üzerinden kişiye bağlanıyordu (GA-1, KM-3) |
@@ -185,6 +186,9 @@ Kütüphane Defteri dökümüne girmez (§8.4).
 | 11/20-21 | Program erişim noktası kurmaz; DHCP, DNS, proxy ya da NAT sunmaz |
 | 14/3 | İnternet sitesi bağlamındadır. Ağ içi katalog bu kapsamda görünmüyor, ama yoruma açık |
 | 11/23 ve 11/3-h/ı | Program veriyi buluta aktarmaz. İsteğe bağlı AI köprüsünde ise kitap listesini dış bir hizmete **kullanıcı** taşır. Bu adım bu hükümlerle çatışabilir; sorumluluk kullanıcıdadır ve asıl yol Excel'dir (KM-26) |
+| 5/8, 6/7 | Öğretmen, öğrenci ve veliye ait kişisel bilgilerin üçüncü kişilerle paylaşılması yasaktır. **Kişisel veri paylaşımı yasağını kuran hükümler bunlardır; 11/8 değildir** (11/8 kişisel bilişim kaynaklarıyla ilgilidir). ISBN künye sorgusunda (§8.5) dışarı yalnız normalize ISBN çıkar; kural koruma testiyle kilitlenir |
+| 11/12, 11/19, 11/22 | *(U13 eki, 23.09.2026)* Künye sorgusunun **operasyonel** engeli: kategorisi olmayan adrese erişim izni verilmez, talep Yardım Masası'ndan açılır (11/12) · MEBNET'te SSL denetimli proxy ve MEB kök sertifikası vardır, istemci sistem sertifika deposunu ve sistem proxy'sini kullanmak zorundadır (11/19) · port önceliği 21/80/443'tedir, Bakanlık ucu 210 portundadır (11/22). Sınama S15'tedir |
+| 11/18 | Kurum bilgisayarına cep telefonu, mobil modem ya da kişisel erişim noktası bağlanarak MEBNET dışı bağlantı alınamaz. §8.5'teki çevrimdışı yol bu yüzden **ayrı cihaz** demektir, aynı cihaza ikinci hat değil |
 
 ### KVKK
 
@@ -215,6 +219,11 @@ hukuki yükümlülük bendi yoktur. Bu yüzden şu kurallar CLAUDE.md'ye ve test
 - md. 11 hakları ve başvuru yolu.
 
 Metin **e-Okul aktarımından önce** duyurulur (KM-13).
+
+**ISBN künye getirme (U13, §8.5) bu metne satır EKLEMEZ:** dışarı yalnız esere ait
+ISBN çıkar, gerçek kişiye ilişkin bir bilgi çıkmaz (md. 3/1-d), bu yüzden md. 10
+yükümlülüğü doğmaz. Özelliği anlatan satırlar E3 BTR bilgi notuna (§5.9), Hakkında
+sayfasına ve `docs/kurulum.md`'ye girer.
 
 **Ödünç ≠ okuduğu kitap.** Öğrenci bazlı ödünç sayısı öğretmene ya da e-Okul'a
 aktarılmaz; yalnız sınıf düzeyinde toplam verilir. Bu, amaç sınırlamasının gereğidir
@@ -266,6 +275,12 @@ kutuphane-defteri.exe (tek süreç, tek kopya kilidi, KipDurumu tek nesne)
 - Katalog uygulaması Django URLconf'unu, ORM'yi ve `django.db`'yi **import etmez**.
   Şablonlarında `{% url` ve `{% load` geçmez.
 - Katalog uygulaması `HTTP_COOKIE` okumaz ve çerez yazmaz.
+- **Ağ Kataloğu hiçbir dış bağlantı açmaz** (U13 eki, 23.09.2026). Katalog uygulaması
+  ve şablonları dış istemci içermez: kaynak import taramasında `urllib.request`,
+  `http.client`, `socket` ile giden bağlantı ve ISBN künye modülü bulunmaz. Program
+  tek süreç olduğu için bu bir **kod yolu değişmezidir**; künye sorgusu yalnız
+  yönetim yüzeyinden, kullanıcının eylemiyle çıkar (§8.5). Katalogtan gelen hiçbir
+  istek dış ağa çıkmaz.
 - Katalog yalnız `prepare_django` tamamlandıktan sonra kalkar.
 - Yönetim portu hiçbir ekranda ya da belgede ilan edilmez. Program içindeki katalog
   bağlantıları 127.0.0.1 üzerinden değil seçili LAN IP'siyle kurulur ve harici
@@ -336,6 +351,7 @@ yönetim sunucusu → sağlık denetimi → WebView2 → pencere. Farkları:
 | Kötü niyetli sayfa DNS rebinding yapar | Belirteç çerezi `SameSite=Strict` ve yalnız WebView2 profilinde. Paketli yapıda `ALLOWED_HOSTS` yalnız 127.0.0.1 ve localhost; `backend` adı yalnız `KD_SESSION_TOKEN` boşken (geliştirme ve test) eklenir (GA-13) | — |
 | Disk, bilgisayar ya da yedek çalınır | Zorunlu parola + §6.3 şifreleme + X25519 şifreli yedek | Kopyalanan dosyada eser adları, şube, üye türü ve tarihler düzdür. Ad, okul no ve kart no olmadan kişiye doğrudan bağlanamazlar. Küçük gruplarda tahmin mümkündür (yukarıdaki satır). **Tam koruma için BitLocker** |
 | Görevli, kart numaralarını sırayla yazarak üye adlarını çıkarır (GA-7) | Kart no: 6 rastgele hane + sağlama hanesi · art arda 5 geçersiz kart → yönetici parolası | — |
+| **Dış servisin yanıtı programın içine girer** (U13, §8.5): künye sorgusuna dönen eser adı, yazar ve yayınevi metni katalog alanlarına, oradan TR arama anahtarlarına ve WeasyPrint evrakına basılır | Yanıt **güvenilmeyen girdidir**: boyut ve uzunluk tavanı, denetim karakteri temizliği, **NFC normalleştirmesi**, kısa zaman aşımı, yönlendirme izlenmez · hiçbir alan kullanıcı onaylamadan yazılmaz (ön izleme + kaynak ve tarih etiketi) · yerel önbellek aynı ISBN'i ikinci kez sormaz | Bakanlık ucunda TLS yoktur; yol üzerindeki bir aktör künyeyi değiştirebilir. Onay ekranı son katmandır ve kullanıcının dikkatine dayanır (TB20). Özellik varsayılan kapalıdır |
 | Ağdan yük bindirilir ya da slowloris saldırısı yapılır (GA-12) | Kendi havuzu, `connection_limit`, kısa zaman aşımı, IP başına token-bucket · kabul anında IP başına eşzamanlı bağlantı sınırı (dispatcher alt sınıfı) | Kalan risk yalnız katalogun erişilemez olmasıdır, veri riski yoktur |
 
 *F1 eki (22.09.2026):* bozuk güvenlik dosyası da kayıp kilidine düşer; kayıp ekranında
@@ -771,7 +787,16 @@ loopback'ten geçer. Başka bir bilgisayardan deneyin." Başka bilgisayar için 
 - kuraldaki **gerçek** `remoteip` ve profil değerleri;
 - neyin sunulduğu (salt okur katalog) ve neyin sunulmadığı;
 - kişisel veri bulunmadığı;
+- **programın giden bağlantıları** (U13 eki, 23.09.2026): dış istek yalnız
+  kullanıcının başlattığı iki kapıdan çıkar — güncelleme denetimi ve, ayarla
+  açıksa, ISBN künye sorgusu (§8.5). Açılışta ağ yok, telemetri yok, dışarı
+  kişisel veri çıkmaz. Not, künye sorgusu **açıksa** hedef adresleri ve dışarı
+  yalnız ISBN'in çıktığını yazar; kapalıysa "giden bağlantı yalnız güncelleme
+  denetimidir" satırı basılır. BTR'nin okul ağından sınaması için hazır komutlar
+  verilir (S15);
 - Yönerge atıfları: 5/11, 11/16, 11/22; 11/7'nin "aktif ağ cihazı" dediği notu;
+  künye sorgusu açıksa 11/12 (kategorisiz adrese erişim izni Yardım Masası'ndan
+  istenir) ve 11/19 (MEB kök sertifikası ve SSL denetimli proxy);
 - BTR ve müdür imza alanları.
 
 Not okulda saklanır (U10). Yerel üretilen basılı bir belge olduğu için gerçek IP
@@ -799,6 +824,8 @@ bloklarını içerebilir.
 | 16 | Klavyesiz gezinme: yalnız bağlantılarla (A-Z dizin, konular) aramadan bir eserin sayfasına ulaşılır | F5 |
 | 17 | Gün değişimi kapısı: program 3 gün kapanmadan açık kalır; her gün bir yedek alınır, IP denetlenir (saat taklidiyle) | F5 |
 | 18 | Görevli kipinde parolasız `app/quit/` 403 döner, parolalı istek düzenli kapanışı başlatır | F5 |
+| 19 | **ISBN künye sorgusu** (§8.5): (a) açılışta ve toplu içe aktarımda hiç dış istek çıkmaz; (b) kaynak ayarı kapalıyken hiç istek çıkmaz; (c) giden isteğin sorgu dizesi, gövdesi ve **bütün başlıkları** dolaşılır — normalize ISBN dışında hiçbir değer (kimlik, anahtar, çerez, okul adı, demirbaş no, kart no, barkod) geçmez; (d) yanıt NFC'ye normalleştirilir ve denetim karakterleri elenir, boyut tavanı aşılırsa yanıt düşürülür; (e) kullanıcı onaylamadan hiçbir alan yazılmaz | F3 |
+| 20 | Ağ Kataloğu kaynak import taramasında giden bağlantı çağrısı ve künye modülü bulunmaz (§4.1 değişmezi) | F3 · F5'te yeniden |
 
 ---
 
@@ -847,7 +874,7 @@ kuralıyla her zaman kapalıdır; `Student` ve `Personnel` **ayrılış havuzu**
 | `CommissionDecision` | Başkan ve katılımcılar **şifreli** · `DONATION_REVIEW` / `WEEDING` tür denetimi |
 | `Acquisition` | `source_note` (bağışçı) **şifreli** · + **bağış ön kaydı** `DonationIntake`: nüsha açılmadan liste tutulur; karar girilince seçili kalemler tek işlemle kataloglanır, reddedilenler işaretlenir (SU-23) |
 | `Work` | + `search_key`, `sort_key`, `author_sort_key`, `subject_sort_key` (T7) · + `isbn13` (normalize, ISBN-10 → 13, sağlama uyarısı) · + `section` → kontrollü **`Section`** listesi (ad, DOS aralığı, kısa tarif; Md. 4/1-a, 6/1) |
-| `Copy` | **Tanımlayıcı tablosu** (SU-11, UY-22): `barcode` = 10 haneli kayıt no; `accession_no` aynı sayının tamsayı hâli, tek sayaçtan · `external_asset_ref` = TKYS sicil/kodu · **`old_register_no`** = kitaptaki eski damga/defter no (isteğe bağlı) · `status` + `IN_REPAIR` giriş/çıkış yolu + **`DELIVERED`** (U11) · + `label_verified_at` · `shelf_location` → `Section` |
+| `Copy` | **Tanımlayıcı tablosu** (SU-11, UY-22): `barcode` = 10 haneli kayıt no; `accession_no` aynı sayının tamsayı hâli, tek sayaçtan · `external_asset_ref` = TKYS sicil/kodu — **hiçbir akışta zorunlu değildir**, arayüzde geri plandadır ve Excel şablonunda da zorunlu değildir; yardım metni "Okulunuz Taşınır Kayıt ve Yönetim Sistemi'nde (TKYS) nüsha bazında kayıt tutmuyorsa bu alanı boş bırakın" der (S8 cevabı, 23.09.2026: sahada nüsha bazında TKYS kaydı fiilen tutulmuyor) · **`old_register_no`** = kitaptaki eski damga/defter no (isteğe bağlı) · `status` + `IN_REPAIR` giriş/çıkış yolu + **`DELIVERED`** (U11) · + `label_verified_at` · `shelf_location` → `Section` |
 | **Yeni** `Delivery` (U11) | Nüsha · alan (Personnel ya da ClassSection; teslim açıkken PROTECT, kapandıktan sonra saklama sonunda SET_NULL — §6.4) · teslim tarihi · beklenen dönüş · belge no · geri alma tarihi. Ödünç değildir, Md. 18 sayı sınırı uygulanmaz |
 | `CopyCounter` | Yıl `localdate()` ile alınır (D6) |
 | **Yeni** `IssuedCard` (V2-05) | Verilmiş **bütün** kart numaralarının kör indeksi. Kişisizdir ve kalıcıdır; üyelik katı silinse de kalır. Yeni kart numarası buna karşı çakışma denetiminden geçer. "Asla yeniden kullanılmaz" değişmezini bu tablo sağlar. `CardCounter` kalkar |
@@ -967,7 +994,14 @@ Aydınlatma metni bu kapsamı aynen yazar.
 - Okuyucu girdisi normalize edilir. Aynı yardımcı FE'de ve backend'de bulunur.
 - **13 haneli 978/979 girdi**, yani kitabın ISBN barkodu, özel ileti verir: "Bu ISBN
   barkodu. Kitabın kütüphane etiketini okutun." Masadaki okuyucuda EAN/UPC sembolojisi
-  kapatılabilir. ISBN okutarak hızlı kayıt yönetici ekranında yapılır (SU-3).
+  kapatılabilir. ISBN okutarak hızlı kayıt yönetici ekranında yapılır (SU-3) ve künye
+  önerisi §8.5'ten gelir.
+- **Elle yazılan ISBN-10 tam ayrılamaz (TB22).** Okutulan ISBN barkodu 13 hanedir ve
+  978/979 ile kesin ayrılır; ama kullanıcı künye sayfasındaki 10 haneli eski ISBN'i
+  ELLE yazarsa ayrım yalnız yıl ön ekiyle yapılabilir (`SCAN_YEAR_MIN`…`SCAN_YEAR_MAX`
+  = 2000-2999). İlk dört hanesi bu aralığa düşen ISBN-10'lar nüsha barkodu sanılır;
+  `SCAN_YEAR_MAX` üst duvarı da bir varsayımdır. Kabul edilmiş kalan risktir: kapatmanın
+  tek yolu U7 ve T8'deki salt rakam barkod şemasını değiştirmektir.
 
 ### 7.2 Etiketler
 
@@ -1061,7 +1095,14 @@ Excel'le başlayabilir (SU-10).
 | Yöntem | Akış |
 |---|---|
 | **A. Önce liste** | Excel → içe aktar → yer numarası sırasında etiket bas → raf raf yapıştır → doğrulama okutması |
-| **B. Önce etiket** (listesi olmayan okul) | Boş barkod aralığı ayrılır ve basılır → kitap elde, ISBN + etiket okutularak hızlı kayıt → sonradan künye tamamlanır |
+| **B. Önce etiket** — **okulun ASIL yolu** (S8 cevabı, 23.09.2026) | Boş barkod aralığı ayrılır ve basılır → kitap elde, ISBN + etiket okutularak hızlı kayıt → sonradan künye tamamlanır (§8.5 künye getirme bu adımı hızlandırır) |
+
+**Yöntem B neden asıl yol** (S8 cevabı, 23.09.2026). Okulda hazır bir Excel listesi
+**yoktur**; bu yüzden "önce liste" varsayımıyla planlanan sıra sahada karşılığı olmayan
+bir varsayımdır. Sonuçları: F3'te **hızlı kayıt akışı** (ISBN okut → künye doldur →
+barkod bas) Excel içe aktarımıyla **eşit önceliktedir**; F4 etiket basımı **kritik
+yoldadır**, çünkü yöntem B etiketsiz başlayamaz. Excel yolu bırakılmaz: dışa aktarım,
+bağış listeleri ve başka okulların hazır listeleri için gereklidir.
 
 **Geçiş dönemi kuralı.** Etiketsiz kitap masaya gelirse hızlı kayıt yapılır ve tek
 etiket basılır ya da kitap kâğıt deftere geçer. Dönüşüm bitince kâğıt defter kapatılır.
@@ -1081,6 +1122,10 @@ karar gelince toplu kataloglanır.
 - Komuta **yalnız künye sütunları** girer. Demirbaş no, edinim ve bağışçı bilgisi
   girmez.
 - ESTIMATED kodlar katalogda "tahmini" rozetiyle görünür.
+- *U13 eki (23.09.2026):* künye eksiğini kapatmak için **§8.5'teki ISBN yolu daha
+  güvenlidir** ve kılavuzda önce o anlatılır: AI köprüsünde okulun **kitap listesi**
+  dış hizmete çıkar (Yönerge 11/23 ve 11/3-h/ı tartışması buradan doğar), ISBN
+  yolunda dışarı yalnız kitabın arka kapağındaki numara çıkar.
 
 ### 8.3 Öğrenci ve personel; yıl akışları
 
@@ -1145,6 +1190,101 @@ mutabakatla karşılanır.
   hazırlığı** (TMY 34/2-c, **34/3-a**).
 - **Kişi dökümü** (KVKK md. 11): okul no ile üyelik, ödünç, dosya ve teslim kayıtları.
   Yalnız yönetici kipinde çalışır.
+
+### 8.5 ISBN ile künye getirme (U13, F3)
+
+Kitabın arka kapağındaki ISBN barkodu okutulur ya da numara elle yazılır; program eser
+ekleme formuna künye **önerisi** doldurur. Okutulan kodun ISBN olduğunu ayırt eden yol
+F2'de hazırdır (`apps/kutuphane/isbn.py`, `barcode.py::classify_scan`); F3'ün işi yalnız
+"numaradan künye getirme" halkasıdır. Yöntem B'nin (§8.1) hızlı kayıt adımını hızlandırır.
+
+**Kaynaklar ve sıra.** Önce Bakanlık kataloğu, bulunamazsa Open Library (U13). Ölçümler
+23.09.2026 tarihlidir.
+
+| Kaynak | Uç | Dönen alanlar | Ölçülen durum |
+|---|---|---|---|
+| **1. Kültür ve Turizm Bakanlığı halk kütüphaneleri kataloğu** (KYGM, Koha/Zebra) | SRU 1.1, düz HTTP, port 210: `koha.ekutuphane.gov.tr:210/biblios?version=1.1&operation=searchRetrieve&query=bath.isbn=<isbn13>&maximumRecords=5&recordSchema=marcxml` · kimlik ve anahtar **gerekmez** | MARCXML: 020 ISBN · 100 yazar · 245 eser adı, alt başlık ve sorumluluk (çevirmen/editör dâhil) · 260/264 yayın yeri, yayınevi, yıl · 300 sayfa ve boyut · 650 konu başlığı · 041 dil · 040 kataloglayan kurum · **082 Dewey** ve **090 yer numarası** | Türkçe karakterler **tam doğru** (UTF-8). 5 örnek ISBN'in 4'ü bulundu. Yanıt ~0,3 sn. **TLS yok.** **Mükerrer kayıt:** tek ISBN için 123 kayıt döndü. Yayımlanmış kullanım şartı, lisans ve atıf kuralı **yok** (TB20, S14) |
+| **2. Open Library** (yedek) | HTTPS + JSON: `openlibrary.org/isbn/<isbn>.json` (302 ile `/books/OL…M.json`'a gider) · `openlibrary.org/search.json?q=isbn:<isbn>` · `openlibrary.org/api/volumes/brief/isbn/<isbn>.json` · **eski `/api/books` ucu ölü** (404) | title, publishers, number_of_pages, publish_date, isbn_10/13, language, author_name (search ucunda) · **Dewey/sınıflama yok** | Türkçe verisi **kusurlu ve ölçülmüştür:** harf düşmesi ("Yap Kredi Yaynlar", "Destek Yaynlar") · ham HTML varlığı (`Do&#x11F;an Kitap`) · **ayrışık (NFD) kod noktaları** ("İletişim") · **çevirmen yazar sayılmış** (Orhan Pamuk kitaplarına Kazak ve İspanyol çevirmenler yazar olarak eklenmiş) · Amazon kaynaklı **uydurma tarihler** ("13 Nisan", "28 Ekim") — kalemin kütükteki yeri **TB21**. Belgeli hız sınırı: tanıtılmamış istemci 1 istek/sn |
+
+**Sert kurallar** (hepsi §5.10-19 ve §5.10-20 ile kilitlenir):
+
+1. **Varsayılan KAPALI.** Ayarla açılır, yalnız yönetici kipinde. Kapalıyken hiç istek
+   çıkmaz.
+2. **Yalnız kullanıcının başlattığı tek istek.** Açılışta, arka planda ve **toplu içe
+   aktarımda ASLA** istek atılmaz (Open Library'nin açıkça yasakladığı "yüzlerce tekil
+   kitap isteği" tam olarak budur). Saniyede en çok bir istek.
+3. **Dışarı yalnız normalize ISBN gider.** İstekte kimlik, anahtar, çerez, okul adı,
+   demirbaş no, kart no, barkod, kitap listesi ve kullanıcı adı **bulunmaz**; sorgu
+   dizesi, gövde ve başlıklar testle dolaşılır. Open Library'nin şartı gereği
+   `User-Agent` yalnız program adını ve sürümü taşır.
+4. **Yanıt güvenilmeyen girdidir** (§4.3): boyut ve alan uzunluğu tavanı, denetim
+   karakteri temizliği, **NFC normalleştirmesi zorunludur** (ayrışık girdide
+   `apps/okul/normalize.py` katlaması eşleşmiyor — ölçüldü; NFC olmadan kullanıcı kendi
+   kataloğundaki kitabı bulamaz ve bu **sessizce** olur), HTML varlıklarının çözülmesi,
+   kısa zaman aşımı. **Yönlendirme kendiliğinden izlenmez;** Open Library'nin `/isbn/`
+   ucundaki 302 aynı host içinde ve en çok bir kez izlenir, başka hosta giden
+   yönlendirme düşürülür.
+5. **Kullanıcı onaylamadan hiçbir alana yazılmaz.** Alanlar ön izleme olarak dolar, her
+   alanın yanında **kaynak ve tarih etiketi** durur ("Bakanlık kataloğu, 23.09.2026"),
+   dolu alan sessizce üzerine yazılmaz. **Çevirmen alanı dışarıdan doldurulmaz**
+   (kaynaklar çevirmeni yazardan ayırmıyor), kullanıcıya sorulur.
+6. **Yerel önbellek:** aynı ISBN ikinci kez sorulmaz.
+7. **TLS sistem sertifika deposundan doğrulanır ve sistem proxy'si kullanılır.** MEBNET'te
+   SSL denetimli proxy vardır ve istemcilere MEB kök sertifikası kurulur (Yönerge 11/19,
+   R8 §4); `certifi` ile çalışan bir istemci tam da hedeflenen ağda sessizce patlar.
+8. **Ağ Kataloğu süreci hiçbir dış bağlantı açmaz** (§4.1 değişmezi).
+9. **Fail-open.** Uç ölürse, yavaşsa, engelliyse ya da ağ kapalıysa program aksamaz:
+   sessiz başarısızlık ve "İnternetten getirilemedi, elle girebilirsiniz" iletisi. Elle
+   giriş ve Excel içe aktarımı her koşulda tam işlevlidir.
+10. **Konum dili** (§3): arayüz "resmî künye" ya da "Bakanlık sisteminden geliyor"
+    izlenimi vermez; künye "dış kaynaktan alındı, doğrulayın" rozetiyle gösterilir.
+
+**Mükerrer kayıt kuralı.** Tek ISBN için yüzlerce kayıt dönebilir (ülkedeki her halk
+kütüphanesi aynı kitabı ayrı kataloglamıştır; ölçülen en yüksek değer 123). Program
+sessizce ilk kaydı almaz: **en zengin kayıt** seçilir (082 ve 090 taşıyan, 300 ve 650
+dolu olan tercih edilir), kullanıcıya **kaç kayıt bulunduğu** söylenir ve gerekirse ilk
+birkaç aday listelenip seçtirilir.
+
+**Çevrimdışı yol** (kütüphane masasında internet yoksa; U13'ün ikinci yarısı). Künyesi
+eksik eserlerin **ISBN listesi dışa aktarılır** → internetli **başka bir cihazda**
+doldurulur → dosya geri aktarılır. Geri aktarım F3'ün içe aktarma hattını kullanır
+(eşleşme ISBN üzerindendir, aynı ön izleme ve onay ekranı çalışır). Dosya kişisel veri
+taşımaz. **Kurum bilgisayarına telefon, mobil modem ya da kişisel erişim noktası
+bağlanarak internet alınamaz** (Yönerge 11/18): bu yol *ayrı cihaz* demektir, aynı
+cihaza ikinci hat değil. Taşımada Yönerge 10/4-10/5'teki taşınabilir bellek kuralları
+geçerlidir.
+
+**Mevzuat durumu** (depodaki metinlerden doğrulandı).
+- Yönerge **11/23** ("Bakanlığa ait … veri" dışarı aktarılmaz) ile **çatışmaz**: ISBN
+  sorgusu dışarı veri çıkarmaz, veri getirir. §8.2 AI köprüsünden temel farkı budur.
+- Yönerge **11/3-h** ("resmî işlemler dışındaki interaktif uygulamalara erişmek") ile
+  **çatışmaz**: kataloglama, Yönetmelik md. 8/1-a ile kurulmuş resmî bir iştir.
+- Yönerge **5/8** ve **6/7** kişisel veri paylaşımını yasaklar; "dışarı yalnız ISBN
+  gider" kuralı testle kilitlendiği sürece devreye girmez. *(Bu yasak **11/8'de
+  değildir**; 11/8 kişisel bilişim kaynaklarıyla ilgilidir ve bu belgede demirbaş
+  bilgisayar bağlamında kullanılır.)*
+- **KVKK:** dışarı çıkan ISBN esere aittir, gerçek kişiye değil (md. 3/1-d), bu yüzden
+  kişisel veri işlenmez; md. 9 (yurt dışına aktarım) tetiklenmez ve md. 10 aydınlatma
+  yükümlülüğü **doğmaz** — yükümlülük kişisel verinin elde edilmesine bağlıdır.
+  **Bu yüzden aydınlatma metnine (E13) satır EKLENMEZ.** Gereken satırlar E3 BTR bilgi
+  notuna (§5.9), Hakkında sayfasına ve `docs/kurulum.md`'ye girer.
+- **Operasyonel engel hukuki değildir:** Yönerge **11/12** kategorisi olmayan adrese
+  erişim izni verilmediğini söyler ve talebi `yardimmasasi.meb.gov.tr`'ye bağlar; karar
+  okulun elinde değildir. Bakanlık ucu ayrıca standart dışı **210 portunda ve düz
+  HTTP'de** çalışır; Yönerge 11/22 önceliği 21/80/443'e verir. İki adresin okul ağından
+  erişilebilirliği **doğrulanmamıştır** ve BTR ile sınanır (S15).
+
+**Lisans ve izin durumu — açık kalan risk.** Bakanlık ucunun yayımlanmış bir kullanım
+şartı, API belgesi, lisansı ya da atıf kuralı **yoktur** (arandı, bulunamadı); aynı
+sunucunun web yüzeyi WAF ile korunmakta, OAI-PMH ve OPAC kazımasına kapalıdır. Yani
+açık port bilinçli bir hizmet olmayabilir ve her an kapanabilir. Buradan çıkan kural:
+**tek tek sorgu ile okulun kendi kataloğunu doldurmak** ile **kayıtları toplu indirip
+programla birlikte dağıtmak** hukuken aynı şey değildir; **ikincisi yapılmaz.** Yazılı
+izin ve atıf koşulu kuruma sorulur (S14). Ayrıca kullanılmayacak kaynaklar: TO-KAT
+(`robots.txt` = `Disallow: /`, tam yasak), Milli Kütüphane KAŞİF (yalnız POST +
+`__VIEWSTATE`, kazımadan başka yol yok), Bakanlığın ISBN başvuru sistemi (e-Devlet T.C.
+kimlik no + şifre ister; program kimlik bilgisi ne isteyebilir ne saklayabilir),
+kitap perakendecileri (API yok, kullanım koşulları doğrulanamadı).
 
 ---
 
@@ -1449,8 +1589,8 @@ ifadeleri ters çevrilir: `settings.py:3-7`, `server.py:8`, `docs/kurulum.md:83-
 | **F0 İskelet** | `git init` + CLAUDE.md + AGENTS.md + `docs/mevzuat/` (tam metinler) · KS'den türetme + KD sabitleri + "ağ servisi sunmaz" ifadelerinin ters çevrilmesi · segno dört halka (requirements → eşleme → spec → RUNTIME) + `barcode128.py` · pystray/six masaüstü zinciri · Inno yönetici · `synchronous=FULL` + **temiz kapanış işareti** (pano kartı F6'da) · kapilar.yml · **iki sunucu iskeleti** (katalog yalnız 127.0.0.1'de dinler) · **spike'lar**: Windows pystray iş parçacığı, Linux Qt ana iş parçacığı, `SO_EXCLUSIVEADDRUSE` + waitress `sockets=`, Inno `InitializeSetup`/`InitializeUninstall` kapatma olayı | exe açılır, tepsiye iner, Çık ile kapanır · çıkış kodları · `--pdf-duman`, `--bagimlilik-duman` · §5.10-1/2/3 · temiz kapanış işareti yazılır, zorla sonlandırmada eksik kalır · kimlik kalıntı taraması sıfır · gates yeşil |
 | **F1 Çekirdek + güvenlik** | Sihirbaz: 1) parola + kurtarma anahtarı 2) okul, kademe, kısa ad, demirbaş onayı 3) ders yılı, dönem, kapalı günler → panoda "başlangıç yol haritası" kartı · parolasız dal sökümü · fail-closed yazma · kör indeks · güvenlik dosyası kayıp kilidi · Student/Personnel · e-Okul aktarımı + öğrenci/personel mutabakatı · Holiday `SCHOOL_BREAK` · `KipDurumu` + KipMiddleware + boşta/mutlak süre · Excel şablon sözlüğü | Parola yokken kişi yazan uç 409 · kilitliyken `Student.save()` hata verir · guvenlik.json silinince fail-closed · tek şubelik dosya diğerlerini LEFT yapmaz · §5.10-8 iskelet, §5.10-14 · kör indeks eşleşmesi · şifreli kipte ad selector'ları |
 | **F2 Katalog** | Work/Copy/Acquisition/Section/Commission/Policy/sayaçlar · TR anahtarları ve üç eksenli alfabetik sıralama · ISBN · barkod · tanımlayıcı tablosu · bağış ön kaydı · D2, D6, D7, D11 · FE Katalog (DataTable, sayfalama, gecikmeli arama), Eser detay, Edinimler | TR arama ("şiir"/"ŞİİR", "ılık"/"ILIK", "İnce"/"ince") · üç eksenli TR sıralama · ISBN-10/13 · nüsha kuralları · barkod yeniden kullanılmaz |
-| **F3 İçe aktarma** | Excel (şablon, eşleme, önizleme = uygulama, kovalar, idempotency, ders kitabı → danışma, bölüm eşleştirme) · AI JSON köprüsü · D5 | Önizleme ile uygulama aynı · ikinci uygulama engellenir · 5.000 satırlık sentetik dosya ölçülür |
-| **F4 Etiketler** | Sırt, barkod ve kalibrasyon · Code128-C (X = 0,254 mm) · QR isteğe bağlı · basım sırası · doğrulama okutması · yöntem B (önce etiket + hızlı kayıt) · D10, D20 | Code128 test vektörleri · PDF'te modül genişliği toleransı · basım durumu geri alınabilir · *gerçek okuyucu: F4 eki → F12* |
+| **F3 İçe aktarma** | Excel (şablon, eşleme, önizleme = uygulama, kovalar, idempotency, ders kitabı → danışma, bölüm eşleştirme) · **hızlı kayıt akışı (ISBN okut → künye doldur → barkod bas) — Excel ile EŞİT öncelikte** (S8) · **ISBN ile künye getirme (U13, §8.5): iki kaynak, varsayılan kapalı ayar, ön izleme + onay, kaynak/tarih etiketi, yerel önbellek, çevrimdışı dosya yolu (ISBN listesi dışa aktar → doldur → geri aktar)** · AI JSON köprüsü · D5 | Önizleme ile uygulama aynı · ikinci uygulama engellenir · **10.000 satırlık** sentetik dosya ölçülür · **katalog listesi, arama ve sayfalama 10.000 nüshada akıcı** · **açılışta ve toplu içe aktarımda dış istek YOK** (koruma testi) · **dışarı yalnız ISBN gider** (istek başlıklarını, sorgu dizesini ve gövdeyi dolaşan test) · **NFC koruma testi** · kaynak ayarı kapalıyken hiç istek çıkmaz · §5.10-19, §5.10-20 |
+| **F4 Etiketler** | Sırt, barkod ve kalibrasyon · Code128-C (X = 0,254 mm) · QR isteğe bağlı · basım sırası · doğrulama okutması · **yöntem B (önce etiket + hızlı kayıt) — okulun ASIL yolu olduğu için F4 KRİTİK YOLDADIR** (S8): okulda hazır liste yok, dönüşüm etiketsiz başlayamaz · D10, D20 | Code128 test vektörleri · PDF'te modül genişliği toleransı · basım durumu geri alınabilir · boş barkod aralığı ayırma ve basma uçtan uca · *gerçek okuyucu: F4 eki → F12* |
 | **F5 Ağ kataloğu + tepsi** | Katalog WSGI (görünümler + yaşam döngüsü, authorizer, şablonlar, tahta kipi, A-Z dizinler, vitrin) · soket + IP başına bağlantı sınırı · hız sınırı · CSP · IP adayları · Ağ Doktoru (beş madde denetimi, yer imi dosyaları, BTR notu, PYS metni) · güvenlik duvarı (Inno görevi + UAC + HKLM port) · tepsi kip matrisi · otomatik başlatma · **`kd-gunluk` + gün değişimi kapısı iskeleti** (son çalışma damgası, saatlik denetim, günlük yedek, IP denetimi; sonraki fazlar kendi işlerini buraya ekler) · uyku · ikinci açılış · görevli kipinde Çık (`app/quit/`) · geri yükleme bakım kapısı | §5.10-4…11, 13, 16, 17, 18 · **ikinci bilgisayardan** arama · 50 istemcili yük provası · yönetim arayüzü yük altında akıcı · geri yüklemede katalog durur ve yeniden açılışta kalkar · *tahta ve saha testleri (§5.10-15): F5 eki → F12* |
 | **F6 Üyelik + dolaşım** | Membership (istek listesi) · kart şeması + kartı yenile · **dolaşım masası** (§7.3) · görevli ekranı · kartsız ödünç (yönetici) · iade tarihi (kapalı gün) · gecikme kartı + pusula · E2, E4, E13, E19 · D8, D9, D12, D19, D21 | §9-1…8, 12, 13 testleri · görevli kipinde yalnız izinliler (§5.10-8 dolu) · hızlı okutmada okuma kaybı yok · §5.10-4/5 yeniden koşar |
 | **F7 Teslim, kayıp, ilişik, yıl akışları** | Toplu teslim (U11) + E15 · kayıp/hasar/onarım (D3) · ilişik + E5, E6 · yıl sonu ve yıl başı akışları | Md. 19 kademe kapısı · teslimde sayı sınırı yok, ödünçte var · yıl sonu akışı sentetik veriyle uçtan uca · §5.10-4/5 yeniden koşar |
@@ -1664,6 +1804,59 @@ kararlar. İlgili bölümlerde bu listeye gönderme vardır.
       `lib/api.ts`in kip için zaten tuttuğu etkileşim saatinden okunur (yeni küresel
       dinleyici yok, panele ait olan yalnız yoklama zamanlayıcısıdır).
 
+**F2 ekleri (23.09.2026).** F2'de tasarımdan bilinçli sapmalar ve tasarımda yazmayan
+kararlar. Kod kapısı (§14.1 F2 satırı) ve `bash scripts/gates.sh` yeşildir.
+
+1. **§4.4, §6.2 — `kip_sureleri()` HÂLÂ SABİT; iki alan bağlanmadı.** `LibraryPolicy`
+   `idle_minutes` (3) ve `admin_max_minutes` (30) alanlarını taşır ve `library/policy/`
+   ucu ikisini yazar, ama `apps/okul/kip.py::kip_sureleri()` hâlâ A10 varsayılanlarını
+   döndürür. Bağlama yapılmadı çünkü sağlayıcı HER kip değerlendirmesinde çağrılır ve
+   DB'ye bağlamak F1 ekleri 8/10'da bilinçle azaltılmış sıcak yol sorgularını geri
+   getirir. Kullanıcıya "ayar var, etkisi yok" görünmesin diye iki alan **Kütüphane
+   Politikası ekranına konmadı**. Karar (önbellekli okuma mı, F6'ya erteleme mi) açıktır;
+   o güne dek geçerli olan A10 varsayılanlarıdır ve `kip.py` docstring'i "F6'da
+   bağlanacak" der.
+2. **§6.2 — nüsha süzgeçlerinde "danışma" ayrı bir eksen DEĞİL.** Sunucudaki süzgeç
+   `only_loanable`'dır ve `LOANABLE_Q`'nun dört koşulunu birden uygular (danışma,
+   piyasada mevcudu yok, süreli yayın, durum ≠ Rafta); arayüzde **"Yalnız ödünç
+   verilebilenler"** olarak sunulur. Yalnız danışma kaynaklarını süzen bir eksen
+   istenirse `selectors.copies()`'e ayrı parametre eklenmelidir.
+3. **§6.2, D2 — arama TEK kutudur.** OYS'nin eksen bazlı parametreleri (`title`,
+   `author`, `subject`, `isbn`) ALINMADI: KD'de arama `search_key` üzerindedir (T7) ve
+   ham sütunda Türkçe arama zaten çalışmaz. Sorgu sözcüklere bölünür, hepsi birden
+   aranır; ISBN yazımı ('978-605-…') rakamlarına indirilir. Sıralama ekseni ayrı
+   parametredir (`?order=title|author|subject|newest`).
+4. **§6.2 — Bölüm listesi BOŞ başlar.** Varsayılan DOS bölümleri tohumlanmaz; bölümler
+   Ayarlar → Bölümler'den elle açılır. İlk açılışta katalogdaki "Bölüm" seçicileri
+   boştur. Bir tohum listesi gerekiyorsa kararı F3 içe aktarımıyla birlikte verilir.
+5. **§8.1 — `library/copies/bulk/` yanıtı `{count, results}`.** Liste uçlarının
+   `{count, next, previous, results}` biçiminden FARKLIDIR: sayfalama değil, işlem
+   sonucudur. Her nüsha ayrı numara alır; `count > 1` iken eski kayıt no dolu olamaz.
+6. **§6.2 — bağış kararının gövdesi.** `donation-intakes/<pk>/decision/` içinde
+   `rejected`, kalem kimliğinden ret gerekçesine bir EŞLEMEDİR (liste değil): liste aynı
+   kalemi iki gerekçeyle göndermeye izin verirdi. Reddedilen her kalemde gerekçe
+   zorunludur ve karar geri alınamaz.
+7. **§18 sözlük — Genel Bakış'a Katalog kartı eklenmedi.** Sözlük §4.5 kart listesini
+   sabitler ve `PanelPage` testi kartları sayar; Katalog'a yalnız kenar çubuğundan
+   girilir. Kart istenirse sözlük §4.5 ile kılavuzun o cümlesi birlikte güncellenir.
+8. **§18 sözlük — "Geçici olarak kullanım dışı"nın model karşılığı yok.** Nüsha durumları
+   satırında geçen bu ifade `CopyStatus` değerlerinden hiçbirine denk düşmez ("Onarımda"
+   ayrıca listededir); en yakın hâl `Copy.is_out_of_print` bayrağıdır ve gerekçesi
+   "Piyasada mevcudu yok — ödünç verilmez." metnidir. İfade ya bir hâle bağlanmalı ya da
+   sözlükten düşürülmelidir (F5 Ağ Kataloğu metinlerinden önce).
+9. **§14.1 F3 uyarısı — toplu yazım anahtarları atlar.** `Work`'ün TR anahtarları ve
+   `isbn13` `save()`'de türer; `bulk_create` kullanan bir içe aktarım yolu onları ELLE
+   doldurmak zorundadır. `tests/test_tr_anahtarlari.py::test_anahtar_alanlari_toplu_yazimla_atlanmaz`
+   kaynak ağacını AST ile tarar ve böyle bir yol eklenirse kırmızıya döner. Ayrıca
+   `import_schema`'daki `shelf_location` anahtarı Excel SÜTUN adıdır; modeldeki karşılığı
+   `Copy.section` FK'sidir, eşleme F3'ün işidir.
+10. **§7.1 — F2 düzelticisinden devreden iki kalem kütüğe alındı (TB22).** Elle yazılan
+    10 haneli ISBN-10'un (ilk dört hanesi 2000-2999'a düşenler) nüsha barkodundan
+    ayrılamaması ve `SCAN_YEAR_MAX = 2999` üst duvarının varsayım oluşu **kapatılmadı**;
+    ikisi de salt rakam barkod şemasının (U7, T8) doğrudan sonucudur ve kabul edilmiş
+    kalan risktir. Kalem `docs/teknik-borc.md` TB22'dedir, `barcode.py::classify_scan`
+    docstring'i oraya gönderme yapar.
+
 ### 14.2 Saha hazırlık hattı (kod dışı — F0 ile başlar)
 
 | # | İş | Kim |
@@ -1675,12 +1868,14 @@ kararlar. İlgili bölümlerde bu listeye gönderme vardır.
 | S5 | İlçe MEM / DHGM'ye sorular: Bakanlık otomasyon sisteminin adresi, geçiş takvimi, aktarım biçimi; **Bakanlıkça belirlenen sınıflama sistemi**; Z-Kütüphane ile ilişkisi. Önce **DYS'deki resmî yazılar** taranır. e-Okul "Okuduğu Kitaplar" durumu | Kullanıcı |
 | S6 | **BTR bilgi notu** (U10): BTR ve müdür imzası, okulda saklanır | Kullanıcı + BTR |
 | S7 | Aydınlatma metninin **e-Okul aktarımından önce** duyurulması · görevli öğrencilerin müdürlükçe **yazılı görevlendirilmesi ve gizlilik bilgilendirmesi** · komisyon ve yönetim bilgilendirmesi | Kullanıcı |
-| S8 | Kitap sayısı, mevcut listeler (Excel var mı, sütunlar) · kitaplarda **eski kayıt/demirbaş no** var mı · TKYS nüsha bazında mı | Kullanıcı |
+| S8 | Kitap sayısı, mevcut listeler (Excel var mı, sütunlar) · kitaplarda **eski kayıt/demirbaş no** var mı · TKYS nüsha bazında mı — **CEVAPLANDI (23.09.2026):** TKYS'de nüsha bazında kayıt fiilen tutulmuyor (alan isteğe bağlı kalır, §6.2) · okulda **hazır Excel listesi yok** (yöntem B asıl yol olur, §8.1) · ölçek **1.000-10.000 kitap**, fazlası nadir (F3 ölçüm kapısı 10.000 satır) | Kullanıcı |
 | S9 | **Geriye dönük dönüşüm planı:** kim, hangi takvim (yarıyıl ya da yaz), raf sırası, etiket stoğu, doğrulama okutması | Kullanıcı + komisyon |
 | S10 | **Kütüphane masası Windows hesabı** (yönetici yetkisi olmayan) + BitLocker | BTR |
 | S11 | Yönetici parolasının **en az iki görevlendirilmiş kişide** olması · kurtarma anahtarının müdürlükte zarfta saklanması | Kullanıcı + müdür |
 | S12 | Kütüphane bilgisayarının demirbaş kaydı | Kullanıcı |
 | S13 | UPS önerisi (elektrik kesintisi) | Okul yönetimi |
+| S14 *(23.09.2026)* | **Bakanlık kataloğu ucunun kullanım izni ve atıf kuralı** için Kültür ve Turizm Bakanlığı Kütüphaneler ve Yayımlar Genel Müdürlüğü'ne yazılı soru: (a) 210 portundaki SRU ucu okul kütüphanelerince kullanılabilir mi, (b) belgeli ve kalıcı bir uç ile atıf/lisans koşulu var mı. Uç bugün belgesizdir (§8.5, TB20); yanıt gelene kadar yalnız tek tek sorgu yapılır, toplu indirme ve yeniden dağıtım yapılmaz | Kullanıcı |
+| S15 *(23.09.2026)* | **İki adresin okul ağından erişilebilirliğini BTR ile sınama** (§8.5 künye getirme buna bağlıdır): `Test-NetConnection koha.ekutuphane.gov.tr -Port 210` ve `Test-NetConnection openlibrary.org -Port 443`. Geçmezse erişim talebi Yardım Masası'ndan açılır (Yönerge 11/12); hiç açılmazsa yalnız çevrimdışı dosya yolu kalır. Komutlar BTR bilgi notunda ve kurulum kılavuzunda verilir | Kullanıcı + BTR |
 
 ---
 

@@ -1,8 +1,10 @@
-// Ayarlar sayfası (DD kalıbı) — altı sekme: ders yılları (dönemlerle), kapalı
+// Ayarlar sayfası (DD kalıbı) — sekiz sekme: ders yılları (dönemlerle), kapalı
 // günler (resmî/dini tatil, öğrenciye kapalı gün; tasarım §6.1 Holiday), şube
-// kataloğu, okul bilgileri (evrak antedi, hazırlık sınıfı, kademe, kısa ad,
-// demirbaş onayı ve no), güvenlik (yönetici parolası, kurtarma anahtarı çıktısı,
-// yedek) ve güncelleme (yalnız elle denetim, tasarım T11).
+// kataloğu, kütüphane politikası (ödünç sınırları, yıl sonu, saklama — F2),
+// bölümler (katalogun kontrollü listesi — F2), okul bilgileri (evrak antedi,
+// hazırlık sınıfı, kademe, kısa ad, demirbaş onayı ve no), güvenlik (yönetici
+// parolası, kurtarma anahtarı çıktısı, yedek) ve güncelleme (yalnız elle
+// denetim, tasarım T11).
 
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
@@ -26,6 +28,8 @@ import type { TabItem } from "../../ui/Tabs";
 import TextField from "../../ui/TextField";
 import UpdatePanel from "../guncelleme/UpdatePanel";
 import GuvenlikAyarlari from "../guvenlik/GuvenlikAyarlari";
+import BolumlerPaneli from "../kutuphane/BolumlerPaneli";
+import KutuphanePolitikasiPaneli from "../kutuphane/KutuphanePolitikasiPaneli";
 import DemirbasAlanlari from "../okul/DemirbasAlanlari";
 import { KISA_AD_EN_COK, SCHOOL_LEVEL_TR, okulApi } from "../okul/api";
 import type {
@@ -43,6 +47,8 @@ const TABS = [
   "ders-yillari",
   "kapali-gunler",
   "subeler",
+  "politika",
+  "bolumler",
   "okul",
   "guvenlik",
   "guncelleme",
@@ -53,6 +59,8 @@ const TAB_ITEMS: TabItem[] = [
   { key: "ders-yillari", label: "Ders Yılları", icon: "calendar_month" },
   { key: "kapali-gunler", label: "Kapalı Günler", icon: "event_busy" },
   { key: "subeler", label: "Şubeler", icon: "meeting_room" },
+  { key: "politika", label: "Kütüphane Politikası", icon: "rule" },
+  { key: "bolumler", label: "Bölümler", icon: "category" },
   { key: "okul", label: "Okul Bilgileri", icon: "apartment" },
   { key: "guvenlik", label: "Güvenlik", icon: "lock" },
   { key: "guncelleme", label: "Güncelleme", icon: "system_update" },
@@ -140,6 +148,8 @@ export default function AyarlarPage() {
         )}
         {tab === "kapali-gunler" && <KapaliGunlerPaneli />}
         {tab === "subeler" && <SubelerPanel years={years} yearsLoading={yearsLoading} />}
+        {tab === "politika" && <KutuphanePolitikasiPaneli />}
+        {tab === "bolumler" && <BolumlerPaneli />}
         {tab === "okul" && <OkulBilgileriPanel />}
         {tab === "guvenlik" && <GuvenlikAyarlari />}
         {tab === "guncelleme" && <UpdatePanel />}

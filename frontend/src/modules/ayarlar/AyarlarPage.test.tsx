@@ -45,6 +45,15 @@ vi.mock("../takvim/KapaliGunlerPaneli", () => ({
   default: () => <div>KAPALI GÜNLER PANELİ</div>,
 }));
 
+// Katalog ayarları (F2) da kendi testlerinde; burada yalnız sekme kablolaması.
+vi.mock("../kutuphane/KutuphanePolitikasiPaneli", () => ({
+  default: () => <div>POLİTİKA PANELİ</div>,
+}));
+
+vi.mock("../kutuphane/BolumlerPaneli", () => ({
+  default: () => <div>BÖLÜMLER PANELİ</div>,
+}));
+
 import AyarlarPage from "./AyarlarPage";
 
 const AKTIF_YIL: SchoolYear = {
@@ -114,13 +123,17 @@ afterEach(() => {
 });
 
 describe("AyarlarPage — sekmeler", () => {
-  it("altı sekme vardır; kaldırılan sekmeler geri gelmez", async () => {
+  it("sekiz sekme vardır (bu sırayla); kaldırılan sekmeler geri gelmez", async () => {
     renderPage();
     await screen.findByText("2026-2027");
     expect(screen.getAllByRole("tab").map((t) => t.textContent?.trim())).toEqual([
       expect.stringContaining("Ders Yılları"),
       expect.stringContaining("Kapalı Günler"),
       expect.stringContaining("Şubeler"),
+      // Katalogun ayarları (F2): politika ve bölümler şube kataloğundan sonra,
+      // okul künyesinden önce gelir — ikisi de kütüphanenin kendi kurallarıdır.
+      expect.stringContaining("Kütüphane Politikası"),
+      expect.stringContaining("Bölümler"),
       expect.stringContaining("Okul Bilgileri"),
       expect.stringContaining("Güvenlik"),
       expect.stringContaining("Güncelleme"),
@@ -406,6 +419,21 @@ describe("AyarlarPage — kapalı günler", () => {
       "aria-selected",
       "true",
     );
+  });
+
+  it("?tab=politika adresi Kütüphane Politikası sekmesini açar", async () => {
+    renderPage("/ayarlar?tab=politika");
+    expect(await screen.findByText("POLİTİKA PANELİ")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Kütüphane Politikası/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("?tab=bolumler adresi Bölümler sekmesini açar", async () => {
+    renderPage("/ayarlar?tab=bolumler");
+    expect(await screen.findByText("BÖLÜMLER PANELİ")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Bölümler/ })).toHaveAttribute("aria-selected", "true");
   });
 
   it("dönem düzenleyicisi yarıyılın kapalı gün olarak girilmesini söyler", async () => {

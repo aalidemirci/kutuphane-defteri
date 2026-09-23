@@ -5,6 +5,7 @@
 // F1 bölümleri (iş sırasıyla): ilk kurulum, başlangıç yol haritası, görevli ve
 // yönetici kipi, kişiler ve e-Okul listeleri, kapalı günler, katalog Excel
 // şablonu, yedek ve güvenlik dosyası, Ağ Kataloğu.
+// F2 bölümü: Katalog (kapalı günler ile Excel şablonunun arasında).
 //
 // Üç tür kilit var:
 // 1. Ekran adları DEPODAN gelir: kısayol, kip ekranı başlığı, kapalı gün türleri,
@@ -27,7 +28,17 @@ import { describe, expect, it, vi } from "vitest";
 import { DOSYA_KAYIP_BASLIGI } from "../guvenlik/metinler";
 import { GOREVLI_EKRANI_BASLIGI } from "../kip/GorevliEkrani";
 import { GOREVLI_KISAYOLU } from "../kip/KipGostergesi";
-import { KATALOG_SABLONU_BELGE_ADI } from "../kutuphane/api";
+import { EDINIMLER_BASLIGI } from "../kutuphane/EdinimlerPage";
+import { ESER_DETAY_BASLIGI } from "../kutuphane/EserDetayPage";
+import { EDINIMLER_ADRESI } from "../kutuphane/KatalogPage";
+import {
+  ACQUISITION_METHOD_TR,
+  CLASSIFICATION_SOURCE_TR,
+  COMMISSION_DECISION_TYPE_TR,
+  KATALOG_SABLONU_BELGE_ADI,
+  RESOURCE_TYPE_TR,
+  WORK_ORDER_TR,
+} from "../kutuphane/api";
 import { HOLIDAY_KIND_TR, MEMBER_KIND_TR, SCHOOL_LEVEL_TR } from "../okul/api";
 import KilavuzPage, { KILAVUZ_BOLUMLERI } from "./KilavuzPage";
 
@@ -57,6 +68,7 @@ const BEKLENEN_BASLIKLAR = [
   "Görevli Kipi ve Yönetici Kipi",
   "Kişiler ve e-Okul Listeleri",
   "Kapalı Günler",
+  "Katalog",
   "Katalog Excel Şablonu",
   "Yedek ve Güvenlik Dosyası",
   "Ağ Kataloğu",
@@ -139,8 +151,14 @@ describe("KilavuzPage — kabuk ve bölümler", () => {
     expect(hedef("Ayarlar → Kapalı Günler")).toEqual(["/ayarlar?tab=kapali-gunler"]);
     expect(hedef("Ayarlar → Okul Bilgileri")).toEqual(["/ayarlar?tab=okul"]);
     expect(hedef("Ayarlar → Şubeler")).toEqual(["/ayarlar?tab=subeler"]);
+    expect(hedef("Ayarlar → Bölümler")).toEqual(["/ayarlar?tab=bolumler"]);
+    expect(hedef("Ayarlar → Kütüphane Politikası")).toEqual(["/ayarlar?tab=politika"]);
     expect(hedef("Kişiler")).toEqual(["/kisiler"]);
     expect(new Set(hedef("Genel Bakış"))).toEqual(new Set(["/"]));
+    // "Katalog" iki bağlantıdır: "Bu kılavuzda" çapası ve ekran bağlantısı.
+    expect(new Set(hedef("Katalog"))).toEqual(new Set(["#katalog", "/katalog"]));
+    // Edinimler ekranının adresi katalog sayfasının sabitinden doğrulanır.
+    expect(hedef(EDINIMLER_BASLIGI)).toEqual([EDINIMLER_ADRESI]);
   });
 });
 
@@ -301,6 +319,166 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     );
   });
 
+  it("katalog: eser ve nüsha ayrımı, sıralama eksenleri, bölümler ve yer numarası", () => {
+    renderPage();
+    const metin = bolumMetni("katalog");
+
+    // Katalog sayfasının sekmeleri ve düğmeleri (KatalogPage, EserDetayPage).
+    for (const ad of [
+      "“Eserler”",
+      "“Nüshalar”",
+      "“Eser ekle”",
+      "“Nüsha ekle”",
+      "“Künyeyi düzenle”",
+      "“Nüsha sayısı”",
+      "“Yalnız ödünç verilebilenler”",
+      "“Yalnız etiketlenmemişler”",
+      "“Kayıttan düşülenleri gizle”",
+      "“Bölüm ekle”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+    expect(metin).toContain(ESER_DETAY_BASLIGI);
+    // TR arama kapıları kılavuzda da söylenir (kullanıcı "ŞİİR" yazıp bulamadı sanmasın).
+    expect(metin).toContain("“şiir” ile “ŞİİR”");
+    expect(metin).toContain("“ılık” ile “ILIK”");
+    expect(metin).toContain("“İnce” ile “ince”");
+    // 'ı' ile 'i' BİLİNÇLİ olarak ayrıdır; kılavuz "Türkçe harfler ayırt edilmez"
+    // diye genelleme YAPMAMALI (kullanıcı "ilik" yazıp kaydı yok sanmasın).
+    expect(metin).not.toContain("Türkçe harfler ayırt edilmez");
+    expect(metin).toContain("“ı” ile “i” ayrı harflerdir");
+    expect(metin).toContain("“rüzgar”");
+    // Üç katalog ekseni + "en yeni": seçicinin gerçek etiketleri.
+    for (const eksen of Object.values(WORK_ORDER_TR)) expect(metin).toContain(eksen);
+    expect(metin).toContain(
+      "“Kataloglar; yazar adı, kaynak adı ve konularına göre alfabetik olarak düzenlenir.”",
+    );
+    // Bölüm kontrollü listedir; DOS ilk geçişte açılır (docs/sozluk.md §1, §2).
+    expect(metin).toContain("Dewey Onlu Sınıflama (DOS)");
+    expect(metin).toContain("kontrollü bir listedir");
+    expect(metin).toContain("Aralık yalnız bilgilendirmedir");
+    // Yer numarası üretimi ve elle düzeltilebilirliği (soyad sezgisi yanılabilir).
+    expect(metin).toContain("“813.54 STE”");
+    expect(metin).toContain("elle değiştirilebilir");
+    expect(metin).toContain("“Ad Soyad” sırasıyla");
+    for (const kaynak of Object.values(CLASSIFICATION_SOURCE_TR)) expect(metin).toContain(kaynak);
+  });
+
+  it("katalog: ISBN uyarısı engellemez, barkod ve kayıt no yeniden kullanılmaz", () => {
+    renderPage();
+    const metin = bolumMetni("katalog");
+
+    // ISBN: sağlama hatası kaydı ENGELLEMEZ (F2 sözleşmesi §3).
+    expect(metin).toContain("kayıt engellenmez");
+    expect(metin).toContain("“ISBN uyarısı”");
+    expect(metin).toContain("978 ya da 979 ile başlar");
+    // İleti GELECEK ZAMANDADIR: dolaşım sonraki fazda gelir, bu sürümde hiçbir
+    // ekran bu iletiyi üretmez (şimdiki zaman kullanıcıyı okuyucusu bozuk sanır).
+    expect(metin).toContain("“Bu ISBN barkodu. Kitabın kütüphane etiketini okutun.” diyecek");
+    expect(metin).toContain("yalnız kütüphane etiketini arar");
+    // Barkod / kayıt no: on hane, yıl + sıra, basılı biçim, salt okunur.
+    expect(metin).toContain("Barkod on hanedir");
+    expect(metin).toContain("“2026-000123”");
+    expect(metin).toContain("2026000123");
+    expect(metin).toContain("Bir numara asla yeniden kullanılmaz.");
+    expect(metin).toContain("yalnız bilgi satırıdır");
+    expect(metin).toContain("“Eski kayıt no”");
+    // TKYS ilk geçişte açılır (docs/sozluk.md §2).
+    expect(metin).toContain("Taşınır Kayıt ve Yönetim Sistemi (TKYS)");
+  });
+
+  it("katalog: ödünç verilmeyen kaynaklar mevzuat metniyle anlatılır", () => {
+    renderPage();
+    const metin = bolumMetni("katalog");
+
+    expect(metin).toContain("“Danışma kaynağı (ödünç verilmez)”");
+    expect(metin).toContain("“Piyasada mevcudu yok (ödünç verilmez)”");
+    expect(metin).toContain("“Ödünç verilmez — kütüphanede okunur.”");
+    expect(metin).toContain("“Süreli yayın — ödünç verilmez.”");
+    // Alıntılar docs/mevzuat/meb-okul-kutuphaneleri-yonetmeligi.md'den birebir.
+    expect(metin).toContain(
+      "“Ancak; a) Danışma kaynakları, b) Piyasada mevcudu bulunmayan kitaplar, c) Süreli yayınlar, ödünç verilmez.”",
+    );
+    expect(metin).toContain(
+      "“Danışma dermesi oluşturulur. Burada ders kitapları, ansiklopediler, sözlükler, atlaslar,",
+    );
+    expect(metin).toContain("Okul Kütüphaneleri Yönetmeliği, md. 16/1");
+    expect(metin).toContain("Okul Kütüphaneleri Yönetmeliği, md. 14/1-a");
+    // Ders kitabı danışma dermesindedir; kutuyu kullanıcı işaretler.
+    expect(metin).toContain("Ders kitapları da danışma dermesindedir");
+    // Kaynak türleri ve dijital kaynakta nüsha açılmaması.
+    for (const tur of Object.values(RESOURCE_TYPE_TR)) expect(metin).toContain(tur);
+    expect(metin).toContain("E-kitap ve e-veri tabanında nüsha açılmaz.");
+  });
+
+  it("katalog: edinim yolları ve bağış ön kaydı akışı", () => {
+    renderPage();
+    const metin = bolumMetni("katalog");
+
+    expect(metin).toContain(EDINIMLER_BASLIGI);
+    for (const ad of [
+      "“Edinim Partileri”",
+      "“Bağış Ön Kayıtları”",
+      "“Komisyon Kararları”",
+      "“Edinim ekle”",
+      "“Edinim yolu”",
+      "“Bağış ön kaydı ekle”",
+      "“Kalem ekle”",
+      "“Çıkar”",
+      "“Karar ekle”",
+      "“Komisyon kararını uygula”",
+      "“Kararı uygula”",
+      "“Ret gerekçesi”",
+      "“İptal et”",
+      "“Kullanımda”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+    for (const yol of Object.values(ACQUISITION_METHOD_TR)) expect(metin).toContain(yol);
+    for (const tur of Object.values(COMMISSION_DECISION_TYPE_TR)) expect(metin).toContain(tur);
+    // Bağışta nüsha komisyon kararına kadar AÇILMAZ ve karar geri alınamaz.
+    expect(metin).toContain("Bağış kataloğa doğrudan girmez.");
+    expect(metin).toContain("Bu aşamada nüsha açılmaz, numara verilmez");
+    expect(metin).toContain("geri alınamaz");
+    expect(metin).toContain(
+      "“Okul kütüphanesine bağışlanacak kitaplar, bu Yönetmelik çerçevesinde Seçim ve Ayıklama Komisyonu tarafından değerlendirilir.”",
+    );
+    expect(metin).toContain(
+      "“Kütüphane kaynakları; Bakanlıktan gönderilen kaynaklar ile satın alma, bağış ve imkânlara göre değişim yoluyla sağlanır.”",
+    );
+    // Bağışçı ve komisyon adları kişi adıdır.
+    expect(metin).toContain("şifreli saklanır");
+  });
+
+  it("katalog: ödünç süresi ayar değildir, politika alanları anlatılır", () => {
+    renderPage();
+    const metin = bolumMetni("katalog");
+
+    expect(metin).toContain("Ödünç süresi burada bir ayar değildir ve değiştirilemez.");
+    expect(metin).toContain("“Bir kitabı ödünç alma süresi on beş gündür.”");
+    expect(metin).toContain("Okul Kütüphaneleri Yönetmeliği, md. 18/1");
+    expect(metin).toContain("en fazla üç, öğretmene en fazla beş kitap");
+    for (const ad of [
+      "“Ödünç Sınırları”",
+      "“Diğer personele ödünç verilir”",
+      "“Müdürlük kararı tarihi”",
+      "“Müdürlük kararı sayısı”",
+      "“Gecikmiş kitabı olana yeni ödünç verilmez”",
+      "“İade tarihi öğrenciye kapalı günlerde kaydırılır”",
+      "“Yıl sonu son ödünç tarihi”",
+      "“Son sınıflar için son ödünç tarihi”",
+      "“Çok okunanlar için en az üye sayısı”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+    // Ara tatil kaydırması okulun tercihi; resmî/dini tatil bu ayardan bağımsız.
+    expect(metin).toContain("okulun tercihidir");
+    expect(metin).toContain("bu ayardan bağımsızdır");
+    // Profil yasağı (tasarım §3): ödünç sayısı dışarı verilmez, vitrinde sayı yok.
+    expect(metin).toContain("öğrenci bazlı ödünç sayısı öğretmene");
+    expect(metin).toContain("sayı hiçbir yerde gösterilmez");
+  });
+
   it("katalog şablonu: nereden indirilir, üç sayfa, tek zorunlu sütun, kişisel veri yok", () => {
     renderPage();
     const metin = bolumMetni("katalog-sablonu");
@@ -389,8 +567,33 @@ describe("KilavuzPage — sözlük ve kalıntı denetimi", () => {
       /emanet/i,
       /\bceza\b/i,
       /uzatma/i,
+      // Katalog sözlüğünün "kullanılmaz" sütunu (docs/sozluk.md §1).
+      /envanter/i,
+      /raf kodu/i,
+      /lokasyon/i,
+      /\bDDC\b/,
+      /Dewey numarası/i,
+      /call number/i,
+      /zimmet/i,
+      /popüler/i,
+      /en çok ödünç alınan/i,
     ]) {
       expect(metin).not.toMatch(yasak);
+    }
+  });
+
+  it("DOS ve TKYS ilk geçişte açılır", () => {
+    const { container } = renderPage();
+    const metin = sayfaMetni(container);
+
+    const acilimlar: Array<[kisaltma: string, acilim: RegExp]> = [
+      ["DOS", /Dewey Onlu Sınıflama \($/u],
+      ["TKYS", /Taşınır Kayıt ve Yönetim Sistemi \($/u],
+    ];
+    for (const [kisaltma, acilim] of acilimlar) {
+      const ilk = metin.indexOf(kisaltma);
+      expect(ilk).toBeGreaterThan(-1);
+      expect(metin.slice(0, ilk)).toMatch(acilim);
     }
   });
 

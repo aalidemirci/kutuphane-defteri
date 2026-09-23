@@ -65,6 +65,50 @@ class TestClassSection:
         assert normalize.tr_sort_key("İ") < normalize.tr_sort_key("Z")
         assert normalize.tr_sort_key("I") < normalize.tr_sort_key("İ")
 
+    def test_q_w_x_latin_sirasindaki_yerine_gelir(self) -> None:
+        """Türk alfabesinde YOK ama Türkçe metinde sıradan (Woolf, "Quo Vadis").
+
+        Alfabe dışı sayılsalardı 0 önceliğine düşer ve 'A'dan da ÖNCE, listenin
+        en başına gelirlerdi.
+        """
+        harfler = ["Z", "W", "A", "X", "Q", "P", "R", "V", "Y"]
+        assert sorted(harfler, key=normalize.tr_sort_key) == [
+            "A",
+            "P",
+            "Q",
+            "R",
+            "V",
+            "W",
+            "X",
+            "Y",
+            "Z",
+        ]
+
+    def test_aksanli_harf_duz_karsiligiyla_siralanir(self) -> None:
+        """'Kâmil' alfabe dışına değil, 'Kamil'in yanına düşer."""
+        adlar = ["Kanat", "Kâmil", "Kabak", "Émile", "Emin"]
+        assert sorted(adlar, key=normalize.tr_sort_key) == [
+            "Émile",
+            "Emin",
+            "Kabak",
+            "Kâmil",
+            "Kanat",
+        ]
+        assert normalize.tr_sort_key("Kâmil") == normalize.tr_sort_key("Kamil")
+
+    def test_aksan_katlamasi_turk_harflerini_yutmaz(self) -> None:
+        """KORUMA TESTİ: NFD ayrışması 'İ'yi 'I'ya, 'Ç'yi 'C'ye indirirdi."""
+        assert normalize.fold_diacritics("İÇĞÖŞÜıi") == "İÇĞÖŞÜıi"
+        assert normalize.tr_sort_key("I") != normalize.tr_sort_key("İ")
+        # 'î' Türkçede NOKTALI i'dir ("millî"); NFD onu noktasız 'I'ya indirirdi.
+        assert normalize.fold_diacritics("Î") == "İ"
+        assert normalize.fold_diacritics("î") == "i"
+
+    def test_katlama_karakter_sayisini_degistirmez(self) -> None:
+        """Anahtar alanları girdiyle aynı boyda saklanır (`Work.sort_key` 500 hane)."""
+        for metin in ("Kâmil", "Ø Æ Œ", "한국어", "🙂", ""):
+            assert len(normalize.fold_diacritics(metin)) == len(metin)
+
     def test_varsayilan_kume_okul_ici_sabittir(self) -> None:
         """Varsayılan küme 1-12'dir (ilkokuldan liseye); dışı çözülmez."""
         assert normalize.GRADE_LEVELS == tuple(range(1, 13))

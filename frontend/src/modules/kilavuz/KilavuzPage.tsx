@@ -10,6 +10,12 @@
 // yönetici kipi → kişiler ve e-Okul mutabakatı → kapalı günler ve iade tarihi →
 // katalog Excel şablonu → yedek ve güvenlik dosyası → Ağ Kataloğu (BTR görüşmesi).
 //
+// F2 bölümü "Katalog", kapalı günlerle Excel şablonunun arasına girer: eser/nüsha
+// ayrımı, bölümler, sınıflama kodu ve yer numarası, ISBN, barkod ve kayıt no,
+// ödünç verilmeyen kaynaklar, edinim yolları ve bağış ön kaydı, Kütüphane
+// Politikası. Şablon bölümü ondan SONRA gelir: şablon toplu hazırlıktır ve içe
+// aktarımı sonraki sürüme bakar.
+//
 // Metin kuralları (docs/sozluk.md — bağlayıcı): düğme, sekme ve alan adları
 // ekrandaki metinle BİREBİR yazılır (depodan doğrulandı; test bir kısmını ekran
 // sabitlerinden kilitler). İç kodlar (F1, U5, E14…) geçmez. Program kendini
@@ -20,8 +26,9 @@
 //
 // Mevzuat atıfları yalnız `docs/mevzuat/`'taki tam metinlerden alınır; alıntılar
 // BİREBİR, madde numarası uydurulmaz: Yönerge 11/8 ve 11/23
-// (meb-bilgi-ve-sistem-guvenligi-yonergesi.md), Yönetmelik 18/1
-// (meb-okul-kutuphaneleri-yonetmeligi.md), TBK 93 (6098-…-md92-93.md).
+// (meb-bilgi-ve-sistem-guvenligi-yonergesi.md), Yönetmelik 10/3, 10/5, 11/1,
+// 14/1-a, 16/1 ve 18/1 (meb-okul-kutuphaneleri-yonetmeligi.md), TBK 93
+// (6098-…-md92-93.md).
 
 import { useEffect } from "react";
 import type { ReactNode } from "react";
@@ -37,6 +44,7 @@ const BOLUMLER = {
   kipler: { baslik: "Görevli Kipi ve Yönetici Kipi", ikon: "admin_panel_settings" },
   kisiler: { baslik: "Kişiler ve e-Okul Listeleri", ikon: "group" },
   "kapali-gunler": { baslik: "Kapalı Günler", ikon: "event_busy" },
+  katalog: { baslik: "Katalog", ikon: "menu_book" },
   "katalog-sablonu": { baslik: "Katalog Excel Şablonu", ikon: "table_view" },
   yedek: { baslik: "Yedek ve Güvenlik Dosyası", ikon: "backup" },
   "ag-katalogu": { baslik: "Ağ Kataloğu", ikon: "lan" },
@@ -126,6 +134,7 @@ function Kod({ children }: { children: ReactNode }) {
 }
 
 const YONERGE = "Millî Eğitim Bakanlığı Bilgi ve Sistem Güvenliği Yönergesi";
+const YONETMELIK = "Millî Eğitim Bakanlığı Okul Kütüphaneleri Yönetmeliği";
 
 /**
  * Başka bir ekrandan çapalı adresle gelindiğinde (ör. yol haritasındaki BTR
@@ -593,7 +602,7 @@ export default function KilavuzPage() {
         </p>
 
         <AltBaslik>İade tarihindeki anlamı</AltBaslik>
-        <Mevzuat kaynak="Millî Eğitim Bakanlığı Okul Kütüphaneleri Yönetmeliği, md. 18/1">
+        <Mevzuat kaynak={`${YONETMELIK}, md. 18/1`}>
           “Bir kitabı ödünç alma süresi on beş gündür.”
         </Mevzuat>
         <p>
@@ -629,13 +638,290 @@ export default function KilavuzPage() {
       </Bolum>
 
       {/* ------------------------------------------------------------------ */}
+      <Bolum id="katalog">
+        <p>
+          Kenar çubuğundaki <Ekran to="/katalog">Katalog</Ekran> kütüphanenin künye ve nüsha
+          kayıtlarını tutar. Sayfanın iki sekmesi vardır: “Eserler” ve “Nüshalar”.
+        </p>
+
+        <AltBaslik>Eser ve nüsha</AltBaslik>
+        <p>
+          <strong>Eser</strong> künyedir: kaynak adı, yazar, yayınevi, konu, ISBN, sınıflama.{" "}
+          <strong>Nüsha</strong> rafta duran kitabın kendisidir. Aynı kitaptan beş tane aldıysanız
+          bir eser ve beş nüsha olur; her nüshanın kendi barkodu ve kayıt numarası vardır, her biri
+          ayrı ödünç verilir. Künye bir kez yazılır, nüshalar ona bağlanır.
+        </p>
+        <p>
+          “Eserler” sekmesinde arama kaynak adı, yazar, konu ve ISBN üzerinde çalışır; yazmayı
+          bırakınca sonuç kendiliğinden gelir. Büyük-küçük harf farkı aranmaz: “şiir” ile “ŞİİR”,
+          “İnce” ile “ince” aynı sonucu verir. Düzeltme işareti (şapka) de aranmaz: “rüzgar” yazınca
+          “Rüzgâr Gibi Geçti” bulunur. Ama <strong>“ı” ile “i” ayrı harflerdir</strong>: “ılık” ile
+          “ILIK” “Ilık Sular”ı getirir, “ilik” ise “İlik Nakli”ni — Türkçede bunlar iki ayrı harftir
+          ve program onları birleştirmez. “Sırala” kutusunda üç katalog ekseni vardır — “Kaynak
+          adına göre”, “Yazar adına göre”, “Konuya göre” — ve bir de “En yeni eklenen”. Üç eksen
+          Yönetmelikteki katalog düzenidir; sıralama Türkçe alfabeye göre yapılır, Ç ve Ş harfleri
+          listenin sonuna atılmaz.
+        </p>
+        <Mevzuat kaynak={`${YONETMELIK}, md. 11/1`}>
+          “Kataloglar; yazar adı, kaynak adı ve konularına göre alfabetik olarak düzenlenir.”
+        </Mevzuat>
+        <p>
+          “Nüshalar” sekmesi fiziksel eksendir: barkodun tamamını yazarak tek kitabı bulursunuz
+          (numaranın bir parçasıyla arama yapılmaz), bölüme ve duruma göre süzersiniz. Üç kutu
+          listeyi daraltır: “Yalnız ödünç verilebilenler”, “Yalnız etiketlenmemişler” (etiketi
+          basılmamış nüshalar) ve “Kayıttan düşülenleri gizle”. Listeler sayfalıdır; bir süzgeci
+          değiştirince ilk sayfaya dönülür.
+        </p>
+        <p>
+          Yeni künye “Eser ekle” düğmesiyle açılır. Listede bir satıra tıklamak{" "}
+          <strong>Eser Ayrıntısı</strong> sayfasını getirir: künye kartı, “Künyeyi düzenle” ve “Sil”
+          düğmeleri, altında da o eserin nüshaları. Nüsha “Nüsha ekle” ile açılır; “Nüsha sayısı”na
+          birden büyük bir sayı yazarsanız aynı künyeden o kadar nüsha tek işlemde açılır (bir
+          seferde en çok 50) ve her biri ayrı numara alır. “Eski kayıt no” yalnız tek nüsha açarken
+          yazılır, çünkü her kitabın damgası başkadır.
+        </p>
+        <Ipucu>
+          <p>
+            Çok sayıda kitabı tek tek yazmak yerine Excel&apos;de hazırlamak için aşağıdaki Katalog
+            Excel Şablonu bölümüne bakın. Şablonla hazırladığınız dosyanın programa topluca
+            aktarılması sonraki sürümde gelecek; bugün katalog kayıtları bu ekrandan girilir.
+          </p>
+        </Ipucu>
+
+        <AltBaslik>Bölümler</AltBaslik>
+        <p>
+          Bölüm, kütüphanenin konu bölümüdür (Edebiyat, Tarih, Başvuru gibi). Serbest metin değil,
+          kontrollü bir listedir: <Ekran to="/ayarlar?tab=bolumler">Ayarlar → Bölümler</Ekran>
+          &apos;den “Bölüm ekle” ile tanımlanır, eser ve nüsha formlarında seçilir. Böylece
+          “Edebiyat”, “edebiyat” ve “EDEBİYAT” tek bölüme düşer; raf etiketleri ve ağdaki dizinler
+          tutarlı kalır.
+        </p>
+        <p>
+          Her bölümün isteğe bağlı bir Dewey Onlu Sınıflama (DOS) aralığı (“DOS aralığı başı” ve
+          “DOS aralığı sonu”, ör. 800-899), bir “Kısa tarif”i ve bir “Sıra” numarası vardır; küçük
+          sıra numarası önce gelir, eşitlikte ad sırası uygulanır. Aralık yalnız bilgilendirmedir:
+          aralığın dışında kalan bir eseri de o bölüme koyabilirsiniz, program engellemez. İçinde
+          eser ya da nüsha bulunan bölüm silinemez; önce kayıtları başka bir bölüme taşıyın.
+        </p>
+
+        <AltBaslik>Sınıflama kodu ve yer numarası</AltBaslik>
+        <p>
+          “Sınıflama kodu” kitabın DOS kodudur (ör. 813.54). “Yer numarası” sırt etiketine basılacak
+          numaradır ve kitabın rafta duracağı yeri söyler. Boş bırakırsanız program onu sınıflama
+          kodu ile yazar soyadının ilk üç harfinden üretir: “813.54 STE”. Soyad, “Yazar(lar)”
+          alanındaki ilk adın son sözcüğü sayılır; bileşik soyadlarda bu sezgi yanılabilir, bu
+          yüzden alan elle değiştirilebilir bırakılmıştır. Yazarı “Ad Soyad” sırasıyla yazın, birden
+          çok yazarı virgülle ayırın. Aynı eserin bütün nüshaları aynı yer numarasını taşır.
+        </p>
+        <p>
+          “Sınıflama kaynağı” kodun nereden geldiğini söyler: “Katalogdan bulundu”, “Tahmini” ya da
+          “Elle girildi”. “Tahmini” işaretli kodları raf düzenini kurarken gözden geçirin.
+        </p>
+
+        <AltBaslik>ISBN</AltBaslik>
+        <p>
+          ISBN kitabın künye sayfasında yazan numaradır; tireli yazabilirsiniz, program tireleri
+          atar. On haneli bir numara yazarsanız 13 haneli karşılığı da hesaplanır ve ikisi birden
+          aramaya girer: elinizdeki eski numarayla da arama yapabilirsiniz. Numaranın son hanesi
+          (sağlama hanesi) tutmuyorsa ya da uzunluk 10 ile 13&apos;ten başkaysa{" "}
+          <strong>kayıt engellenmez</strong>: numara olduğu gibi saklanır, ekranda “ISBN uyarısı”
+          bandı durur. Saha verisi bozuk olabilir; uyarıyı görünce kitabın künye sayfasından
+          denetleyin. Aynı ISBN&apos;li birden çok künye bulunabilir, program buna da karışmaz.
+        </p>
+        <Ipucu>
+          <p>
+            Kitabın arkasındaki çizgili kod ISBN barkodudur, kütüphane etiketi değildir: 13
+            hanelidir ve 978 ya da 979 ile başlar. Barkod okuyucuyla ödünç verme sonraki sürümde
+            gelecek; o zaman ISBN barkodu okutulursa program “Bu ISBN barkodu. Kitabın kütüphane
+            etiketini okutun.” diyecek. Bu sürümde “Nüshalar” sekmesindeki “Barkod” kutusu yalnız
+            kütüphane etiketini arar: ISBN barkodu okutursanız liste boş kalır.
+          </p>
+        </Ipucu>
+
+        <AltBaslik>Barkod ve kayıt no</AltBaslik>
+        <p>
+          Her nüsha açıldığında programdan iki numara alır: <strong>barkod</strong> ve{" "}
+          <strong>kayıt no</strong>. İkisi de aynı sayaçtan doğar ve aynı sayıdır. Barkod on
+          hanedir, ilk dört hane nüshanın açıldığı yıl, kalan altı hane o yılın sıra numarasıdır;
+          etikette ve ekranda “2026-000123” diye yazılır. Kayıt no aynı sayının düz hâlidir
+          (2026000123) ve Taşınır Kütüphane Defteri dökümünde bu sayı kullanılır. Numaraları siz
+          girmezsiniz ve değiştiremezsiniz; nüsha penceresinde barkod, kayıt no ile etiket basım ve
+          doğrulama tarihleri yalnız bilgi satırıdır. Etiket basımı sonraki sürümde gelecek, tarih
+          alanlarını o doldurur.
+        </p>
+        <p>
+          <strong>Bir numara asla yeniden kullanılmaz.</strong> Yanlış açılmış bir nüshayı
+          silerseniz numarası boşta kalır, başka bir kitaba verilmez: taşınır kayıtları ve eski
+          defterler geriye doğru okunabilir kalmalıdır. Bu yüzden nüsha penceresindeki “Sil” yalnız
+          veri giriş hatası içindir. Ayıklanan, kaybolan ya da devredilen kitap silinmez; kayıttan
+          düşme yolu sonraki sürümlerde gelecek.
+        </p>
+        <p>
+          Kitabın üzerinde eski bir damga ya da defter numarası varsa “Eski kayıt no” alanına yazın;
+          programın verdiği numarayla karışmaz. Taşınır kaydındaki karşılığı biliyorsanız Taşınır
+          Kayıt ve Yönetim Sistemi (TKYS) kodunu “TKYS kodu” alanına yazabilirsiniz; program bu kodu
+          doğrulamaz. Bu alan hiçbir işlemde zorunlu değildir: okulunuz TKYS’de nüsha bazında kayıt
+          tutmuyorsa boş bırakın.
+        </p>
+
+        <AltBaslik>Ödünç verilmeyen kaynaklar</AltBaslik>
+        <p>
+          Bir nüshanın ödünç verilip verilemeyeceği tek yerden belirlenir. Nüsha penceresindeki iki
+          kutu doğrudan Yönetmelikten gelir: “Danışma kaynağı (ödünç verilmez)” ve “Piyasada mevcudu
+          yok (ödünç verilmez)”. Üçüncüsü kaynak türüdür: “Süreli yayın” türündeki eserin nüshaları
+          ödünç verilmez (“Ciltli süreli yayın” kutusu ciltlenmiş yıllıkları işaretler).
+        </p>
+        <Mevzuat kaynak={`${YONETMELIK}, md. 16/1`}>
+          “Ancak; a) Danışma kaynakları, b) Piyasada mevcudu bulunmayan kitaplar, c) Süreli
+          yayınlar, ödünç verilmez.”
+        </Mevzuat>
+        <p>
+          Listelerde bu nüshalar gerekçesiyle görünür: “Ödünç verilmez — kütüphanede okunur.”,
+          “Piyasada mevcudu yok — ödünç verilmez.”, “Süreli yayın — ödünç verilmez.” Gerekçe kişisel
+          veri taşımaz; masada öğrencinin de gördüğü ekranda durabilir.
+        </p>
+        <p>
+          Danışma kaynağı kütüphanede okunan, dışarı çıkmayan kaynaktır.{" "}
+          <strong>Ders kitapları da danışma dermesindedir</strong>: ders kitabı nüshalarında bu
+          kutuyu işaretleyin.
+        </p>
+        <Mevzuat kaynak={`${YONETMELIK}, md. 14/1-a`}>
+          “Danışma dermesi oluşturulur. Burada ders kitapları, ansiklopediler, sözlükler, atlaslar,
+          yıllıklar, rehberler, bibliyografyalar, kataloglar, listeler ve benzerleri bulundurulur.”
+        </Mevzuat>
+        <p>
+          “El yazması / nadir eser” kutusu ödünç verilebilirliği değiştirmez; bu nüshalar Genel
+          Müdürlüğe gönderilecek listede toplanır (sonraki sürüm). Kaynak türleri: Kitap, Süreli
+          yayın, Görsel-işitsel materyal, E-kitap, E-veri tabanı. E-kitap ve e-veri tabanında nüsha
+          açılmaz — bu türlerde “Nüsha ekle” düğmesi yerine “E-kitap ve e-veri tabanında nüsha
+          açılmaz.” yazar.
+        </p>
+
+        <AltBaslik>Edinimler ve bağışlar</AltBaslik>
+        <p>
+          Kütüphaneye giren her nüsha bir <strong>edinim partisine</strong> bağlıdır: kaynağın
+          nereden ve ne zaman geldiğinin kaydıdır. Katalog sayfasının sağ üstündeki{" "}
+          <Ekran to="/katalog/edinimler">Edinimler ve Bağışlar</Ekran> bağlantısı üç sekme açar:
+          “Edinim Partileri”, “Bağış Ön Kayıtları” ve “Komisyon Kararları”.
+        </p>
+        <p>
+          Parti “Edinim ekle” ile açılır. “Edinim yolu” seçenekleri: Bakanlık gönderimi, Satın alma,
+          Bağış, Değişim, Sayım fazlası (kayda giriş), Mevcut koleksiyon (programa aktarım). İlk
+          dördü Yönetmeliğin saydığı yollardır; son ikisi kayıt içi girişlerdir — sayımda çıkan
+          fazlanın kayda alınması ve raftaki eski koleksiyonun programa aktarılmasıdır.
+        </p>
+        <Mevzuat kaynak={`${YONETMELIK}, md. 10/5`}>
+          “Kütüphane kaynakları; Bakanlıktan gönderilen kaynaklar ile satın alma, bağış ve imkânlara
+          göre değişim yoluyla sağlanır.”
+        </Mevzuat>
+        <p>
+          “Kaynak notu”na bağışçı, satıcı ya da partinin açıklaması yazılır; kişi adı yazdıysanız
+          şifreli saklanır ve yönetici parolası kurulmadan kaydedilemez. “Birim fiyat” isteğe
+          bağlıdır, ondalık ayracı nokta ile yazılır.
+        </p>
+        <p>
+          <strong>Bağış kataloğa doğrudan girmez.</strong> Okula bağış geldiğinde “Bağış ön kaydı
+          ekle” ile bir ön kayıt açın ve kitapları “Kalem ekle” ile tek tek yazın. Bu aşamada nüsha
+          açılmaz, numara verilmez; liste günler içinde tamamlanabilir, yanlış yazılan kalem “Çıkar”
+          ile listeden alınır.
+        </p>
+        <Mevzuat kaynak={`${YONETMELIK}, md. 10/3`}>
+          “Okul kütüphanesine bağışlanacak kitaplar, bu Yönetmelik çerçevesinde Seçim ve Ayıklama
+          Komisyonu tarafından değerlendirilir.”
+        </Mevzuat>
+        <p>
+          Komisyon toplanınca kararını “Komisyon Kararları” sekmesinde “Karar ekle” ile yazın:
+          “Karar türü”, “Karar tarihi”, “Karar sayısı”, “Başkan adı” ve “Katılımcılar”. Karar
+          türleri “Kaynak seçimi”, “Bağış değerlendirme” ve “Ayıklama”dır; bağış ancak bir bağış
+          değerlendirme kararıyla kataloglanır, ayıklama kararı sonraki sürümde ayıklama işinde
+          kullanılacaktır. Başkan adı ile katılımcılar kişi adıdır ve şifreli saklanır. Sonra ön
+          kayda dönüp “Komisyon kararını uygula” düğmesine basın:
+        </p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>Kabul edilen kalemleri işaretli bırakın.</li>
+          <li>
+            İşareti kaldırdığınız her kalem için “Ret gerekçesi” zorunludur: okul bağışçıya ne
+            olduğunu buradan söyleyebilir.
+          </li>
+          <li>
+            “Kararı uygula” dediğinizde kabul edilenler tek işlemde kataloglanır — künyeleri açılır,
+            nüshaları numaralanır. Reddedilenler gerekçesiyle kayıtta kalır.
+          </li>
+        </ul>
+        <p>
+          Bu işlem <strong>geri alınamaz</strong>; onay penceresi kaç kalemin kabul, kaç kalemin ret
+          edileceğini yazar. Bağış geri verildiyse ya da liste yanlış girildiyse ön kayıt “İptal et”
+          ile kapatılır ve gerekçe kaydın notlarına yazılır. Bir edinime ya da bağış ön kaydına
+          bağlanmış komisyon kararının türü değiştirilemez, kaydı da silinemez: listede “Kullanımda”
+          rozetiyle görünür.
+        </p>
+
+        <AltBaslik>Kütüphane Politikası</AltBaslik>
+        <p>
+          <Ekran to="/ayarlar?tab=politika">Ayarlar → Kütüphane Politikası</Ekran> ödünç kurallarını
+          tutar. Ödünç ve iade ekranları sonraki sürümde gelecek; buradaki kurallar o ekranlarda
+          uygulanır.
+        </p>
+        <p>
+          <strong>Ödünç süresi burada bir ayar değildir ve değiştirilemez.</strong> Yönetmelik
+          süreyi belirlemiştir; panel bunu yalnız bilgi satırı olarak gösterir.
+        </p>
+        <Mevzuat kaynak={`${YONETMELIK}, md. 18/1`}>
+          “Bir kitabı ödünç alma süresi on beş gündür.”
+        </Mevzuat>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong>“Ödünç Sınırları”:</strong> Yönetmelik öğrenciye bir defasında en fazla üç,
+            öğretmene en fazla beş kitap der. Sayıları okul daha düşük tutabilir, bu üst değerlerin
+            üstüne çıkamaz.
+          </li>
+          <li>
+            <strong>“Diğer personele ödünç verilir”:</strong> Yönetmelik ödünç servisinde öğrenci
+            ile öğretmeni sayar, diğer personeli saymaz. Seçeneği açarsanız “Müdürlük kararı tarihi”
+            ve “Müdürlük kararı sayısı” zorunludur: okul bu kararı kendi sorumluluğunda alır.
+          </li>
+          <li>
+            <strong>“Gecikmiş kitabı olana yeni ödünç verilmez”:</strong> okulun tercihidir;
+            kapatılabilir.
+          </li>
+          <li>
+            <strong>“İade tarihi öğrenciye kapalı günlerde kaydırılır”:</strong> ara tatil ve
+            yarıyıl için geçerlidir ve okulun tercihidir (bkz. Kapalı Günler). Resmî tatil, dini
+            bayram ve hafta sonu kaydırması bu ayardan bağımsızdır, her zaman uygulanır.
+          </li>
+          <li>
+            <strong>“Yıl sonu son ödünç tarihi”</strong> ve{" "}
+            <strong>“Son sınıflar için son ödünç tarihi”:</strong> bu tarihlerden sonra yeni ödünç
+            verilmez. İkincisi isteğe bağlıdır, mezun olacak sınıflar için daha erken bir tarih
+            yazmanızı sağlar.
+          </li>
+          <li>
+            <strong>“Çok okunanlar için en az üye sayısı”:</strong> bir eser çok okunanlar listesine
+            ancak en az bu kadar farklı üye ödünç aldıysa girer; sayı hiçbir yerde gösterilmez.
+          </li>
+          <li>
+            <strong>Saklama süreleri:</strong> üyelik sonlandıktan, ödünç iade edildikten, kayıp ya
+            da hasar dosyası kapandıktan ve teslim geri alındıktan kaç yıl sonra kaydın kişiyle bağı
+            koparılacağını belirler.
+          </li>
+        </ul>
+        <Ipucu>
+          <p>
+            Ödünç kaydı bir başarı ya da okuma ölçüsü değildir: öğrenci bazlı ödünç sayısı öğretmene
+            ya da e-Okul&apos;a aktarılmaz, program not ya da başarı bilgisi tutmaz. Çok okunanlar
+            listesi de sayı göstermez, yalnız sırayı verir.
+          </p>
+        </Ipucu>
+      </Bolum>
+
+      {/* ------------------------------------------------------------------ */}
       <Bolum id="katalog-sablonu">
         <p>
-          Katalog ekranlarını beklemeden kitap listenizi Excel&apos;de hazırlamaya
-          başlayabilirsiniz; hazırladığınız dosya katalog içe aktarımında olduğu gibi kullanılır.
-          Şablonu <Ekran to="/">Genel Bakış</Ekran>&apos;taki “Katalog Excel Şablonu” kartında (ya
-          da Başlangıç Yol Haritası&apos;nda) “Şablonu indir” düğmesiyle alın. Dosyanın adı
-          indirildiği günün tarihini taşır.
+          Çok sayıda kitabı tek tek yazmak yerine listenizi Excel&apos;de hazırlayabilirsiniz;
+          hazırladığınız dosya katalog içe aktarımı geldiğinde olduğu gibi kullanılır. Şablonu{" "}
+          <Ekran to="/">Genel Bakış</Ekran>&apos;taki “Katalog Excel Şablonu” kartında (ya da
+          Başlangıç Yol Haritası&apos;nda) “Şablonu indir” düğmesiyle alın. Dosyanın adı indirildiği
+          günün tarihini taşır.
         </p>
         <p>
           Şablonda üç sayfa vardır: <strong>Katalog</strong> kitapları yazacağınız sayfadır ve

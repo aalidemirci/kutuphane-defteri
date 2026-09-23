@@ -45,10 +45,14 @@ describe("HakkindaPage", () => {
     expect(screen.queryByText(/fotoğraf/i)).not.toBeInTheDocument();
   });
 
-  it("tek dış isteğin elle güncelleme denetimi olduğunu söyler (açılışta istek yok)", () => {
+  it("dış isteğin iki kapıdan çıktığını söyler (açılışta istek yok, ISBN sorgusu kapalı)", () => {
     render(<HakkindaPage />);
 
     expect(screen.getByText(/Program açılışta internete çıkmaz\./)).toBeInTheDocument();
     expect(screen.getByText(/“Şimdi denetle” düğmesine bastığınızda/)).toBeInTheDocument();
+    // U13 (tasarım §8.5): ikinci kapı ve varsayılan kapalı olduğu yazılı olmalı.
+    expect(screen.getByText(/ISBN sorgusu/)).toBeInTheDocument();
+    expect(screen.getByText(/varsayılan olarak kapalıdır/)).toBeInTheDocument();
+    expect(screen.getByText(/kişisel veri dışarı çıkmaz/)).toBeInTheDocument();
   });
 });

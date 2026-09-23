@@ -1,10 +1,11 @@
 // Kütüphane Defteri — kök route tanımı. Route ağacı fazlarla büyür (tasarım
 // §14.1): F0 iskeleti kurulum, kişiler, ayarlar, kılavuz ve hakkında
-// ekranlarını taşır; katalog, dolaşım ve sayım ekranları kendi fazlarında
-// eklenir. Kilit ekranı (GuvenlikKapisi) kurulum kapısından ÖNCE gelir —
-// parola kuruluysa hiçbir veri ekranı (sihirbaz dahil) açılmadan kilit
-// çözülmelidir. Kip kapısı (KipKapisi) en içtedir: görevli kipinde rotaların
-// yerine görevli ekranı durur (tasarım §4.4).
+// ekranlarını taşır; F2 katalog ekranlarını (eser, nüsha, edinim, bağış)
+// ekledi; dolaşım ve sayım ekranları kendi fazlarında gelir. Kilit ekranı
+// (GuvenlikKapisi) kurulum kapısından ÖNCE gelir — parola kuruluysa hiçbir
+// veri ekranı (sihirbaz dahil) açılmadan kilit çözülmelidir. Kip kapısı
+// (KipKapisi) en içtedir: görevli kipinde rotaların yerine görevli ekranı
+// durur (tasarım §4.4).
 
 import { Route, Routes } from "react-router-dom";
 
@@ -18,6 +19,9 @@ import KilavuzPage from "./modules/kilavuz/KilavuzPage";
 import KipKapisi from "./modules/kip/KipKapisi";
 import KisilerPage from "./modules/kisiler/KisilerPage";
 import KurulumPage from "./modules/kurulum/KurulumPage";
+import EdinimlerPage from "./modules/kutuphane/EdinimlerPage";
+import EserDetayPage from "./modules/kutuphane/EserDetayPage";
+import KatalogPage from "./modules/kutuphane/KatalogPage";
 import PanelPage from "./modules/panel/PanelPage";
 
 export default function App() {
@@ -35,6 +39,10 @@ export default function App() {
               <Route path="/kurulum" element={<KurulumPage />} />
               {/* Öğrenci + öğretmen sicili ve e-Okul içe aktarma. */}
               <Route path="/kisiler" element={<KisilerPage />} />
+              {/* Katalog: eser ve nüsha listeleri, eser ayrıntısı, edinimler ve bağışlar. */}
+              <Route path="/katalog" element={<KatalogPage />} />
+              <Route path="/katalog/eser/:id" element={<EserDetayPage />} />
+              <Route path="/katalog/edinimler" element={<EdinimlerPage />} />
               {/* Ders yılı, şubeler, okul künyesi, güvenlik, güncelleme. */}
               <Route path="/ayarlar" element={<AyarlarPage />} />
               {/* Kullanım kılavuzu (statik içerik, çevrimdışı). */}

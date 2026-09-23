@@ -11,10 +11,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { useDebounced } from "../../hooks/useDebounced";
 import { useFormErrors } from "../../hooks/useFormErrors";
 import { useTabParam } from "../../hooks/useTabParam";
 import { formatNumber } from "../../lib/format";
 import { gradeLevelLabel } from "../../lib/gradeLevels";
+import { emptyPage, geriDusulecekOffset } from "../../lib/pagination";
 import type { Paginated } from "../../lib/pagination";
 import Button from "../../ui/Button";
 import Card from "../../ui/Card";
@@ -23,6 +25,7 @@ import DataTable from "../../ui/DataTable";
 import type { Column } from "../../ui/DataTable";
 import Dialog from "../../ui/Dialog";
 import EmptyState from "../../ui/EmptyState";
+import PaginationBar from "../../ui/PaginationBar";
 import Select from "../../ui/Select";
 import { SkeletonList } from "../../ui/Skeleton";
 import { useSnackbar } from "../../ui/SnackbarProvider";
@@ -62,30 +65,6 @@ const TABS: TabItem[] = [
 const AYRILIS_SONUCU =
   "Kaydı silinmez; sicilde “Ayrıldı · gg.aa.yyyy” rozetiyle kalır, iade etmediği kitap varsa izlenebilir.";
 
-function emptyPage<T>(): Paginated<T> {
-  return { count: 0, next: null, previous: null, results: [] };
-}
-
-/**
- * Boş dönen sayfa için geri düşülecek offset (yoksa null). Son sayfadaki tek kayıt
- * silinince liste boşalır; boş durumda sayfalama çubuğu basılmadığından kullanıcı
- * orada kilitlenirdi — bir önceki sayfaya düşülüp yeniden yüklenir.
- */
-function geriDusulecekOffset<T>(result: Paginated<T>, offset: number): number | null {
-  if (result.results.length > 0 || offset === 0) return null;
-  return Math.max(0, offset - PAGE_SIZE);
-}
-
-/** Yazarken her tuşta istek atmamak için gecikmeli değer (300 ms). */
-function useDebounced(value: string, delay = 300): string {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-  return debounced;
-}
-
 export default function KisilerPage() {
   const [active, setActive] = useTabParam<TabKey>("tab", TAB_KEYS, "ogrenciler");
 
@@ -115,48 +94,6 @@ export default function KisilerPage() {
         {active === "ogrenciler" && <OgrencilerSekmesi />}
         {active === "personel" && <PersonelSekmesi />}
         {active === "havuz" && <AyrilisHavuzu />}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Ortak parçalar
-// ---------------------------------------------------------------------------
-
-function PaginationBar({
-  count,
-  offset,
-  onOffset,
-}: {
-  count: number;
-  offset: number;
-  onOffset: (next: number) => void;
-}) {
-  const from = count === 0 ? 0 : offset + 1;
-  const to = Math.min(offset + PAGE_SIZE, count);
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <p className="text-body-small text-on-surface-variant">
-        {formatNumber(from)}–{formatNumber(to)} / {formatNumber(count)} kayıt
-      </p>
-      <div className="flex gap-2">
-        <Button
-          variant="text"
-          icon="chevron_left"
-          onClick={() => onOffset(Math.max(0, offset - PAGE_SIZE))}
-          disabled={offset === 0}
-        >
-          Önceki
-        </Button>
-        <Button
-          variant="text"
-          icon="chevron_right"
-          onClick={() => onOffset(offset + PAGE_SIZE)}
-          disabled={to >= count}
-        >
-          Sonraki
-        </Button>
       </div>
     </div>
   );
@@ -205,7 +142,7 @@ function OgrencilerSekmesi() {
       })
       .then((result) => {
         if (cancelled) return;
-        const geri = geriDusulecekOffset(result, offset);
+        const geri = geriDusulecekOffset(result, offset, PAGE_SIZE);
         if (geri !== null) {
           geriDusuluyor = true;
           setOffset(geri);
@@ -314,7 +251,12 @@ function OgrencilerSekmesi() {
             onRowClick={(s) => setEditing(s)}
             rowLabel={(s) => `${s.full_name} kaydını düzenle`}
           />
-          <PaginationBar count={page.count} offset={offset} onOffset={setOffset} />
+          <PaginationBar
+            count={page.count}
+            offset={offset}
+            pageSize={PAGE_SIZE}
+            onOffset={setOffset}
+          />
         </>
       )}
 
@@ -550,7 +492,7 @@ function PersonelSekmesi() {
       .listPersonnel({ search, limit: PAGE_SIZE, offset })
       .then((result) => {
         if (cancelled) return;
-        const geri = geriDusulecekOffset(result, offset);
+        const geri = geriDusulecekOffset(result, offset, PAGE_SIZE);
         if (geri !== null) {
           geriDusuluyor = true;
           setOffset(geri);
@@ -636,7 +578,12 @@ function PersonelSekmesi() {
             onRowClick={(p) => setEditing(p)}
             rowLabel={(p) => `${p.full_name} kaydını düzenle`}
           />
-          <PaginationBar count={page.count} offset={offset} onOffset={setOffset} />
+          <PaginationBar
+            count={page.count}
+            offset={offset}
+            pageSize={PAGE_SIZE}
+            onOffset={setOffset}
+          />
         </>
       )}
 
