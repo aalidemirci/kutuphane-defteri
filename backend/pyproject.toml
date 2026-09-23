@@ -42,6 +42,10 @@ django_settings_module = "config.settings"
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["test_*.py", "*_test.py"]
+# `--strict-markers` açık: her işaret burada tanımlanır.
+markers = [
+    "yavas: uzun süren ölçüm testleri (F3'ün 10.000 satırlık aktarım ölçümü gibi). Kapıda ATLANIR; koşmak için `KD_YAVAS=1 pytest -m yavas`.",
+]
 addopts = "--reuse-db --strict-markers -ra --cov=apps --cov=shared --cov=katalog --cov-report=term-missing:skip-covered --cov-report=xml --cov-fail-under=75"
 testpaths = ["apps", "shared", "katalog"]
 

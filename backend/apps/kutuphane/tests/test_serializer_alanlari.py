@@ -20,6 +20,9 @@ import pytest
 
 from apps.kutuphane.serializers import (
     AcquisitionSerializer,
+    CatalogImportApplySerializer,
+    CatalogImportPreviewSerializer,
+    CatalogImportRunSerializer,
     CommissionDecisionSerializer,
     CopyBulkCreateSerializer,
     CopyReadSerializer,
@@ -55,6 +58,9 @@ ALANLAR: dict[str, list[str]] = {
         "retention_years_returned_loans",
         "retention_years_closed_cases",
         "retention_years_closed_deliveries",
+        "metadata_lookup_enabled",
+        "metadata_lookup_ministry",
+        "metadata_lookup_openlibrary",
         "updated_at",
     ],
     "SectionSerializer": ["id", "name", "dewey_from", "dewey_to", "description", "sort_order"],
@@ -188,6 +194,45 @@ ALANLAR: dict[str, list[str]] = {
         "section",
         "unit_price",
     ],
+    # Toplu katalog aktarımı (F3, §8.1): önizleme ve uygulama AYNI gövdeyi alır;
+    # uygulama yalnız edinim alanlarını ekler. Ekranda toplanan kararlar iki
+    # istekte de aynı adlarla taşınır.
+    "CatalogImportPreviewSerializer": [
+        "file",
+        "payload",
+        "source",
+        "decisions",
+        "section_map",
+        "new_sections",
+    ],
+    "CatalogImportApplySerializer": [
+        "file",
+        "payload",
+        "source",
+        "decisions",
+        "section_map",
+        "new_sections",
+        "method",
+        "date",
+        "source_note",
+        "unit_price",
+        "commission_decision",
+        "notes",
+    ],
+    "CatalogImportRunSerializer": [
+        "id",
+        "uploaded_file_name",
+        "source",
+        "source_display",
+        "status",
+        "status_display",
+        "payload_sha256",
+        "schema_version",
+        "acquisition",
+        "stats",
+        "report",
+        "created_at",
+    ],
 }
 
 #: Gövdeden YAZILABİLEN alanlar. Buradaki eksiklik ya da fazlalık davranış
@@ -211,6 +256,9 @@ YAZILABILIR: dict[str, set[str]] = {
         "retention_years_returned_loans",
         "retention_years_closed_cases",
         "retention_years_closed_deliveries",
+        "metadata_lookup_enabled",
+        "metadata_lookup_ministry",
+        "metadata_lookup_openlibrary",
     },
     "SectionSerializer": {"name", "dewey_from", "dewey_to", "description", "sort_order"},
     "WorkSerializer": {
@@ -297,6 +345,31 @@ YAZILABILIR: dict[str, set[str]] = {
         "section",
         "unit_price",
     },
+    "CatalogImportPreviewSerializer": {
+        "file",
+        "payload",
+        "source",
+        "decisions",
+        "section_map",
+        "new_sections",
+    },
+    "CatalogImportApplySerializer": {
+        "file",
+        "payload",
+        "source",
+        "decisions",
+        "section_map",
+        "new_sections",
+        "method",
+        "date",
+        "source_note",
+        "unit_price",
+        "commission_decision",
+        "notes",
+    },
+    # Aktarım geçmişi SALT OKUNURDUR: koşu izi elle düzenlenmez (fikirdeşlik
+    # kütüğü odur), yalnız önizleme koşusu kendi ucundan iptal edilir.
+    "CatalogImportRunSerializer": set(),
 }
 
 # `Any`: DRF stub'ında `ModelSerializer[X]` model türünde değişmezdir (invariant),
@@ -315,6 +388,9 @@ SINIFLAR: dict[str, Any] = {
     "DonationIntakeSerializer": DonationIntakeSerializer,
     "DonationIntakeCreateSerializer": DonationIntakeCreateSerializer,
     "DonationDecisionSerializer": DonationDecisionSerializer,
+    "CatalogImportPreviewSerializer": CatalogImportPreviewSerializer,
+    "CatalogImportApplySerializer": CatalogImportApplySerializer,
+    "CatalogImportRunSerializer": CatalogImportRunSerializer,
 }
 
 

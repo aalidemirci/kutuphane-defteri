@@ -56,7 +56,7 @@ SUBE_OGRENCILERI: dict[str, list[tuple[int, str, str, str]]] = {
 PERSONEL = [
     ("SELMA YURTSEVEN", "Müdür", "KADROLU", "Tarih"),
     ("KEREM DALGIÇ", "Müdür Yardımcısı", "KADROLU", "Matematik"),
-    ("NURAY IŞIKÇI", "Öğretmen", "KADROLU", "Matematik"),
+    ("NURAY IŞIKÇI", "Öğretmen", "KADROLU", "Fizik"),
     ("İLKAY ÖZGÜNEŞ", "Sözleşmeli Öğretmen(657 S.K. 4/B)", "SÖZLEŞMELİ", "İngilizce"),
 ]
 

@@ -54,6 +54,22 @@ kullanır. Eksikse PDF üretimi çalışmaz. Yönetici yetkisiyle:
 
 Pardus 21 ve Pardus 23'te bu paketler kurulu gelir.
 
+Program penceresi de dağıtımın birkaç sistem kütüphanesine dayanır. Pencere
+açılmıyorsa ya da boş beyaz kalıyorsa:
+
+    sudo apt install libgl1 libegl1 libxkbcommon0 libxkbcommon-x11-0 \
+                     libxkbfile1 libdbus-1-3 libnss3 libnspr4 libxcomposite1 \
+                     libxdamage1 libxrandr2 libxtst6 libxi6 libasound2 \
+                     libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
+                     libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 \
+                     libxcb-xkb1 libxcb-cursor0
+
+.deb paketini kurarsanız bu liste kendiliğinden çözülür; el ile kurmak yalnız
+taşınabilir sürümde gerekir.
+
+Pencereyi çizen kütüphaneler programla birlikte, LGPLv3 lisansıyla dağıtılır;
+kurulum klasöründe ayrı dosyalar hâlinde durur ve değiştirilebilir.
+
 PDF ÜRETİMİ ÇALIŞIYOR MU?
 -------------------------
     kutuphane-defteri --pdf-duman /tmp/deneme.pdf

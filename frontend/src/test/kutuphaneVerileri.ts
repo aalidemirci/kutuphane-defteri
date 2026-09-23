@@ -7,10 +7,18 @@
 
 import type {
   Acquisition,
+  AktarimKosusu,
+  AktarimRaporu,
+  AktarimSatiri,
+  AktarimSayilari,
+  CevrimdisiKunyeOnizleme,
+  CevrimdisiKunyeSatiri,
   CommissionDecision,
   Copy,
   DonationIntake,
   DonationIntakeItem,
+  KunyeAlani,
+  KunyeSonucu,
   LibraryPolicy,
   Paginated,
   Section,
@@ -185,7 +193,167 @@ export function politika(ozel: Partial<LibraryPolicy> = {}): LibraryPolicy {
     retention_years_returned_loans: 1,
     retention_years_closed_cases: 2,
     retention_years_closed_deliveries: 2,
+    // Künye getirme varsayılan KAPALI (§8.5-1); kaynak seçimleri yalnız açıkken anlamlı.
+    metadata_lookup_enabled: false,
+    metadata_lookup_ministry: true,
+    metadata_lookup_openlibrary: true,
     updated_at: "2026-09-21T09:00:00+03:00",
+    ...ozel,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Toplu katalog aktarımı (F3, §8.1)
+// ---------------------------------------------------------------------------
+
+/** Rapordaki sayaçlar — backend her koşuda hepsini doldurur. */
+export function aktarimSayilari(ozel: Partial<AktarimSayilari> = {}): AktarimSayilari {
+  return {
+    total_rows: 2,
+    imported_rows: 2,
+    new_works: 2,
+    existing_matches: 0,
+    suspect: 0,
+    skipped_rows: 0,
+    error_rows: 0,
+    copies_created: 3,
+    reference_defaults: 0,
+    estimated_codes: 0,
+    corrections: 0,
+    sections_created: 0,
+    ...ozel,
+  };
+}
+
+export function aktarimSatiri(ozel: Partial<AktarimSatiri> = {}): AktarimSatiri {
+  return {
+    row: 2,
+    title: "Gökyüzü Masalları",
+    bucket: "new",
+    work: null,
+    work_row: null,
+    copies: 1,
+    copies_created: 0,
+    section: "Edebiyat",
+    shelf_location: "Edebiyat",
+    is_reference: false,
+    reference_by_textbook: false,
+    classification_source: "MANUAL",
+    needs_decision: false,
+    decision: "",
+    candidates: [],
+    candidate_count: 0,
+    candidates_truncated: false,
+    corrections: [],
+    issues: [],
+    ...ozel,
+  };
+}
+
+export function aktarimRaporu(ozel: Partial<AktarimRaporu> = {}): AktarimRaporu {
+  return {
+    payload_sha256: "a".repeat(64),
+    source: "EXCEL",
+    schema_version: "v1",
+    file_name: "katalog.xlsx",
+    dry_run: true,
+    already_applied: false,
+    applied_at: "",
+    stats: aktarimSayilari(),
+    rows: [aktarimSatiri(), aktarimSatiri({ row: 3, title: "Deniz Fenerleri" })],
+    rows_truncated: false,
+    unknown_sections: [],
+    unknown_headers: [],
+    missing_columns: [],
+    pending_decisions: [],
+    label_batch: null,
+    run_id: 11,
+    ...ozel,
+  };
+}
+
+export function aktarimKosusu(ozel: Partial<AktarimKosusu> = {}): AktarimKosusu {
+  return {
+    id: 11,
+    uploaded_file_name: "katalog.xlsx",
+    source: "EXCEL",
+    source_display: "Excel dosyası",
+    status: "APPLIED",
+    status_display: "Uygulandı",
+    payload_sha256: "a".repeat(64),
+    schema_version: "v1",
+    acquisition: 3,
+    stats: aktarimSayilari(),
+    report: {},
+    created_at: "2026-09-23T10:00:00+03:00",
+    ...ozel,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// ISBN ile künye getirme (U13, §8.5)
+// ---------------------------------------------------------------------------
+
+export function kunyeAlani(ozel: Partial<KunyeAlani> = {}): KunyeAlani {
+  return {
+    alan: "title",
+    etiket: "kaynak adı",
+    deger: "Gökyüzü Masalları",
+    mevcut_deger: "",
+    dolu: false,
+    farkli: true,
+    ...ozel,
+  };
+}
+
+export function kunyeSonucu(ozel: Partial<KunyeSonucu> = {}): KunyeSonucu {
+  return {
+    isbn13: "9789750812345",
+    bulundu: true,
+    kaynak: "MINISTRY",
+    kaynak_adi: "Bakanlık kataloğu",
+    kaynak_tarihi: "2026-09-23",
+    kaynak_etiketi: "Bakanlık kataloğu, 23.09.2026",
+    kayit_sayisi: 3,
+    onbellekten: false,
+    rozet: "Dış kaynaktan alındı, doğrulayın",
+    ileti: "",
+    uyarilar: ["Çevirmen dışarıdan doldurulmaz; çeviri eserde elle yazın."],
+    ek_bilgi: { pages: 180, place: "İstanbul" },
+    alanlar: [
+      kunyeAlani(),
+      kunyeAlani({ alan: "authors", etiket: "yazar(lar)", deger: "Ayşe Yılmaz" }),
+      kunyeAlani({ alan: "publish_year", etiket: "yayın yılı", deger: 2019 }),
+    ],
+    ...ozel,
+  };
+}
+
+export function cevrimdisiKunyeSatiri(
+  ozel: Partial<CevrimdisiKunyeSatiri> = {},
+): CevrimdisiKunyeSatiri {
+  return {
+    satir_no: 2,
+    isbn13: "9789750812345",
+    durum: "eslesti",
+    work: 7,
+    work_title: "Şiir Defteri",
+    uyarilar: [],
+    alanlar: [kunyeAlani({ alan: "publisher", etiket: "yayınevi", deger: "Deneme Yayınları" })],
+    ...ozel,
+  };
+}
+
+export function cevrimdisiKunyeOnizleme(
+  ozel: Partial<CevrimdisiKunyeOnizleme> = {},
+): CevrimdisiKunyeOnizleme {
+  return {
+    kaynak_adi: "Çevrimdışı künye dosyası",
+    kaynak_etiketi: "Çevrimdışı künye dosyası, 23.09.2026",
+    rozet: "Dış kaynaktan alındı, doğrulayın",
+    sayilar: { eslesti: 1, eser_yok: 0, coklu_eser: 0, isbn_yok: 0 },
+    atlanan_sutunlar: [],
+    satirlar: [cevrimdisiKunyeSatiri()],
     ...ozel,
   };
 }

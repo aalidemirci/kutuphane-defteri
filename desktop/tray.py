@@ -11,16 +11,23 @@ yüzden çıkışta `icon.stop()` ŞARTTIR: çağrılmazsa pencere kapansa da s�
 kalır, mutex'ler bırakılmaz ve kurucu 30 sn bekleyip "tepsiden Çık'ı seçin"
 der. Menü geri çağrıları o iş parçacığında koşar.
 
-**Linux — Qt `QSystemTrayIcon`.** Qt arayüz nesneleri yalnız `QApplication`'ın
-iş parçacığında yaşar ve `webview.start()` ana iş parçacığını Qt olay döngüsüyle
-tutar. Tepsi bu yüzden ANA iş parçacığında, `webview.start`'tan ÖNCE kurulur.
-pywebview 5.3.2'nin Qt arka ucu uygulamayı `QApplication.instance() or
-QApplication(sys.argv)` ile alır (`platforms/qt.py`: `setup_app` ve
+**Linux — Qt `QSystemTrayIcon` (PySide6).** Qt arayüz nesneleri yalnız
+`QApplication`'ın iş parçacığında yaşar ve `webview.start()` ana iş parçacığını
+Qt olay döngüsüyle tutar. Tepsi bu yüzden ANA iş parçacığında, `webview.start`'tan
+ÖNCE kurulur. pywebview 5.3.2'nin Qt arka ucu uygulamayı `QApplication.instance()
+or QApplication(sys.argv)` ile alır (`platforms/qt.py`: `setup_app` ve
 `create_window`; kaynaktan doğrulandı): burada kurulan örnek aynen kullanılır.
-İki kural:
+Üç kural:
 
-- PyQt5'te `QtWebEngineWidgets`, `QApplication` kurulmadan ÖNCE içe aktarılmak
-  zorundadır (sonra aktarılırsa `ImportError`); `load_qt` bu sırayı uygular.
+- **Bağlayıcı PySide6'dır** (LGPLv3; GPLv3'lü PyQt5'ten 23.09.2026'da çıkıldı —
+  `packaging/requirements-paketleme.txt` başlığı). pywebview bağlayıcıya `qtpy`
+  üzerinden ulaşır ve qtpy kurulu ilk bağlayıcıyı seçer; seçim `QT_API` ile
+  `load_qt` içinde, ilk `import qtpy`'den önce sabitlenir.
+- `QtWebEngineWidgets`, `QApplication` kurulmadan ÖNCE içe aktarılmalıdır: bu
+  import `Qt::AA_ShareOpenGLContexts` özniteliğini kurar. Sonraya kalırsa Qt
+  "Attribute Qt::AA_ShareOpenGLContexts must be set before QCoreApplication is
+  created" uyarısı basar ve OpenGL bağlam paylaşımı kurulmaz. `load_qt` sırayı
+  uygular.
 - `setQuitOnLastWindowClosed(False)`: pencere gizliyken kapanan bir iletişim
   kutusu "son pencere kapandı" sayılıp programı sonlandırmasın. pywebview son
   pencere gerçekten kapanınca döngüyü kendisi bitirir (`_app.exit()`).
@@ -69,6 +76,9 @@ _FALLBACK_ICON_COLOR: Final = "#1f4e79"
 _FALLBACK_ICON_SIZE: Final = 64
 #: SIGTERM'in Qt döngüsünde fark edilme aralığı.
 _SIGNAL_POLL_MS: Final = 500
+#: Linux Qt bağlayıcısı (LGPLv3). Python paketi ve qtpy'nin `QT_API` değeri.
+QT_PACKAGE: Final = "PySide6"
+QT_BINDING: Final = "pyside6"
 
 
 @dataclass(frozen=True)
@@ -180,11 +190,18 @@ class PystrayTray:
 
 
 def load_qt() -> SimpleNamespace:
-    """PyQt5 sınıfları; `QtWebEngineWidgets` `QApplication`'dan ÖNCE yüklenir (modül belgesi)."""
-    importlib.import_module("PyQt5.QtWebEngineWidgets")
-    qt_core = importlib.import_module("PyQt5.QtCore")
-    qt_gui = importlib.import_module("PyQt5.QtGui")
-    qt_widgets = importlib.import_module("PyQt5.QtWidgets")
+    """PySide6 sınıfları; `QtWebEngineWidgets` `QApplication`'dan ÖNCE yüklenir (modül belgesi).
+
+    Bağlayıcı seçimi burada sabitlenir: qtpy kararını ilk `import qtpy` anında
+    verir ve o an pywebview'ın Qt arka ucu yüklenirken gelir — tepsi ondan önce
+    kurulduğu için değişken burada yazılabilir. `setdefault`, dışarıdan verilmiş
+    bir seçimi ezmez (sahada teşhis için).
+    """
+    os.environ.setdefault("QT_API", QT_BINDING)
+    importlib.import_module(f"{QT_PACKAGE}.QtWebEngineWidgets")
+    qt_core = importlib.import_module(f"{QT_PACKAGE}.QtCore")
+    qt_gui = importlib.import_module(f"{QT_PACKAGE}.QtGui")
+    qt_widgets = importlib.import_module(f"{QT_PACKAGE}.QtWidgets")
     return SimpleNamespace(
         QApplication=qt_widgets.QApplication,
         QSystemTrayIcon=qt_widgets.QSystemTrayIcon,

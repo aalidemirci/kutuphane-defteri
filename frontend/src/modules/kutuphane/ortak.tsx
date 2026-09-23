@@ -110,6 +110,7 @@ export function MetinAlani({
   helperText,
   error,
   placeholder,
+  disabled = false,
 }: {
   label: string;
   value: string;
@@ -118,6 +119,7 @@ export function MetinAlani({
   helperText?: string;
   error?: string;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   const id = useId();
   const describedBy = error || helperText ? `${id}-desc` : undefined;
@@ -134,10 +136,11 @@ export function MetinAlani({
         rows={rows}
         value={value}
         placeholder={placeholder}
+        disabled={disabled}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
         onChange={(e) => onChange(e.target.value)}
-        className={`block w-full rounded-shape-md border bg-surface-container-lowest px-3 py-2 text-body-medium text-on-surface outline-none placeholder:text-on-surface-variant/60 focus-visible:ring-2 ${
+        className={`block w-full rounded-shape-md border bg-surface-container-lowest px-3 py-2 text-body-medium text-on-surface outline-none placeholder:text-on-surface-variant/60 focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
           error
             ? "border-error focus-visible:ring-error"
             : "border-outline-variant focus:border-primary focus-visible:ring-primary/20"

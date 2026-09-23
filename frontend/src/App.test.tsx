@@ -26,6 +26,7 @@ import { ConfirmProvider } from "./ui/ConfirmProvider";
 import { SnackbarProvider } from "./ui/SnackbarProvider";
 import type { SetupStatus } from "./modules/okul/api";
 import { KURULU_DURUM } from "./test/kurulumDurumu";
+import { politika } from "./test/kutuphaneVerileri";
 
 const okulApiMock = vi.hoisted(() => ({
   getSetupStatus: vi.fn(),
@@ -71,6 +72,9 @@ const kutuphaneApiMock = vi.hoisted(() => ({
   listDonationIntakes: vi.fn(),
   getWork: vi.fn(),
   getPolicy: vi.fn(),
+  // F3 ekranları: içe aktarma geçmişi ve köprünün komut metni.
+  aktarimGecmisi: vi.fn(),
+  kopruKomutu: vi.fn(),
 }));
 
 vi.mock("./modules/kutuphane/api", async (importOriginal) => {
@@ -180,9 +184,16 @@ beforeEach(() => {
     kutuphaneApiMock.listAcquisitions,
     kutuphaneApiMock.listCommissionDecisions,
     kutuphaneApiMock.listDonationIntakes,
+    kutuphaneApiMock.aktarimGecmisi,
   ]) {
     liste.mockResolvedValue(bosSayfa);
   }
+  kutuphaneApiMock.getPolicy.mockResolvedValue(politika());
+  kutuphaneApiMock.kopruKomutu.mockResolvedValue({
+    schema_version: "v1",
+    prompt: "komut",
+    notes: [],
+  });
   kutuphaneApiMock.getWork.mockResolvedValue({
     id: 3,
     title: "Kayıp Çiçekler",
@@ -402,6 +413,8 @@ describe("App — kabuk gezinmesi", () => {
     // Alt sayfaların başlığı kökünkinden ÖNCE eşleşir (AppShell sıralaması).
     ["/katalog/eser/3", "Eser Ayrıntısı"],
     ["/katalog/edinimler", "Edinimler ve Bağışlar"],
+    ["/katalog/ice-aktarma", "İçe Aktarma"],
+    ["/katalog/hizli-kayit", "Hızlı Kayıt"],
     ["/ayarlar", "Ayarlar"],
     ["/kilavuz", "Kullanım Kılavuzu"],
     ["/hakkinda", "Hakkında ve Lisans"],

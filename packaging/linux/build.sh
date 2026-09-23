@@ -22,7 +22,7 @@
 #   7. SHA256SUMS.txt
 #
 # Ortam değişkenleri:
-#   KD_WITH_QT=0  → PyQt5/QtWebEngine paketlenmez (hızlı doğrulama derlemesi;
+#   KD_WITH_QT=0  → PySide6/QtWebEngine paketlenmez (hızlı doğrulama derlemesi;
 #                   pencere açılmaz, yalnız `--autotest`/`--pdf-duman` çalışır)
 #   KD_SKIP_PIP=1 → pip adımını atlar (bağımlılıklar zaten kurulu)
 # =============================================================================
@@ -53,9 +53,16 @@ TAR_ADI="kutuphane-defteri-${SURUM}-linux-x64.tar.gz"
 # EDİLMEZ (sistem sürümüyle çakışır); dağıtımın kendi paketleri kullanılır.
 # Hepsi Debian 11 ve 12 ana deposunda mevcuttur.
 DEPENDS_TEMEL="libpango-1.0-0, libpangoft2-1.0-0, libharfbuzz0b, libfontconfig1, libglib2.0-0, fonts-dejavu-core"
-# Qt WebEngine'in sistemden beklediği X/GL/ses kütüphaneleri (PyQt5 tekerleği
-# Qt'nin kendisini taşır, ama bu sistem kütüphanelerini taşımaz).
-DEPENDS_QT="libgl1, libegl1, libxkbcommon0, libxkbcommon-x11-0, libdbus-1-3, libnss3, libnspr4, libxcomposite1, libxdamage1, libxrandr2, libxtst6, libxi6, libasound2, libxcb-icccm4, libxcb-image0, libxcb-keysyms1, libxcb-randr0, libxcb-render-util0, libxcb-shape0, libxcb-xinerama0, libxcb-xkb1"
+# Qt WebEngine'in sistemden beklediği X/GL/ses kütüphaneleri (PySide6 tekerleği
+# Qt'nin kendisini taşır, ama bu sistem kütüphanelerini taşımaz). Liste
+# 23.09.2026'da bullseye kabında `ldd` ile doğrulandı; Qt5'ten Qt6'ya geçişte
+# iki paket EKLENDİ:
+#   libxkbfile1    ← libQt6WebEngineCore (yoksa import "libxkbfile.so.1"le düşer)
+#   libxcb-cursor0 ← libQt6XcbQpa / libqxcb (yoksa pencere hiç açılmaz)
+# İkisi de Debian 11 ve 12 ana deposunda vardır.
+# `libcups2` BİLEREK YOK: yalnız Qt'nin yazdırma eklentisi ister, evrak
+# WeasyPrint'ten basılır (spec'te `QtPrintSupport` de paketlenmez).
+DEPENDS_QT="libgl1, libegl1, libxkbcommon0, libxkbcommon-x11-0, libxkbfile1, libdbus-1-3, libnss3, libnspr4, libxcomposite1, libxdamage1, libxrandr2, libxtst6, libxi6, libasound2, libxcb-icccm4, libxcb-image0, libxcb-keysyms1, libxcb-randr0, libxcb-render-util0, libxcb-shape0, libxcb-xinerama0, libxcb-xkb1, libxcb-cursor0"
 
 APT_TEMEL="libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libfontconfig1 libglib2.0-0 fonts-dejavu-core binutils"
 # libharfbuzz-subset0 Debian 11'DE YOKTUR (bookworm ile geldi). WeasyPrint font
@@ -63,7 +70,7 @@ APT_TEMEL="libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libfontconfig1 libglib
 # Bu yüzden hem burada hem .deb Depends'inde ZORUNLU DEĞİLDİR (KS hattının
 # bağımlılık listesiyle birebir uyumlu).
 APT_ISTEGE_BAGLI="libharfbuzz-subset0"
-APT_QT="libgl1 libegl1 libxkbcommon0 libxkbcommon-x11-0 libdbus-1-3 libnss3 libnspr4 libxcomposite1 libxdamage1 libxrandr2 libxtst6 libxi6 libasound2 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1"
+APT_QT="libgl1 libegl1 libxkbcommon0 libxkbcommon-x11-0 libxkbfile1 libdbus-1-3 libnss3 libnspr4 libxcomposite1 libxdamage1 libxrandr2 libxtst6 libxi6 libasound2 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libxcb-cursor0"
 
 bilgi() { echo "== $*"; }
 
@@ -82,8 +89,9 @@ apt_dene apt-get install -y -qq --no-install-recommends $APT_TEMEL
 apt-get install -y -qq --no-install-recommends $APT_ISTEGE_BAGLI 2>/dev/null || \
     echo "   (libharfbuzz-subset0 bu dağıtımda yok — atlandı)"
 if [ "$QT_ILE" != "0" ]; then
-    # PyInstaller PyQt5'i ÇÖZÜMLEMEK için import eder; libGL olmadan import
-    # patlar ("libGL.so.1: cannot open shared object file").
+    # PyInstaller PySide6'yı ÇÖZÜMLEMEK için import eder; libGL olmadan import
+    # patlar ("libGL.so.1: cannot open shared object file"), libxkbfile1
+    # olmadan da QtWebEngineCore açılmaz.
     # shellcheck disable=SC2086
     apt_dene apt-get install -y -qq --no-install-recommends $APT_QT
 fi
@@ -94,9 +102,12 @@ if [ "${KD_SKIP_PIP:-0}" != "1" ]; then
     pip install --no-cache-dir -q -r "$DEPO/backend/requirements.txt"
     PAKETLEME_GEREKSINIM="$DEPO/packaging/requirements-paketleme.txt"
     if [ "$QT_ILE" = "0" ]; then
-        # Qt satırlarını atla (indirmesi ~200 MB, doğrulama derlemesinde gereksiz).
+        # Qt satırlarını atla (PySide6 indirmesi ~400 MB, doğrulama
+        # derlemesinde gereksiz). Ad değişirse burası da değişir —
+        # `test_spec_kapsami.py::test_paketleme_platform_isaretleri_bilinen_kumede`
+        # linux işaretli paket kümesini kapıya bağlar.
         PAKETLEME_GEREKSINIM="$(mktemp)"
-        grep -v -E '^(PyQt5|PyQtWebEngine)' \
+        grep -v -E '^(QtPy|PySide6)' \
             "$DEPO/packaging/requirements-paketleme.txt" > "$PAKETLEME_GEREKSINIM"
     fi
     pip install --no-cache-dir -q -r "$PAKETLEME_GEREKSINIM"
@@ -124,6 +135,25 @@ UYGULAMA="$PAKET_KOKU/kutuphane-defteri/kutuphane-defteri"
 
 bilgi "paket kişisel veri sızıntısı denetimi"
 python "$DEPO/packaging/veri_sizintisi.py" "$PAKET_KOKU/kutuphane-defteri"
+
+# --- 4b. Qt zinciri pakete girdi mi? -----------------------------------------
+# Linux Qt zincirinin `--bagimlilik-duman` karşılığı YOKTUR: duman kipi
+# `KD_WITH_QT=0` derlemesinde de koştuğu için Qt modülleri o listeye bilerek
+# girmez (giris.py::DESKTOP_RUNTIME_MODULES açıklaması). Kapı bu yüzden
+# burada, dosya varlığıyla kurulur. QtWebEngineProcess yardımcı süreci
+# eksikse program AÇILIR ama pencere beyaz kalır — sahada değil, burada
+# yakalanmalı.
+if [ "$QT_ILE" != "0" ]; then
+    bilgi "Qt zinciri denetimi (PySide6 + QtWebEngineProcess)"
+    eksik=0
+    for parca in QtWebEngineProcess libQt6WebEngineCore.so.6 libQt6Widgets.so.6; do
+        if [ -z "$(find "$PAKET_KOKU/kutuphane-defteri" -name "$parca" -print -quit)" ]; then
+            echo "HATA: Qt parçası pakete girmedi: $parca" >&2
+            eksik=1
+        fi
+    done
+    [ "$eksik" = "0" ] || exit 1
+fi
 
 # --- 5. Duman testleri (paketlenmiş çalıştırılabilir üzerinden) --------------
 bilgi "duman testi: --bagimlilik-duman (hiddenimports)"

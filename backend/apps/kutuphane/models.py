@@ -275,6 +275,28 @@ class LibraryPolicy(BaseModel):
         default=2,
         validators=[MinValueValidator(1), MaxValueValidator(10)],
     )
+    # -- ISBN ile künye getirme (U13, tasarım §8.5) ------------------------
+    # Üçü de VARSAYILAN KAPALI değildir: ana bayrak kapalıdır, kaynak seçimleri
+    # yalnız o bayrak açıkken anlam taşır. Ana bayrak kapalıyken kod hiç ağa
+    # çıkmaz (koruma testi `tests/test_kunye_servisi.py`).
+    metadata_lookup_enabled = models.BooleanField(
+        "ISBN ile künye getirme açık",
+        default=False,
+        help_text=(
+            "Varsayılan kapalıdır (§8.5-1). Açıkken yalnız kullanıcının başlattığı "
+            "tek sorgu dışarı çıkar; dışarı yalnız ISBN gider."
+        ),
+    )
+    metadata_lookup_ministry = models.BooleanField(
+        "Bakanlık kataloğundan sorulur",
+        default=True,
+        help_text="Kültür ve Turizm Bakanlığı halk kütüphaneleri kataloğu (ilk sırada sorulur).",
+    )
+    metadata_lookup_openlibrary = models.BooleanField(
+        "Open Library'den sorulur",
+        default=True,
+        help_text="Bakanlık kataloğunda bulunamayan numaralar için yedek kaynak.",
+    )
 
     class Meta:
         verbose_name = "kütüphane politikası"
@@ -966,7 +988,12 @@ class CatalogImportRun(BaseModel):
     `payload_sha256` fikirdeşliğin (idempotency) anahtarıdır (D5): aynı dosyanın
     ikinci kez uygulanması engellenir. Program hiçbir yapay zekâ servisine
     BAĞLANMAZ (çevrimdışı çalışır): kullanıcı Excel'ini kendi aracına verir,
-    dönen JSON'u programa yükler (§8.2). Kişisel veri taşımaz.
+    dönen JSON'u programa yükler (§8.2).
+
+    `report` kalıcıdır ve koşu satırının silme ucu yoktur; bu yüzden dosyadan
+    gelen HAM METİN oraya yazılmaz (sütunu kaymış bir listede ham "Eser Adı"
+    hücresi bir kişi adı olabilirdi). Yazılan: satır numaraları, kovalar ve
+    sayılar — biçimin gerekçesi `ImportRowReport.to_run_dict`tedir.
     """
 
     uploaded_file_name = models.CharField(
@@ -1131,3 +1158,64 @@ class LabelCalibration(BaseModel):
 
     def __str__(self) -> str:
         return f"{self.template_id} — {self.printer_name}"
+
+
+class MetadataLookupSource(models.TextChoices):
+    """Künye önerisinin geldiği dış kaynak (U13, §8.5). Sıra da budur."""
+
+    MINISTRY = "MINISTRY", "Bakanlık kataloğu"
+    OPENLIBRARY = "OPENLIBRARY", "Open Library"
+
+
+class MetadataLookupCache(models.Model):
+    """ISBN künye sorgusunun YEREL ÖNBELLEĞİ (§8.5-6): aynı ISBN ikinci kez sorulmaz.
+
+    `BaseModel` DEĞİLDİR (yumuşak silme yok — `CopyCounter` gibi): önbellek
+    satırının silinmesi bir kayıt kaybı değil, yalnız bir sorunun yeniden
+    sorulmasıdır. Yumuşak silme burada zararlı olurdu: `isbn13` tekildir ve
+    silinmiş satır canlı sorguda görünmediği için aynı ISBN ikinci kez
+    yazılmak istendiğinde teklik kısıtı patlardı.
+
+    Kişisel veri taşımaz: satır bir kitabın künyesidir, kimin sorduğu yazılmaz
+    (Ağ Kataloğu'nun erişim günlüğü tutmama kuralıyla aynı çizgi — §5.5). Arama
+    terimi de yoktur; anahtar normalleştirilmiş ISBN-13'tür.
+
+    `payload` dışarıdan gelen ve **temizlenmiş** künye önerisidir
+    (`kunye.temizlik`ten geçmiştir: NFC, denetim karakteri, uzunluk tavanı).
+    Ham yanıt SAKLANMAZ — güvenilmeyen bir gövdeyi ikinci kez ayrıştırmanın
+    değeri yoktur.
+
+    Bulunamayan numara da yazılır (`source=""`): kaynakta olmayan bir ISBN'i her
+    denemede yeniden sormak §8.5-2'nin "saniyede en çok bir istek" kuralını
+    kullanıcıya fark ettirmeden tüketirdi. Kullanıcı "yeniden getir" derse
+    önbellek atlanır (servis `force`), yani karar yine kullanıcınındır.
+    """
+
+    isbn13 = models.CharField("ISBN (13 hane)", max_length=13, unique=True)
+    source = models.CharField(
+        "kaynak",
+        max_length=12,
+        choices=MetadataLookupSource.choices,
+        blank=True,
+        default="",
+        help_text="Boş: hiçbir kaynakta bulunamadı.",
+    )
+    record_count = models.PositiveIntegerField(
+        "kaynaktaki kayıt sayısı",
+        default=0,
+        help_text="Mükerrer kayıt kuralı (§8.5): kullanıcıya kaç kayıt bulunduğu söylenir.",
+    )
+    fetched_on = models.DateField(
+        "getirilme tarihi",
+        help_text="Kaynak etiketinde gösterilir ('Bakanlık kataloğu, 23.09.2026').",
+    )
+    payload = models.JSONField("künye önerisi", default=dict, blank=True)
+    updated_at = models.DateTimeField("güncellenme", auto_now=True)
+
+    class Meta:
+        verbose_name = "künye önbelleği"
+        verbose_name_plural = "künye önbelleği"
+        ordering = ["-fetched_on", "-pk"]
+
+    def __str__(self) -> str:
+        return f"{self.isbn13} — {self.get_source_display() or 'bulunamadı'}"

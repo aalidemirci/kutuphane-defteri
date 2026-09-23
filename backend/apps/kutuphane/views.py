@@ -287,6 +287,9 @@ def _copy_queryset(params: Mapping[str, str]) -> Any:
     return selectors.copies(
         work_id=_int_param(params, "work", "Eser kimliği"),
         section_id=_int_param(params, "section", "Bölüm kimliği"),
+        # Parti süzgeci: toplu aktarımdan sonraki "bu partinin etiketlerini bas"
+        # kısayolunun (§8.1, F4) bağlanacağı yer (`label_batch.acquisition`).
+        acquisition_id=_int_param(params, "acquisition", "Edinim kimliği"),
         status=_choice_param(params, "status", CopyStatus.values, "durum"),
         barcode=params.get("barcode", ""),
         old_register_no=params.get("old_register_no", ""),
@@ -299,9 +302,9 @@ def _copy_queryset(params: Mapping[str, str]) -> Any:
 class CopyListCreateView(generics.ListCreateAPIView[Copy]):
     """`GET/POST library/copies/` — nüsha listesi ve tek nüsha açma.
 
-    Sorgu parametreleri: `work`, `section`, `status`, `barcode` (okutulan ya da
-    basılı biçim; TAM eşleşme), `old_register_no`, `only_loanable`,
-    `only_unlabeled`, `exclude_terminal`.
+    Sorgu parametreleri: `work`, `section`, `acquisition` (edinim partisi),
+    `status`, `barcode` (okutulan ya da basılı biçim; TAM eşleşme),
+    `old_register_no`, `only_loanable`, `only_unlabeled`, `exclude_terminal`.
 
     Yaratımda barkod ve kayıt no SAYAÇTAN gelir; gövdede gönderilirse servis
     reddeder. Aynı künyeden birden çok nüsha için `library/copies/bulk/`.

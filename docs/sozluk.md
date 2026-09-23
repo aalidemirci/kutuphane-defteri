@@ -21,7 +21,12 @@ iç kavramları (karar, faz, evrak kodları) yüzeye çıkmaz.
 | `Work.title` | **kaynak adı** | kitap adı, eser adı (form etiketi olarak) | Yönetmeliğin terimi (Md. 11/1 "kaynak adı"). Excel şablonundaki sütun adı **Eser Adı**'dır, orada korunur |
 | `Work.resource_type` | **kaynak türü**: Kitap · Süreli yayın · Görsel-işitsel materyal · E-kitap · E-veri tabanı | tür (tek başına), format, materyal türü | E-kitap ve e-veri tabanında **nüsha açılmaz**; süreli yayın ödünç verilmez (Md. 16/1-c) |
 | `Work.isbn`, `isbn13` | **ISBN** | barkod (ISBN anlamında), kitap numarası | Sağlama hatası kaydı ENGELLEMEZ: numara olduğu gibi saklanır, ekranda **"ISBN uyarısı"** bandı durur. Kitabın arkasındaki 13 haneli 978/979 kodu **ISBN barkodu**dur, kütüphane etiketi değildir |
-| ISBN'den künye doldurma (U13, F3) | **"Künyeyi internetten getir"**; sonuç **"öneri"**dir ve rozeti **"Dış kaynaktan alındı, doğrulayın"** · kaynak adı ve tarih yazılır ("Bakanlık kataloğu, 23.09.2026") | "otomatik künye", "resmî künye", "Bakanlık sisteminden çekildi", "sorgula", "API" | Özellik varsayılan KAPALI'dır; kullanıcı onaylamadan hiçbir alan dolmaz (tasarım §8.5). Konum dili §3'e bağlıdır: program Bakanlık sisteminin yerine geçtiğini ima etmez |
+| ISBN'den künye doldurma (U13, F3) | ayarın adı **"ISBN ile künye getirme"** (Kütüphane Politikası → **Künye Getirme** bölümü, anahtar **"ISBN ile künye getirme açık"**); düğme **"Künyeyi getir"**; sonuç **künye önerisi**dir, rozeti **"Dış kaynaktan alındı, doğrulayın"** · yanında kaynak adı ve tarih yazılır ("Bakanlık kataloğu, 23.09.2026"); forma yazan düğme **"Seçilenleri forma yaz"** | "otomatik künye", "resmî künye", "Bakanlık sisteminden çekildi", "sorgula", "API" | Özellik varsayılan KAPALI'dır; kullanıcı onaylamadan hiçbir alan dolmaz, dolu alanın üzerine sessizce yazılmaz ve **çevirmen alanı dışarıdan doldurulmaz** (tasarım §8.5). Fail-open iletisi: "İnternetten getirilemedi, elle girebilirsiniz." Konum dili §3'e bağlıdır: program Bakanlık sisteminin yerine geçtiğini ima etmez |
+| Künye kaynakları (§8.5) | **Bakanlık kataloğu** (ilk geçişte tam adıyla: "Kültür ve Turizm Bakanlığı halk kütüphaneleri kataloğu") · **Open Library** | "MEB kataloğu", "resmî katalog", "veri tabanı" (tek başına) | Kısa ad tek başına MEB'i çağrıştırabildiği için kılavuzda ve ayarda kurumun adı açık yazılır. Kullanıcıya söylenen: bu kayıtlar başka kurumların kataloğudur, okulun kaydı değildir ve **doğrulanır** |
+| Toplu katalog aktarımı (`CatalogImportRun`) | **içe aktarma** (ekran: **İçe Aktarma**), tek çalıştırma **aktarım**; adımlar **"Önizle"** → **"Yeniden önizle"** → **"Uygula"**; geçmişte **"Önizlemeyi iptal et"** | import, yükleme (bu anlamda), senkronizasyon, "toplu kayıt" | Önizleme uygulamanın birebir provasıdır ve hiçbir kayıt yazmaz ("Önizleme — hiçbir kayıt yazılmadı"). **Aynı dosya ikinci kez uygulanamaz** — uyarı değil ENGELdir: "Bu dosya … tarihinde zaten aktarıldı." Toplu aktarımda dış istek yoktur |
+| Eşleşme kovası (`bucket`) | satır durumları **Yeni eser** · **Mevcut esere nüsha** · **Şüpheli** · **Aktarılmadı**; şüpheli satırların listesi **"Karar bekleyen satırlar"**, seçenekler **"Yeni eser aç"** ve **"… eserine nüsha ekle"**; bilinmeyen bölümler **"Bölüm listesinde bulunmayan değerler"**, seçenek **"Yeni bölüm aç"** | çakışma, çift kayıt, hatalı satır (şüpheli anlamında), "eşleştirme skoru" | **Şüpheli satır** katalogdaki bir esere benziyor ama tam eşleşmiyor; kullanıcı karar vermeden aktarım yazmaz. Bölüm değeri karşılıksızken de yazmaz (değer kaybolmasın) |
+| Yapay zekâ köprüsü (§8.2) | **Yapay Zekâ Köprüsü** (sekme); **komut metni**, düğme **"Komutu kopyala"**; girdi kutusu **"Yapay zekâ aracının verdiği JSON"** | AI, "yapay zeka" (düzeltme işareti düşürülmez), "yapay zekâyla kataloglama", asistan | İsteğe bağlıdır ve asıl yol Excel'dir. **Program hiçbir yapay zekâ servisine bağlanmaz**, metni kullanıcı taşır; **listeye kişisel veri yazılmaz**. Ekrandaki dört uyarı maddesi sunucudan gelir |
+| Çevrimdışı künye (U13) | **Çevrimdışı Künye** (sekme); belge **ISBN Künye Listesi**; düğmeler **"ISBN listesini indir"** ve **"Seçilenleri kaydet"** | dışa aktarım (tek başına), "çevrimdışı kip", "offline" | İnternetsiz masanın yolu: liste **başka bir cihazda** doldurulur. Kurum bilgisayarına telefon, mobil modem ya da kişisel erişim noktası bağlanamaz (Yönerge 11/18); taşımada 10/4-10/5 geçerlidir. Dolu alan işaretsiz gelir, işaretlenmeyen alan yazılmaz |
 | Katalog sıralaması (`WorkOrder`) | **"Sırala"** seçicisi: Kaynak adına göre · Yazar adına göre · Konuya göre · En yeni eklenen | alfabetik sıra (tek başına), A-Z | İlk üçü Md. 11/1'in katalog eksenleridir; sıralama Türkçe alfabeyedir |
 | `Copy` | **nüsha** | kopya, demirbaş, materyal | Rafta duran fiziksel kitap. Masa iletilerinde gündelik "kitap" serbesttir: "Kitabın kütüphane etiketini okutun." |
 | `Copy.barcode` | **barkod** (10 hane, basılı `2026-000123`) | etiket no, kod | Salt rakamdır |
@@ -48,7 +53,7 @@ iç kavramları (karar, faz, evrak kodları) yüzeye çıkmaz.
 | `Loan.override_reason` | **gerekçe** ("Gerekçeli istisna") | override, bypass | Yalnız gecikme engeline; yardım metni: "Sağlık ya da aile bilgisi yazmayın." |
 | Ödünç geçmişi | **ödünç kaydı**, **ödünç geçmişi** | **okuduğu kitaplar**, okuma karnesi, okuma puanı, okuma geçmişi | **Ödünç ≠ okuduğu kitap.** Öğrenci bazlı ödünç sayısı öğretmene ya da e-Okul'a aktarılmaz (tasarım §3) |
 | İade tarihi | **iade tarihi**; gecikmişte **gecikme**, **"… gün gecikti"** | son teslim tarihi, ceza, harç, uzatma | Programda uzatma, ceza ve harç yoktur. Kaydırılmış tarih "Md. 18 gereği" diye sunulmaz |
-| `LibraryPolicy` | **Kütüphane Politikası** (Ayarlar sekmesi); bölümleri **Ödünç Sınırları** · **İade ve Yıl Sonu** · **Vitrin ve Saklama** | ayarlar (tek başına), kurallar, ödünç ayarları | **Ödünç süresi burada AYAR DEĞİLDİR**: on beş gün sabittir (Md. 18/1) ve yalnız değiştirilemez bir bilgi satırıdır. Diğer personele ödünç açılırsa "Müdürlük kararı tarihi" ve "Müdürlük kararı sayısı" zorunludur |
+| `LibraryPolicy` | **Kütüphane Politikası** (Ayarlar sekmesi); bölümleri **Ödünç Sınırları** · **İade ve Yıl Sonu** · **Vitrin ve Saklama** · **Künye Getirme** | ayarlar (tek başına), kurallar, ödünç ayarları | **Ödünç süresi burada AYAR DEĞİLDİR**: on beş gün sabittir (Md. 18/1) ve yalnız değiştirilemez bir bilgi satırıdır. Diğer personele ödünç açılırsa "Müdürlük kararı tarihi" ve "Müdürlük kararı sayısı" zorunludur |
 | `Holiday.SCHOOL_BREAK` | **öğrenciye kapalı gün** (ara tatil, yarıyıl) | tatil (tek başına) | Kanunen tatil değildir; resmî ve dini tatil ayrı türdür |
 | `Holiday` diğer türler | **resmî tatil**, **dini bayram**, **idari izin / diğer**; hepsinin üst adı **kapalı gün** (sayfa: "Kapalı Günler") | tatil günü (genel anlamda) | İdari izin kütüphanenin de kapalı olduğu gündür; iade tarihi hesabında resmî tatil gibi her zaman kapalı sayılır. Bu programın kuralıdır, TBK 93 kıyası altında anılmaz (`docs/mevzuat/BENIOKU.md` §4). Tahmini bayram tarihinde **"tahmini"** rozeti |
 | `Delivery` (U11) | **teslim**: "sınıf kitaplığına teslim", "öğretmene teslim"; geri dönüşü **geri alma** | ödünç, emanet, zimmet | **Teslim ödünç değildir**, Md. 18 sayı sınırı uygulanmaz |
@@ -75,6 +80,7 @@ iç kavramları (karar, faz, evrak kodları) yüzeye çıkmaz.
 | Görev devri | **görev devri**; belge **Görev devri notu** | devir teslim (tek başına) | "Devir" TMY'de başka anlama gelir |
 | Masa hesabı | **kütüphane masası Windows hesabı** | kiosk hesabı, ortak hesap | Yönetici yetkisi olmayan ayrı hesap (U9) |
 | Yedek | **yedek**, **şifreli yedek**; "güçlü şifrelemeyle korunur" | X25519, AES, `.kdbak` (kullanıcı metninde) | Teknik adlar yalnız Hakkında sayfasında |
+| Lisans | **LGPLv3** (yalnız Pardus sürümünün lisans bildiriminde), **PolyForm Noncommercial** | — | Lisans adı teknik ad sayılmaz: bildirim yükümlülüğü gereği açıkça yazılır (`docs/kurulum.md` §4.1, `packaging/linux/BENIOKU.txt`) |
 | Sürüm | **"yayımlanan son sürüm"**, **"kurulum dosyası"** | GitHub sürümü, Release, kurucu | Güncelleme denetimi yalnız düğmeyle yapılır |
 
 ## 2. İç kodlar yüzeye çıkmaz
@@ -110,6 +116,22 @@ kimlikler (`id=…`, `pk`) de geçmez. Evrak kodunun yerine belgenin adı yazıl
 Açıklanmamış kısaltma kullanılmaz: "KD" hiç yazılmaz; DOS, BTR ve TKYS ilk
 geçişte açılır ("Taşınır Kayıt ve Yönetim Sistemi (TKYS)"). Kod yorumlarında ve
 testlerde kodlar serbesttir.
+
+## 2.1 Belgelerde örnek ve yer tutucu yazımı
+
+Depo herkese açıktır; belgelerde ve testlerde **gerçek kurum, kişi ve ağ bilgisi
+kullanılmaz** (teknik borç TB25):
+
+- **Yer tutucular:** okul ağı için `<idari-ağ>`, `<tahta-ağı>`, `<ek-alt-ağ>`;
+  bilgisayar adı için `<bilgisayar-adı>`; port için `<port>`. Gerçek IP blokları, alt
+  ağ maskeleri (`/24`), host numaraları (`.40`), VLAN, SSID, proxy ve sunucu adları
+  yazılmaz.
+- **Örnek veri** uydurmadır ve `Örnek` ön ekiyle kurulur: "Örnek Anadolu Lisesi",
+  "Örnek İlçe". Uzun ad gereken testte ad uzatılır, gerçek kurum adı kullanılmaz.
+  Örnek kişi adları da uydurmadır; rol ve branş birleşimi gerçek bir kişiyi
+  düşündürmeyecek biçimde seçilir.
+- **Yollar:** kardeş depolara atıf `../<depo>/…` biçimindedir; mutlak yerel yol
+  (`C:\Users\…`) hiçbir belgeye yazılmaz.
 
 ## 3. Yazım kuralları
 
@@ -152,7 +174,7 @@ Düzenindedir; sekme adreste `?tab=` ile tutulur, böylece başka ekranlar ve
 kılavuz doğrudan sekmeye bağlanır. Kılavuzda ekran, sekme ve düğme adları
 buradaki ve ekrandaki metinle birebir yazılır ("Ayarlar → Güvenlik").
 
-*Aşağıdaki tablolar F2 sonundaki durumdur (23.09.2026); kaynak `AppShell.tsx`
+*Aşağıdaki tablolar F3 sonundaki durumdur (23.09.2026); kaynak `AppShell.tsx`
 (`NAV_ITEMS`, `PAGE_TITLES`), sayfaların h1'leri ve sekme tanımlarıdır.*
 
 ### 4.1 Sayfalar
@@ -164,6 +186,8 @@ buradaki ve ekrandaki metinle birebir yazılır ("Ayarlar → Güvenlik").
 | Katalog | Katalog | `/katalog` | Eser ve nüsha listelerinin tek ekranı |
 | — | Eser Ayrıntısı | `/katalog/eser/:id` | Menüde yoktur; katalog listesindeki satıra tıklanarak açılır. Başlıkta modül adı geri bağlantısıdır ("Katalog / Eser Ayrıntısı") |
 | — | Edinimler ve Bağışlar | `/katalog/edinimler` | Menüde yoktur; Katalog sayfasının sağ üstündeki **Edinimler ve Bağışlar** bağlantısıyla açılır |
+| — | Hızlı Kayıt | `/katalog/hizli-kayit` | Menüde yoktur; Katalog sayfasının sağ üstündeki **Hızlı Kayıt** bağlantısıyla açılır. Kitap elde, ISBN okutarak tek tek giriş |
+| — | İçe Aktarma | `/katalog/ice-aktarma` | Menüde yoktur; Katalog sayfasının sağ üstündeki **İçe Aktarma** bağlantısıyla açılır. Toplu giriş, yapay zekâ köprüsü, çevrimdışı künye ve aktarım geçmişi |
 | Ayarlar | Ayarlar | `/ayarlar` | |
 | Kılavuz | Kullanım Kılavuzu | `/kilavuz` | |
 | Hakkında ve Lisans | Hakkında ve Lisans | `/hakkinda` | Kenar çubuğunun altında, ana gezinmenin dışında |
@@ -197,6 +221,7 @@ kipine geç**, **Kilitle**.
 | Kişiler | **Öğrenciler** (`ogrenciler`) · **Öğretmenler ve Diğer Personel** (`personel`) · **Ayrılış Havuzu** (`havuz`) |
 | Katalog | **Eserler** (`eserler`) · **Nüshalar** (`nushalar`) |
 | Edinimler ve Bağışlar | **Edinim Partileri** (`partiler`) · **Bağış Ön Kayıtları** (`bagislar`) · **Komisyon Kararları** (`kararlar`) |
+| İçe Aktarma | **Excel Aktarımı** (`excel`) · **Yapay Zekâ Köprüsü** (`kopru`) · **Çevrimdışı Künye** (`cevrimdisi`) · **Aktarım Geçmişi** (`gecmis`) |
 | Ayarlar | **Ders Yılları** (`ders-yillari`) · **Kapalı Günler** (`kapali-gunler`) · **Şubeler** (`subeler`) · **Kütüphane Politikası** (`politika`) · **Bölümler** (`bolumler`) · **Okul Bilgileri** (`okul`) · **Güvenlik** (`guvenlik`) · **Güncelleme** (`guncelleme`) |
 
 Katalog ekranlarının pencere başlıkları (Dialog): **Yeni eser** /
@@ -228,6 +253,35 @@ Sırasıyla: **Yönetici Parolası ve Şifreleme** (durumu, şifrelenen alanlar�
 (yalnız anahtar doğrulanmamışken) · **Kurtarma Anahtarını Yenile** ·
 **Kurtarma anahtarı çıktısı** (belge adı, §2 E14) · **Şifreli Veritabanı
 Yedeği** · **Yedekten Geri Yükleme**.
+
+### 4.7 Hızlı Kayıt ve İçe Aktarma ekranlarının adları
+
+Kılavuz bu adları birebir kullanır; ekrandaki metin değişirse buradaki de
+değişir.
+
+**Hızlı Kayıt.** Kartlar: **Kitabın ISBN'ini okutun** · **Künye** (ya da eser
+seçildiyse **Seçilen eser**) · **Nüsha**. Alanlar: "ISBN barkodu", "Kaynak
+adı", "Yazar(lar)", "Çevirmen", "Yayınevi", "Yayın yılı", "ISBN", "Konu(lar)",
+"Kaynak türü", "Dil", "Sınıflama kodu", "Sınıflama kaynağı", "Yer numarası",
+"Edinim", "Nüsha sayısı", "Bölüm", "Eski kayıt no", "Danışma kaynağı (ödünç
+verilmez)". Düğmeler: **"Künyeyi getir"** · **"Formu temizle"** ·
+**"Yeniden getir"** (künye önerisini önbelleği atlayarak yeniden ister) ·
+**"Seçilenleri forma yaz"** · **"Bu esere nüsha ekle"** · **"Seçimi bırak"** ·
+**"Nüshayı aç"** · **"Künyeyi aç"**. Nüsha açıldıktan sonra künye ve nüsha
+alanları boşalır (edinim ve bölüm seçimi korunur), imleç okutma kutusuna döner.
+
+**İçe Aktarma.** Sağ üstte **"Katalog Excel şablonu"** düğmesi. Excel Aktarımı
+ve Yapay Zekâ Köprüsü sekmeleri aynı paneli kullanır: **"Önizle"** /
+**"Yeniden önizle"** → rapor → **Açılacak Edinim Partisi** → **"Uygula"**.
+Rapor başlığı önizlemede **"Önizleme — hiçbir kayıt yazılmadı"**, uygulamadan
+sonra **"Aktarım sonucu"**; bölümleri **"Bölüm listesinde bulunmayan
+değerler"** ("Karşılığı" seçicisi, **"Yeni bölüm aç"**), **"Karar bekleyen
+satırlar"** ("Kararınız" seçicisi, **"Yeni eser aç"**) ve **"Satır listesi"**
+("Durum" sütununda **Yeni eser** · **Mevcut esere nüsha** · **Şüpheli** ·
+**Aktarılmadı**). Çevrimdışı Künye sekmesi: **ISBN Künye Listesi** kartı,
+**"ISBN listesini indir"**, "Doldurulmuş dosya" kutusu, **Önizleme** ve
+**"Seçilenleri kaydet"**. Aktarım Geçmişi sekmesi: sütunlar Tarih · Dosya ·
+Kaynak · Durum · Satır · Nüsha, eylem **"Önizlemeyi iptal et"**.
 
 ## 5. Kişisel veri ve metin
 

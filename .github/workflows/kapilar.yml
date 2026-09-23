@@ -19,7 +19,16 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Gecelik koşu ölçüm kapısını da (F3: 10.000 satır, süre + tepe bellek)
+  # işletir; her PR'da koşmak zinciri dakikalarca uzatırdı.
+  schedule:
+    - cron: "0 1 * * *"
   workflow_dispatch:
+    inputs:
+      yavas:
+        description: "Ölçüm kapısını da koş (10.000 satırlık sentetik dosya)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -45,4 +54,7 @@ jobs:
         run: docker compose run --rm -T frontend npm ci
 
       - name: Kapı zinciri
+        env:
+          # Ölçüm kapısı yalnız gecelik koşuda ve elle tetiklemede açılır.
+          KD_YAVAS: ${{ (github.event_name == 'schedule' || inputs.yavas) && '1' || '0' }}
         run: bash scripts/gates.sh

@@ -10,7 +10,7 @@ koşusu yapılmadı.
 ```
 packaging/
 ├── requirements-paketleme.txt   PyInstaller + pywebview + (Windows) pythonnet,
-│                                pystray, six + (Linux) PyQt5
+│                                pystray, six + (Linux) qtpy, PySide6
 ├── pyinstaller/
 │   ├── kutuphane_defteri.spec   Windows + Linux ORTAK spec
 │   ├── giris.py                 paket giriş noktası + teşhis kipleri
@@ -49,7 +49,7 @@ bash packaging/linux/docker-build.sh               # .deb + .tar.gz
 bash packaging/linux/test-kurulum.sh               # debian:11 + debian:12 provası
 ```
 
-Hızlı doğrulama derlemesi (PyQt5 indirilmez; pencere açılmaz, yalnız
+Hızlı doğrulama derlemesi (PySide6 indirilmez; pencere açılmaz, yalnız
 `--autotest`/`--pdf-duman`/`--bagimlilik-duman` çalışır):
 
 ```bash
@@ -173,9 +173,15 @@ zincirine girmez; ayrı zincirdedir (tasarım §4.5, denetim UY-6):
    yalnız Windows'ta import eder.
 
 Test win32 işaretli satırlarla `DESKTOP_RUNTIME_MODULES`'ı eşitler. Linux
-işaretli Qt paketleri listeye bilerek girmez: `KD_WITH_QT=0` doğrulama
-derlemesi Qt'yi kurmaz. Yeni bir platform işaretli paket testi kırar ve
-bilinçli karar ister.
+işaretli Qt paketleri (qtpy, PySide6) listeye bilerek girmez: `KD_WITH_QT=0`
+doğrulama derlemesi Qt'yi kurmaz, listeye girselerdi o derlemenin dumanı
+düşerdi. Yeni bir platform işaretli paket testi kırar ve bilinçli karar ister.
+
+Linux Qt zincirinin karşılığı `build.sh`'in **adım 4b** denetimidir: derleme,
+paketlenmiş dizinde `QtWebEngineProcess`, `libQt6WebEngineCore.so.6` ve
+`libQt6Widgets.so.6` dosyalarını arar, bulamazsa durur. Yardımcı süreç eksik
+paketlenirse program açılır ama pencere beyaz kalır; duman kipleri bunu
+yakalamaz.
 
 ### Lisans: pystray LGPLv3
 
@@ -197,3 +203,61 @@ gömülmez, indirilmez.
 
 Önerilen F12 denetimi: `build.ps1` paketlenmiş dizinde lisans dosyalarını ve
 pystray kaynağını arar, bulamazsa derlemeyi durdurur.
+
+### Lisans: PySide6 LGPLv3 (Linux)
+
+**Neden PyQt5 değil.** Linux paketi 23.09.2026'ya kadar PyQt5 + PyQtWebEngine
+gömüyordu; ikisi de **GPLv3**'tür. GPLv3 dağıtılan bütüne ek kısıtlama
+konmasını yasaklar, bu ürünün lisansı (PolyForm Noncommercial, depo kökündeki
+`LICENSE`) ise ticari kullanımı kısıtlar — ikisi aynı pakette birlikte
+dağıtılamaz. Yayın denetiminin bulgusudur; çözüm **PySide6**'ya (Qt for
+Python, **LGPLv3**) geçmektir.
+
+**LGPLv3 ne ister.** Kütüphane dinamik bağlanmalı ve kullanıcı onu kendi
+sürümüyle **değiştirip programı yeniden bağlayabilmelidir**. Paket bu şartı
+yapısı gereği karşılar:
+
+* Paket **onedir**'dir (tek dosya değil): Qt kütüphaneleri ayrı `.so` dosyaları
+  olarak durur (PyInstaller 6 yerleşiminde `_internal/` altında; **kesin yol ilk
+  gerçek derlemede doğrulanacak**) ve çalışma anında `dlopen` ile yüklenir.
+  Kullanıcı bu dosyaları kendi derlediği aynı ABI'li Qt 6.8 sürümüyle
+  değiştirip programı yeniden çalıştırabilir; kaynak koda ya da yeniden
+  derlemeye gerek yoktur.
+* `.deb` dosyaları `/opt/kutuphane-defteri/` altına kurulur; taşınabilir
+  `.tar.gz` kullanıcı klasörüne açılır. İkisinde de dosyalar yerinde
+  değiştirilebilir.
+* PySide6'nın kendi sürümü, `PySide6/__init__.py` ile `Qt/lib/` içindeki
+  `.so` adlarından okunabilir; pin `requirements-paketleme.txt`'tedir.
+
+**Yapılacak (F12 iş kalemi, pystray ile aynı hat).** Bugün pakete lisans
+dosyası gömülmüyor. **Tekerleklerin içinde de lisans METNİ yoktur** (denetlendi,
+23.09.2026): `PySide6-Essentials`, `PySide6-Addons` ve `shiboken6` dağıtımları
+lisansı yalnız üstveride bildirir —
+`License: LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only`. Üçlü lisanstan
+**LGPLv3 seçilir**; seçimin yazılı olduğu yer `THIRD_PARTY_LICENSES/` dizini
+olacaktır. Dizin açıldığında içine şunlar girer:
+
+* `qt6-LICENSE.LGPLv3.txt` — Qt 6 kütüphanelerinin ve PySide6/shiboken6'nın
+  lisans metni. Tekerlekte olmadığı için Qt kaynak ağacından
+  (`LICENSES/LGPL-3.0-only.txt`) ya da `qt.io/licensing`'den alınır ve
+  **depoya elle konur**; indirme derleme adımına bağlanmaz.
+* `qt6-LGPL_EXCEPTION.txt` — Qt'nin LGPLv3 istisna metni (aynı kaynak).
+* `qtpy-LICENSE.txt` (MIT) — bu metin tekerlekte VARDIR
+  (`QtPy-<sürüm>.dist-info/LICENSE.txt`).
+
+Aynı dizin `datas` ile pakete kopyalanır ve bağımlılık tablosuna (okulzili'de
+`BAGIMLILIKLAR.md`) bileşen/sürüm/kullanım/lisans satırı yazılır. Kullanıcıya
+dönük metin `docs/kurulum.md`'de bir cümleyle durur:
+
+> Programın Linux sürümü, pencereyi çizen Qt kütüphanelerini LGPLv3 lisansıyla
+> birlikte dağıtır. Kütüphane dosyaları kurulum klasöründe ayrı dosyalar
+> hâlindedir; isteyen kendi sürümüyle değiştirebilir.
+
+**PySide6'nın kaynağı pakete GİRMEZ.** Tekerlekler Qt Company'nin yayımladığı
+hâlleriyle, **değiştirilmeden** dağıtılır; LGPLv3'ün kütüphane kaynağını verme
+yükümlülüğü için kaynağın nereden alınacağının yazılması yeterlidir. İki adres
+lisans metninin yanına konur: PyPI'daki aynı sürüm ve `code.qt.io`. (pystray'de
+durum farklıdır: orada kaynağın pakete girmesi kararlaştırıldı.)
+
+**Not — Windows tarafı Qt kullanmaz.** Pencere motoru WebView2'dir; bu bölüm
+yalnız Linux/Pardus paketini bağlar.

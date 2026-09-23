@@ -7,7 +7,7 @@ koşmuş olmalı — DLL klasörü üretilen çıktıdır, depoda tutulmaz):
     pyinstaller --noconfirm --clean packaging/pyinstaller/kutuphane_defteri.spec
 
 Ortam değişkenleri:
-    KD_WITH_QT=0   → PyQt5/QtWebEngine paketlenmez (yalnız `--autotest`/CI
+    KD_WITH_QT=0   → PySide6/QtWebEngine paketlenmez (yalnız `--autotest`/CI
                      doğrulaması için küçük ve hızlı derleme; pencere AÇILMAZ).
     KD_DLL_DIR     → (Windows) `dll_kapanisi.py` ile üretilmiş DLL klasörü.
 
@@ -211,17 +211,37 @@ hiddenimports += [
 ]
 
 if WITH_QT:
-    # PyInstaller'ın PyQt5 kancaları QtWebEngineProcess yardımcı sürecini,
-    # kaynak dosyalarını ve çevirileri bu import üzerinden toplar.
+    # Linux/Pardus penceresi ve tepsisi: PySide6 (LGPLv3 — GPLv3'lü PyQt5'ten
+    # 23.09.2026'da bu yüzden çıkıldı; requirements-paketleme.txt başlığı).
+    # PyInstaller'ın PySide6 kancaları QtWebEngineProcess yardımcı sürecini,
+    # Qt eklentilerini, kaynak dosyalarını ve çevirileri bu import'lar
+    # üzerinden toplar.
+    #
+    # qtpy AYRICA sayılır: pywebview'ın Qt arka ucu bağlayıcıya doğrudan değil
+    # qtpy üzerinden ulaşır (`webview/platforms/qt.py`). Statik çözümleyici
+    # `webview.platforms.qt`'yi bu listeden tanıdığı için qtpy modüllerini de
+    # izler; liste yine de açık tutulur (halkanın gözle görünür olması).
+    #
+    # `QtPrintSupport` BİLEREK YOK: evrak WeasyPrint'ten basılır, Qt'nin
+    # yazdırma eklentisi hiç kullanılmaz (eklenseydi sistemden `libcups2`
+    # bağımlılığı doğardı). QtWebEngineWidgets'ın bağlandığı
+    # `libQt6PrintSupport.so.6` paylaşılan kütüphane olarak zaten gelir.
     hiddenimports += [
-        "PyQt5",
-        "PyQt5.QtCore",
-        "PyQt5.QtGui",
-        "PyQt5.QtWidgets",
-        "PyQt5.QtWebEngineWidgets",
-        "PyQt5.QtWebEngineCore",
-        "PyQt5.QtNetwork",
-        "PyQt5.QtPrintSupport",
+        "PySide6",
+        "PySide6.QtCore",
+        "PySide6.QtGui",
+        "PySide6.QtWidgets",
+        "PySide6.QtNetwork",
+        "PySide6.QtWebChannel",
+        "PySide6.QtWebEngineCore",
+        "PySide6.QtWebEngineWidgets",
+        "qtpy",
+        "qtpy.QtCore",
+        "qtpy.QtGui",
+        "qtpy.QtWidgets",
+        "qtpy.QtNetwork",
+        "qtpy.QtWebChannel",
+        "qtpy.QtWebEngineWidgets",
         "webview.platforms.qt",
     ]
 
@@ -245,9 +265,16 @@ excludes = [
     "psycopg2",
     "redis",
     "celery",
+    # Qt bağlayıcılarından pakete YALNIZ PySide6 girer. İkisi birden kurulu
+    # olsaydı qtpy `QT_API` verilmediğinde ilk bulduğunu seçerdi; dahası PyQt
+    # GPLv3'tür ve bu ürünün lisansıyla birlikte dağıtılamaz (LİSANS KAPISI —
+    # packaging/tests/test_spec_kapsami.py).
+    "PyQt5",
+    "PyQt6",
+    "PySide2",
 ]
 if not WITH_QT:
-    excludes += ["PyQt5", "PyQt6", "PySide2", "PySide6"]
+    excludes += ["PySide6", "qtpy"]
 
 a = Analysis(  # noqa: F821 — PyInstaller global'i
     [str(ENTRY)],

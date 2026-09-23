@@ -179,6 +179,12 @@ Kütüphaneleri Yönetmeliği (RG 23.11.2024/32731) ile TMY'ye bağlıdır. Meti
     `giris.py::DESKTOP_RUNTIME_MODULES`; test ikisini platform işaretine göre
     eşitler. pystray LGPLv3'tür: lisans metni **ve kaynağı** pakete girer.
     segno ve pystray bu zincirin sınandığı ilk bağımlılıklardır (F0).
+    **Linux Qt zinciri ayrıdır** (23.09.2026): `qtpy` + `PySide6` (LGPLv3; GPL
+    lisanslı PyQt5/PyQt6/PySide2 spec'te koşulsuz `excludes`'tadır ve bunu bir
+    lisans kapısı testi sınar). Sürüm **6.8.3'te sabittir** — üstü Pardus 21'de
+    açılmaz (TB27). Duman testi karşılığı `packaging/linux/build.sh` adım 4b'dir:
+    paketlenmiş dizinde `QtWebEngineProcess` ve Qt kitaplıkları yoksa derleme
+    durur.
 
 11. **Test ve lint yalnız Docker'da.** Host'a Python ya da Node kurulmaz;
     host'ta `pytest` koşulmaz. Kapı: `bash scripts/gates.sh` yeşil olmadan iş

@@ -29,8 +29,10 @@ türetir (T7, D2).
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
+from django.conf import settings
 from rest_framework import serializers
 
 from apps.kutuphane import barcode as barcode_module
@@ -39,6 +41,9 @@ from apps.kutuphane.models import (
     MIN_UNIT_PRICE,
     TERMINAL_COPY_STATUSES,
     Acquisition,
+    AcquisitionMethod,
+    CatalogImportRun,
+    CatalogImportSource,
     CommissionDecision,
     Copy,
     CopyStatus,
@@ -50,6 +55,22 @@ from apps.kutuphane.models import (
 )
 from apps.kutuphane.services import commissions as commission_service
 from apps.kutuphane.services import policy as policy_service
+
+#: Yüklenen dosyanın bayt tavanı (`KD_MAX_UPLOAD_SIZE_MB`, varsayılan 20 MB).
+#: Django'nun `DATA_UPLOAD_MAX_MEMORY_SIZE` ayarı çok parçalı istekteki DOSYA
+#: parçasını sınırlamaz — gövdenin dosya DIŞI kısmını sınırlar. Tavan bu yüzden
+#: serializer'da uygulanır: yanlışlıkla seçilen yüzlerce MB'lık bir dosyada
+#: kullanıcı bellek şişmesi değil, Türkçe bir ileti görür.
+MAX_UPLOAD_BYTES: int = int(settings.MAX_UPLOAD_SIZE_MB) * 1024 * 1024
+
+
+def dosya_boyutunu_dogrula(yuklenen: Any, *, tavan: int) -> Any:
+    """Yüklenen dosya tavanı aşıyorsa 400 döndürür (dosya OKUNMADAN önce)."""
+    boyut = int(getattr(yuklenen, "size", 0) or 0)
+    if boyut > tavan:
+        raise serializers.ValidationError(f"Dosya çok büyük (en çok {tavan // (1024 * 1024)} MB).")
+    return yuklenen
+
 
 # `Any` değerli sözlükler: DRF stub'ı `str | _StrPromise` ister, `dict` değişmez
 # (invariant) türdür — `apps/okul/serializers.py` ile aynı kalıp.
@@ -115,6 +136,10 @@ class LibraryPolicySerializer(serializers.ModelSerializer[LibraryPolicy]):
             "retention_years_returned_loans",
             "retention_years_closed_cases",
             "retention_years_closed_deliveries",
+            # ISBN ile künye getirme (U13, §8.5): ana bayrak varsayılan KAPALI.
+            "metadata_lookup_enabled",
+            "metadata_lookup_ministry",
+            "metadata_lookup_openlibrary",
             "updated_at",
         ]
         read_only_fields = ["loan_period_days", "updated_at"]
@@ -670,3 +695,161 @@ class DonationCancelSerializer(serializers.Serializer[dict[str, Any]]):
     reason = serializers.CharField(
         max_length=255, required=False, allow_blank=True, default="", trim_whitespace=True
     )
+
+
+# ---------------------------------------------------------------------------
+# Toplu katalog aktarımı (F3, tasarım §8.1 ve §8.2)
+# ---------------------------------------------------------------------------
+class JsonOrTextField(serializers.JSONField):
+    """JSON gövdesinde nesne, çok parçalı (multipart) istekte JSON METNİ kabul eder.
+
+    İçe aktarma isteği hem dosyayı hem kararları taşır: dosya yüklenirken gövde
+    `multipart/form-data` olur ve orada her alan METİNDİR. DRF'in `JSONField`'ı
+    metni olduğu gibi geçirir (metin de geçerli JSON'dur), yani kararlar sessizce
+    dizge olarak servise inerdi.
+    """
+
+    default_error_messages = {"invalid": "Geçerli bir JSON değeri gönderin."}
+
+    def to_internal_value(self, data: Any) -> Any:
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except ValueError:
+                self.fail("invalid")
+        return super().to_internal_value(data)
+
+
+class CatalogImportPreviewSerializer(serializers.Serializer[dict[str, Any]]):
+    """`POST library/import/preview/` — dosya (Excel ya da köprü JSON'u) + kararlar.
+
+    Dosya ile yapıştırılan JSON'dan tam olarak biri gönderilir. Önizleme ile
+    uygulama AYNI gövdeyi alır: uygulama yalnız edinim alanlarını ekler, yani
+    ekranda toplanan kararlar iki istekte de aynı adlarla taşınır.
+
+    `decisions`: satır numarası → `{"action": "new"}` ya da
+    `{"action": "attach", "work": <eser kimliği>}` / `{"action": "attach",
+    "row": <dosya satırı>}` (şüpheli satırın kararı, §8.1).
+    `section_map`: dosyadaki bölüm değeri → var olan bölümün kimliği.
+    `new_sections`: yeni bölüm olarak açılacak değerler.
+    """
+
+    file = serializers.FileField(required=False)
+    payload = JsonOrTextField(required=False)
+    # `source` DRF `Field`'ın kendi özniteliğiyle aynı adı taşır ama çakışmaz:
+    # serializer meta sınıfı tanımlanan alanları sınıf gövdesinden ÇIKARIP
+    # `_declared_fields`'a taşır. Ad, `CatalogImportRun.source` ile aynı kalsın
+    # diye korunmuştur (yanıtta da bu adla döner).
+    source = serializers.ChoiceField(  # type: ignore[assignment]
+        choices=CatalogImportSource.choices,
+        required=False,
+        default=CatalogImportSource.EXCEL,
+        error_messages={"invalid_choice": "Geçerli bir kaynak seçin."},
+    )
+    # Varsayılan VERİLMEZ: gönderilmeyen alan `validated_data`'da hiç bulunmaz ve
+    # servis kendi varsayılanını uygular (tek yer).
+    decisions = JsonOrTextField(required=False)
+    section_map = JsonOrTextField(required=False)
+    new_sections = JsonOrTextField(required=False)
+
+    def validate_file(self, value: Any) -> Any:
+        return dosya_boyutunu_dogrula(value, tavan=MAX_UPLOAD_BYTES)
+
+    def validate_decisions(self, value: Any) -> dict[str, Any]:
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Kararlar satır numarasına göre eşleme olmalıdır.")
+        return value
+
+    def validate_section_map(self, value: Any) -> dict[str, Any]:
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Bölüm eşlemesi bir eşleme olmalıdır.")
+        return value
+
+    def validate_new_sections(self, value: Any) -> list[str]:
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Yeni bölümler liste olarak gönderilmelidir.")
+        return [str(ad).strip() for ad in value if str(ad).strip()]
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        dosya_var = attrs.get("file") is not None
+        govde_var = attrs.get("payload") is not None
+        if dosya_var == govde_var:  # ikisi birden ya da hiçbiri
+            raise serializers.ValidationError(
+                "Dosya ya da yapıştırılan JSON alanlarından tam olarak biri gereklidir."
+            )
+        if govde_var:
+            # Yapıştırılan JSON her zaman köprü şemasıdır (§8.2).
+            attrs["source"] = CatalogImportSource.AI_JSON
+        return attrs
+
+
+class CatalogImportApplySerializer(CatalogImportPreviewSerializer):
+    """`POST library/import/apply/` — önizlemedeki gövde + açılacak edinim partisi.
+
+    Edinim alanları `AcquisitionSerializer` ile aynı adları taşır; kurallar
+    (bağışta komisyon kararı ve türü — Md. 10/3, D7) servistedir.
+    """
+
+    method = serializers.ChoiceField(
+        choices=AcquisitionMethod.choices,
+        required=False,
+        default=AcquisitionMethod.EXISTING_STOCK,
+        error_messages={"invalid_choice": "Geçerli bir edinim yolu seçin."},
+    )
+    date = serializers.DateField(
+        required=False,
+        allow_null=True,
+        default=None,
+        error_messages={"invalid": "Geçerli bir tarih girin."},
+    )
+    source_note = serializers.CharField(
+        max_length=255, required=False, allow_blank=True, default="", trim_whitespace=True
+    )
+    unit_price = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        required=False,
+        allow_null=True,
+        default=None,
+        min_value=MIN_UNIT_PRICE,
+        error_messages={"min_value": "Birim fiyat eksi olamaz."},
+    )
+    commission_decision = serializers.PrimaryKeyRelatedField(
+        queryset=CommissionDecision.objects.all(),
+        required=False,
+        allow_null=True,
+        default=None,
+        error_messages=_iliski_hatalari("komisyon kararı", "Komisyon kararı seçilmelidir."),
+    )
+    notes = serializers.CharField(
+        required=False, allow_blank=True, default="", trim_whitespace=True
+    )
+
+
+class CatalogImportRunSerializer(serializers.ModelSerializer[CatalogImportRun]):
+    """`GET library/import/runs/` — aktarım geçmişi (salt okunur; kişisel veri yok).
+
+    Geçmiş iki soruya cevap verir: bu dosya daha önce uygulandı mı (fikirdeşlik)
+    ve hangi parti hangi aktarımdan doğdu (F4 etiket kısayolu).
+    """
+
+    source_display = serializers.CharField(source="get_source_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = CatalogImportRun
+        fields = [
+            "id",
+            "uploaded_file_name",
+            "source",
+            "source_display",
+            "status",
+            "status_display",
+            "payload_sha256",
+            "schema_version",
+            "acquisition",
+            "stats",
+            "report",
+            "created_at",
+        ]
+        read_only_fields = fields

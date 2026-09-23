@@ -101,7 +101,9 @@ def gui_backend_for(platform: str) -> str:
         return "edgechromium"  # asla "mshtml"
     if platform == "darwin":
         return "cocoa"
-    return "qt"  # Pardus/Linux: PyQt5 + QtWebEngine
+    # Pardus/Linux: pywebview'ın Qt arka ucu (PySide6 + QtWebEngine; bağlayıcı
+    # `desktop/tray.py::load_qt` içinde `QT_API` ile sabitlenir).
+    return "qt"
 
 
 def require_window_runtime(

@@ -80,7 +80,22 @@ DIGER_UCLAR = frozenset(
         "library-donation-intake-item-detail",
         "library-donation-intake-items",
         "library-donation-intake-list",
+        # Toplu katalog aktarımı (F3): kitap kaydıdır, kişi sicili değildir.
+        # Önizleme de yazar ve geri sarar; ikisi de yönetici kipi işidir ve
+        # görevli kipi izin listesinde DEĞİLDİR.
+        "library-import-ai-prompt",
+        "library-import-apply",
+        "library-import-preview",
+        "library-import-run-discard",
+        "library-import-run-list",
         "library-import-template",
+        # Künye getirme uçları (F3, U13) kişi yazmaz: dışarı yalnız ISBN gider,
+        # yanıt da yalnız kitap künyesidir. Üçü de `Work` satırına DOKUNMAZ
+        # (öneri üretirler), yazma kullanıcının kendi `library-work-*` isteğiyle
+        # olur — kanıt `apps/kutuphane/tests/test_kunye_uclari.py`.
+        "library-metadata-lookup",
+        "library-metadata-offline-export",
+        "library-metadata-offline-preview",
         "library-policy",
         "library-section-detail",
         "library-section-list",

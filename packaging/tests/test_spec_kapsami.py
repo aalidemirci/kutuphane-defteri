@@ -199,8 +199,16 @@ PAKETLEME_IMPORT_ESLEME = {
 #: Linux işaretli paketler masaüstü duman listesine BİLEREK girmez: hızlı
 #: doğrulama derlemesi (`KD_WITH_QT=0`, packaging/linux/build.sh) Qt'yi hiç
 #: kurmaz ve paketten dışlar; listeye girselerdi o derlemenin dumanı düşerdi.
-#: Yeni bir Linux işaretli paket bu kümeyi bozar ve bilinçli karar ister.
-LINUX_DUMAN_DISI = {"pyqt5", "pyqtwebengine"}
+#: Karşılığı `build.sh` adım 4b'dir (paketlenmiş dizinde QtWebEngineProcess
+#: aranır). Yeni bir Linux işaretli paket bu kümeyi bozar ve bilinçli karar
+#: ister. `build.sh`'in Qt satırlarını eleyen `grep -v -E '^(QtPy|PySide6)'`
+#: deseni de bu kümeye bağlıdır.
+LINUX_DUMAN_DISI = {"qtpy", "pyside6"}
+
+#: GPL'li Qt bağlayıcıları (23.09.2026 yayın denetimi). PyQt5/PyQt6 GPLv3,
+#: PySide2/PySide6 LGPLv3'tür; ürün PolyForm Noncommercial lisanslıdır ve
+#: GPLv3 ek kısıtlamayı yasakladığı için GPL'li bağlayıcı pakete GİREMEZ.
+GPL_QT_BAGLAYICILARI = ("PyQt5", "PyQt6", "PyQtWebEngine")
 
 _PAKET_SATIRI = re.compile(
     r'^([A-Za-z0-9_.\-]+)==(\S+?)\s*(?:;\s*sys_platform\s*==\s*"([^"]+)")?\s*$'
@@ -258,6 +266,48 @@ def test_masaustu_modulleri_win32_isaretli_paketlerle_senkron() -> None:
         "giris.py DESKTOP_RUNTIME_MODULES ile requirements-paketleme.txt (win32) ayrıştı — "
         f"eksik: {sorted(beklenen - mevcut)}, fazla: {sorted(mevcut - beklenen)}"
     )
+
+
+def _spec_taban_excludes() -> set[str]:
+    """spec'teki koşulsuz `excludes = [...]` atamasının dize öğeleri."""
+    agac = ast.parse(SPEC.read_text(encoding="utf-8"))
+    for dugum in ast.walk(agac):
+        if (
+            isinstance(dugum, ast.Assign)
+            and any(isinstance(h, ast.Name) and h.id == "excludes" for h in dugum.targets)
+            and isinstance(dugum.value, ast.List)
+        ):
+            return {
+                oge.value
+                for oge in dugum.value.elts
+                if isinstance(oge, ast.Constant) and isinstance(oge.value, str)
+            }
+    raise AssertionError("spec'te `excludes = [...]` ataması bulunamadı (desen değişti mi?)")
+
+
+def test_gpl_lisansli_qt_baglayicisi_paketlenmez() -> None:
+    """LİSANS KAPISI: GPLv3'lü PyQt ne kurulur ne de pakete girer (PySide6 LGPLv3'tür).
+
+    PolyForm Noncommercial ticari kullanımı kısıtlar; GPLv3 ise dağıtılan bütüne
+    ek kısıtlama konmasını yasaklar. İkisi bir pakette birlikte dağıtılamaz —
+    bu yüzden Linux penceresi ve tepsisi PySide6'ya taşındı.
+    """
+    paketleme = PAKETLEME_REQUIREMENTS.read_text(encoding="utf-8")
+    pinler = {ad.casefold() for ad in _PIN.findall(paketleme)}
+    yasak = {ad.casefold() for ad in GPL_QT_BAGLAYICILARI}
+    assert not (pinler & yasak), (
+        f"GPLv3 lisanslı Qt bağlayıcısı pinlenmiş: {sorted(pinler & yasak)}. "
+        "Linux bağlayıcısı PySide6'dır (LGPLv3)."
+    )
+
+    spec_metni = SPEC.read_text(encoding="utf-8")
+    assert {"PyQt5", "PyQt6", "PySide2"} <= _spec_taban_excludes(), (
+        "spec'in KOŞULSUZ `excludes` listesi GPL'li Qt bağlayıcılarını dışlamıyor "
+        f"(bulunan: {sorted(_spec_taban_excludes())})"
+    )
+    # Dışlamak tek başına yetmez: Linux zinciri gerçekten PySide6'dan kurulmalı.
+    assert '"PySide6.QtWebEngineWidgets"' in spec_metni
+    assert '"qtpy"' in spec_metni
 
 
 def test_paketleme_platform_isaretleri_bilinen_kumede() -> None:

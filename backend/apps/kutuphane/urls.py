@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from django.urls import path
 
-from apps.kutuphane import views
+from apps.kutuphane import views, views_import, views_kunye
 
 urlpatterns = [
     # Katalog Excel şablonu (tasarım §8.1 — sütun sözlüğü F1'de sabitlenir)
@@ -27,6 +27,53 @@ urlpatterns = [
         "library/import/template/",
         views.CatalogImportTemplateView.as_view(),
         name="library-import-template",
+    ),
+    # Toplu katalog aktarımı (F3, §8.1): önizleme uygulamanın birebir provasıdır
+    path(
+        "library/import/preview/",
+        views_import.CatalogImportPreviewView.as_view(),
+        name="library-import-preview",
+    ),
+    path(
+        "library/import/apply/",
+        views_import.CatalogImportApplyView.as_view(),
+        name="library-import-apply",
+    ),
+    path(
+        "library/import/runs/",
+        views_import.CatalogImportRunListView.as_view(),
+        name="library-import-run-list",
+    ),
+    path(
+        "library/import/runs/<int:pk>/discard/",
+        views_import.CatalogImportRunDiscardView.as_view(),
+        name="library-import-run-discard",
+    ),
+    # Yapay zekâ köprüsünün komut metni ve uyarıları (§8.2) — dış istek YOK
+    path(
+        "library/import/ai-prompt/",
+        views_import.CatalogAiPromptView.as_view(),
+        name="library-import-ai-prompt",
+    ),
+    # ISBN ile künye getirme (U13, tasarım §8.5) — varsayılan KAPALI dış kapı.
+    # Sorgu POST'tur: kullanıcının EYLEMİDİR, adres çubuğundan ya da bir
+    # önyüklemeden tetiklenmemelidir.
+    path(
+        "library/metadata/lookup/",
+        views_kunye.MetadataLookupView.as_view(),
+        name="library-metadata-lookup",
+    ),
+    # Çevrimdışı yol: ISBN listesi dışa aktarılır, başka cihazda doldurulur,
+    # geri yüklenir. İkisi de ağa çıkmaz.
+    path(
+        "library/metadata/offline-export/",
+        views_kunye.MetadataOfflineExportView.as_view(),
+        name="library-metadata-offline-export",
+    ),
+    path(
+        "library/metadata/offline-preview/",
+        views_kunye.MetadataOfflinePreviewView.as_view(),
+        name="library-metadata-offline-preview",
     ),
     # Kütüphane politikası (tek satır; PUT kısmidir — gönderilmeyen alana dokunulmaz)
     path("library/policy/", views.LibraryPolicyView.as_view(), name="library-policy"),

@@ -6,6 +6,10 @@
 // yönetici kipi, kişiler ve e-Okul listeleri, kapalı günler, katalog Excel
 // şablonu, yedek ve güvenlik dosyası, Ağ Kataloğu.
 // F2 bölümü: Katalog (kapalı günler ile Excel şablonunun arasında).
+// F3 bölümleri: Hızlı Kayıt (katalogdan hemen sonra — okulda hazır liste yoktur,
+// katalog kitap kitap kurulur) ve İçe Aktarma (Excel şablonundan sonra). Hızlı
+// Kayıt bölümü iki geçiş yolunu ("önce liste" / "önce etiket") karşılaştırarak
+// açar; testi hangisinin asıl yol olduğunu da kilitler.
 //
 // Üç tür kilit var:
 // 1. Ekran adları DEPODAN gelir: kısayol, kip ekranı başlığı, kapalı gün türleri,
@@ -30,12 +34,16 @@ import { GOREVLI_EKRANI_BASLIGI } from "../kip/GorevliEkrani";
 import { GOREVLI_KISAYOLU } from "../kip/KipGostergesi";
 import { EDINIMLER_BASLIGI } from "../kutuphane/EdinimlerPage";
 import { ESER_DETAY_BASLIGI } from "../kutuphane/EserDetayPage";
+import { HIZLI_KAYIT_BASLIGI } from "../kutuphane/HizliKayitPage";
+import { ICE_AKTARMA_ADRESI, ICE_AKTARMA_BASLIGI } from "../kutuphane/IceAktarmaPage";
 import { EDINIMLER_ADRESI } from "../kutuphane/KatalogPage";
 import {
   ACQUISITION_METHOD_TR,
+  AKTARIM_KOVASI_TR,
   CLASSIFICATION_SOURCE_TR,
   COMMISSION_DECISION_TYPE_TR,
   KATALOG_SABLONU_BELGE_ADI,
+  KUNYE_LISTESI_BELGE_ADI,
   RESOURCE_TYPE_TR,
   WORK_ORDER_TR,
 } from "../kutuphane/api";
@@ -69,7 +77,9 @@ const BEKLENEN_BASLIKLAR = [
   "Kişiler ve e-Okul Listeleri",
   "Kapalı Günler",
   "Katalog",
+  "Hızlı Kayıt",
   "Katalog Excel Şablonu",
+  "İçe Aktarma",
   "Yedek ve Güvenlik Dosyası",
   "Ağ Kataloğu",
 ];
@@ -152,13 +162,29 @@ describe("KilavuzPage — kabuk ve bölümler", () => {
     expect(hedef("Ayarlar → Okul Bilgileri")).toEqual(["/ayarlar?tab=okul"]);
     expect(hedef("Ayarlar → Şubeler")).toEqual(["/ayarlar?tab=subeler"]);
     expect(hedef("Ayarlar → Bölümler")).toEqual(["/ayarlar?tab=bolumler"]);
-    expect(hedef("Ayarlar → Kütüphane Politikası")).toEqual(["/ayarlar?tab=politika"]);
+    // Kütüphane Politikası'na iki bölümden bağlanılır (katalog + hızlı kayıt).
+    expect(new Set(hedef("Ayarlar → Kütüphane Politikası"))).toEqual(
+      new Set(["/ayarlar?tab=politika"]),
+    );
     expect(hedef("Kişiler")).toEqual(["/kisiler"]);
     expect(new Set(hedef("Genel Bakış"))).toEqual(new Set(["/"]));
     // "Katalog" iki bağlantıdır: "Bu kılavuzda" çapası ve ekran bağlantısı.
     expect(new Set(hedef("Katalog"))).toEqual(new Set(["#katalog", "/katalog"]));
     // Edinimler ekranının adresi katalog sayfasının sabitinden doğrulanır.
     expect(hedef(EDINIMLER_BASLIGI)).toEqual([EDINIMLER_ADRESI]);
+    // F3 ekranlarına birden çok bölümden bağlanılır (katalog + hızlı kayıt +
+    // içe aktarma); adresler sayfa sabitlerinden doğrulanır.
+    expect(new Set(hedef(`Katalog → ${HIZLI_KAYIT_BASLIGI}`))).toEqual(
+      new Set(["/katalog/hizli-kayit"]),
+    );
+    expect(new Set(hedef(`Katalog → ${ICE_AKTARMA_BASLIGI}`))).toEqual(
+      new Set([ICE_AKTARMA_ADRESI]),
+    );
+    expect(new Set(hedef("Katalog → Nüshalar"))).toEqual(new Set(["/katalog?tab=nushalar"]));
+    // Çevrimdışı künye yoluna doğrudan sekmesiyle bağlanılır.
+    expect(hedef(`Katalog → ${ICE_AKTARMA_BASLIGI} → Çevrimdışı Künye`)).toEqual([
+      `${ICE_AKTARMA_ADRESI}?tab=cevrimdisi`,
+    ]);
   });
 });
 
@@ -491,6 +517,112 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     expect(metin).toContain("Listeye kişisel veri yazılmaz");
   });
 
+  it("hızlı kayıt: iki geçiş yolu anlatılır ve asıl yol 'önce etiket'tir", () => {
+    renderPage();
+    const metin = bolumMetni("hizli-kayit");
+
+    // §8.1'in geçiş tablosu kullanıcı diliyle: iki yol da adıyla anlatılır ve
+    // hangisinin asıl yol olduğu (S8 cevabı) açıkça yazılır.
+    expect(metin).toContain("Önce liste");
+    expect(metin).toContain("Önce etiket");
+    expect(metin).toContain("Okulun asıl yolu budur");
+    expect(metin).toContain("hazır bir kitap listesi yoktur");
+    // Etiket basımı henüz yok: kılavuz söz vermez, bekleyenin nerede görüneceğini söyler.
+    expect(metin).toContain("Etiket basımı sonraki sürümde gelecek");
+    // Geçiş dönemi kuralı (§8.1): etiketsiz kitap masaya gelirse hemen kaydedilir.
+    expect(metin).toContain("kâğıt defter");
+  });
+
+  it("hızlı kayıt: okutma, künye önerisi, ayarın varsayılanı ve ikinci nüsha", () => {
+    renderPage();
+    const metin = bolumMetni("hizli-kayit");
+
+    // Ekran ve düğme adları ekrandaki metinle birebir (docs/sozluk.md §4).
+    expect(metin).toContain("Katalog → Hızlı Kayıt");
+    expect(metin).toContain("“ISBN barkodu”");
+    expect(metin).toContain("“Künyeyi getir”");
+    expect(metin).toContain("“Formu temizle”");
+    expect(metin).toContain("“Seçilenleri forma yaz”");
+    expect(metin).toContain("“ISBN ile künye getirme açık”");
+    expect(metin).toContain("“Nüshayı aç”");
+    expect(metin).toContain("“Bu esere nüsha ekle”");
+    expect(metin).toContain("“Yalnız etiketlenmemişler”");
+    // Yanlış kod okutulduğunda gösterilen ileti kılavuzda da yazılıdır (§7.1).
+    expect(metin).toContain("Bu bir kütüphane etiketi.");
+    // §8.5'in kullanıcıya görünen üç kuralı: varsayılan kapalı, yalnız numara
+    // gider, çevirmen dışarıdan doldurulmaz; fail-open iletisi de yazılıdır.
+    expect(metin).toContain("varsayılan olarak kapalıdır");
+    expect(metin).toContain("dışarıya yalnız numaranın kendisi gider");
+    expect(metin).toContain("Çevirmen alanı dışarıdan doldurulmaz");
+    expect(metin).toContain("Dış kaynaktan alındı, doğrulayın");
+    expect(metin).toContain("İnternetten getirilemedi, elle girebilirsiniz.");
+    // Künye NEREDEN geliyor ve neden doğrulanmalı: iki kaynak da adıyla anılır,
+    // konum dili korunur (okulun kaydı değil, başka kurumların kataloğu).
+    expect(metin).toContain("Kültür ve Turizm Bakanlığı");
+    expect(metin).toContain("Open Library");
+    expect(metin).toContain("Gelen künyeyi kitabın künye sayfasından doğrulayın.");
+    expect(metin).toContain("okulun kendi kaydı değildir");
+    // İnternetsiz masanın yolu: dosyayla gidip gelen künye + Yönerge'nin kuralı.
+    expect(metin).toContain("Çevrimdışı Künye");
+    expect(metin).toContain("telefon ya da mobil modem bağlayarak internet alınmaz");
+    // Barkod programın verdiği numaradır ve yeniden kullanılmaz.
+    expect(metin).toContain("numara asla yeniden kullanılmaz");
+  });
+
+  it("içe aktarma: önizleme yazmaz, kararlar sorulur, aynı dosya ikinci kez uygulanmaz", () => {
+    renderPage();
+    const metin = bolumMetni("ice-aktarma");
+
+    expect(metin).toContain("Katalog → İçe Aktarma");
+    for (const sekme of [
+      "Excel Aktarımı",
+      "Yapay Zekâ Köprüsü",
+      "Çevrimdışı Künye",
+      "Aktarım Geçmişi",
+    ]) {
+      expect(metin).toContain(sekme);
+    }
+    // Önizleme = uygulama; fikirdeşlik ENGELDİR (uyarı değil).
+    expect(metin).toContain("hiçbir kayıt yazmaz");
+    expect(metin).toContain("uygulamanın gerçekten yazacağı sayılardır");
+    expect(metin).toContain("Aynı dosya ikinci kez uygulanamaz.");
+    // Eşleşme kovaları EKRANDAKİ rozet adlarıyla anlatılır (kilit: api.ts sabiti).
+    for (const kova of Object.values(AKTARIM_KOVASI_TR)) {
+      expect(metin).toContain(kova);
+    }
+    // Şüpheli satır tek tek karar ister; karar verilmeden "Uygula" açılmaz.
+    expect(metin).toContain("“Karar bekleyen satırlar”");
+    expect(metin).toContain("“Yeni eser aç”");
+    expect(metin).toContain("“Yeniden önizle”");
+    expect(metin).toContain("“Uygula” düğmesi açılmaz");
+    // D5: bölüm değeri kaybolmaz; ders kitabı → danışma varsayılanı.
+    expect(metin).toContain("“Bölüm listesinde bulunmayan değerler”");
+    expect(metin).toContain("“Yeni bölüm aç”");
+    expect(metin).toContain("danışma kaynağı sayılan");
+    // Toplu aktarımda dış istek YOKTUR (§8.5-2) ve kılavuz bunu söyler.
+    expect(metin).toContain("internetten künye getirmez");
+    // Çevrimdışı yol AYRI CİHAZ demektir (Yönerge 11/18, birebir alıntı).
+    expect(metin).toContain("başka bir cihazda");
+    expect(metin).toContain(
+      "“Bakanlık merkez ve taşra teşkilatında tanımı Başkanlık tarafından yapılan MEBNET ağı " +
+        "dışında bir ağ kullanılamaz. Kullanıcı Bakanlık merkez ve taşra teşkilatında bulunan " +
+        "bilgisayarlardan MEBNET ağı dışında cep telefonu, ADSL, VDSL, fiber, mobil modem, " +
+        "kişisel erişim noktası, kablosuz bağlantı alanı cihazı vb. cihazlarını kullanamaz.”",
+    );
+    // Çevrimdışı künye dosyasının adı ve onay adımı (dolu alan sessizce yazılmaz).
+    expect(metin).toContain(KUNYE_LISTESI_BELGE_ADI);
+    expect(metin).toContain("“ISBN listesini indir”");
+    expect(metin).toContain("“Seçilenleri kaydet”");
+    expect(metin).toContain("dolu alanlar işaretsiz gelir");
+    // Köprü: isteğe bağlı, program bağlanmaz, listeye kişisel veri yazılmaz,
+    // asıl yol Excel, ISBN yolu daha güvenli (§8.2 U13 eki).
+    expect(metin).toContain("isteğe bağlıdır");
+    expect(metin).toContain("“Komutu kopyala”");
+    expect(metin).toContain("Program hiçbir yapay zekâ servisine bağlanmaz");
+    expect(metin).toContain("Listeye kişisel veri yazılmaz");
+    expect(metin).toContain("Asıl yol Excel ile içe aktarmadır");
+  });
+
   it("yedek ve güvenlik dosyası: şifreli yedek, geri yükleme ve üç çıkış yolu", () => {
     renderPage();
     const metin = bolumMetni("yedek");
@@ -577,6 +709,17 @@ describe("KilavuzPage — sözlük ve kalıntı denetimi", () => {
       /zimmet/i,
       /popüler/i,
       /en çok ödünç alınan/i,
+      // Künye getirmenin konum dili (docs/sozluk.md §1, tasarım §8.5-10):
+      // program "resmî künye" ya da "Bakanlık sisteminden geliyor" demez ve
+      // teknik dile kaymaz.
+      /otomatik künye/i,
+      /resmî künye/i,
+      /Bakanlık sistemi/i,
+      /sorgula/i,
+      /\bAPI\b/,
+      // "yapay zekâ" düzeltme işaretiyle yazılır; "AI" kısaltması kullanılmaz.
+      /yapay zeka/i,
+      /\bAI\b/,
     ]) {
       expect(metin).not.toMatch(yasak);
     }

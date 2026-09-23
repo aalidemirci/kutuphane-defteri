@@ -35,9 +35,33 @@ pythonnet==3.0.5 ; sys_platform == "win32"
 pystray==0.19.5 ; sys_platform == "win32"
 six==1.17.0 ; sys_platform == "win32"
 
-# ---------- Linux/Pardus: Qt WebEngine ----------
+# ---------- Linux/Pardus: Qt WebEngine (PySide6) ----------
 # KS kararı (K17): WebKitGTK/PyGObject yolu ELENDİ (typelib paketleme + Pardus
-# 21/23 ABI oynaklığı). PyQt5 tekerlekleri manylinux2014 (glibc 2.17) olduğu
-# için bullseye'da (glibc 2.31) üretilen paket Pardus 21'de de çalışır.
-PyQt5==5.15.11 ; sys_platform == "linux"
-PyQtWebEngine==5.15.7 ; sys_platform == "linux"
+# 21/23 ABI oynaklığı).
+#
+# LİSANS — PyQt5 DEĞİL PySide6 (23.09.2026 yayın denetimi kararı). PyQt5 ve
+# PyQtWebEngine GPLv3'tür; GPLv3 dağıtılan bütüne EK KISITLAMA konmasını
+# yasaklar, bu ürünün lisansı (PolyForm Noncommercial) ise ticari kullanımı
+# kısıtlar — ikisi aynı pakette dağıtılamaz. PySide6 LGPLv3'tür: kütüphane
+# DİNAMİK bağlandığı ve kullanıcı kendi sürümüyle değiştirebildiği sürece
+# farklı lisanslı bir programla birlikte dağıtılabilir. Yükümlülüğün
+# karşılanması: packaging/README.md → "Lisans: PySide6 LGPLv3".
+#
+# qtpy NEDEN AYRI PİNLENİR: pywebview'ın Qt arka ucu bağlayıcıyı doğrudan
+# seçmez, `qtpy` üzerinden gider (`webview/platforms/qt.py:23-37` —
+# `from qtpy import QtCore`, `from qtpy import PYQT6, PYSIDE6`) ve pywebview
+# 5.3.2 `pyside6` ek grubunu resmen tanır (`pyproject.toml`:
+# `pyside6 = ["QtPy", "PySide6"]`). qtpy pywebview'ın Linux bağımlılığı
+# DEĞİLDİR (kendi `dependencies` listesinde yalnız `openbsd6` işaretiyle
+# geçer), bu yüzden burada açıkça pinlenir; yoksa Qt arka ucu hiç import
+# edilemez. Bağlayıcı `QT_API` ortam değişkeniyle sabitlenir
+# (`desktop/tray.py::load_qt`).
+#
+# SÜRÜM TAVANI 6.8.x — Pardus 21 (Debian 11 / bullseye) kapısı: PySide6
+# 6.9.1'den itibaren `libQt6WebEngineCore` `gbm_bo_get_fd_for_plane`
+# sembolünü ister. Sembol Mesa 21.1 ile geldi; bullseye'ın libgbm1'i 20.3.5'tir
+# ve sembolü TAŞIMAZ → import "undefined symbol" ile düşer. 6.8.3 bullseye'da
+# uçtan uca doğrulandı (23.09.2026). Sürüm yükseltmeden önce şu denetlenir:
+#   nm -D --undefined-only .../libQt6WebEngineCore.so.6 | grep gbm_bo_get_fd_for_plane
+QtPy==2.4.3 ; sys_platform == "linux"
+PySide6==6.8.3 ; sys_platform == "linux"

@@ -233,6 +233,53 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   belirsizlik kaçınılmazdır; kapatmanın tek yolu barkod şemasını değiştirmektir (U7 ve
   T8 kararı, açılmaz).
 
+- **TB23 — Yedekler kendi dönemlerinin parola ve kurtarma anahtarıyla açılabilir kalır
+  (görev devri; §4.4, §6.3):** parola değişimi ve kurtarma anahtarının yenilenmesi DEK'i
+  yeniden üretmez, yalnız sarmalı yeniler. Her `.kdbak` alındığı anın güvenlik dosyasını
+  başlığında taşıdığı için, **devirden önce alınmış yedekler eski parola ve eski kurtarma
+  anahtarıyla açılabilir**. Bütün alanların yeniden şifrelenmesi (DEK döndürme) v1
+  bütçesi dışındadır. Azaltma: görev devri notu (E18) eski anahtarın imhasını ve eski
+  yedeklerin akıbetini yazar; kılavuz bunu açıkça söyler. Kapatma yolu F11'de
+  değerlendirilir.
+
+- **TB24 — Şifrelemeye geçişten önceki düz metin veritabanı dosyasında kalabilir
+  (§6.3):** `PRAGMA secure_delete=ON` yeni silmeleri kapsar, ama daha önce yazılmış
+  sayfalar ve WAL artığı için `VACUUM` çalıştırılmaz. Pratikte parola sihirbazın ilk
+  adımıdır ve `enable()` yalnız kişi tabloları boşken çalışır, yani geçişte düz kişi
+  verisi bulunmaz; kalan risk kuramsaldır. Tam koruma disk şifrelemesidir (BitLocker /
+  LUKS — `docs/kurulum.md`).
+
+- **TB25 — Okul ağı bilgisi depoya girmez (yayın kuralı; 23.09.2026):** keşif ve ağ
+  belgelerinde gerçek IP blokları, alt ağ maskeleri, host numaraları, VLAN, SSID, proxy
+  ve sunucu adları **yazılmaz**; yerlerine `<idari-ağ>`, `<tahta-ağı>`, `<ek-alt-ağ>`,
+  `<bilgisayar-adı>` yer tutucuları kullanılır. Depo herkese açıktır ve sahibi gerçek
+  adıyla görünür; bu bilgiler tek başına zararsız görünse de kurumu daraltır. F5'te
+  yazılacak `docs/ag-kurulumu.md` bu kurala uyar. **Kalan risk:** kural elle denetlenir;
+  `packaging/depo_sizintisi.py` ağ bilgisine bakmaz.
+
+- **TB26 — Denetim belgesinin yayın sürümü (23.09.2026):** `docs/kesif/…-tasarim-
+  denetimi.md` yayına açılırken üç bulgunun (GA-2, UY-1, SU-25) sömürü ayrıntısı
+  çıkarıldı; bulgular ve kararları yerinde kaldı. Bu üçü kardeş projede (kelebek-sinav,
+  herkese açık) **hâlâ açıktır**; bu projede karşılıkları F1'de kapatıldı (§4.3, §4.4,
+  §6.3). Kalan iş kod dışıdır: kardeş projenin yamalanması.
+
+- **TB27 — Linux paketinde PySide6 sürüm tavanı ve boyut (23.09.2026):** Pardus 21
+  (Debian bullseye) Mesa 20.3.5 taşıdığı için PySide6 **6.9.1 ve üstü açılmaz**
+  (`libQt6WebEngineCore` `gbm_bo_get_fd_for_plane` sembolünü ister); sürüm `6.8.3`'e
+  sabitlendi. Bedeli: Pardus 21 desteklendiği sürece Qt ve Chromium güvenlik yamaları
+  alınamaz. İkinci bedel boyuttur: PySide6 kurulumu ~645 MB (PyQt5 ~150 MB idi), `.deb`
+  ve taşınabilir arşiv büyür. Azaltma seçenekleri (henüz uygulanmadı): dil dosyalarının
+  Türkçe ve İngilizceyle sınırlanması, gereksiz Qt eklentilerinin dışlanması. İlk CI
+  derlemesinde gerçek boyut ölçülecek. **Karar kullanıcıdadır:** Pardus 21 desteği
+  bırakılırsa tavan kalkar (TB5 ile aynı karar).
+
+- **TB28 — Üçüncü taraf lisans metinleri pakete girmedi (F12 iş kalemi):** PySide6
+  (LGPLv3) ve pystray (LGPLv3) lisans metni **ve** pystray kaynağı, material-symbols
+  (Apache-2.0) LICENSE + NOTICE, DejaVu dışındaki Python ve ön yüz bağımlılıklarının
+  lisansları pakete konmalıdır (`THIRD_PARTY_LICENSES/` + `BAGIMLILIKLAR.md`). `.deb`
+  için `/usr/share/doc/kutuphane-defteri/copyright`, Inno için `LicenseFile=` eksiktir.
+  Bugün ihlal yoktur (henüz sürüm yayımlanmadı); **ilk sürümden önce kapanmalıdır**.
+
 ## Kapanan
 
 - **TB15 — F1'e devreden F0 kalıntıları** *(kapandı: 22.09.2026 — F1 dalga
