@@ -30,6 +30,14 @@ konulamaz:
 Kancadaki hiçbir hata programı durdurmaz: eksik font yapılandırması PDF'i
 bozar ama kütüphane kayıtlarına erişimi engellememeli. Sorunlar günlüğe değil
 (günlük henüz kurulmadı) `KD_RTHOOK_UYARI` değişkenine yazılır.
+
+**Yükseltilmiş yardımcı kipte (UAC) diske yazılmaz.** Ağ Doktoru'nun "Kuralı
+ekle/güncelle" düğmesi programı `--guvenlik-duvari-kurali` ile UAC üzerinden
+yeniden başlatır; UAC'ye BTR'nin kimliği girildiyse süreç BTR'nin hesabında
+koşar. Kip PDF üretmediği için fontconfig adımı atlanır; aksi hâlde BTR'nin
+profilinde `%LOCALAPPDATA%\\KutuphaneDefteri` açılırdı (`desktop/guvenlik_duvari.py`
+modül belgesindeki değişmez). Kanca `desktop`'u bu kipte içe aktarmaz; bayrak
+burada sabit metindir, eşitliğini `packaging/tests/test_rthook.py` sınar.
 """
 
 from __future__ import annotations
@@ -45,6 +53,13 @@ ENV_WEASYPRINT_DLL = "WEASYPRINT_DLL_DIRECTORIES"
 
 _FONTS_CONF_TEMPLATE = "fonts.conf.tmpl"
 _FONTS_CONF = "fonts.conf"
+#: `desktop.guvenlik_duvari.UAC_BAYRAGI` ile BİREBİR aynı (test eşitler).
+UAC_BAYRAGI = "--guvenlik-duvari-kurali"
+
+
+def yukseltilmis_yardimci_mi(argv: list[str] | None = None) -> bool:
+    """Süreç UAC ile yükseltilmiş güvenlik duvarı yardımcısı mı? (diske yazmaz)"""
+    return UAC_BAYRAGI in (sys.argv[1:] if argv is None else argv)
 
 
 def _bundle_root() -> Path:
@@ -123,7 +138,8 @@ def setup() -> None:
     announce_frontend_dir(root)
     if sys.platform.startswith("win"):
         announce_weasyprint_dll_dirs(root)
-        setup_fontconfig(root, _cache_root())
+        if not yukseltilmis_yardimci_mi():
+            setup_fontconfig(root, _cache_root())
 
 
 setup()

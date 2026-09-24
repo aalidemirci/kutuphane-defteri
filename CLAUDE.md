@@ -78,9 +78,15 @@ Kütüphaneleri Yönetmeliği (RG 23.11.2024/32731) ile TMY'ye bağlıdır. Meti
      şablonlarında giden istek (`urllib.request`, `http.client`, soket
      bağlantısı) ve ISBN künye modülü bulunmaz. Program tek süreç olduğu için
      bu bir **kod yolu değişmezidir** (§5.10-20).
-   - Katalog yalnız `prepare_django` tamamlandıktan sonra kalkar. F0-F4'te
-     yalnız 127.0.0.1'de dinler; `0.0.0.0` güvenlik duvarı denetimiyle F5'te
-     gelir.
+   - Katalog yalnız `prepare_django` tamamlandıktan sonra ve ayarı açıksa
+     (`KatalogAyari.acik`, varsayılan KAPALI) kalkar. Açma, kapama ve yeniden
+     başlatma tek kanaldan yapılır: `desktop/katalog_kontrol.py` (T16). Okul
+     ağı adresinde (`0.0.0.0` ya da seçili IP) Windows'ta YALNIZ güvenlik
+     duvarı denetiminin beş maddesi geçerse dinler; geçmezse `127.0.0.1`'e de
+     düşmez (§5.7, §5.10-10). Linux'ta ufw/firewalld durumu bilgi olarak
+     okunur, kural açılmaz; Ağ Doktoru'nun önerdiği komut kaynak sınırlıdır
+     (yerel alt ağ + tahta ağı blokları, F5 ekleri 27). `--autotest` katalogu
+     yalnız 127.0.0.1'de kaldırır.
    - `api/` altındaki her desen katalog portunda 404 döner.
    - Yönetim portu hiçbir ekranda ya da belgede ilan edilmez. Program içindeki
      katalog bağlantıları seçili LAN IP'siyle kurulur ve harici tarayıcıda
@@ -442,10 +448,32 @@ barkod partisi geri alınınca doğrulanmış nüshanın iki işareti de korunur
 Sapmalar ve kararlar: tasarım §14.1 **"F4 ekleri"**; gerçek yazıcı ve okuyucu
 kanıtı F12'ye ertelendi.
 
-Sıradaki: F5 Ağ kataloğu + tepsi (katalog WSGI, `kd_katalog_*` görünümleri ve
-authorizer, tahta kipi, Ağ Doktoru, güvenlik duvarı, `kd-gunluk` + gün değişimi
-kapısı iskeleti, görevli kipinde parolalı Çık). Tam tablo: tasarım §14.1. Saha
-hazırlık hattı (S1-S15, kod dışı): §14.2.
+**F5 Ağ kataloğu + tepsi — kod tarafı bitti (24.09.2026, dal
+`f5-ag-katalogu`).** Katalog WSGI (`backend/katalog/`: yalnız stdlib +
+`django.template`; `kd_katalog_*` görünümleri, `mode=ro` + eylem kodlu
+authorizer, sayfalar ve tahta kipi, hız sınırı, bakım kapısı, waitress'in
+Türkçe hata yanıtları) · `KatalogAyari` (varsayılan KAPALI; port ve IP'nin tek
+kaynağı) · `desktop/katalog_kontrol.py` (T16), güvenlik duvarı denetimi, IP
+adayları, IP başına 20 bağlantı, `kd-gunluk` gün değişimi kapısı (günlük yedek,
+IP denetimi, uyku), tepsi kip matrisi, parolalı Çık (`app/quit/`), otomatik
+başlatma ve kurucu görevleri · Ağ Doktoru, Ayarlar → Ağ Kataloğu, afiş, bilgi
+notu, PYS talep metni, yer imi dosyaları · kılavuz ve `docs/ag-kurulumu.md`.
+Kod kapısının iki ağ kanıtı (ikinci bilgisayardan arama, 50 istemcili yük)
+`scripts/ag_katalogu_provasi.sh` ile iki Docker kabında üretilir ve gecelik
+kapıda (`KD_YAVAS=1`) koşar. Bütünleştirme sonrası denetimin düzeltme turu
+(F5 ekleri 19-30): güvenlik duvarı 4. maddesi bütün izin kurallarının
+birleşimiyle; authorizer tam ad kümesiyle (TB31); saatlik damgasız işler
+(kaybolan seçili IP, okunamayan denetimin yeniden denenmesi); Pardus komutu
+kaynak sınırlı; açılamayan katalog her yüzeyden kapatılabilir; Inno
+`[Registry]` yerleşimi (WebView2 dalı derlenmiyordu). Sapmalar, kararlar ve
+ölçümler: tasarım §14.1 **"F5 ekleri"**; tahta, Windows paketi ve okul ağı
+kanıtları F12'ye ertelendi. Açık kullanıcı kararları: güncelleme denetiminin
+hedefi (F5 ekleri 15), Pardus taşınabilir arşivinde Ağ Kataloğu (F5 ekleri 27).
+
+Sıradaki: F6 Üyelik + dolaşım (Membership, kart şeması, dolaşım masası ve
+görevli ekranı, kartsız ödünç, kapalı güne göre iade tarihi, gecikme kartı ve
+pusula; §5.10-4/5 gerçek tablolarla yeniden koşar). Tam tablo: tasarım §14.1.
+Saha hazırlık hattı (S1-S15, kod dışı): §14.2.
 
 ---
 
@@ -460,7 +488,7 @@ hazırlık hattı (S1-S15, kod dışı): §14.2.
 | `docs/sozluk.md` | Bağlayıcı kullanıcı sözlüğü ve yazım kuralları |
 | `docs/teknik-borc.md` | Bilinen ve kabul edilmiş kalan riskler |
 | `docs/kurulum.md` | Son kullanıcı ve BTR için kurulum, taşıma, sorun giderme, çıkış kodları |
-| `docs/ag-kurulumu.md` | *(F5)* BTR için ağ kılavuzu |
+| `docs/ag-kurulumu.md` | BTR için ağ kılavuzu (güvenlik duvarı, adres, tahtalar, sınama) |
 | `docs/disa-aktarim.md` | *(F10)* sürümlü dışa aktarım şeması |
 | `packaging/windows/NOTLAR.md` | Windows paketinde doğrulanmamış varsayımlar |
 | `README.md` | Kısa tanıtım |

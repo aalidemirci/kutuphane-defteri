@@ -1,0 +1,10 @@
+{% comment %}Eser satırları: `eksen` yazar ya da konu dizininde ilgili adı öne alır.{% endcomment %}<ul class="eserler">
+{% for e in eserler %}<li>
+{% if eksen == "yazarlar" and e.yazarlar %}<span class="eser-yazar"><strong>{{ e.yazarlar }}</strong></span>
+{% elif eksen == "konular" and e.konular %}<span class="eser-yazar"><strong>{{ e.konular }}</strong></span>
+{% endif %}<a class="eser-baslik" href="{{ e.bag }}">{{ e.baslik }}</a>
+{% if eksen != "yazarlar" and e.yazarlar %}<span class="eser-yazar">{{ e.yazarlar }}</span>
+{% endif %}<span class="eser-bilgi">{{ e.bilgi }}</span>
+<span class="eser-nusha">{{ e.nusha_ozeti }}</span>
+</li>
+{% endfor %}</ul>

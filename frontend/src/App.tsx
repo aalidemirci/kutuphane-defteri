@@ -1,8 +1,8 @@
 // Kütüphane Defteri — kök route tanımı. Route ağacı fazlarla büyür (tasarım
 // §14.1): F0 iskeleti kurulum, kişiler, ayarlar, kılavuz ve hakkında
 // ekranlarını taşır; F2 katalog ekranlarını (eser, nüsha, edinim, bağış)
-// ekledi; F3 toplu aktarım ve hızlı kayıt ekranlarını, F4 etiket ekranını
-// ekledi; dolaşım ve sayım ekranları kendi fazlarında gelir. Kilit ekranı
+// ekledi; F3 toplu aktarım ve hızlı kayıt ekranlarını, F4 etiket ekranını,
+// F5 Ağ Doktoru'nu ekledi; dolaşım ve sayım ekranları kendi fazlarında gelir. Kilit ekranı
 // (GuvenlikKapisi) kurulum kapısından ÖNCE gelir — parola kuruluysa hiçbir
 // veri ekranı (sihirbaz dahil) açılmadan kilit çözülmelidir. Kip kapısı
 // (KipKapisi) en içtedir: görevli kipinde rotaların yerine görevli ekranı
@@ -12,6 +12,7 @@ import { Route, Routes } from "react-router-dom";
 
 import AppShell from "./AppShell";
 import KurulumKapisi from "./KurulumKapisi";
+import AgDoktoruPage from "./modules/agkatalogu/AgDoktoruPage";
 import AyarlarPage from "./modules/ayarlar/AyarlarPage";
 import GuvenlikKapisi from "./modules/guvenlik/GuvenlikKapisi";
 import YenidenBaslatEkrani from "./modules/guvenlik/YenidenBaslatEkrani";
@@ -53,8 +54,10 @@ export default function App() {
               <Route path="/katalog/hizli-kayit" element={<HizliKayitPage />} />
               {/* Sırt ve barkod etiketi, basım kaydı, doğrulama, boş barkod aralığı (F4). */}
               <Route path="/katalog/etiketler" element={<EtiketlerPage />} />
-              {/* Ders yılı, şubeler, okul künyesi, güvenlik, güncelleme. */}
+              {/* Ders yılı, şubeler, okul künyesi, güvenlik, güncelleme, Ağ Kataloğu. */}
               <Route path="/ayarlar" element={<AyarlarPage />} />
+              {/* Ağ Doktoru (F5): Ağ Kataloğu denetimi ve belgeleri; yalnız yönetici kipinde. */}
+              <Route path="/ag-doktoru" element={<AgDoktoruPage />} />
               {/* Kullanım kılavuzu (statik içerik, çevrimdışı). */}
               <Route path="/kilavuz" element={<KilavuzPage />} />
               <Route path="/hakkinda" element={<HakkindaPage />} />

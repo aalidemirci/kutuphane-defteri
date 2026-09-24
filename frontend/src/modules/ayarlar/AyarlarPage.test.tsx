@@ -54,6 +54,11 @@ vi.mock("../kutuphane/BolumlerPaneli", () => ({
   default: () => <div>BÖLÜMLER PANELİ</div>,
 }));
 
+// Ağ Kataloğu (F5) kendi testinde (modules/agkatalogu); burada yalnız sekme kablolaması.
+vi.mock("../agkatalogu/AgKataloguPaneli", () => ({
+  default: () => <div>AĞ KATALOĞU PANELİ</div>,
+}));
+
 import AyarlarPage from "./AyarlarPage";
 
 const AKTIF_YIL: SchoolYear = {
@@ -123,7 +128,7 @@ afterEach(() => {
 });
 
 describe("AyarlarPage — sekmeler", () => {
-  it("sekiz sekme vardır (bu sırayla); kaldırılan sekmeler geri gelmez", async () => {
+  it("dokuz sekme vardır (bu sırayla); kaldırılan sekmeler geri gelmez", async () => {
     renderPage();
     await screen.findByText("2026-2027");
     expect(screen.getAllByRole("tab").map((t) => t.textContent?.trim())).toEqual([
@@ -137,10 +142,21 @@ describe("AyarlarPage — sekmeler", () => {
       expect.stringContaining("Okul Bilgileri"),
       expect.stringContaining("Güvenlik"),
       expect.stringContaining("Güncelleme"),
+      // Ağ Kataloğu (F5) sonda: varsayılan kapalı, ilk kurulumun işi değildir.
+      expect.stringContaining("Ağ Kataloğu"),
     ]);
     for (const ad of [/Ders Saatleri/, /Zümreler/, /Şube Kümeleri/, /Tatiller/]) {
       expect(screen.queryByRole("tab", { name: ad })).toBeNull();
     }
+  });
+
+  it("Ağ Kataloğu sekmesi adresle açılır ve paneli gösterir", async () => {
+    renderPage("/ayarlar?tab=ag-katalogu");
+    expect(await screen.findByText("AĞ KATALOĞU PANELİ")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Ağ Kataloğu/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
   });
 
   it("kaldırılmış bir sekmenin adresi sessizce Ders Yılları sekmesine düşer", async () => {

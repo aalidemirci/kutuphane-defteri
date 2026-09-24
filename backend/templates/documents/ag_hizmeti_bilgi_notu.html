@@ -1,0 +1,158 @@
+{% extends "documents/base.html" %}
+{% comment %}Ağ Hizmeti Bilgi Notu (E3; tasarım §5.9, U10). Bağlam
+apps/kutuphane/ag_belgeleri.py::bilgi_notu_baglami'ndan gelir. Belge
+okulda saklanır; yerel üretildiği için gerçek IP bloklarını içerebilir (§5.9).
+"İzin" değil "bilgi" notudur (sözlük). Yönetim portu hiçbir satırda geçmez
+(§4.1). Yönerge alıntıları docs/mevzuat/meb-bilgi-ve-sistem-guvenligi-yonergesi.md
+metninden BİREBİRDİR; madde numarası değişirse önce o dosya değişir.
+text-transform YOK — başlıklar doğrudan büyük harfle yazılır (WeasyPrint TR "i"
+tuzağı). Sayfa bütçesi: en uzun gerçekçi veride en çok iki sayfa
+(test_ag_belgeleri.py).{% endcomment %}
+{% block extra_style %}
+<style>
+  /* Sıkı düzen: not en uzun gerçekçi veride en çok İKİ sayfadır (imza son sayfada). */
+  @page { margin: 1.2cm 1.6cm 1.3cm 1.6cm; }
+  body { font-size: 9pt; }
+  .doc-title { margin: 8pt 0 2pt; }
+  .doc-subtitle { margin-bottom: 4pt; }
+  .info { margin: 5pt 0 2pt; }
+  .info td { padding: 2.5pt 7pt; font-size: 8.8pt; }
+  .info td.label { width: 30%; }
+  .section { margin-top: 6pt; }
+  .section-title { font-size: 9pt; }
+  .para { margin: 3pt 0; font-size: 8.8pt; line-height: 1.35; }
+  .kisa { margin: 2pt 0 0 13pt; padding: 0; font-size: 8.6pt; line-height: 1.33; }
+  .kisa li { margin-bottom: 1.5pt; }
+  .komut { font-size: 8pt; background: var(--pr-fill); border: 0.5pt solid var(--pr-line-soft);
+           padding: 2pt 6pt; margin: 2pt 0; white-space: pre-wrap; }
+  .alinti { color: var(--pr-label); font-style: italic; }
+  .madde-tablosu { width: 100%; border-collapse: collapse; margin: 3pt 0; font-size: 8.3pt; }
+  .madde-tablosu td { border: 0.5pt solid var(--pr-line-soft); padding: 2pt 6pt; vertical-align: top; }
+  .madde-tablosu td.durum { width: 16%; font-weight: bold; }
+  .madde-tablosu tr { break-inside: avoid; page-break-inside: avoid; }
+  .atif { margin: 2pt 0 3pt; font-size: 8.4pt; line-height: 1.33; break-inside: avoid;
+          page-break-inside: avoid; }
+  .atif .no { font-weight: bold; color: var(--pr-ink); }
+  .sig-grid { margin-top: 14pt; table-layout: fixed; }
+  .sig-grid td { width: 50%; }
+  .sig-grid .space { height: 26pt; }
+  .sig-grid .tarih { font-size: 8pt; color: var(--pr-muted); margin-top: 2pt; }
+  .dipnot { margin-top: 8pt; font-size: 7.8pt; color: var(--pr-secondary); text-align: center; }
+</style>
+{% endblock %}
+{% block content %}
+  <div class="doc-title">{{ document_title }}</div>
+  <div class="doc-subtitle">Kütüphane Defteri — Ağ Kataloğu · bilişim teknolojileri rehber öğretmeninin (BTR) ve okul müdürünün bilgisine sunulan nottur, izin belgesi değildir</div>
+
+  <table class="info">
+    <tr><td class="label">Düzenlenme tarihi</td><td>{{ issued_on }}</td></tr>
+    <tr><td class="label">Bilgisayarın demirbaş no'su</td><td>{% if asset_no %}{{ asset_no }}{% else %}……………………………………{% endif %}</td></tr>
+    <tr><td class="label">Program</td><td>{{ program }} — okulun kütüphane işlerini yürüttüğü yerel araç</td></tr>
+    <tr><td class="label">Bilgisayarın okul ağındaki adresi</td><td>{% if ip %}{{ ip }}{% else %}……………………………………{% endif %}</td></tr>
+    <tr><td class="label">Katalog adresi</td><td>{% if adres %}{{ adres }}{% else %}http://……………………:{{ port }}/{% endif %}</td></tr>
+    <tr><td class="label">Port</td><td>TCP {{ port }} — yalnız gelen bağlantı; bilgisayar bu porttan dışarı bağlantı başlatmaz</td></tr>
+    <tr><td class="label">Dinleme</td><td>{{ dinleme }}</td></tr>
+    <tr><td class="label">Ağ profili</td><td>{% if ag_profilleri %}{{ ag_profilleri }}{% else %}Okunamadı{% endif %}</td></tr>
+  </table>
+
+  <div class="section">
+    <div class="section-title">PORT VE GEREKÇESİ</div>
+    <p class="para">{{ port_gerekcesi }}</p>
+  </div>
+
+  <div class="section flow">
+    <div class="section-title">GÜVENLİK DUVARI</div>
+    {% if platform == "windows" %}
+      {% if kural %}
+        <table class="info flush">
+          <tr><td class="label">Kural adı</td><td>{{ kural.ad }}</td></tr>
+          <tr><td class="label">Program</td><td>{{ kural.program }}</td></tr>
+          <tr><td class="label">Yerel port</td><td>{{ kural.yerel_port }}</td></tr>
+          <tr><td class="label">Uzak adres (remoteip)</td><td>{{ kural.uzak_adres }}</td></tr>
+          <tr><td class="label">Profil</td><td>{{ kural.profil }}</td></tr>
+          <tr><td class="label">Durum</td><td>{% if kural.etkin %}Etkin{% else %}Devre dışı{% endif %}</td></tr>
+        </table>
+        {% if ek_kurallar %}
+        <p class="para">Bu program için {{ kurallar|length }} izin kuralı var; Windows herhangi birine uyan bağlantıyı kabul eder. Öbür kurallar:</p>
+        <ul class="kisa">{% for k in ek_kurallar %}<li><b>{{ k.ad }}</b> — yerel port: {{ k.yerel_port }}; uzak adres (remoteip): {{ k.uzak_adres }}; profil: {{ k.profil }}; {% if k.etkin %}etkin{% else %}devre dışı{% endif %}{% if k.program_farkli %}; program: {{ k.program }}{% endif %}.</li>{% endfor %}</ul>
+        {% endif %}
+      {% else %}
+        <p class="para">Kural bu bilgisayarda okunamadı. Değerleri BTR elle yazar — uzak adres: ……………………………… · profil: ……………………</p>
+      {% endif %}
+      {% if maddeler %}
+        <table class="madde-tablosu">
+          {% for madde in maddeler %}<tr><td class="durum">{{ madde.durum }}</td><td>{{ madde.baslik }}. {{ madde.aciklama }}</td></tr>{% endfor %}
+        </table>
+      {% endif %}
+      <p class="para">Beş denetimden biri tutmazsa program katalogu okul ağına açmaz.</p>
+    {% else %}
+      <p class="para">Pardus'ta program güvenlik duvarı kuralı açmaz; paket yalnız hazır bir tanım bırakır.
+      {% if linux.arac %}Bu bilgisayardaki güvenlik duvarı: {{ linux.arac }} ({{ linux.etkin_metni }}). Kuralı açmak için BTR şu komutu çalıştırır:{% else %}Bu bilgisayarda ufw ya da firewalld bulunamadı.{% endif %}</p>
+      {% if linux.komut %}<div class="komut">{{ linux.komut }}</div>{% endif %}
+    {% endif %}
+    {% if tahta_bloklari %}<p class="para">Kurala eklenen tahta ağı blokları: {{ tahta_bloklari|join:", " }}.</p>{% endif %}
+  </div>
+
+  <div class="section flow">
+    <div class="section-title">NE SUNULUR, NE SUNULMAZ</div>
+    <ul class="kisa">
+      <li><b>Sunulur:</b> salt okur katalog — eserin künyesi (başlık, yazar, yayınevi, yıl, ISBN, konu, dil), sınıflama kodu ve yer numarası, bölüm, nüsha özeti (rafta, ödünçte, ödünç verilmez), yeni gelenler ve çok okunanlar (sayı gösterilmeden), kütüphane saatleri.</li>
+      <li><b>Sunulmaz:</b> üye listesi, üye adı ve sınıfı, kart no, kimin ödünç aldığı, iade tarihi, ödünç geçmişi, bağışçı, fiyat; yönetim ekranları, yedek, dışa aktarım ve belge üretimi.</li>
+      <li>Yalnız sayfa okuma (GET/HEAD) kabul edilir; veri toplayan form yoktur, çerez yazılmaz. Arama kaydedilmez; erişim günlüğü tutulmaz (istemci adresi ve arama terimi yazılmaz), yalnız kişisiz günlük sayılar bellekte durur.</li>
+      <li>Programın yönetim ekranları yalnız bu bilgisayarın kendi içinden açılır; ağa hiçbir durumda açılmaz.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <div class="section-title">KİŞİSEL VERİ</div>
+    <p class="para">Ağ Kataloğu kişisel veri göstermez ve işlemez. Katalog sayfaları veritabanına salt okur bir bağlantıyla ve yalnız künye ile nüsha özeti taşıyan görünümler üzerinden ulaşır; üye, ödünç ve edinim kayıtları bu görünümlere girmez.</p>
+  </div>
+
+  <div class="section flow">
+    <div class="section-title">PROGRAMIN GİDEN BAĞLANTILARI</div>
+    <p class="para">Program açılışta ağa çıkmaz, telemetri göndermez, dışarı kişisel veri çıkarmaz. Ağ Kataloğu hiçbir dış bağlantı açmaz. Dışarı istek yalnız kullanıcının başlattığı işlemlerde gider:</p>
+    <ul class="kisa">
+      <li><b>Güncelleme denetimi</b> — Ayarlar → Güncelleme'de düğmeye basılınca: {% for hedef in guncelleme_hedefleri %}{% if not forloop.first %}; {% endif %}{{ hedef }}{% endfor %}.</li>
+      {% if kunye_acik %}<li><b>ISBN ile künye getirme (açık)</b> — her sorguyu kullanıcı başlatır, dışarı yalnız kitabın ISBN'i gider: {% for hedef in kunye_hedefleri %}{% if not forloop.first %}; {% endif %}{{ hedef }}{% endfor %}.</li>{% endif %}
+    </ul>
+    {% if not kunye_acik %}<p class="para">ISBN ile künye getirme kapalıdır: giden bağlantı yalnız güncelleme denetimidir.</p>{% endif %}
+    <p class="para">BTR'nin sınaması için hazır komutlar (Windows PowerShell). Okul ağındaki başka bir bilgisayardan katalog erişimi:</p>
+    <div class="komut">{{ katalog_komutu }}</div>
+    <p class="para">Bu bilgisayardan dış adreslere erişim:</p>
+    <div class="komut">{% for komut in dis_komutlar %}{{ komut }}{% if not forloop.last %}
+{% endif %}{% endfor %}</div>
+  </div>
+
+  <div class="section flow">
+    <div class="section-title">MEVZUAT (BİLGİ VE SİSTEM GÜVENLİĞİ YÖNERGESİ)</div>
+    <p class="atif"><span class="no">Md. 5/11</span> <span class="alinti">“MEBNET ağı ve bu ağı kullanan her kullanıcı ve cihaz ile ilgili her türlü erişim, güvenlik ve yönetim politikaları Başkanlık tarafından belirlenir ve uygulanır.”</span> Program ağ politikasını değiştirmez. Ağ bölümleri arasında düzenleme gerekirse talep FATİH PYS üzerinden iletilir.</p>
+    <p class="atif"><span class="no">Md. 11/16</span> <span class="alinti">“Kurumsal ağ üzerindeki bilgisayarlara erişim hakkı, yetkisi olmayan kişilere verilemez.”</span> Ağ Kataloğu bilgisayara erişim vermez; yalnız salt okur katalog sayfaları sunar.</p>
+    <p class="atif"><span class="no">Md. 11/22</span> <span class="alinti">“Başkanlık MEBNET ağında erişime açılacak ve kapanacak portları belirleme ve düzenleme yetkisine sahiptir. Uzaktan erişim (rdp, ssh, telnet vb.), dosya-yazıcı paylaşımı gibi portlara ve uygulamalara erişim izni verilmez.”</span> Ağ Kataloğu uzaktan erişim ya da dosya-yazıcı paylaşımı değildir; okul ağı içinde TCP {{ port }} portundan sayfa sunar.</p>
+    <p class="atif"><span class="no">Md. 11/7</span> <span class="alinti">“Kurum ağına sistem yöneticisinin bilgisi dışında herhangi bir aktif ağ cihazı eklenemez.”</span> Program ağa cihaz eklemez; bilgisayarın ağda hizmet vermesi bu hükme ancak ihtiyatlı yorumla girer. Yönergede “sistem yöneticisi” (md. 4/1-s) Başkanlığın ve il ya da ilçe millî eğitim müdürlüğünün bilişim personelidir; okul BTR'si bu tanıma girmez. Gerekirse bu not ilçe millî eğitim müdürlüğüne yazılacak üst yazının eki olarak kullanılır.</p>
+    <p class="atif"><span class="no">Md. 11/20, 11/21 ve 11/25</span> Program kablosuz erişim noktası kurmaz; DHCP, DNS, vekil sunucu ya da NAT hizmeti vermez. Katalogda veri toplayan form yoktur.</p>
+    {% if kunye_acik %}
+    <p class="atif"><span class="no">Md. 11/12</span> <span class="alinti">“MEBNET ağında kategorisi olmayan ip adresi, içerik veya sitelere erişim izni verilmez. Erişim talepleri Yardım Masası Modülü (yardimmasasi.meb.gov.tr) üzerinden yapılır.”</span> Künye adresleri okul ağından açılmıyorsa talep bu modülden açılır.</p>
+    <p class="atif"><span class="no">Md. 11/19</span> <span class="alinti">“Bakanlık merkez ve taşra teşkilatında MEBNET ağında Başkanlık tarafından oluşturulan MEB Sertifikası kullanılır. MEB Sertifikası yüklü olmayan cihazların erişimine izin verilmez.”</span> Künye sorgusu güvenli bağlantıyı bilgisayarın sertifika deposuyla ve sistemin vekil sunucu ayarıyla kurar.</p>
+    {% endif %}
+  </div>
+
+  <table class="sig-grid">
+    <tr>
+      <td>
+        <div class="space"></div>
+        <div class="line"></div>
+        <div class="name">……………………………………</div>
+        <div class="role">Bilişim Teknolojileri Rehber Öğretmeni (BTR)</div>
+        <div class="tarih">Tarih: …… / …… / …………</div>
+      </td>
+      <td>
+        <div class="space"></div>
+        <div class="line"></div>
+        <div class="name">{% if principal_name %}{{ principal_name }}{% else %}……………………………………{% endif %}</div>
+        <div class="role">Okul Müdürü</div>
+        <div class="tarih">Tarih: …… / …… / …………</div>
+      </td>
+    </tr>
+  </table>
+  <div class="dipnot">Bu not okulda saklanır. Katalogun adresi, portu ya da güvenlik duvarı kuralı değişirse yeniden düzenlenir.</div>
+{% endblock %}

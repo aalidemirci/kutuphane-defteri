@@ -115,8 +115,14 @@ export default function HakkindaPage() {
                 Güncelleme'de “Şimdi denetle” düğmesine bastığınızda yayımlanan son sürümü soran
                 anonim denetim ve — ayarlardan açtıysanız — bir kitabın numarasından künye getiren
                 ISBN sorgusu. İkincisi varsayılan olarak kapalıdır ve dışarı yalnız kitabın
-                numarasını gönderir. Hiçbir durumda kişisel veri dışarı çıkmaz, ağ kataloğu ise
+                numarasını gönderir. Hiçbir durumda kişisel veri dışarı çıkmaz, Ağ Kataloğu ise
                 internete hiç çıkmaz.
+              </li>
+              <li>
+                Ağ Kataloğu (varsayılan olarak kapalı) okul ağındaki bilgisayarlara ve tahtalara
+                yalnız künye, raf yeri ve nüshanın rafta ya da ödünçte olduğu bilgisini salt okur
+                sunar. Kişisel veri göstermez: üye, ödünç alan, iade tarihi ve ödünç geçmişi hiçbir
+                sayfasında yoktur; arama kaydedilmez, erişim günlüğü tutulmaz.
               </li>
               <li>
                 Öğrenci, öğretmen ve diğer personelin ad-soyadları ile öğrencilerin okul numaraları

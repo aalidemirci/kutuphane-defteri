@@ -2043,6 +2043,289 @@ yazıcı ve gerçek okuyucu kanıtı F12'ye ertelendi (madde 9).
     barkod içeriğinde basılan numaraların aralığıyla). Biçim ön yüzün
     `lib/download.ts::dosyaAdi` çıktısıyla aynıdır.
 
+**F5 ekleri (24.09.2026).** F5'te tasarımdan bilinçli sapmalar ve tasarımda yazmayan
+kararlar. Üç iş kolunda (katalog uygulaması, masaüstü ve ağ, Ağ Doktoru ve belgeler)
+yapıldı. Kod kapısı (§14.1 F5 satırı) ve `KD_YAVAS=1 bash scripts/gates.sh` yeşildir
+(bütünleştirme, 24.09.2026; ağ kanıtları madde 18).
+Tahta, gerçek okul ağı ve Windows'a özgü davranışların saha kanıtı F12'ye ertelendi
+(madde 16).
+
+1. **§4.1, §5.10-3 — şablon motoru TEMBEL yüklenir.** `django.template` paketinin
+   kendi başlangıç zinciri (`template.autoreload` → `backends.django` →
+   `core.checks` → `checks.database`) `django.db` ve `django.db.utils` modüllerini
+   yükler. Motor modül düzeyinde kurulsaydı §5.10-3 düşerdi; ilk sayfa üretiminde
+   kurulur ve `katalog.app` importu temiz kalır. Gerçek sayfalar üreten bir alt süreç
+   testi yalnız bu iki modüle izin verir: `django.db.models`, `django.db.backends`,
+   `django.urls`, `django.http`, `apps`, `config` ve `rest_framework` yüklenmez;
+   bağlantı ve ORM kullanılmaz. Değişmezin anlamı "Django'nun veri katmanı
+   KULLANILMAZ"dır.
+2. **§5.3 — tek örnek ve katlama.** `katalog.app.application` süreç içi tek örnektir;
+   `KutuphaneConfig.ready()` onu veriye bağlar (`ag_katalogu.varsayilan_katalogu_kur`),
+   DB yolu her istekte ayardan okunur. Katalog `apps.*`'ı içe aktaramadığı için TR
+   arama katlaması ve sıralama anahtarı `KatalogKurulumu` ile dışarıdan verilir; tek
+   katlama kaynağı (`apps/kutuphane/keys.py`) korunur. Test veritabanı BÜTÜN backend
+   testleri için dosya tabanlıdır (`TEST.NAME` küresel bir ayardır).
+3. **§5.1 — görünürlük kuralları.** Nüsha durumunda BEYAZ LİSTE vardır (Rafta,
+   Ödünçte, Sınıf kitaplığında, Onarımda); ileride eklenecek durum kendiliğinden
+   görünmez. "Ödünç verilmez" türetimi `is_reference OR is_out_of_print OR tür ∈
+   {PERIODICAL, EBOOK, EDATABASE}`'tir (`is_loanable` ve `LOANABLE_Q` ile parite
+   testli). Eser en az bir görünür nüshası varsa görünür; nüshasız eserlerden yalnız
+   dijital kaynaklar ve süreli yayınlar listelenir (bütün nüshası elden çıkmış kitap
+   "0 nüsha" diye durmaz). `IN_REPAIR` sözlüğe göre **Onarımda** yazılır; §5.1'deki
+   "Geçici olarak kullanım dışı" sözlükte "kullanılmaz"dır.
+4. **§5.4 — yol tablosu ve doğrulama.** §5.4'e ek yollar: `/katalog.css` (CSP
+   `style-src 'self'` gömülü stili ayrı yoldan ister), `/saglik` (F0), `/eserler`
+   ve `/yazarlar` (harf seçimi), `/konular/<harf>` (Md. 11/1'in konu dizini;
+   `/konular` DOS ana sınıflarıdır). Arama metni 100 karakteri aşarsa reddedilmez,
+   kırpılır ve sayfada not çıkar; `sayfa` rakam değilse 404, rakamsa kırpılır. Bakım
+   503'ü `/saglik` ve `/katalog.css` dahil bütün yollara `Retry-After: 60` ile uygulanır.
+5. **§5.3 — `kd_katalog_populer`.** (eser, pencere, sıra) dışında `pencere_turu`
+   (DONEM/AY), `hesaplanma` ve `dondu` alanları vardır: kapanmış pencere dondurulur,
+   E12 afişinin penceresi aydır. Sayı alanı yoktur. Yazıcı gün değişimi kapısına
+   `KutuphaneConfig.ready()`'de "cok-okunanlar" adıyla kaydolur (bakımda ya da hatada
+   bir saat sonra yeniden denenir); gerçek hesap ve §5.10-12 F10'dadır.
+6. **§5.2, §6.2 — `KatalogAyari`.** Alanlar: `acik`, `port`, `dinleme_kipi`
+   (`ALL`/`SELECTED`), `secili_ip`, `son_afis_ip`, `uyku_engelleme`, `vitrin_acik`,
+   `konular_acik`, `tahta_cidrleri`; kütüphane saatleri `SchoolConfig`'tedir ama aynı
+   servisten yazılır. Servis `update_katalog_ayari(*, sistem_yazimi=False, **alanlar)`
+   yalnız yönetici kipinde yazar; `ayar_degisince(dinleyici)` kalıcılaşan ayarı
+   masaüstü denetçisine iletir. Tahta ağı blokları özel ve en geniş `/16`'dır.
+7. **§5.7 — denetim geçmezse hiç dinlemez.** Beş madde tutmazsa ya da denetim
+   okunamazsa katalog okul ağında dinlemediği gibi `127.0.0.1`'e de düşmez (durum
+   "Güvenlik duvarı izni yok"). Loopback'e düşmek TB12 açığını yeniden açardı ve
+   program içi bağlantılar LAN adresiyle kurulduğu için değeri yoktu. 4. madde:
+   kural profili etkin ağ profilini kapsamazsa KALDI; uzak adres "her yer" ise UYARI
+   (dinlemeyi engellemez). `--autotest` ayardan ve duvardan bağımsız olarak katalogu
+   yalnız loopback'te kaldırıp öz sınar.
+8. **§5.2 — seçili IP kaybolursa dar yorum.** Bilgisayarın TEK aday adresi varsa
+   katalog o adreste açılır ve uyarır; birden çok aday varsa açılmaz, Ağ Doktoru
+   seçim ister. Arayüz kimliği tutulmadığı için katalog sessizce yanlış ağa (ör.
+   öğrenci erişimli ağa) açılabilirdi. Port doluysa denetçi 5 dakika boyunca 10 sn
+   arayla kendiliğinden yeniden dener ("Port bekleniyor").
+9. **§4.2-4, §5.10-18 — `app/quit/`.** Parolasız görevli isteği 403
+   `cikis_parolasi_gerekli` (403 `kip_yetkisiz` değil: ön yüz o kodu "kip değişti"
+   diye okur), yanlış parola 400, masaüstü kancası yoksa 503 `cikis_kullanilamiyor`,
+   başarı 202. Kilit ve yeniden başlat kapıları bu tek yolu tam eşleşmeyle geçirir.
+   Arayüzde her durumda üst çubukta "Çık" vardır; onay diyaloğunun başlığı "Programdan
+   çıkılsın mı?", görevli kipinde "Programdan çık" (parola formu). "Programı kapatıp
+   yeniden açın" ekranında "Programdan çık" düğmesi vardır. Tepsideki görevli kipi
+   Çık'ı pencereyi öne getirip arayüze `kd:cik-iste` olayını gönderir.
+10. **T16 — kayıt noktası `apps/okul/masaustu_kanca.py`.** Katalog denetçisi, çıkış
+    kancası ve backend'in gün değişimi işleri buraya kaydolur. `live_restore`
+    takastan önce katalogu bakım kapısına alır, takas başarısızsa geri açar. Yeni iş
+    parçacığı adları: `kd-tepsi`, `kd-cikis`, `kd-katalog-dene`, `kd-katalog-ayar`,
+    `kd-katalog-ac`, `kd-katalog-kapat`. Yeni kimlik adları: zamanlanmış görev
+    "Kutuphane Defteri", HKLM değeri `SOFTWARE\KutuphaneDefteri\KatalogPortu` (DWORD).
+11. **Teknik borç.** TB10 kararı: Linux'ta katalog soketine `SO_REUSEADDR` konur
+    (Linux'ta port paylaşımı değildir). TB11, TB12, TB13, TB14 kapandı; TB2
+    uygulandı (kabul anında adres başına 20 eşzamanlı bağlantı), kalan riski
+    kütüktedir.
+12. **§5.9 — Ağ Doktoru uçları** (`library/network-catalog/…`, hepsi yalnız yönetici
+    kipinde, izin listesinde değil): `status/` (durum, adres ve QR modülleri, kişisiz
+    günlük sayılar, son hata), `control/` (aç/kapat/yeniden başlat), `firewall/`,
+    `firewall-rule/` (UAC), `interfaces/`, `listener-test/`, `port/`, `poster/`,
+    `info-note/`, `bookmarks/`, `pys-text/`. Denetçi yokken (geliştirme sunucusu)
+    durum okunur, eylemler 503 `masaustu_yok` döner. Ağ Doktoru menüde yoktur;
+    **Ayarlar → Ağ Kataloğu** sekmesinden (dokuzuncu sekme) açılır.
+13. **§5.2, §5.7 — port değişikliği sırası.** Windows'ta ÖNCE UAC yardımcısı kuralı
+    ve HKLM değerini yeni portla yazar, ancak başarırsa port ayarı kaydedilir; UAC
+    reddedilirse port değişmez (409 `kural_yazilamadi`). Bu yüzden Windows'ta ayar
+    ucu (`settings/` PUT) portu değiştirmez (400). Pardus'ta port doğrudan yazılır,
+    Ağ Doktoru yeni komutu gösterir.
+14. **§5.6, §5.9 — belgeler.** Afiş POST'tur, basılınca adres `son_afis_ip` olarak
+    kaydedilir (IP değişimi uyarısının karşılaştırma değeri). Adresin punto boyu
+    DejaVu ölçüleriyle en uzun adresi de tek satıra sığdırır; afiş tek sayfadır.
+    Bilgi notu en uzun gerçekçi veride en çok iki sayfadır, adres bulunamazsa da
+    basılır (adres satırı elle doldurulur), kuraldaki değerleri denetimin GÜNCEL
+    okumasından alır; Yönerge alıntıları depodaki metinle birebir testlidir ve
+    §5.9 listesine 11/20, 11/21, 11/25 satırı eklendi (atıf haritası §3.3'teki
+    satır). Yer imi dosyaları tek arşivdir (Chromium `ManagedBookmarks` politikası
+    ve `.desktop` başlatıcı tahta kipiyle, Windows `.url` iki biçimde, BENIOKU).
+    PYS talep metni kanalı **FATİH PYS** diye anar; açılımı yazılmaz. Belgelerde
+    ve ekranlarda "okul bilişim sorumlusu" yerine sözlüğün **BTR**'si kullanılır.
+15. **Açık karar — güncelleme denetiminin hedefi.** T11 ve CLAUDE.md §3 güncelleme
+    denetimini `indir.okulapp.org` manifestine bağlar; kod bugün GitHub'a
+    (`api.github.com`, indirme `github.com`) gider (`apps/okul/services/updates.py`).
+    Bilgi notu hedefleri kaynak koddaki adresten türetir, yani notta yazan her zaman
+    programın gerçekten gittiği adrestir. Denetimin manifeste taşınması ya da T11
+    metninin düzeltilmesi kullanıcı kararıdır.
+16. **F5 eki → F12 (saha).** Tahtadan erişim ve ekran klavyesiz gezinme (§5.10-15),
+    eski Chromium ve Firefox ESR görünümü, güvenlik duvarı denetiminin yönetici
+    olmayan masa hesabında çalışması, Windows'ta `SO_EXCLUSIVEADDRUSE` ile tüm
+    arayüzde dinleme, `SetThreadExecutionState` ve Linux'ta `systemd-inhibit`,
+    pystray menü yenilemesi, UAC yardımcısı, kurucunun güvenlik duvarı görevi ve
+    zamanlanmış görevin masa hesabına yazılması (`packaging/windows/NOTLAR.md`
+    W15-W20).
+17. **Kılavuz, sözlük ve kurulum belgesi.** Kılavuzun "Ağ Kataloğu" bölümü
+    kullanıcının soru sırasıyla yazıldı: ne olduğu → neyi gösterip neyi asla
+    göstermediği (§5.1 tablosu; "Ödünçte" görünür, kimde olduğu görünmez) → BTR'yle
+    yapılacak beş iş (ağ keşfi, sabit adres, gerekirse PYS talebi, bilgi notu, okul
+    ağından erişim sınaması — S1, S2, S3, S6, S15) → "Ağ Kataloğunu Açmadan Önce"
+    kartının adımları → Ağ Doktoru'nun beş kartı ve durum rozetleri → afiş ve yer
+    imleri (ETAP'ın öğretmen başına hesabı, politika dosyası) → tahta kipi → adres
+    değişirse → port → Pardus. "Tepsi, Çıkış ve Gün Değişimi" bölümü tepsiden
+    seçilen Çık'ın yönetici kipinde ve kilitliyken ONAY SORMADAN kapattığını
+    (üst çubuktaki sorar), kurucunun programı kendisi kapattığını, kurucu
+    görevlerinin gerçek adlarını ve yedeğin kilitliyken de alındığını yazar. Çok
+    okunanlar listesinin bu sürümde boş olduğu (ödünç verisi yok, madde 5)
+    kılavuzda açıkça söylenir. Yeni mevzuat atfı: **Yönerge 11/6** (IP ve MAC
+    adresini yalnız yetkilendirilmiş kişiler değiştirir — kütüphane yöneticisi
+    adresi elle değiştirmez; atıf haritasına satır eklendi), kılavuza 11/12 ve
+    11/22 (ilk cümle) alıntıları; hepsi `docs/mevzuat/`'taki metinle birebir
+    testlidir. F1 ekleri 9'un `docs/kurulum.md`'deki "sonraki sürümde"
+    işaretlerinden gün değişimi kapısı ve parolalı Çık kalktı; kütüphane
+    aydınlatma metni (E13) F6'da kalır. Sözlük §4.9'a çıkış, tepsi ve kurucu
+    adları ile Ağ Kataloğunun kendi sayfalarının adları işlendi.
+18. **Kod kapısının ağ kanıtları (bütünleştirme).** İki Docker kabı aynı compose
+    ağında iki ayrı bilgisayar yerine geçer (`scripts/ag_katalogu_provasi.sh`). Kap A
+    gerçek masaüstü yolunu koşar: göç, yönetici parolası, 10.000 eser ve 20.000
+    nüshalık sentetik katalog, oturum belirteçli yönetim sunucusu `127.0.0.1`'de,
+    "Aç" ayarı ve `KatalogKontrol` ile Ağ Kataloğu tüm arayüzlerde (`KD_DEBUG=0`).
+    **İkinci bilgisayardan arama:** kap B'nin "ŞİİR" araması 200 döner; yanıt
+    imzalı, CSP'li ve çerezsizdir, TR katlamayla "şiir" konulu eseri bulur. Katalog
+    portunda yönetim yolu 404'tür, A'nın yönetim portuna ağdan bağlantı reddedilir,
+    A isteği B'nin adresinden görür. **50 istemcili yük:** B'de 50 eşzamanlı
+    istemci, her biri ayrı kaynak IP'den gelir (okul ağında her tahta ayrı adrestir;
+    hız sınırı ve bağlantı sınırı gerçek dağılımla sınanır). İstemciler her istekte
+    yeni bağlantıyla karışık katalog sayfaları çeker (arama, sonuç sayfaları, eser,
+    harf dizinleri, konular). Aynı anda A'da ayrı bir süreç yönetim API'sini yoklar:
+    durum, kip, eser araması ve 10.000 eserde TR sıralı sayfalı liste. Ölçüm
+    (24.09.2026, geliştirme makinesi; istemci ve sunucu aynı Docker sanal
+    makinesinde; 30 sn):
+
+    | Senaryo | Ağ Kataloğu | Yönetim API'si |
+    |---|---|---|
+    | Yüksüz taban | — | medyan 11 ms, p95 72 ms, hata 0 |
+    | 50 istemci, düşünme süresiz (en kötü durum) | 4.462 istek (147/sn), hepsi 200; medyan 334 ms, p95 416 ms, en uzun 515 ms; hata 0, hız sınırı 0, reddedilen bağlantı 0 | medyan 56 ms, p95 158 ms, hata 0 |
+    | 50 istemci, sayfa başına ortalama 2 sn düşünme | 770 istek (23/sn), hepsi 200; medyan 14 ms, p95 125 ms | medyan 18 ms, p95 76 ms, hata 0 |
+
+    Düşünme süresiz yükte katalog gecikmesinin çoğu 4 iş parçacıklı havuzun
+    kuyruğudur (50 istemci / 147 istek/sn ≈ 0,34 sn). Yönetim sunucusu ayrı havuzda
+    olduğu için (T3) en ağır yönetim isteği yük altında yaklaşık iki kat yavaşlar ama
+    200 ms'nin altında kalır. Betikteki eşikler: katalogda hata ve 429 sıfır, katalog
+    p95 < 2 sn, yönetim p95 < 500 ms. Prova gecelik kapıda koşar (`KD_YAVAS=1
+    bash scripts/gates.sh`); aynı değişken artık `yavas` işaretli BÜTÜN ölçüm
+    testlerini seçer. Bu değişiklikten önce F5'in katalog ölçümü
+    (`katalog/tests/test_olcum.py`) gecelik kapıya girmiyordu. Gerçek okul ağı,
+    tahta ve Windows paketiyle aynı prova F12'dedir. Kalan risk TB2'dedir: tahtalar
+    kütüphane bilgisayarına tek bir NAT adresinden ulaşırsa adres başına hız sınırı
+    (40 istek sıçraması, saniyede 4) ve 20 bağlantı sınırı bütün sınıfı birlikte
+    sınırlar.
+
+*Düzeltme turu (24.09.2026).* Bütünleştirme sonrası denetimin bulguları yeniden
+doğrulandı; gerçek olanlar kök nedeninden düzeltildi ve her biri bir testle
+kilitlendi (madde 19-30). Kapı yeniden yeşildir.
+
+19. **§5.7 — 4. madde bütün izin kurallarının BİRLEŞİMİDİR.** Denetim yalnız ilk
+    eşleşen kurala bakıyordu; PowerShell kuralları hashtable'dan topladığı için sıra
+    belirsizdi ve dar kural önce gelirse aynı exe'ye yazılmış geniş (Any) ikinci
+    kural görünmüyordu. Kurallar önce sabit sıraya dizilir (programın kendi adlı
+    kuralı önde). Kapsam: portu kapsayan kuralların profil birleşimi etkin profili
+    kapsamalı; etkin profile uyan kuralların uzak adresleri birleştirilir, biri
+    "her yer" ise UYARI ve kuralın adı yazılır. Geniş kural programın kendi kuralı
+    değilse açıklama "“Kuralı ekle/güncelle” yalnız programın kendi kuralını yazar;
+    bu kuralı BTR … daraltır ya da kaldırır" der. Denetim `kurallar` listesini de
+    döndürür; Ağ Doktoru her kuralı ayrı gösterir, bilgi notu ilk kuralı tam
+    tabloyla, öbürlerini kısa satırla basar (sayfa bütçesi iki sayfa, iki kuralla
+    testli). UAC yardımcısı öbür izin kurallarını SİLMEZ: BTR'nin ya da grup
+    ilkesinin kuralı olabilir, karar BTR'nindir.
+20. **§5.3 — authorizer önekle değil TAM ad kümesiyle karar verir.** Görünüm içi
+    okumada 5. argüman `{kd_katalog_eser, kd_katalog_nusha, kd_katalog_okul}`
+    kümesinde, üst düzey okumada ad bu küme + `kd_katalog_populer` içinde
+    olmalıdır (`katalog/veri.py::GORUNUMLER`, `UST_DUZEY_OKUNABILIR`; küme görünüm
+    tanımlarıyla eşitlik testli). İleride `kd_katalog_` önekiyle eklenecek bir tablo
+    kendiliğinden ağa açılmaz; `WITH kd_katalog_x AS (…)` gibi önekli CTE reddedilir.
+    **Bilinen sınır:** SQLite 5. argümanda görünümü aynı adlı CTE'den ayırmaz;
+    görünümle aynı adı taşıyan bir CTE izin listesindeki çiftleri görünüm
+    süzgeçleri olmadan okuyabilir (barkod, kişi ve ödünç yine reddedilir). Katalogda
+    keyfi SQL çalışmadığı için sömürülemez: güvencenin dayanağı katalog SQL'inin
+    SABİT olmasıdır; kaynak taraması testi katalog paketinde `WITH` olmadığını ve
+    okunan adların kümede olduğunu sınar (TB31). §5.3 tablosunun "`kd_katalog_` ile
+    başlıyor" satırları bu dar anlamda okunur.
+21. **T9, §5.2 — saatlik damgasız işler.** Gün değişimi kapısına damga yazmayan,
+    her tikte koşan işler eklendi (`saatlik_kaydet`). `KatalogKontrol.saatlik_denetle`
+    (1) seçili IP kipinde dinlenen adres bu bilgisayardan kalktıysa dinleyiciyi
+    yeniden kurar (DHCP gün içinde adres değiştirirse katalog ertesi güne dek
+    kaybolan adreste "açık" görünmez), (2) geçici hatayla kapalı kalan katalogu
+    yeniden dener (madde 23). Arayüz listesi okunamadıysa çalışan dinleyiciye
+    dokunulmaz. Afiş/yer imi uyarısı günlük kalır.
+22. **§5.2 — F5 ekleri 8'e ek: liste okunamazsa tek aday kuralı yok.** Arayüz
+    listesi okunamadığında (yedek yol yalnız varsayılan adresi bilir) seçili IP
+    belki hâlâ bu bilgisayardadır ve "tek aday" başka bir ağdır; katalog açılmaz
+    (`KatalogArayuzOkunamadiError`, geçici hata), ileti "ağ bağlantıları okunamadı"
+    der.
+23. **§5.7 — okunamayan denetim kendiliğinden yeniden denenir.** Fail-closed
+    değişmedi: güvenlik duvarı denetimi okunamazsa (oturum açılışının yükünde
+    PowerShell zaman aşımı) katalog dinlemez. Ama 60 sn arayla 5 kez, sonra saatlik
+    tikte birer kez yeniden denenir; kullanıcı eylemi sayacı sıfırlar. Kuralın
+    gerçekten tutmadığı (KALDI) durum yeniden denenmez.
+24. **Kapatılabilirlik ve ilk açılış kartı.** Ayar açık ama katalog açılamamışsa
+    (güvenlik duvarı izni yok, açılamadı, port bekleniyor) Ayarlar → Ağ Kataloğu,
+    Ağ Doktoru ve tepsi "Ağ Kataloğunu kapat" (+ "Yeniden başlat") sunar
+    (`KatalogKontrol.kapatilabilir_mi`, tepside `katalog_kapatilabilir`); ayar açık
+    kaldıkça program her açılışta yeniden dener, kullanıcı vazgeçebilmelidir. "Ağ
+    Kataloğunu Açmadan Önce" kartı yalnız afiş hiç basılmamışken görünür, katalog
+    açıldıktan sonra da afiş basılana dek kalır: 4. adım açıkken "tamam", açılamadıysa
+    nedenin nerede yazdığını söyler; 5. adım (afiş, yer imleri) ekranda kalır.
+25. **§5.8 — "bu bilgisayar öğrenci erişimli ağda".** Aday adreslerden biri
+    Ayarlar'daki tahta ağı bloklarının içindeyse Ağ Doktoru'nun uyarılarına ve
+    durum uyarılarına "Bu bilgisayar öğrenci erişimli ağda…" satırı, arayüz
+    tablosuna "Tahta ağı (öğrenci erişimli)" notu girer (KM-19). Tahta blokları
+    girilmemişse uyarı çıkamaz; bu bilinçlidir (ağın niteliğini BTR söyler).
+26. **§5.2 — varsayılan rota RouteMetric + InterfaceMetric toplamıyla seçilir.**
+    Windows'un kendi kuralıdır; DHCP rotalarında RouteMetric çoğu zaman 0'dır ve
+    kablolu/kablosuz tercihi arayüz metriğindedir. Eşitlikte küçük arayüz indeksi.
+27. **§5.7 Pardus — komut KAYNAK SINIRLIDIR.** `ufw allow <profil>` ve kaynaksız
+    `--add-service` katalogu MEB WAN'ındaki başka kurumlara da açardı (GA-6). Komut
+    bu bilgisayarın yerel alt ağlarından (`ip -j`) ve tahta ağı bloklarından
+    üretilir, her blok ayrı satırdır: ufw'de `allow from <blok> to any app 'Kutuphane
+    Defteri'`, firewalld'de zengin kural (rich rule). Blok bilinmiyorsa
+    `<okul-agi-blogu>` yer tutucusu yazılır; /16'dan geniş blok komuta girmez.
+    Tanım dosyası yoksa (taşınabilir arşiv) ya da port değiştiyse port temelli
+    komut verilir. Paketteki ufw profil açıklaması, `docs/kurulum.md` §8.5 ve
+    `docs/ag-kurulumu.md` §3 aynı biçime getirildi. **Açık karar:** Pardus'un
+    taşınabilir arşivinde katalog açılır; §5.2'deki "taşınabilir pakette sunulmaz"
+    gerekçesi (kural program yoluna bağlı, GA-5) Windows'a özgüdür. Belgeler
+    "Windows'un taşınabilir paketinde sunulmaz" diye daraltıldı; Linux taşınabilir
+    arşivde de kapatılması kullanıcı kararıdır.
+28. **Sağlamlık.** `powershell.ps_dizesi` PowerShell'in tek tırnak saydığı beş
+    karakterin hepsini ikiler (`'`, U+2018, U+2019, U+201A, U+201B; kural
+    `EscapeSingleQuotedStringContent` ile aynı, Windows PowerShell 5.1'de
+    denendi): "Okul’un" gibi bir yol yükseltilmiş kural betiğinde komut olarak
+    çalışamaz. PyInstaller kancası (`rthook_kd.py`) yükseltilmiş yardımcı kipte
+    fontconfig önbelleği yazmaz (BTR'nin profiline dokunulmaz). Linux uyku engeli
+    `systemd-inhibit … cat` ile programa ait borudan okur: program düzensiz biterse
+    boru kapanır ve engel kalkar (`sleep infinity` yetim kalırdı). Oturum içi yedek
+    rotasyonu saat sıçramasına karşı çapalıdır: rotasyon tarihi `min(bugün, çapa +
+    uyku dahil açık kalma saatiyle geçen gün + 1)`; saat 14 günden fazla ileri
+    sıçrarsa geçmiş yedekler silinmez. Bulgunun önerdiği "en yeni N yedeği her
+    durumda tut" alınmadı: TB8 ve §6.4'ün "günlük yedeklerde en çok 14 gün" sözünü
+    (aydınlatma metni) bozardı. Uyku dahil açık kalma saati Windows'ta
+    `GetTickCount64`, Linux'ta `CLOCK_BOOTTIME`'dır; ikisi de F12'de sahada
+    doğrulanır.
+29. **Inno — `[Registry]` yerleşimi.** `[Registry]` bölümü WebView2 `Source:`
+    satırının önüne girmişti; sürüm derlemesi WebView2 kurucusunu indirdiğinde
+    ISCC "Unrecognized parameter name Source" ile kırılıyordu (yerel derleme
+    yalnız `#else` dalını görmüştü). WebView2 bloğu `[Files]`'ın sonuna,
+    `[Registry]` ondan sonraya alındı; iki dal da yerel ISCC 6 ile `/O-`
+    derlendi. Bölüm yerleşimini paket testi sınar.
+30. **Belgeler ve sözlük.** Bilgi notu: künye bayrağı açık ama iki kaynak da
+    kapalıysa program dışarı künye isteği atmaz, not da "kapalı" gibi yazar
+    (hedef satırı ve 11/12-11/19 atıfları basılmaz); güncelleme hedeflerine
+    indirmenin yönlendiği `*.githubusercontent.com` ve `Test-NetConnection
+    github.com -Port 443` eklendi (F5 ekleri 15'in açık kararı sürüyor); port
+    gerekçesinin son cümlesi platforma göredir (Pardus'ta "kuralı da günceller"
+    yazılmaz). PYS talep metninde BTR ilk geçişte açılır. Yer imi BENIOKU'su
+    Chromium'un yer imi çubuğunu varsayılan olarak yalnız yeni sekmede gösterdiğini
+    söyler; `BookmarkBarEnabled` okulun kararına bırakıldı, başka bir
+    `ManagedBookmarks` dosyasıyla birleştirme notu eklendi. Sözlük: güvenlik duvarı
+    madde açıklamalarında "okul bilişim sorumlusu" yerine BTR, düğme adı birebir
+    "Kuralı ekle/güncelle"; katalog "Son hata" iletilerinde "sunucu" yerine
+    "dinleyici"; Ağ Doktoru'ndaki kural profili Türkçe ("Etki alanı, Özel,
+    Genel"). Masaüstü modüllerinin kullanıcı metinleri bir sözlük taramasıyla
+    korunur (`desktop/tests/test_sozluk_metinleri.py`). Kılavuz: geri yüklemeden
+    sonra katalogun kalkması yedekteki ayara bağlıdır.
+
 ### 14.2 Saha hazırlık hattı (kod dışı — F0 ile başlar)
 
 | # | İş | Kim |

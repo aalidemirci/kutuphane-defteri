@@ -19,14 +19,15 @@ on:
   push:
     branches: [main]
   pull_request:
-  # Gecelik koşu ölçüm kapısını da (F3: 10.000 satır, süre + tepe bellek)
-  # işletir; her PR'da koşmak zinciri dakikalarca uzatırdı.
+  # Gecelik koşu ölçüm kapısını (F3: 10.000 satır, süre + tepe bellek; F5: 10.000
+  # eserde katalog sayfaları) ve ağ provasını (F5: ikinci bilgisayardan arama,
+  # 50 istemcili yük) da işletir; her PR'da koşmak zinciri dakikalarca uzatırdı.
   schedule:
     - cron: "0 1 * * *"
   workflow_dispatch:
     inputs:
       yavas:
-        description: "Ölçüm kapısını da koş (10.000 satırlık sentetik dosya)"
+        description: "Ölçüm kapısını ve ağ provasını da koş (10.000 kayıt, 50 istemci)"
         type: boolean
         default: false
 

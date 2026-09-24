@@ -10,6 +10,19 @@
 // katalog kitap kitap kurulur) ve İçe Aktarma (Excel şablonundan sonra). Hızlı
 // Kayıt bölümü iki geçiş yolunu ("önce liste" / "önce etiket") karşılaştırarak
 // açar; testi hangisinin asıl yol olduğunu da kilitler.
+// F5 bölümleri: Tepsi, Çıkış ve Gün Değişimi (yedekten sonra) ve Ağ Kataloğu.
+// Ekran adları sabitlerden (AG_DOKTORU_BASLIGI, DINLEME_KIPI_TR,
+// KATALOG_DURUMU_TR, MADDE_DURUMU_TR, AG_PROFILI_TR, COPY_STATUS_TR, bilgi notu
+// belge adı) doğrulanır. Python ve Inno kaynağındaki adlar buradan okunamaz;
+// birebir kopyalandı ve kaynakları testin yanında yazılı: tepsi menüsü
+// (desktop/tray.py), tepsi durum satırı ve adres uyarısı
+// (desktop/katalog_kontrol.py), kurucu görevleri (kutuphane-defteri.iss),
+// kataloğun kendi üst menüsü (backend/katalog/sablonlar/taban.html). Kilitlenenler:
+// Ağ Kataloğunun neyi gösterip neyi ASLA göstermediği (kişisel veri yok),
+// BTR'yle yapılacak beş iş, Yönerge 11/6, 11/12, 11/22 alıntıları, açma
+// kartının adımları, Ağ Doktoru'nun beş kartı, ETAP'ın öğretmen başına hesabı
+// (politika dosyası), tahta kipi, adres değişince yapılacaklar, görevli
+// kipinde Çık, gün değişimi ve uyku.
 // F4 bölümü: Etiketler (Hızlı Kayıt'ın ardında). Sekme, düğme ve seçenek adları
 // ekran sabitlerinden (ETIKETLER_SEKMELERI, ETIKET_YOLLARI, ETIKET_ICERIGI_TR,
 // BASIM_SIRASI_TR, PARTI_DURUMU_TR) doğrulanır; sabiti olmayan düğme ve alan
@@ -38,6 +51,16 @@ import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
+import {
+  AG_DOKTORU_ADRESI,
+  AG_DOKTORU_BASLIGI,
+  AG_KATALOGU_SEKMESI,
+  AG_PROFILI_TR,
+  BILGI_NOTU_BELGE_ADI,
+  DINLEME_KIPI_TR,
+  KATALOG_DURUMU_TR,
+  MADDE_DURUMU_TR,
+} from "../agkatalogu/api";
 import { DOSYA_KAYIP_BASLIGI } from "../guvenlik/metinler";
 import {
   GOREVLI_DOGRULAMA_BITIR,
@@ -61,6 +84,7 @@ import {
   AKTARIM_KOVASI_TR,
   CLASSIFICATION_SOURCE_TR,
   COMMISSION_DECISION_TYPE_TR,
+  COPY_STATUS_TR,
   KATALOG_SABLONU_BELGE_ADI,
   KUNYE_LISTESI_BELGE_ADI,
   RESOURCE_TYPE_TR,
@@ -101,6 +125,7 @@ const BEKLENEN_BASLIKLAR = [
   "Katalog Excel Şablonu",
   "İçe Aktarma",
   "Yedek ve Güvenlik Dosyası",
+  "Tepsi, Çıkış ve Gün Değişimi",
   "Ağ Kataloğu",
 ];
 
@@ -183,6 +208,12 @@ describe("KilavuzPage — kabuk ve bölümler", () => {
     expect(new Set(hedef("Ayarlar → Okul Bilgileri"))).toEqual(new Set(["/ayarlar?tab=okul"]));
     expect(hedef("Ayarlar → Şubeler")).toEqual(["/ayarlar?tab=subeler"]);
     expect(hedef("Ayarlar → Bölümler")).toEqual(["/ayarlar?tab=bolumler"]);
+    // F5: Ağ Kataloğu sekmesine birden çok yerden (katalog sayfaları, açma adımları,
+    // uyku) bağlanılır; Ağ Doktoru ekranı.
+    expect(new Set(hedef("Ayarlar → Ağ Kataloğu"))).toEqual(
+      new Set([`/ayarlar?tab=${AG_KATALOGU_SEKMESI}`]),
+    );
+    expect(hedef(AG_DOKTORU_BASLIGI)).toEqual([AG_DOKTORU_ADRESI]);
     // Kütüphane Politikası'na iki bölümden bağlanılır (katalog + hızlı kayıt).
     expect(new Set(hedef("Ayarlar → Kütüphane Politikası"))).toEqual(
       new Set(["/ayarlar?tab=politika"]),
@@ -919,9 +950,14 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     const metin = bolumMetni("yedek");
 
     expect(metin).toContain(`“${DOSYA_KAYIP_BASLIGI}” ekranını`);
-    // Yedek AÇILIŞTA alınır; tepside açık kalan programda gün değişimi kapısı
-    // henüz yoktur (desktop/main.py: daily_backup yalnız açılış zincirinde).
-    expect(metin).toContain("Yedek açılışa bağlıdır");
+    // F5: gün değişimi kapısı (desktop/gunluk.py) tepside açık kalan programda da
+    // her gün yedek alır; "yedek açılışa bağlıdır" uyarısı kalktı.
+    expect(metin).toContain(
+      "Program tepside günlerce açık kalsa da gün değişince o günün yedeğini",
+    );
+    expect(metin).not.toContain("açılışa bağlıdır");
+    expect(metin).toContain("“Programdan çık” düğmesiyle");
+    expect(metin).toContain("Ağ Kataloğu açıksa geri yükleme sırasında kapanır");
     for (const ad of [
       "“Şifreli Veritabanı Yedeği”",
       "“Şifreli yedeği indir”",
@@ -945,15 +981,258 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     expect(metin).toContain("eline geçmiş bir anahtara karşı koruma değildir");
   });
 
-  it("Ağ Kataloğu: kişisel veri göstermez, varsayılan kapalı, BTR'nin bilgisi alınır", () => {
+  it("Ağ Kataloğu: ne olduğu, salt okur, varsayılan kapalı, BTR'nin bilgisi alınır", () => {
     renderPage();
     const metin = bolumMetni("ag-katalogu");
 
-    expect(metin).toContain("Kişisel veri göstermez");
-    expect(metin).toContain("Varsayılan olarak kapalıdır");
+    expect(metin).toContain("tahtaya ya da öğretmen bilgisayarına bir şey kurulmaz");
+    expect(metin).toContain("Katalog yalnız okunur: oradan ödünç alınamaz");
+    expect(metin).toContain("Varsayılan olarak kapalıdır ve yalnız yönetici kipinde açılır");
     // "İzin" değil "bilgi" (sözlük: BTR notu bir bilgi notudur).
     expect(metin).toContain("bilgisi alınır");
     expect(metin).not.toMatch(/izni(ni)? alınır/);
+    expect(metin).toContain("Bu bir izin belgesi değil, bilgi notudur.");
+  });
+
+  // Tasarım §5.1 "Görünür / Asla görünmez" tablosu; nüsha durumları katalog
+  // ekranının sabitinden (sözlük §1 "Nüsha durumları" satırıyla birebir).
+  it("Ağ Kataloğu: neyi gösterir, neyi asla göstermez — kişisel veri yok", () => {
+    renderPage();
+    const metin = bolumMetni("ag-katalogu");
+
+    expect(
+      screen.getByRole("heading", { level: 3, name: "Neyi gösterir, neyi asla göstermez" }),
+    ).toBeInTheDocument();
+    for (const durum of ["AVAILABLE", "ON_LOAN", "DELIVERED", "IN_REPAIR"] as const) {
+      expect(metin).toContain(`“${COPY_STATUS_TR[durum]}”`);
+    }
+    expect(metin).toContain("“Ödünç verilmez — kütüphanede okunur”");
+    expect(metin).toContain("Kişisel veri göstermez.");
+    expect(metin).toContain("hiçbir kişinin adı, sınıfı, okul numarası ya da kart no'su");
+    expect(metin).toContain(
+      "bir nüshanın “Ödünçte” olduğu görünür, kimde olduğu ve ne zaman döneceği görünmez",
+    );
+    expect(metin).toContain("bağışçı, fiyat, TKYS kodu, eski kayıt no");
+    expect(metin).toContain("Aramalar ve bağlanan bilgisayarların adresleri kaydedilmez");
+    expect(metin).toContain("kayıtlar kilitliyken de çalışır; internete hiç bağlanmaz");
+    // Çok okunanlar: sayı yok; bu sürümde liste boştur (ödünç verisi yok) ve kılavuz bunu söyler.
+    expect(metin).toContain("Çok okunanlarda yalnız sıra görünür, sayı gösterilmez");
+    expect(metin).toContain("sonraki sürümlerde dolmaya başlar");
+    // Kataloğun kendi üst menüsü (backend/katalog/sablonlar/taban.html).
+    expect(metin).toContain("“Ara”, “Kaynak Adları”, “Yazarlar”, “Konular” ve “Hakkında”");
+    expect(metin).toContain("“Katalog Sayfaları”");
+  });
+
+  it("Ağ Kataloğu: BTR'yle yapılacaklar — ağ keşfi, sabit adres, PYS talebi, not, erişim sınaması", () => {
+    renderPage();
+    const metin = bolumMetni("ag-katalogu");
+
+    for (const baslik of [
+      "Ağ keşfi.",
+      "Sabit adres.",
+      "Tahta ağından erişim kapalıysa PYS talebi.",
+      `${BILGI_NOTU_BELGE_ADI}.`,
+      "Okul ağından erişim sınaması.",
+    ]) {
+      expect(metin).toContain(baslik);
+    }
+    expect(metin).toContain("tahta tarayıcısının vekil sunucu ayarı");
+    expect(metin).toContain("“yerel ağ VLAN düzenlemesi — tek yön”");
+    expect(metin).toContain("FATİH PYS");
+    expect(metin).toContain("“internet ya da site açma” diye yazmayın");
+    expect(metin).toContain("tahtanın tarayıcısında kataloğun adresini açın");
+    expect(metin).toContain("erişim talebi Yardım Masası'ndan açılır");
+  });
+
+  it("Ağ Kataloğu: Yönerge alıntıları depodaki metinle birebir", () => {
+    renderPage();
+    const metin = bolumMetni("ag-katalogu");
+
+    // docs/mevzuat/meb-bilgi-ve-sistem-guvenligi-yonergesi.md, md. 11/6, 11/12, 11/22 (ilk cümle).
+    expect(metin).toContain(
+      "“Bilgisayarlara tahsis edilen IP numarası ve ortam erişim kontrolü adresi (MAC adresi) ile BIOS ayarları Bakanlık tarafından yetkilendirilmiş kişiler dışında değiştirilemez.”",
+    );
+    expect(metin).toContain("Bilgi ve Sistem Güvenliği Yönergesi, md. 11/6");
+    expect(metin).toContain(
+      "“Başkanlık MEBNET ağında erişime açılacak ve kapanacak portları belirleme ve düzenleme yetkisine sahiptir.”",
+    );
+    expect(metin).toContain("Bilgi ve Sistem Güvenliği Yönergesi, md. 11/22");
+    expect(metin).toContain(
+      "“MEBNET ağında kategorisi olmayan ip adresi, içerik veya sitelere erişim izni verilmez. Erişim talepleri Yardım Masası Modülü (yardimmasasi.meb.gov.tr) üzerinden yapılır.”",
+    );
+    expect(metin).toContain("Bilgi ve Sistem Güvenliği Yönergesi, md. 11/12");
+  });
+
+  it("Ağ Kataloğu: açma adımları ekrandaki kartın adlarıyla, beş madde ve dinleme seçenekleri", () => {
+    renderPage();
+    const metin = bolumMetni("ag-katalogu");
+
+    // modules/agkatalogu/AgKataloguPaneli.tsx: kart ve adım başlıkları (sabitleri yok,
+    // kaynaktan birebir).
+    expect(metin).toContain("“Ağ Kataloğunu Açmadan Önce” kartı");
+    for (const adim of [
+      "BTR'yle görüşün:",
+      "Güvenlik duvarını hazırlayın:",
+      "Adresi seçin:",
+      "Ağ Kataloğunu açın:",
+      "Afişi basın, yer imlerini dağıtın:",
+    ]) {
+      expect(metin).toContain(adim);
+    }
+    // Kurucu görevinin adı packaging/windows/kutuphane-defteri.iss [Tasks] ile birebir.
+    expect(metin).toContain("“Yerel ağdan katalog taramasına izin ver (güvenlik duvarı kuralı)”");
+    expect(metin).toContain("“Ağ Doktoru'nu aç”");
+    expect(metin).toContain("“Kuralı ekle/güncelle”");
+    expect(metin).toContain("“Katalog hangi ağ bağlantısında açılsın?”");
+    expect(metin).toContain(`“${DINLEME_KIPI_TR.ALL}”`);
+    expect(metin).toContain(`“${DINLEME_KIPI_TR.SELECTED}”`);
+    expect(metin).toContain("“Ağ Kataloğunu aç”");
+    expect(metin).toContain("beş maddesinden biri tutmazsa katalog okul ağına hiç açılmaz");
+    expect(metin).toContain(`“${KATALOG_DURUMU_TR.engellendi}”`);
+  });
+
+  it("Ağ Kataloğu: Ağ Doktoru'nun kartları, durum rozeti, dinleyici sınamasının sınırı", () => {
+    renderPage();
+    const metin = bolumMetni("ag-katalogu");
+
+    expect(metin).toContain(`${AG_DOKTORU_BASLIGI} menüde yoktur`);
+    expect(metin).toContain(`${AG_DOKTORU_BASLIGI} yalnız yönetici kipinde açılır`);
+    // modules/agkatalogu/AgDoktoruPage.tsx kart başlıkları, düğmeler ve seçici.
+    for (const kart of [
+      "Katalog Durumu:",
+      "Güvenlik Duvarı:",
+      "Ağ Bağlantıları:",
+      "Dinleyici Sınaması:",
+      "Belgeler:",
+    ]) {
+      expect(metin).toContain(kart);
+    }
+    for (const dugme of [
+      "“Yeniden başlat”",
+      "“Yenile”",
+      "“Yeniden denetle”",
+      "“Dinleyiciyi sına”",
+      "“Afişi bas”",
+      "“Yer imi dosyalarını üret”",
+      "“PYS talep metnini kopyala”",
+      "“Ağ Hizmeti Bilgi Notu'nu bas”",
+      "“Belgelerde kullanılacak adres”",
+    ]) {
+      expect(metin).toContain(dugme);
+    }
+    // Rozet ve madde adları ekran sabitlerinden.
+    for (const durum of Object.values(KATALOG_DURUMU_TR)) {
+      expect(metin).toContain(`${durum}:`);
+    }
+    for (const madde of Object.values(MADDE_DURUMU_TR)) {
+      expect(metin).toContain(`“${madde}”`);
+    }
+    for (const profil of ["Genel", "Özel", "Etki alanı"]) {
+      expect(Object.values(AG_PROFILI_TR)).toContain(profil);
+      expect(metin).toContain(`“${profil}”`);
+    }
+    expect(metin).toContain("güvenlik duvarını ya da ağ bölümlerini kanıtlamaz");
+    expect(metin).toContain("Test-NetConnection");
+    expect(metin).toContain("TcpTestSucceeded : True");
+    expect(metin).toContain("Kimin neyi aradığı tutulmaz");
+  });
+
+  it("Ağ Kataloğu: afiş ve yer imleri — ETAP her öğretmene ayrı hesap açar, politika dosyası", () => {
+    renderPage();
+    const metin = bolumMetni("ag-katalogu");
+
+    expect(metin).toContain("QR kodu küçük ve ikincildir");
+    expect(metin).toContain("Afiş basılınca program o adresi hatırlar");
+    expect(metin).toContain("ETAP her öğretmene tahtada ayrı bir hesap açar");
+    expect(metin).toContain("kullanıcı başına yer imi yetmez");
+    expect(metin).toContain("tahtanın bütün hesaplarında görünen bir yer imi politika dosyası");
+    expect(metin).toContain("/etc/chromium/policies/managed/");
+    expect(metin).toContain("BENIOKU.txt");
+    expect(metin).toContain("Dosyaları tahtalara ve bilgisayarlara BTR dağıtır");
+  });
+
+  it("Ağ Kataloğu: tahta kipi klavyesiz gezinme, adres değişirse, port ve Pardus", () => {
+    renderPage();
+    const metin = bolumMetni("ag-katalogu");
+
+    expect(metin).toContain("kataloğu tahta kipinde açar");
+    expect(metin).toContain("Ekran klavyesine gerek kalmadan");
+    expect(metin).toContain("?tahta=1");
+    // Adres uyarısı desktop/katalog_kontrol.py::ip_denetle metniyle birebir (adresler yerine …).
+    expect(screen.getByRole("heading", { level: 3, name: "Adres değişirse" })).toBeInTheDocument();
+    expect(metin).toContain(
+      "“Bu bilgisayarın IP adresi değişti (… → …). Afişi yeniden basın, yer imlerini güncelleyin.”",
+    );
+    expect(metin).toContain("uyarı yeni afişle kalkar");
+    expect(metin).toContain("birden çok adresi varsa katalog açılmaz");
+    expect(metin).toContain("“Portu değiştir”");
+    expect(metin).toContain("onay verilmezse port değişmez");
+    expect(metin).toContain("Pardus'ta program güvenlik duvarı kuralı açmaz");
+  });
+
+  it("tepsi ve çıkış: çarpı gizler, görevli kipinde Çık parola ister, kaza önleyicidir", () => {
+    renderPage();
+    const metin = bolumMetni("tepsi-ve-cikis");
+
+    expect(metin).toContain("Pencerenin çarpı düğmesi programı kapatmaz");
+    expect(metin).toContain("Üst çubuktaki “Çık” düğmesi");
+    // modules/cikis/CikisDugmesi.tsx: diyalog başlıkları, alan ve düğme adları.
+    expect(metin).toContain("“Programdan çıkılsın mı?” diye onay ister");
+    expect(metin).toContain("tepsiden seçilen “Çık” bu durumlarda onay sormadan kapatır");
+    expect(metin).toContain("Görevli kipinde “Çık” yönetici parolası ister");
+    expect(metin).toContain("“Programdan çık” penceresinde “Yönetici parolası” alanını");
+    expect(metin).toContain("bir güvenlik sınırı değildir");
+    expect(metin).toContain("“Programı kapatıp yeniden açın” ekranındaki “Programdan çık”");
+    expect(metin).toContain("Masaüstünde tepsi yoksa");
+    expect(metin).toContain("kurucu programı kendisi düzenli kapatır");
+  });
+
+  it("tepsi menüsü: adlar tepsideki metinle birebir, kipe göre değişir", () => {
+    renderPage();
+    const metin = bolumMetni("tepsi-ve-cikis");
+
+    // desktop/tray.py: MENU_SHOW, MENU_KATALOG_AC/KAPAT, MENU_GOREVLI, MENU_KILITLE, MENU_QUIT.
+    for (const ad of [
+      "“Pencereyi aç”",
+      "“Ağ Kataloğunu aç”",
+      "“Ağ Kataloğunu kapat”",
+      "“Görevli kipine geç”",
+      "“Kilitle”",
+      "“Çık”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+    // desktop/katalog_kontrol.py::tepsi_satiri.
+    expect(metin).toContain("“Ağ Kataloğu: açık — http://…”");
+    expect(metin).toContain("“Ağ Kataloğu: kapalı”");
+    expect(metin).toContain("ayar değiştiren komutlar görevli kipinde çalışmaz");
+  });
+
+  it("oturum açılınca başlatma: kurucu görevlerinin adları birebir", () => {
+    renderPage();
+    const metin = bolumMetni("tepsi-ve-cikis");
+
+    // packaging/windows/kutuphane-defteri.iss [Tasks]: otobaslat ve otobaslat\tepside.
+    expect(metin).toContain("“Oturum açılınca Kütüphane Defteri'ni başlat”");
+    expect(metin).toContain("“Pencereyi açmadan tepside başlat”");
+    expect(metin).toContain("kilit ekranıyla açılır");
+    expect(metin).toContain("Windows oturumu açılmadan ne program ne Ağ Kataloğu çalışır");
+  });
+
+  it("gün değişimi ve uyku: saatte bir denetim, yedek, adres uyarısı, yalnız boşta uyku", () => {
+    renderPage();
+    const metin = bolumMetni("tepsi-ve-cikis");
+
+    expect(metin).toContain("Program günlerce kapanmadan açık kalabilir");
+    expect(metin).toContain("saatte bir tarihi denetler");
+    expect(metin).toContain("o günün şifreli yedeğini alır, 14 günden eski yedekleri siler");
+    expect(metin).toContain("“Afişi yeniden basın, yer imlerini güncelleyin.”");
+    expect(metin).toContain("bir saat sonra yeniden denenir");
+    expect(metin).toContain("boşta kalınca uykuya geçmesi engellenir");
+    expect(metin).toContain("Kapağı kapatmak ya da bilgisayarı elle uyutmak engellenmez");
+    // AgKataloguPaneli.tsx "Uyku" kartının onay kutusu.
+    expect(metin).toContain("“Ağ Kataloğu açıkken bilgisayar boşta uykuya geçmesin”");
+    expect(metin).toContain("Katalog kapalıyken uyku hiç engellenmez");
   });
 });
 
@@ -1060,5 +1339,36 @@ describe("KilavuzPage — sözlük ve kalıntı denetimi", () => {
     for (const kalinti of [/sınav/i, /salon/i, /ders havuzu/i, /zümre/i]) {
       expect(metin).not.toMatch(kalinti);
     }
+  });
+});
+
+describe("KilavuzPage — F5 düzeltmeleri", () => {
+  it("geri yüklemeden sonra katalogun kalkması yedekteki ayara bağlanır (koşulsuz değil)", () => {
+    renderPage();
+    const yedek = bolumMetni("yedek");
+    const ag = bolumMetni("ag-katalogu");
+
+    expect(yedek).not.toContain("yeniden açılınca kendiliğinden kalkar.");
+    expect(yedek).toContain("yedekte katalog açıksa kendiliğinden kalkar");
+    expect(ag).toContain("geri yüklenen yedekte Ağ Kataloğu açıksa");
+  });
+
+  it("taşınabilir sürüm cümlesi yalnız Windows içindir; Pardus komutu kaynak sınırlıdır", () => {
+    renderPage();
+    const metin = bolumMetni("ag-katalogu");
+
+    expect(metin).toContain("Windows'ta kurulum yapılmadan çalıştırılan (taşınabilir) sürümde");
+    expect(metin).toContain("Pardus'un taşınabilir arşivinde katalog açılır");
+    expect(metin).toContain("yalnız bu bilgisayarın yerel ağına ve Ayarlar'daki tahta ağı");
+  });
+
+  it("birden çok izin kuralı, öğrenci erişimli ağ ve kapatma yolu anlatılır", () => {
+    renderPage();
+    const metin = bolumMetni("ag-katalogu");
+
+    expect(metin).toContain("birden çok izin kuralı varsa hepsi listelenir");
+    expect(metin).toContain("Bu bilgisayar öğrenci erişimli ağda");
+    expect(metin).toContain("saatte bir kendiliğinden yeniden dener");
+    expect(metin).toContain("ayar açık kaldıkça program her açılışta yeniden dener");
   });
 });

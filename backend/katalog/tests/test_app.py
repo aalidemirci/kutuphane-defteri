@@ -1,14 +1,16 @@
-"""Ağ Kataloğu WSGI uygulamasının davranış testleri (tasarım §5.4, §5.5).
+"""Ağ Kataloğu WSGI uygulamasının HTTP davranışı (tasarım §5.4, §5.5, §5.10-6).
 
-Uygulama doğrudan WSGI sözleşmesiyle çağrılır; sunucu ve Django gerekmez.
-Gerçek waitress üzerinden uçtan uca sınama `desktop/tests/test_katalog_server.py`
-içindedir.
+Bu dosyadaki testler veritabanı İSTEMEZ: kurulumsuz bir örnek (`create_app(None)`)
+yöntem, gövde, başlık, çerez, bakım ve hata sayfası davranışını sınar. Veriye
+ulaşan sayfalar `test_sayfalar.py`'dedir; gerçek waitress üzerinden uçtan uca
+sınama `desktop/tests/test_katalog_server.py` ve `test_waitress_hatalari.py`'dedir.
 """
 
 from __future__ import annotations
 
 import ast
 import io
+import threading
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -16,85 +18,80 @@ from typing import Any
 import pytest
 
 from katalog import app as katalog_app
-from katalog.app import MAX_BODY_BYTES, SIGNATURE_META, application
+from katalog.app import (
+    MAX_BODY_BYTES,
+    SIGNATURE_META,
+    KatalogKurulumu,
+    KatalogUygulamasi,
+    create_app,
+)
+from katalog.bakim import BakimKapisi
+from katalog.hatalar import CSP
+from katalog.sayac import GunlukSayaclar
+from katalog.tests.conftest import Yanit, cagir, genis_hiz_siniri, ortam_kur
 
 KATALOG_DIR = Path(katalog_app.__file__).resolve().parent
 
-BEKLENEN_CSP = (
-    "default-src 'none'; style-src 'self'; img-src 'self' data:; "
-    "form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
-)
+
+@pytest.fixture
+def uygulama() -> KatalogUygulamasi:
+    """Kurulumsuz (verisiz) katalog: kendi bakım kapısı, geniş hız sınırı."""
+    return create_app(None, bakim_kapisi=BakimKapisi(), hiz_siniri=genis_hiz_siniri())
 
 
-class _Yanit:
-    def __init__(self, status: str, headers: list[tuple[str, str]], body: bytes) -> None:
-        self.status = status
-        self.code = int(status.split(" ", 1)[0])
-        self.headers = headers
-        self.body = body
-
-    def header(self, ad: str) -> str | None:
-        degerler = [v for k, v in self.headers if k.lower() == ad.lower()]
-        assert len(degerler) <= 1, f"{ad} başlığı birden çok kez gönderildi"
-        return degerler[0] if degerler else None
-
-    @property
-    def text(self) -> str:
-        return self.body.decode("utf-8")
-
-
-def _ortam(path: str = "/", method: str = "GET", **ek: Any) -> dict[str, Any]:
-    ortam: dict[str, Any] = {
-        "REQUEST_METHOD": method,
-        "PATH_INFO": path,
-        "QUERY_STRING": "",
-        "SERVER_NAME": "127.0.0.1",
-        "SERVER_PORT": "8765",
-        "SERVER_PROTOCOL": "HTTP/1.1",
-        "REMOTE_ADDR": "127.0.0.1",
-        "wsgi.input": io.BytesIO(b""),
-        "wsgi.url_scheme": "http",
-    }
-    ortam.update(ek)
-    return ortam
-
-
-def _cagir(ortam: dict[str, Any]) -> _Yanit:
-    yakalanan: dict[str, Any] = {}
-
-    def start_response(status: str, headers: list[tuple[str, str]], exc_info: Any = None) -> Any:
-        yakalanan["status"] = status
-        yakalanan["headers"] = headers
-        return lambda veri: None
-
-    govde = b"".join(application(ortam, start_response))
-    return _Yanit(yakalanan["status"], yakalanan["headers"], govde)
-
-
-def _istek(path: str = "/", method: str = "GET", **ek: Any) -> _Yanit:
-    return _cagir(_ortam(path, method, **ek))
+def _istek(uygulama: Any, adres: str = "/", yontem: str = "GET", **ek: Any) -> Yanit:
+    return cagir(uygulama, ortam_kur(adres, yontem=yontem, **ek))
 
 
 # ----------------------------------------------------------------- sayfalar
 
 
-def test_ana_sayfa_imzayi_ve_turkce_basligi_dondurur() -> None:
-    yanit = _istek("/")
+def test_ana_sayfa_imzayi_ve_turkce_icerigi_doner(uygulama: KatalogUygulamasi) -> None:
+    yanit = _istek(uygulama, "/")
 
     assert yanit.code == 200
     assert yanit.header("Content-Type") == "text/html; charset=utf-8"
     assert SIGNATURE_META in yanit.text
-    assert "Kütüphane Defteri — Ağ Kataloğu hazırlanıyor" in yanit.text
     assert '<html lang="tr">' in yanit.text
+    assert "Ağ Kataloğu" in yanit.text
     assert yanit.header("Content-Length") == str(len(yanit.body))
 
 
-def test_saglik_yolu_duz_metin_tamam_doner() -> None:
-    yanit = _istek("/saglik")
+def test_verisiz_ana_sayfa_acilir_ama_uyarir(uygulama: KatalogUygulamasi) -> None:
+    """Kurulumsuz ya da veritabanına ulaşılamayan katalog `/`'da imzalı sayfa verir."""
+    yanit = _istek(uygulama, "/")
+
+    assert "Katalog bilgilerine şu an ulaşılamıyor" in yanit.text
+
+
+@pytest.mark.parametrize("yol", ["/ara", "/eser/1", "/eserler/A", "/yazarlar", "/konular"])
+def test_verisiz_veri_sayfalari_503_ve_sabit_turkce_doner(
+    uygulama: KatalogUygulamasi, yol: str
+) -> None:
+    yanit = _istek(uygulama, yol)
+
+    assert yanit.code == 503
+    assert "şu an kullanılamıyor" in yanit.text
+    assert yanit.header("Retry-After") == "30"
+    assert SIGNATURE_META in yanit.text
+
+
+def test_saglik_yolu_duz_metin_tamam_doner(uygulama: KatalogUygulamasi) -> None:
+    yanit = _istek(uygulama, "/saglik")
 
     assert yanit.code == 200
     assert yanit.header("Content-Type") == "text/plain; charset=utf-8"
     assert yanit.body == b"tamam"
+
+
+def test_gomulu_stil_css_olarak_ve_onbellekli_verilir(uygulama: KatalogUygulamasi) -> None:
+    yanit = _istek(uygulama, "/katalog.css")
+
+    assert yanit.code == 200
+    assert yanit.header("Content-Type") == "text/css; charset=utf-8"
+    assert yanit.header("Cache-Control") == "public, max-age=3600"
+    assert yanit.header("X-Content-Type-Options") == "nosniff"
+    assert b"any-pointer: coarse" in yanit.body
 
 
 @pytest.mark.parametrize(
@@ -102,14 +99,16 @@ def test_saglik_yolu_duz_metin_tamam_doner() -> None:
     [
         "/yok",
         "/saglik/",  # sondaki eğik çizgi ayrı bir yoldur
+        "/eser/1/",
+        "/eser/1/2",
         "/api/v1/setup/status/",
         "/admin/",
         "/static/app.js",
         "/<script>alert(1)</script>",
     ],
 )
-def test_bilinmeyen_yol_sabit_turkce_404_doner(yol: str) -> None:
-    yanit = _istek(yol)
+def test_bilinmeyen_yol_sabit_turkce_404_doner(uygulama: KatalogUygulamasi, yol: str) -> None:
+    yanit = _istek(uygulama, yol)
 
     assert yanit.code == 404
     assert "Sayfa bulunamadı" in yanit.text
@@ -120,36 +119,39 @@ def test_bilinmeyen_yol_sabit_turkce_404_doner(yol: str) -> None:
     assert "Traceback" not in yanit.text
 
 
-# ------------------------------------------------------------------ yöntemler
+# ------------------------------------------------------------------ yöntemler (§5.10-6)
 
 
 @pytest.mark.parametrize(
     "yontem", ["POST", "PUT", "PATCH", "DELETE", "OPTIONS", "TRACE", "CONNECT"]
 )
-def test_yalniz_get_ve_head_kabul_edilir(yontem: str) -> None:
-    yanit = _istek("/", yontem)
+@pytest.mark.parametrize("yol", ["/", "/ara", "/eser/1", "/yok"])
+def test_yalniz_get_ve_head_kabul_edilir(
+    uygulama: KatalogUygulamasi, yontem: str, yol: str
+) -> None:
+    yanit = _istek(uygulama, yol, yontem)
 
     assert yanit.code == 405
     assert yanit.header("Allow") == "GET, HEAD"
     assert "desteklenmiyor" in yanit.text
 
 
-def test_yontem_buyuk_kucuk_harfe_duyarsiz_okunur() -> None:
-    assert _istek("/", "get").code == 200
-    assert _istek("/", "post").code == 405
+def test_yontem_buyuk_kucuk_harfe_duyarsiz_okunur(uygulama: KatalogUygulamasi) -> None:
+    assert _istek(uygulama, "/", "get").code == 200
+    assert _istek(uygulama, "/", "post").code == 405
 
 
-def test_head_govdesiz_ama_get_ile_ayni_basliklari_doner() -> None:
-    get = _istek("/")
-    head = _istek("/", "HEAD")
+def test_head_govdesiz_ama_get_ile_ayni_basliklari_doner(uygulama: KatalogUygulamasi) -> None:
+    get = _istek(uygulama, "/saglik")
+    head = _istek(uygulama, "/saglik", "HEAD")
 
     assert head.code == 200
     assert head.body == b""
     assert head.headers == get.headers  # Content-Length dahil
 
 
-def test_bilinmeyen_yolda_head_de_404_doner() -> None:
-    yanit = _istek("/api/v1/students/", "HEAD")
+def test_bilinmeyen_yolda_head_de_404_doner(uygulama: KatalogUygulamasi) -> None:
+    yanit = _istek(uygulama, "/api/v1/students/", "HEAD")
 
     assert yanit.code == 404
     assert yanit.body == b""
@@ -158,36 +160,34 @@ def test_bilinmeyen_yolda_head_de_404_doner() -> None:
 # ------------------------------------------------------------------- gövde
 
 
-def test_bir_kilobayti_asan_govde_413_ile_reddedilir() -> None:
-    yanit = _istek("/", CONTENT_LENGTH=str(MAX_BODY_BYTES + 1))
+def test_bir_kilobayti_asan_govde_413_ile_reddedilir(uygulama: KatalogUygulamasi) -> None:
+    yanit = _istek(uygulama, "/", CONTENT_LENGTH=str(MAX_BODY_BYTES + 1))
 
     assert yanit.code == 413
     assert "çok büyük" in yanit.text
 
 
-def test_sinirdaki_govde_kabul_edilir_ama_okunmaz() -> None:
+def test_sinirdaki_govde_kabul_edilir_ama_okunmaz(uygulama: KatalogUygulamasi) -> None:
     class _OkunmayanGirdi(io.BytesIO):
         def read(self, *args: Any, **kwargs: Any) -> bytes:
             raise AssertionError("katalog istek gövdesini okumamalı")
 
-    ortam = _ortam("/", CONTENT_LENGTH=str(MAX_BODY_BYTES))
+    ortam = ortam_kur("/saglik", CONTENT_LENGTH=str(MAX_BODY_BYTES))
     ortam["wsgi.input"] = _OkunmayanGirdi(b"x" * MAX_BODY_BYTES)
 
-    yanit = _cagir(ortam)
-
-    assert yanit.code == 200
+    assert cagir(uygulama, ortam).code == 200
 
 
 @pytest.mark.parametrize("deger", ["abc", "-1", "1e3", "١٢"])
-def test_gecersiz_icerik_uzunlugu_400_doner(deger: str) -> None:
-    yanit = _istek("/", CONTENT_LENGTH=deger)
+def test_gecersiz_icerik_uzunlugu_400_doner(uygulama: KatalogUygulamasi, deger: str) -> None:
+    yanit = _istek(uygulama, "/", CONTENT_LENGTH=deger)
 
     assert yanit.code == 400
     assert "Geçersiz istek" in yanit.text
 
 
-def test_bos_icerik_uzunlugu_gecerlidir() -> None:
-    assert _istek("/", CONTENT_LENGTH="").code == 200
+def test_bos_icerik_uzunlugu_gecerlidir(uygulama: KatalogUygulamasi) -> None:
+    assert _istek(uygulama, "/saglik", CONTENT_LENGTH="").code == 200
 
 
 def test_govde_siniri_waitress_ayariyla_ayni() -> None:
@@ -195,32 +195,78 @@ def test_govde_siniri_waitress_ayariyla_ayni() -> None:
     assert MAX_BODY_BYTES == 1024
 
 
-# ------------------------------------------------------------- başlıklar
+# ------------------------------------------------------------------ adres çözümü
 
 
-def _tum_yanit_turleri() -> Iterator[_Yanit]:
-    yield _istek("/")
-    yield _istek("/saglik")
-    yield _istek("/", "HEAD")
-    yield _istek("/yok")
-    yield _istek("/", "POST")
-    yield _istek("/", CONTENT_LENGTH="5000")
-    yield _istek("/", CONTENT_LENGTH="abc")
+@pytest.mark.parametrize(
+    "adres",
+    [
+        "/ara?q=%ZZ",  # bozuk yüzde kodlaması
+        "/ara?q=%FF%FE",  # UTF-8 değil
+        "/ara?q=a%0Ab",  # denetim karakteri
+        "/ara?q=a%00b",
+    ],
+)
+def test_bozuk_sorgu_dizesi_400_doner(uygulama: KatalogUygulamasi, adres: str) -> None:
+    yanit = _istek(uygulama, adres)
+
+    assert yanit.code == 400
+    assert "Geçersiz istek" in yanit.text
 
 
-def test_guvenlik_basliklari_her_yanitta_bulunur() -> None:
-    for yanit in _tum_yanit_turleri():
-        assert yanit.header("Content-Security-Policy") == BEKLENEN_CSP, yanit.status
+def test_utf8_olmayan_yol_400_doner(uygulama: KatalogUygulamasi) -> None:
+    ortam = ortam_kur("/")
+    ortam["PATH_INFO"] = "/eser/\xff"  # tek bayt 0xFF: UTF-8 değil
+    assert cagir(uygulama, ortam).code == 400
+
+
+def test_cok_uzun_sorgu_dizesi_414_doner(uygulama: KatalogUygulamasi) -> None:
+    yanit = _istek(uygulama, "/ara?q=" + "a" * 3000)
+
+    assert yanit.code == 414
+    assert "Adres çok uzun" in yanit.text
+
+
+# ------------------------------------------------------------- başlıklar (§5.5)
+
+
+def _tum_yanit_turleri(uygulama: KatalogUygulamasi) -> Iterator[Yanit]:
+    yield _istek(uygulama, "/")
+    yield _istek(uygulama, "/hakkinda")
+    yield _istek(uygulama, "/saglik")
+    yield _istek(uygulama, "/", "HEAD")
+    yield _istek(uygulama, "/yok")
+    yield _istek(uygulama, "/ara")  # verisiz: 503
+    yield _istek(uygulama, "/", "POST")
+    yield _istek(uygulama, "/", CONTENT_LENGTH="5000")
+    yield _istek(uygulama, "/", CONTENT_LENGTH="abc")
+    yield _istek(uygulama, "/ara?q=" + "a" * 3000)
+
+
+def test_guvenlik_basliklari_her_yanitta_bulunur(uygulama: KatalogUygulamasi) -> None:
+    for yanit in [*_tum_yanit_turleri(uygulama), _istek(uygulama, "/katalog.css")]:
+        assert yanit.header("Content-Security-Policy") == CSP, yanit.status
         assert yanit.header("X-Content-Type-Options") == "nosniff", yanit.status
         assert yanit.header("Referrer-Policy") == "no-referrer", yanit.status
-        assert yanit.header("Cache-Control") == "no-store", yanit.status
         assert yanit.header("Set-Cookie") is None, yanit.status
         assert yanit.header("Server") is None, yanit.status
 
 
-def test_html_sayfalarinda_betik_ve_satir_ici_stil_yok() -> None:
+def test_csp_tasarimdaki_metinle_birebir() -> None:
+    assert CSP == (
+        "default-src 'none'; style-src 'self'; img-src 'self' data:; "
+        "form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+    )
+
+
+def test_html_ve_hata_sayfalari_onbelleklenmez(uygulama: KatalogUygulamasi) -> None:
+    for yanit in _tum_yanit_turleri(uygulama):
+        assert yanit.header("Cache-Control") == "no-store", yanit.status
+
+
+def test_html_sayfalarinda_betik_ve_satir_ici_stil_yok(uygulama: KatalogUygulamasi) -> None:
     """CSP `default-src 'none'`: satır içi betik/stil zaten çalışmaz; hiç yazılmaz."""
-    for yanit in _tum_yanit_turleri():
+    for yanit in _tum_yanit_turleri(uygulama):
         metin = yanit.text.lower()
         assert "<script" not in metin
         assert "<style" not in metin
@@ -267,13 +313,18 @@ class _KayitliOrtam(dict[str, Any]):
         return super().values()
 
 
-@pytest.mark.parametrize(("yol", "yontem"), [("/", "GET"), ("/yok", "GET"), ("/", "POST")])
-def test_cerez_basligi_okunmaz_ve_cerez_yazilmaz(yol: str, yontem: str) -> None:
-    ortam = _KayitliOrtam(_ortam(yol, yontem, HTTP_COOKIE="kd_oturum=gizli"))
+@pytest.mark.parametrize(
+    ("yol", "yontem"), [("/", "GET"), ("/yok", "GET"), ("/", "POST"), ("/ara?q=x", "GET")]
+)
+def test_cerez_basligi_okunmaz_ve_cerez_yazilmaz(
+    uygulama: KatalogUygulamasi, yol: str, yontem: str
+) -> None:
+    ortam = _KayitliOrtam(ortam_kur(yol, yontem=yontem, HTTP_COOKIE="kd_oturum=gizli"))
 
-    yanit = _cagir(ortam)
+    yanit = cagir(uygulama, ortam)
 
     assert "HTTP_COOKIE" not in ortam.okunan
+    assert "HTTP_X_FORWARDED_FOR" not in ortam.okunan
     assert "*" not in ortam.okunan  # ortam toptan dolaşılmaz (dolaylı okuma yok)
     assert yanit.header("Set-Cookie") is None
     assert "gizli" not in yanit.text
@@ -287,7 +338,123 @@ def test_katalog_kaynaginda_cerez_sabiti_gecmez() -> None:
             continue
         for dugum in ast.walk(ast.parse(dosya.read_text(encoding="utf-8"))):
             if isinstance(dugum, ast.Constant) and isinstance(dugum.value, str):
-                if dugum.value.strip().lower() in {"http_cookie", "set-cookie", "cookie"}:
+                if dugum.value.strip().lower() in {
+                    "http_cookie",
+                    "set-cookie",
+                    "cookie",
+                    "http_x_forwarded_for",
+                    "x-forwarded-for",
+                }:
                     bulunan.append(f"{dosya.name}:{dugum.lineno}")
 
     assert bulunan == []
+
+
+# ----------------------------------------------------------- bakım kapısı (§5.3)
+
+
+def _dokunulmamasi_gereken_kurulum() -> KatalogKurulumu:
+    def yol() -> Path:
+        raise AssertionError("bakımdayken katalog veritabanına dokunmamalı")
+
+    return KatalogKurulumu(db_yolu=yol, arama_parcalari=str.split, siralama_anahtari=str)
+
+
+@pytest.mark.parametrize("yol", ["/", "/ara?q=x", "/eser/1", "/saglik", "/katalog.css", "/yok"])
+def test_bakimdayken_her_yol_veritabanina_dokunmadan_503_doner(yol: str) -> None:
+    kapi = BakimKapisi()
+    sayaclar = GunlukSayaclar()
+    uygulama = create_app(
+        _dokunulmamasi_gereken_kurulum(),
+        bakim_kapisi=kapi,
+        hiz_siniri=genis_hiz_siniri(),
+        sayaclar=sayaclar,
+    )
+    assert kapi.bakima_al(bekleme_sn=0.1)
+
+    yanit = _istek(uygulama, yol)
+
+    assert yanit.code == 503
+    assert "bakımda" in yanit.text
+    assert yanit.header("Content-Security-Policy") == CSP
+    assert sayaclar.gun()["bakim"] == 1
+    assert kapi.ucusta == 0
+
+
+def test_bakim_ucustaki_istegin_bitmesini_bekler() -> None:
+    """Geri yükleme adım 2: uçuştaki istek sayacı sıfıra inene dek beklenir."""
+    kapi = BakimKapisi()
+    icerde = threading.Event()
+    birak = threading.Event()
+
+    def yavas_arama(sorgu: str) -> list[str]:
+        icerde.set()
+        assert birak.wait(5)
+        return [sorgu]
+
+    kurulum = KatalogKurulumu(
+        db_yolu=Path("/yok/boyle/bir/dosya.sqlite3"),
+        arama_parcalari=yavas_arama,
+        siralama_anahtari=str,
+    )
+    uygulama = create_app(kurulum, bakim_kapisi=kapi, hiz_siniri=genis_hiz_siniri())
+    sonuc: list[int] = []
+    is_parcacigi = threading.Thread(
+        target=lambda: sonuc.append(_istek(uygulama, "/ara?q=x").code), daemon=True
+    )
+    is_parcacigi.start()
+    assert icerde.wait(5)
+
+    assert kapi.ucusta == 1
+    assert kapi.bakima_al(bekleme_sn=0.05) is False  # istek hâlâ uçuşta
+    assert _istek(uygulama, "/saglik").code == 503  # yeni istek girmez
+    birak.set()
+    is_parcacigi.join(5)
+    assert kapi.bakima_al(bekleme_sn=5) is True
+    assert sonuc == [503]  # veritabanı yok: uçuştaki istek kendi hatasıyla bitti
+
+
+# -------------------------------------------------------- beklenmeyen hata
+
+
+def test_beklenmeyen_hata_sabit_500_doner_ve_yigin_sizdirmaz() -> None:
+    def patlayan(sorgu: str) -> list[str]:
+        raise RuntimeError("iç ayrıntı /gizli/yol")
+
+    sayaclar = GunlukSayaclar()
+    uygulama = create_app(
+        KatalogKurulumu(db_yolu=Path("/x"), arama_parcalari=patlayan, siralama_anahtari=str),
+        bakim_kapisi=BakimKapisi(),
+        hiz_siniri=genis_hiz_siniri(),
+        sayaclar=sayaclar,
+    )
+
+    yanit = _istek(uygulama, "/ara?q=deneme")
+
+    assert yanit.code == 500
+    assert "Bir sorun oluştu" in yanit.text
+    assert "gizli" not in yanit.text and "Traceback" not in yanit.text
+    assert sayaclar.gun()["sunucu_hatasi"] == 1
+    assert sayaclar.son_hata is not None
+    assert "gizli" not in sayaclar.son_hata.ileti
+
+
+# ------------------------------------------------------ modül düzeyi örnek
+
+
+def test_surec_ici_uygulama_tek_ornektir_ve_waitress_gorevini_tembel_verir() -> None:
+    assert isinstance(katalog_app.application, KatalogUygulamasi)
+    gorev = katalog_app.WAITRESS_HATA_GOREVI
+    assert isinstance(gorev, type)
+    assert gorev is katalog_app.WAITRESS_HATA_GOREVI  # bir kez kurulur
+    with pytest.raises(AttributeError):
+        _ = katalog_app.YOK_BOYLE_BIR_AD
+
+
+def test_surec_ici_uygulama_django_acilisinda_veriye_baglanir() -> None:
+    """`KutuphaneConfig.ready` süreç içi örneği kurar; yol istek anında okunur."""
+    from django.conf import settings
+
+    kurulum = katalog_app.application.kurulum
+    assert kurulum is not None
+    assert kurulum.veritabani() == Path(str(settings.DATABASES["default"]["NAME"]))

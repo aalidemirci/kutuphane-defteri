@@ -62,6 +62,14 @@ IZIN_LISTESI: tuple[IzinKurali, ...] = (
         gerekce="yönetici kipine geçiş; gövdede yönetici parolası",
     ),
     IzinKurali(
+        "app-quit",
+        "POST",
+        gerekce=(
+            "Çık (F5, §4.2-4); parolasız istek görünümde 403 alır, gövdede yönetici "
+            "parolası gerekir — kaza önleyicidir (CLAUDE.md §2-4)"
+        ),
+    ),
+    IzinKurali(
         "library-label-verify",
         "POST",
         gerekce=(

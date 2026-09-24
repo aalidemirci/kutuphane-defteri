@@ -13,6 +13,7 @@ ve ORM'yi KULLANMAYAN ayrı bir dinleyicidir (desktop/katalog_server.py — tasa
 from __future__ import annotations
 
 import os
+import tempfile
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -144,6 +145,13 @@ DATABASES = {
             ),
             "transaction_mode": "IMMEDIATE",
         },
+        # Test veritabanı DOSYA TABANLIDIR (tasarım §5.3 "Test ortamı", UY-10):
+        # Ağ Kataloğu veritabanını ayrı bir `mode=ro` bağlantısıyla açar ve
+        # bellek içi test veritabanını göremez. Dosya sistemin geçici
+        # dizinindedir: her `docker compose run` kabının kendi /tmp'si vardır,
+        # paralel koşular aynı dosyayı paylaşmaz; depoya ve veri dizinine
+        # (`backend/data/`) hiçbir şey yazılmaz.
+        "TEST": {"NAME": str(Path(tempfile.gettempdir()) / "kutuphane-defteri-test.sqlite3")},
     }
 }
 

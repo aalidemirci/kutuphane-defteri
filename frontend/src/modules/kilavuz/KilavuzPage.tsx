@@ -54,10 +54,37 @@
 // kaydırması okulun tercihidir (CLAUDE.md §2-6); idari izin/diğer günlerindeki
 // kaydırma dayanaksız program kuralıdır, TBK 93 maddesinin altında anılmaz.
 //
+// F5 iki bölüm yazar: "Tepsi, Çıkış ve Gün Değişimi" (yedek bölümünün ardında —
+// pencerenin çarpısı gizler, Çık görevli kipinde yönetici parolası ister ve
+// tepsiden seçilince onay sormaz, tepsi menüsü kipe göre değişir, kurucu programı
+// kendisi kapatır, oturum açılınca başlatma, program günlerce açık kalsa da gün
+// değişince yedek alınır ve adres denetlenir, Ağ Kataloğu açıkken yalnız boşta
+// uyku engellenir) ve "Ağ Kataloğu". İkincisinin sırası kullanıcının sorusunun
+// sırasıdır: ne olduğu → neyi gösterip neyi ASLA göstermediği (kişisel veri yok,
+// "Ödünçte" görünür ama kimde olduğu görünmez) → BTR'yle yapılacaklar (ağ keşfi,
+// sabit adres, gerekirse PYS talebi, bilgi notu, okul ağından erişim sınaması —
+// hem kataloğun kendisi hem programın iki dış adresi) → açma adımları (ekrandaki
+// "Ağ Kataloğunu Açmadan Önce" kartının adımlarıyla aynı adlar) → Ağ Doktoru'nun
+// beş kartı → afiş ve yer imleri (ETAP her öğretmene ayrı hesap açtığı için
+// kullanıcı başına yer imi yetmez; politika dosyası) → tahta kipi → adres
+// değişirse → port → Pardus.
+//
+// Ad kaynakları: tepsi menüsü `desktop/tray.py` sabitleri, durum satırı
+// `desktop/katalog_kontrol.py::tepsi_satiri`, adres uyarısı `ip_denetle`,
+// kurucu görevleri `packaging/windows/kutuphane-defteri.iss` [Tasks], Ağ
+// Doktoru ve Ayarlar → Ağ Kataloğu ekranların kaynağı (`modules/agkatalogu`),
+// kataloğun kendi sayfa adları `backend/katalog/sablonlar`. Tepsiden seçilen Çık
+// yönetici kipinde ve kilitliyken ONAY SORMADAN kapatır
+// (`tepsi_eylemleri.quit = request_quit`); üst çubuktaki Çık sorar. Çok okunanlar
+// listesi bu sürümde boştur (ödünç verisi yok; hesap sonraki fazda) ve kılavuz
+// bunu söyler. "rezervasyon" sözcüğü sözlükte yasak olduğu için DHCP'deki sabit
+// adres "sabit adres ayırma" diye anlatılır.
+//
 // Mevzuat atıfları yalnız `docs/mevzuat/`'taki tam metinlerden alınır; alıntılar
-// BİREBİR, madde numarası uydurulmaz: Yönerge 11/8 ve 11/23
-// (meb-bilgi-ve-sistem-guvenligi-yonergesi.md), Yönetmelik 10/3, 10/5, 11/1,
-// 14/1-a, 16/1 ve 18/1 (meb-okul-kutuphaneleri-yonetmeligi.md), TBK 93
+// BİREBİR, madde numarası uydurulmaz: Yönerge 11/6, 11/8, 11/12, 11/22 (yalnız
+// ilk cümlesi) ve 11/23 (meb-bilgi-ve-sistem-guvenligi-yonergesi.md; atıf
+// haritası docs/mevzuat/BENIOKU.md §3.3), Yönetmelik 10/3, 10/5, 11/1, 14/1-a,
+// 16/1 ve 18/1 (meb-okul-kutuphaneleri-yonetmeligi.md), TBK 93
 // (6098-…-md92-93.md).
 
 import { useEffect } from "react";
@@ -82,6 +109,7 @@ const BOLUMLER = {
   "katalog-sablonu": { baslik: "Katalog Excel Şablonu", ikon: "table_view" },
   "ice-aktarma": { baslik: "İçe Aktarma", ikon: "upload_file" },
   yedek: { baslik: "Yedek ve Güvenlik Dosyası", ikon: "backup" },
+  "tepsi-ve-cikis": { baslik: "Tepsi, Çıkış ve Gün Değişimi", ikon: "power_settings_new" },
   "ag-katalogu": { baslik: "Ağ Kataloğu", ikon: "lan" },
 } as const;
 
@@ -1632,17 +1660,18 @@ export default function KilavuzPage() {
       {/* ------------------------------------------------------------------ */}
       <Bolum id="yedek">
         <p>
-          Yönetici parolası kurulduktan sonra program açılırken o günün şifreli{" "}
-          <strong>günlük yedeğini</strong> alır (aynı gün yeniden açılınca ikinci yedek almaz) ve
-          son 14 günün yedeklerini saklar. Program yeni bir sürüme güncellendiğinde, veritabanını
-          güncellemeden önce ayrıca bir yedek alır. Yedekler güçlü şifrelemeyle korunur; yalnız
-          yönetici parolasıyla ya da kurtarma anahtarıyla açılır.
+          Yönetici parolası kurulduktan sonra program her gün o günün şifreli{" "}
+          <strong>günlük yedeğini</strong> alır (aynı gün ikinci yedek almaz) ve son 14 günün
+          yedeklerini saklar. Program yeni bir sürüme güncellendiğinde, veritabanını güncellemeden
+          önce ayrıca bir yedek alır. Yedekler güçlü şifrelemeyle korunur; yalnız yönetici
+          parolasıyla ya da kurtarma anahtarıyla açılır.
         </p>
         <Ipucu>
           <p>
-            Yedek <strong>açılışa bağlıdır</strong>: program tepside günlerce açık kalırsa o
-            günlerin yedeği alınmaz. Bilgisayarı her sabah kapatıp açın ya da haftada bir programı
-            tepsideki simgeden “Çık”la kapatıp yeniden açın.
+            Program tepside günlerce açık kalsa da <strong>gün değişince</strong> o günün yedeğini
+            alır: program açılışta ve açık kaldığı sürece saatte bir tarihi denetler (bkz. “Tepsi,
+            Çıkış ve Gün Değişimi”). Bilgisayar kapalıyken yedek alınmaz; bilgisayar açıldığında ilk
+            iş o günün yedeğidir.
           </p>
         </Ipucu>
         <p>
@@ -1660,8 +1689,13 @@ export default function KilavuzPage() {
           dosyasını yükleyin. Yedeğin alındığı dönemdeki yönetici parolasını ya da kurtarma
           anahtarını yazıp “Geri yükle”ye basın. O yedekten sonra girilen kayıtlar kalkar. Mevcut
           veritabanı silinmez, veri klasöründe <Kod>db-onceki-…</Kod> adıyla kenara alınır. İşlemden
-          sonra programı tepsideki simgeden “Çık”ı seçerek kapatın ve yeniden açın; pencerenin çarpı
-          düğmesi programı kapatmaz.
+          sonra gelen “Programı kapatıp yeniden açın” ekranındaki “Programdan çık” düğmesiyle (ya da
+          tepsideki simgeden “Çık”ı seçerek) programı kapatın ve yeniden açın; pencerenin çarpı
+          düğmesi programı kapatmaz. Ağ Kataloğu açıksa geri yükleme sırasında kapanır. Program
+          yeniden açılınca Ağ Kataloğunun ayarı geri yüklenen yedekten okunur: yedekte katalog
+          açıksa kendiliğinden kalkar; değilse Ayarlar → Ağ Kataloğu&apos;ndan yeniden açın ve Ağ
+          Doktoru&apos;nda beş denetimin geçtiğini görün (yedekteki port farklıysa güvenlik duvarı
+          kuralı da güncellenmelidir).
         </p>
         <p>
           Program hiç açılmıyorsa Windows&apos;ta Başlat menüsündeki “Kütüphane Defteri — Yedekten
@@ -1748,17 +1782,430 @@ export default function KilavuzPage() {
       </Bolum>
 
       {/* ------------------------------------------------------------------ */}
+      <Bolum id="tepsi-ve-cikis">
+        <p>
+          Pencerenin çarpı düğmesi programı kapatmaz: pencere gizlenir, program saatin yanındaki
+          simge alanında (tepside) çalışmayı sürdürür. Ağ Kataloğu açıksa o da hizmet vermeyi
+          sürdürür. Pencereyi yeniden açmak için tepsideki simgeye tıklayın ya da menüsünden
+          “Pencereyi aç”ı seçin.
+        </p>
+
+        <AltBaslik>Programdan çıkmak</AltBaslik>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            Üst çubuktaki “Çık” düğmesi ya da tepsideki simgenin menüsündeki “Çık” programı düzenli
+            kapatır: Ağ Kataloğu kapanır, veritabanı tek dosyada toparlanır. Bilgisayarı kapatmadan
+            önce en güvenli yol budur. Dar pencerede üst çubuktaki düğmenin yalnız simgesi görünür.
+          </li>
+          <li>
+            Yönetici kipinde ve kayıtlar kilitliyken üst çubuktaki “Çık” yalnız “Programdan çıkılsın
+            mı?” diye onay ister; tepsiden seçilen “Çık” bu durumlarda onay sormadan kapatır.
+          </li>
+          <li>
+            Görevli kipinde “Çık” <strong>yönetici parolası</strong> ister: açılan “Programdan çık”
+            penceresinde “Yönetici parolası” alanını doldurup “Çık” düğmesine basın. Tepsiden
+            seçilirse pencere öne gelir ve parola orada sorulur. Bu koruma masadaki görevlinin
+            programı yanlışlıkla kapatmasını önler, bir güvenlik sınırı değildir.
+          </li>
+          <li>
+            Yedekten geri yüklemeden sonra gelen “Programı kapatıp yeniden açın” ekranındaki
+            “Programdan çık” düğmesi parola ve onay sormaz: programın yeniden açılması şarttır.
+          </li>
+          <li>
+            Masaüstünde tepsi yoksa (bazı Pardus masaüstleri) çarpı düğmesi pencereyi küçültür;
+            programdan çıkmanın yolu üst çubuktaki “Çık” düğmesidir.
+          </li>
+          <li>
+            Program açıkken kurulum, güncelleme ya da kaldırma başlatılırsa kurucu programı kendisi
+            düzenli kapatır. Program yarım dakika içinde kapanmazsa kurucu tepsideki simgeden “Çık”ı
+            seçmenizi ister; programı zorla kapatmaz.
+          </li>
+        </ul>
+
+        <AltBaslik>Tepsi menüsü</AltBaslik>
+        <p>
+          Menüdeki komutlar kipe göre değişir. Her durumda “Pencereyi aç”, Ağ Kataloğunun durum
+          satırı (ör. “Ağ Kataloğu: açık — http://…” ya da “Ağ Kataloğu: kapalı”) ve “Çık” görünür.
+          Yönetici kipinde “Ağ Kataloğunu aç” ya da “Ağ Kataloğunu kapat”, “Görevli kipine geç” ve
+          “Kilitle” de vardır; katalog açıkken durum satırına tıklamak kataloğu bu bilgisayarın
+          tarayıcısında okul ağındaki adresiyle açar. Görevli kipinde yalnız “Kilitle” eklenir ve
+          durum satırı yalnız bilgi verir; ayar değiştiren komutlar görevli kipinde çalışmaz, eski
+          bir menüden seçilseler de reddedilir. Kayıtlar kilitliyken menüde pencere, Ağ Kataloğunun
+          durumu ve “Çık” kalır.
+        </p>
+
+        <AltBaslik>Oturum açılınca başlatma</AltBaslik>
+        <p>
+          Windows kurulumunda “Oturum açılınca Kütüphane Defteri&apos;ni başlat” seçildiyse program,
+          kurulumun başlatıldığı hesapta (kütüphane masası hesabı) oturum açılınca kilit ekranıyla
+          açılır. “Pencereyi açmadan tepside başlat” da seçildiyse pencere açılmaz, program doğrudan
+          tepsiye iner. Windows oturumu açılmadan ne program ne Ağ Kataloğu çalışır: bilgisayar
+          sabah açılınca masa hesabında oturum açın.
+        </p>
+
+        <AltBaslik>Gün değişimi</AltBaslik>
+        <p>
+          Program günlerce kapanmadan açık kalabilir. Günde bir yapılması gereken işler bu yüzden
+          açılışa değil tarihe bağlıdır: program açılışta ve açık kaldığı sürece saatte bir tarihi
+          denetler; gün değiştiyse o günün şifreli yedeğini alır, 14 günden eski yedekleri siler ve
+          bilgisayarın ağ adresini denetler. Adres değiştiyse Ağ Doktoru&apos;nun “Katalog Durumu”
+          kartında adresin değiştiğini söyleyen ve “Afişi yeniden basın, yer imlerini güncelleyin.”
+          diyen uyarı çıkar (bkz. Ağ Kataloğu bölümü, “Adres değişirse”). Bir iş yapılamazsa (ör.
+          yönetici parolası henüz kurulmadıysa) bir saat sonra yeniden denenir. Yedek için kilidin
+          açılması gerekmez: kayıtlar kilitliyken de alınır. Bilgisayar kapalıyken ya da uykudayken
+          hiçbir iş yapılmaz; program açılınca ilk iş o günün yedeğidir, bilgisayar uykudan uyanırsa
+          yedek en geç bir saat içinde alınır.
+        </p>
+
+        <AltBaslik>Uyku</AltBaslik>
+        <p>
+          Ağ Kataloğu açıkken bilgisayarın boşta kalınca uykuya geçmesi engellenir; böylece
+          tahtalardan gün boyu erişilebilir. Kapağı kapatmak ya da bilgisayarı elle uyutmak
+          engellenmez; bilgisayar uyursa ya da kapanırsa katalog da erişilemez. Bu davranış{" "}
+          <Ekran to="/ayarlar?tab=ag-katalogu">Ayarlar → Ağ Kataloğu</Ekran>&apos;ndaki “Uyku”
+          bölümünde “Ağ Kataloğu açıkken bilgisayar boşta uykuya geçmesin” kutusuyla kapatılır.
+          Katalog kapalıyken uyku hiç engellenmez.
+        </p>
+      </Bolum>
+
+      {/* ------------------------------------------------------------------ */}
       <Bolum id="ag-katalogu">
         <p>
           Ağ Kataloğu, okul ağındaki bilgisayarlardan ve etkileşimli tahtalardan tarayıcıyla kitap
-          aramayı sağlar. Kişisel veri göstermez: üye, ödünç, iade tarihi ya da kişi adı hiçbir
-          sayfasında geçmez. Varsayılan olarak kapalıdır.
+          aramayı sağlar. Program bu bilgisayarda açıkken katalog okul ağına buradan sunulur:
+          tahtaya ya da öğretmen bilgisayarına bir şey kurulmaz, internet gerekmez; tarayıcının
+          adres çubuğuna kataloğun adresi yazılır. Katalog yalnız okunur: oradan ödünç alınamaz,
+          hiçbir kayıt değiştirilemez. Varsayılan olarak kapalıdır ve yalnız yönetici kipinde
+          açılır.
+        </p>
+
+        <AltBaslik>Neyi gösterir, neyi asla göstermez</AltBaslik>
+        <p>Ağ Kataloğunda görünenler:</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>
+            künye: kaynak adı, yazar, çevirmen, yayınevi, baskı, yayın yılı, ISBN, konu, dil ve
+            kaynak türü;
+          </li>
+          <li>sınıflama kodu ve DOS ana sınıfı, yer numarası ve bölüm;</li>
+          <li>
+            nüshaların durumu: “Rafta”, “Ödünçte”, “Sınıf kitaplığında” ya da “Onarımda”; danışma
+            kaynaklarında “Ödünç verilmez — kütüphanede okunur”;
+          </li>
+          <li>ana sayfada vitrin: yeni gelenler ve çok okunanlar;</li>
+          <li>
+            kaynak adına, yazara ve konuya göre alfabetik dizinler; okulun adı ve kütüphane
+            saatleri.
+          </li>
+        </ul>
+        <p>
+          <strong>Kişisel veri göstermez.</strong> Ağ Kataloğunun hiçbir sayfasında şunlar yoktur:
+        </p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>üye listesi; hiçbir kişinin adı, sınıfı, okul numarası ya da kart no&apos;su;</li>
+          <li>
+            kimin hangi kitabı ödünç aldığı, ödünç geçmişi, iade tarihi ve gecikenler: bir nüshanın
+            “Ödünçte” olduğu görünür, kimde olduğu ve ne zaman döneceği görünmez;
+          </li>
+          <li>
+            kayıp ve hasar kayıtları, bağışçı, fiyat, TKYS kodu, eski kayıt no, komisyon ve sayım
+            kurulu adları;
+          </li>
+          <li>yönetim ekranları, yedek ve dışa aktarım.</li>
+        </ul>
+        <p>
+          Aramalar ve bağlanan bilgisayarların adresleri kaydedilmez. Katalog kişisel veri
+          taşımadığı için kayıtlar kilitliyken de çalışır; internete hiç bağlanmaz. Çok okunanlarda
+          yalnız sıra görünür, sayı gösterilmez; bu liste ödünç işlemleriyle birlikte sonraki
+          sürümlerde dolmaya başlar, bu sürümde vitrinde yeni gelenler görünür.
         </p>
         <p>
-          Ağ Kataloğu bu bilgisayardan okul ağına bir port üzerinden hizmet verir. Bu yüzden okul
-          ağında açılmadan önce bilişim teknolojileri rehber öğretmeninin (BTR) bilgisi alınır:
-          kullanılacak port, güvenlik duvarı kuralı ve bilgisayarın ağ adresinin sabit kalması
-          BTR&apos;yle birlikte belirlenir.
+          Kataloğun üst menüsünde “Ara”, “Kaynak Adları”, “Yazarlar”, “Konular” ve “Hakkında”
+          bağlantıları vardır. Kataloğun kendi Hakkında sayfası da ziyaretçiye neyi gösterip neyi
+          göstermediğini söyler. Vitrin ve konu dizini{" "}
+          <Ekran to="/ayarlar?tab=ag-katalogu">Ayarlar → Ağ Kataloğu</Ekran>&apos;ndaki “Katalog
+          Sayfaları” bölümünden kapatılabilir; aynı bölüme yazılan kütüphane saatleri kataloğun
+          Hakkında sayfasında ve afişte görünür.
+        </p>
+
+        <AltBaslik>BTR&apos;yle yapılacaklar</AltBaslik>
+        <p>
+          Ağ Kataloğu bu bilgisayardan okul ağına bir port (varsayılan 8765) üzerinden hizmet verir.
+          Bu yüzden okul ağında açılmadan önce bilişim teknolojileri rehber öğretmeninin (BTR)
+          bilgisi alınır: kullanılacak port, güvenlik duvarı kuralı ve bilgisayarın ağ adresinin
+          sabit kalması BTR&apos;yle birlikte belirlenir.
+        </p>
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>
+            <strong>Ağ keşfi.</strong> Kütüphane bilgisayarının ve tahtaların hangi ağ bölümünde
+            olduğunu, bilgisayarın ağ profilini ve BTR&apos;nin tahtalara dosya ya da politika
+            gönderip gönderemediğini (ör. Liderahenk ile) öğrenin; yer imleri bu yolla dağıtılır.
+            Aynı bölümdeki bilgisayarlar kataloğa doğrudan ulaşır. Tahtalar ayrı bir bölümdeyse
+            erişim iki şeye bağlıdır: bölümler arasındaki geçiş (ağ cihazları merkezden yönetilir,
+            bu ayar okulda değiştirilemez) ve tahta tarayıcısının vekil sunucu ayarı (yerel adres
+            için istisnayı BTR tanımlar).
+          </li>
+          <li className="space-y-2">
+            <p>
+              <strong>Sabit adres.</strong> BTR, DHCP&apos;de bu bilgisayarın ağ kartına sabit adres
+              ayırır ya da bunu yetkili birimden ister. Adres değişirse afiş ve yer imleri eski
+              adresi gösterir (bkz. aşağıda “Adres değişirse”). Bilgisayarın adresini siz elle
+              değiştirmeyin:
+            </p>
+            <Mevzuat kaynak={`${YONERGE}, md. 11/6`}>
+              “Bilgisayarlara tahsis edilen IP numarası ve ortam erişim kontrolü adresi (MAC adresi)
+              ile BIOS ayarları Bakanlık tarafından yetkilendirilmiş kişiler dışında
+              değiştirilemez.”
+            </Mevzuat>
+          </li>
+          <li className="space-y-2">
+            <p>
+              <strong>Tahta ağından erişim kapalıysa PYS talebi.</strong> Ağ Doktoru&apos;ndaki “PYS
+              talep metnini kopyala” düğmesi talebi hazırlar: “yerel ağ VLAN düzenlemesi — tek yön”
+              konulu, tahtalardan bu bilgisayara yalnız katalog portuna erişim isteyen, portu ve
+              gerekçesini yazan bir metindir. BTR metni okul müdürünün onayıyla FATİH PYS&apos;ye
+              girer. Talebi “internet ya da site açma” diye yazmayın; başka birime gider. Portları
+              okul değil Bakanlık düzenler, bu yüzden süre okulun elinde değildir:
+            </p>
+            <Mevzuat kaynak={`${YONERGE}, md. 11/22`}>
+              “Başkanlık MEBNET ağında erişime açılacak ve kapanacak portları belirleme ve düzenleme
+              yetkisine sahiptir.”
+            </Mevzuat>
+          </li>
+          <li>
+            <strong>Ağ Hizmeti Bilgi Notu.</strong> Not bilgisayarın demirbaş no&apos;sunu, portu ve
+            gerekçesini, güvenlik duvarı kuralının gerçek değerlerini, neyin sunulup neyin
+            sunulmadığını ve programın giden bağlantılarını yazar. Ağ Doktoru&apos;ndaki “Ağ Hizmeti
+            Bilgi Notu&apos;nu bas” düğmesiyle basılır. BTR ve okul müdürü imzalar, not okulda
+            saklanır. Bu bir izin belgesi değil, bilgi notudur.
+          </li>
+          <li className="space-y-2">
+            <p>
+              <strong>Okul ağından erişim sınaması.</strong> Katalog açıldıktan sonra erişimi başka
+              bir bilgisayardan ve bir tahtadan sınayın: Ağ Doktoru&apos;nun verdiği{" "}
+              <Kod>Test-NetConnection</Kod> komutunu okul ağındaki başka bir Windows bilgisayarda
+              çalıştırın, tahtanın tarayıcısında kataloğun adresini açın. Bilgi notunda ayrıca bu
+              bilgisayardan güncelleme denetiminin ve (açıksa) ISBN ile künye getirmenin adreslerine
+              erişimi sınayan hazır komutlar vardır. Bu adreslerden biri okul ağında kapalıysa
+              erişim talebi Yardım Masası&apos;ndan açılır:
+            </p>
+            <Mevzuat kaynak={`${YONERGE}, md. 11/12`}>
+              “MEBNET ağında kategorisi olmayan ip adresi, içerik veya sitelere erişim izni
+              verilmez. Erişim talepleri Yardım Masası Modülü (yardimmasasi.meb.gov.tr) üzerinden
+              yapılır.”
+            </Mevzuat>
+          </li>
+        </ol>
+
+        <AltBaslik>Açma adımları</AltBaslik>
+        <p>
+          Katalog hiç açılmamışken ve afiş hiç basılmamışken{" "}
+          <Ekran to="/ayarlar?tab=ag-katalogu">Ayarlar → Ağ Kataloğu</Ekran> sekmesinin başında “Ağ
+          Kataloğunu Açmadan Önce” kartı durur. Adımları sırasıyla:
+        </p>
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>
+            <strong>BTR&apos;yle görüşün:</strong> yukarıdaki görüşme. Kartta “Ağ Hizmeti Bilgi
+            Notu&apos;nu bas” düğmesi de vardır.
+          </li>
+          <li>
+            <strong>Güvenlik duvarını hazırlayın:</strong> Windows&apos;ta kurulumda “Yerel ağdan
+            katalog taramasına izin ver (güvenlik duvarı kuralı)” seçildiyse kural hazırdır; kartın
+            “Ağ Doktoru&apos;nu aç” bağlantısıyla Ağ Doktoru&apos;na geçip beş denetimin geçtiğini
+            görün. Geçmiyorsa oradaki “Kuralı ekle/güncelle” düğmesi kuralı yazar; Windows&apos;un
+            yönetici onayını (UAC) ister, kimliği BTR girer. Pardus&apos;ta kuralı BTR açar.
+          </li>
+          <li>
+            <strong>Adresi seçin:</strong> sekmenin “Dinleme” bölümündeki “Katalog hangi ağ
+            bağlantısında açılsın?” sorusunu yanıtlayıp “Kaydet”e basın. Bilgisayarda tek ağ
+            bağlantısı varsa varsayılan “Bu bilgisayarın bütün ağ bağlantılarında” seçeneği
+            yeterlidir. İkinci ağ kartı varsa “Yalnız seçili IP adresinde” seçeneğini ve “IP adresi”
+            listesinden okul ağındaki adresi seçin; katalog yalnız o ağa açılır.
+          </li>
+          <li>
+            <strong>Ağ Kataloğunu açın:</strong> “Ağ Kataloğunu aç” düğmesine basın.
+          </li>
+          <li>
+            <strong>Afişi basın, yer imlerini dağıtın:</strong> Ağ Doktoru&apos;ndaki “Belgeler”
+            kartından (aşağıda). Afiş basılınca kart gizlenir.
+          </li>
+        </ol>
+        <p>
+          Windows&apos;ta güvenlik duvarı denetiminin beş maddesinden biri tutmazsa katalog okul
+          ağına hiç açılmaz; durum “Güvenlik duvarı izni yok” olur ve Ağ Doktoru düzeltme adımını
+          gösterir. Açma kalıcıdır: program yeniden açıldığında katalog da açılır. Yönetici kipinde
+          tepsi menüsündeki “Ağ Kataloğunu aç” ve “Ağ Kataloğunu kapat” komutları da aynı işi görür.
+          Windows&apos;ta kurulum yapılmadan çalıştırılan (taşınabilir) sürümde Ağ Kataloğu
+          sunulmaz: güvenlik duvarı kuralı kurulu programın yoluna bağlıdır. Pardus&apos;un
+          taşınabilir arşivinde katalog açılır; paket tanımı gelmediği için Ağ Doktoru portu
+          doğrudan açan komutu verir.
+        </p>
+
+        <AltBaslik>Ağ Doktoru</AltBaslik>
+        <p>
+          <Ekran to="/ag-doktoru">Ağ Doktoru</Ekran> menüde yoktur: Ayarlar → Ağ Kataloğu&apos;ndaki
+          “Ağ Doktoru” bağlantısıyla açılır. Ağ Doktoru yalnız yönetici kipinde açılır. Beş kartı
+          vardır:
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong>Katalog Durumu:</strong> durum rozeti, port, dinlenen ağ bağlantısı, katalog
+            adresi (tıklanınca bu bilgisayarın tarayıcısında açılır) ve QR kodu, bugün gösterilen
+            sayfa ve yapılan arama sayısı, son hata ve uyarılar; “Ağ Kataloğunu aç” ya da “Ağ
+            Kataloğunu kapat”, “Yeniden başlat” ve “Yenile” düğmeleri. Kimin neyi aradığı tutulmaz,
+            yalnız günlük sayılar tutulur.
+          </li>
+          <li>
+            <strong>Güvenlik Duvarı:</strong> beş denetimin her biri “Geçti”, “Geçmedi”, “Uyarı” ya
+            da “Denetlenemedi” olarak; kuraldaki uzak adres ve profil, bu bilgisayarın ağ profili
+            (“Genel”, “Özel” ya da “Etki alanı”); “Kuralı ekle/güncelle” ve “Yeniden denetle”
+            düğmeleri. Program için birden çok izin kuralı varsa hepsi listelenir: Windows herhangi
+            birine uyan bağlantıyı kabul eder, biri bütün adreslere açıksa denetim uyarır.
+            Pardus&apos;ta bu kart BTR&apos;nin çalıştıracağı komutu gösterir.
+          </li>
+          <li>
+            <strong>Ağ Bağlantıları:</strong> bu bilgisayarın ağ bağlantıları, adresleri ve ağ
+            profilleri. Varsayılan bağlantı dışında etkin bir bağlantı varsa kataloğun o ağda da
+            erişilebileceği uyarısı çıkar; bilgisayarda IP yönlendirme açıksa o da uyarılır.
+            Bilgisayarın adresi Ayarlar&apos;daki tahta ağı bloklarından birindeyse “Bu bilgisayar
+            öğrenci erişimli ağda” uyarısı çıkar: kütüphane masası hesabında kişisel oturum açmayın,
+            bilgisayardan ayrılırken programı kilitleyin.
+          </li>
+          <li>
+            <strong>Dinleyici Sınaması:</strong> “Dinleyiciyi sına” düğmesi ve başka bilgisayar için
+            hazır sınama komutu.
+          </li>
+          <li>
+            <strong>Belgeler:</strong> “Afişi bas”, “Yer imi dosyalarını üret”, “PYS talep metnini
+            kopyala” ve “Ağ Hizmeti Bilgi Notu&apos;nu bas” düğmeleri; belgelerin hangi adresi
+            taşıyacağı “Belgelerde kullanılacak adres” seçicisinden seçilir.
+          </li>
+        </ul>
+        <p>Durum rozetinin anlamları:</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>
+            <strong>Açık:</strong> katalog okul ağında hizmet veriyor; <strong>Kapalı:</strong>{" "}
+            katalog kapatılmış ya da hiç açılmamış.
+          </li>
+          <li>
+            <strong>Güvenlik duvarı izni yok:</strong> beş denetimden biri tutmadı, katalog hiç
+            dinlemiyor; “Güvenlik Duvarı” kartındaki madde neyin düzeltileceğini yazar. Denetim hiç
+            okunamadıysa (ör. bilgisayar açılışta çok yavaşsa) program birkaç dakika arayla, sonra
+            saatte bir kendiliğinden yeniden dener. Katalogu kullanmaktan vazgeçtiyseniz “Ağ
+            Kataloğunu kapat” ile ayarı kapatın; ayar açık kaldıkça program her açılışta yeniden
+            dener.
+          </li>
+          <li>
+            <strong>Açılamadı:</strong> katalog başlatılamadı ya da seçili adres bu bilgisayarda
+            artık yok; “Son hata” nedenini yazar.
+          </li>
+          <li>
+            <strong>Port bekleniyor:</strong> port başka bir program tarafından kullanılıyor;
+            program birkaç dakika boyunca kendiliğinden yeniden dener.
+          </li>
+          <li>
+            <strong>Geri yükleme nedeniyle kapalı:</strong> yedekten geri yükleme yapıldı. Program
+            yeniden açılınca geri yüklenen yedekte Ağ Kataloğu açıksa katalog kendiliğinden kalkar;
+            değilse Ayarlar → Ağ Kataloğu&apos;ndan yeniden açılır.
+          </li>
+        </ul>
+        <p>
+          “Dinleyiciyi sına” düğmesi kataloğun bu bilgisayardaki her ağ bağlantısında yanıt verip
+          vermediğini sınar. Bu sınama güvenlik duvarını ya da ağ bölümlerini kanıtlamaz, çünkü
+          bilgisayarın kendi adresine yapılan bağlantı ağa çıkmaz. Asıl kanıt başka bir
+          bilgisayardan alınır: Ağ Doktoru&apos;nun verdiği <Kod>Test-NetConnection</Kod> komutunu
+          (“Kopyala” ile alınır) okul ağındaki başka bir Windows bilgisayarda PowerShell&apos;de
+          çalıştırın; sonuçta <Kod>TcpTestSucceeded : True</Kod> görülmelidir.
+        </p>
+
+        <AltBaslik>Afiş ve yer imleri</AltBaslik>
+        <p>
+          “Afişi bas” kataloğun adresini büyük ve tek satırda basar; QR kodu küçük ve ikincildir,
+          çünkü okul bilgisayarları ve tahtalar QR okumaz. Afiş tek sayfadır: okulun adını, adresin
+          nasıl yazılacağını, kütüphane saatlerini ve kataloğun kişisel veri göstermediğini yazar.
+          Afiş basılınca program o adresi hatırlar; bilgisayarın adresi sonradan değişirse uyarır.
+        </p>
+        <p>
+          Tahtalarda yer imi tek tek eklenmez: ETAP her öğretmene tahtada ayrı bir hesap açar ve bir
+          hesaba eklenen yer imi öbür öğretmenlerin hesabında görünmez. Bu yüzden kullanıcı başına
+          yer imi yetmez; program tahtanın bütün hesaplarında görünen bir yer imi politika dosyası
+          üretir. “Yer imi dosyalarını üret” tek bir arşiv indirir:
+        </p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>
+            ETAP/Pardus tahtalar için Chromium&apos;un yer imi politika dosyası (
+            <Kod>/etc/chromium/policies/managed/</Kod> klasörüne konur) ve uygulama menüsü kısayolu
+            (<Kod>/usr/share/applications/</Kod> klasörüne konur);
+          </li>
+          <li>
+            Windows bilgisayarlar için internet kısayolu ve Windows tahtalar için tahta kipinde açan
+            ikinci bir kısayol;
+          </li>
+          <li>
+            her dosyanın nereye ve hangi komutla konacağını yazan açıklama dosyası (
+            <Kod>BENIOKU.txt</Kod>).
+          </li>
+        </ul>
+        <p>
+          Dosyaları tahtalara ve bilgisayarlara BTR dağıtır. Dağıtım yetkisi ağ keşfinde öğrenilir.
+        </p>
+
+        <AltBaslik>Tahta kipi</AltBaslik>
+        <p>
+          Tahtalar için üretilen yer imleri kataloğu tahta kipinde açar: yazılar ve dokunma
+          hedefleri büyür, sayfadan sayfaya geçerken büyük düzen korunur. Ekran klavyesine gerek
+          kalmadan bir kaynağa ulaşmak için üst menüdeki “Kaynak Adları”, “Yazarlar” ve “Konular”
+          dizinleri kullanılır: önce harfe, sonra kaynağa dokunulur; kaynağın sayfası yer numarasını
+          ve nüshaların rafta olup olmadığını gösterir. Dokunmatik ekranlı cihazlarda büyük düzen
+          kendiliğinden de açılır. Yer imini bir tahtaya elle eklerseniz adresin sonuna{" "}
+          <Kod>?tahta=1</Kod> yazın (ör. <Kod>{"http://<IP>:8765/?tahta=1"}</Kod>).
+        </p>
+
+        <AltBaslik>Adres değişirse</AltBaslik>
+        <p>
+          Program her gün, gün değişimi denetiminde bu bilgisayarın ağ adresine bakar. Adres son
+          basılan afişteki adresten farklıysa Ağ Doktoru&apos;nun “Katalog Durumu” kartında “Bu
+          bilgisayarın IP adresi değişti (… → …). Afişi yeniden basın, yer imlerini güncelleyin.”
+          uyarısı çıkar. Sırasıyla:
+        </p>
+        <ol className="list-decimal space-y-1 pl-5">
+          <li>
+            BTR&apos;ye haber verin: sabit adres ayırma yapılmamış ya da bozulmuş olabilir. Adres
+            yeniden değişecekse belgeleri yenilemek kalıcı çözüm değildir.
+          </li>
+          <li>“Afişi bas” ile yeni afişi basıp eskisinin yerine asın; uyarı yeni afişle kalkar.</li>
+          <li>
+            “Yer imi dosyalarını üret” ile yeni arşivi üretip BTR&apos;ye verin; dosyalar eskilerin
+            yerine konur.
+          </li>
+          <li>
+            Ağ Hizmeti Bilgi Notu&apos;nu yeniden basıp imzalatın. Tahta ağından erişim için PYS
+            talebi açıldıysa yeni adresi BTR&apos;ye bildirin.
+          </li>
+        </ol>
+        <p>
+          “Yalnız seçili IP adresinde” seçiliyken seçili adres bilgisayarda kalmazsa: bilgisayarın
+          tek adresi varsa katalog o adreste açılır ve aynı uyarıyı verir; birden çok adresi varsa
+          katalog açılmaz, adresi Ayarlar → Ağ Kataloğu&apos;nun “Dinleme” bölümünden yeniden seçin.
+          Kütüphane bilgisayarı değişirse sabit adres ayırma yeni bilgisayarın ağ kartına taşınır.
+        </p>
+
+        <AltBaslik>Port</AltBaslik>
+        <p>
+          Varsayılan port 8765&apos;tir ve çoğu okulda değiştirmek gerekmez. Ayarlar → Ağ
+          Kataloğu&apos;ndaki “Portu değiştir” Windows&apos;ta güvenlik duvarı kuralını da yeni
+          portla yazar ve yönetici onayı (UAC) ister; onay verilmezse port değişmez. Port değişince
+          afişi yeniden basın, yer imlerini ve Ağ Hizmeti Bilgi Notu&apos;nu yenileyin; PYS talebi
+          açıldıysa yeni portu BTR&apos;ye bildirin.
+        </p>
+
+        <AltBaslik>Pardus</AltBaslik>
+        <p>
+          Pardus&apos;ta program güvenlik duvarı kuralı açmaz; paket hazır bir tanım bırakır. Ağ
+          Doktoru&apos;nun “Güvenlik Duvarı” kartı bilgisayardaki güvenlik duvarını ve BTR&apos;nin
+          çalıştıracağı komutu gösterir; komut “Kopyala” ile alınır. Komut katalogu yalnız bu
+          bilgisayarın yerel ağına ve Ayarlar&apos;daki tahta ağı bloklarına açar (her blok ayrı
+          satırdır); Windows&apos;taki kural gibi bütün adreslere açmaz. Pardus&apos;ta port
+          değiştirilince komut yeni portla yenilenir ve kuralı BTR yeniden açar.
         </p>
       </Bolum>
     </div>

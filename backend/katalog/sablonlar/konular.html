@@ -1,0 +1,17 @@
+{% extends "taban.html" %}
+{% block icerik %}
+<h1>Konular</h1>
+<section class="kart">
+<h2>Dewey Onlu Sınıflama (DOS) Ana Sınıfları</h2>
+<p>Kaynaklar sınıflama kodlarının ilk hanesine göre on ana sınıfa ayrılır. Bir sınıfa tıklayarak o sınıftaki kaynakları görün.</p>
+<ul class="siniflar">
+{% for s in siniflar %}<li>{% if s.bag %}<a href="{{ s.bag }}"><span>{{ s.ad }}</span><span>{{ s.adet_metni }}</span></a>{% else %}<span><span>{{ s.ad }}</span><span>{{ s.adet_metni }}</span></span>{% endif %}</li>
+{% endfor %}</ul>
+{% if siniflandirilmamis %}<p>Sınıflama kodu girilmemiş kaynaklar: {{ siniflandirilmamis }}. Bunlara konu dizininden ya da aramadan ulaşabilirsiniz.</p>{% endif %}
+</section>
+<section class="kart">
+<h2>Konu Dizini</h2>
+<p>Konu adının ilk harfine göre:</p>
+{% include "_harf_cubugu.html" %}
+</section>
+{% endblock %}

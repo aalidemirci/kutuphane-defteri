@@ -51,6 +51,8 @@ KISI_YAZAN_UCLAR = frozenset(
 # Anlık görüntü: kişi YAZMAYAN bütün `/api/` uçları. Yeni uç → bilinçli sınıflandırma.
 DIGER_UCLAR = frozenset(
     {
+        # Çık (F5, §4.2-4): kişi yazmaz; görevli kipinde yönetici parolası ister.
+        "app-quit",
         "backup-list",
         "backup-restore",
         "class-section-detail",
@@ -128,6 +130,22 @@ DIGER_UCLAR = frozenset(
         "library-metadata-lookup",
         "library-metadata-offline-export",
         "library-metadata-offline-preview",
+        # Ağ Kataloğu ayarı (F5): port, dinleme kipi, vitrin ve kütüphane
+        # saatleri — kişisel veri yok; yalnız yönetici kipinde yazılır.
+        "library-network-catalog-settings",
+        # Ağ Doktoru (F5, §5.9): durum, denetim, eylemler ve belgeler — kişi
+        # yazmaz; belgeler kişisel veri taşımaz. Afiş yalnız afiş adresini yazar.
+        "library-network-catalog-bookmarks",
+        "library-network-catalog-control",
+        "library-network-catalog-firewall",
+        "library-network-catalog-firewall-rule",
+        "library-network-catalog-info-note",
+        "library-network-catalog-interfaces",
+        "library-network-catalog-listener-test",
+        "library-network-catalog-port",
+        "library-network-catalog-poster",
+        "library-network-catalog-pys-text",
+        "library-network-catalog-status",
         "library-policy",
         "library-section-detail",
         "library-section-list",

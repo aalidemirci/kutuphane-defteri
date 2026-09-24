@@ -1,0 +1,16 @@
+{% extends "taban.html" %}
+{% block icerik %}
+<h1>{{ sayfa_basligi }}</h1>
+<section class="kart">
+{% include "_arama_formu.html" %}
+{% if arama.konu_adi %}<p>Konu: <strong>{{ arama.konu_adi }}</strong> · <a href="{{ arama.konusuz_bag }}">Konu süzgecini kaldır</a></p>{% endif %}
+{% if arama.kirpildi %}<p>Arama metni {{ en_uzun_arama }} karakterle sınırlandı.</p>{% endif %}
+</section>
+{% if sonuc.toplam %}
+<p>{{ sonuc.toplam_metni }}</p>
+{% with eserler=sonuc.eserler eksen="" %}{% include "_eser_listesi.html" %}{% endwith %}
+{% include "_sayfalama.html" %}
+{% elif not veri_yok %}
+<p class="kart">Aramanızla eşleşen kaynak bulunamadı. Daha kısa ya da farklı bir sözcük deneyin; dizinlerden de gezinebilirsiniz.</p>
+{% endif %}
+{% endblock %}

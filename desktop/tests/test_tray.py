@@ -1,4 +1,4 @@
-"""Sistem tepsisi testleri (tasarım §4.4 F0 menüsü, §4.5, UY-7).
+"""Sistem tepsisi testleri (tasarım §4.4 tepsi kip matrisi — §5.10-13, §4.5, UY-7).
 
 GUI kütüphaneleri (pystray, PySide6) Docker imajında yoktur: ikisi de sahte
 modülle sınanır. Gerçek tepsi davranışı (Windows'ta pystray iş parçacığı,
@@ -21,13 +21,17 @@ from PIL import Image
 
 from desktop import tray as tray_mod
 from desktop.tray import (
+    KIP_MATRISI,
     MENU_QUIT,
     MENU_SHOW,
     NullTray,
     PystrayTray,
     QtTray,
     TrayActions,
+    kip_sutunu,
+    komutu_calistir,
     load_icon_image,
+    menu_durumu,
     menu_entries,
     start_tray,
 )
@@ -66,8 +70,8 @@ class _Sayac:
 # ------------------------------------------------------------------ menü (F0)
 
 
-def test_f0_menusu_yalniz_iki_komut() -> None:
-    """Kip matrisinin kalanı F1/F5'te (`KipDurumu`); F0'da yalnız aç ve Çık."""
+def test_kip_bilgisi_verilmezse_menu_yalniz_ac_ve_cik() -> None:
+    """Kip sağlayıcısı yoksa (ör. Django kurulmadan) kilitli sütunu: yalnız aç ve Çık."""
     sayac = _Sayac()
 
     assert [metin for metin, _ in menu_entries(sayac.eylemler())] == ["Pencereyi aç", "Çık"]
@@ -118,8 +122,33 @@ class _SahtePystray:
         disari = self
 
         class MenuItem:
-            def __init__(self, text: str, action: Callable[[], None], default: bool = False):
-                self.text, self.action, self.default = text, action, default
+            """pystray: metin, `enabled` ve `visible` çağrılabilir olabilir (öğeyle çağrılır)."""
+
+            def __init__(
+                self,
+                text: Any,
+                action: Callable[[], None],
+                default: bool = False,
+                enabled: Any = True,
+                visible: Any = True,
+            ) -> None:
+                self._text, self.action, self.default = text, action, default
+                self._enabled, self._visible = enabled, visible
+
+            def _deger(self, alan: Any) -> Any:
+                return alan(self) if callable(alan) else alan
+
+            @property
+            def text(self) -> str:
+                return str(self._deger(self._text))
+
+            @property
+            def enabled(self) -> bool:
+                return bool(self._deger(self._enabled))
+
+            @property
+            def visible(self) -> bool:
+                return bool(self._deger(self._visible))
 
         class Menu:
             def __init__(self, *items: MenuItem) -> None:
@@ -140,6 +169,14 @@ class _SahtePystray:
             def stop(self) -> None:
                 self.stop_cagri += 1
 
+            def update_menu(self) -> None:
+                self.guncelleme += 1
+
+            guncelleme = 0
+
+            def gorunenler(self) -> list[Any]:
+                return [oge for oge in self.menu.items if oge.visible]
+
         self.MenuItem, self.Menu, self.Icon = MenuItem, Menu, Icon
 
 
@@ -153,13 +190,13 @@ def test_windows_tepsisi_run_detached_ile_kurulur() -> None:
     (ikon,) = sahte.ikonlar
     assert ikon.run_detached_cagri == 1
     assert ikon.title == "Kütüphane Defteri"
-    assert [(i.text, i.default) for i in ikon.menu.items] == [
+    assert [(i.text, i.default) for i in ikon.gorunenler()] == [
         ("Pencereyi aç", True),  # simgeye tıklama pencereyi açar
         ("Çık", False),
     ]
 
-    ikon.menu.items[0].action()
-    ikon.menu.items[1].action()
+    ikon.gorunenler()[0].action()
+    ikon.gorunenler()[1].action()
     assert (sayac.goster, sayac.cik) == (1, 1)
 
 
@@ -270,10 +307,25 @@ class _SahteQt:
             def __init__(self, metin: str) -> None:
                 self.metin = metin
                 self.triggered = _Sinyal()
+                self.gorunur = True
+                self.etkin = True
+
+            def setText(self, metin: str) -> None:
+                self.metin = metin
+
+            def setVisible(self, deger: bool) -> None:
+                self.gorunur = deger
+
+            def setEnabled(self, deger: bool) -> None:
+                self.etkin = deger
 
         class QMenu:
             def __init__(self) -> None:
                 self.eylemler: list[QAction] = []
+                self.aboutToShow = _Sinyal()
+
+            def gorunenler(self) -> list[QAction]:
+                return [e for e in self.eylemler if e.gorunur]
 
             def addAction(self, metin: str) -> QAction:
                 eylem = QAction(metin)
@@ -383,13 +435,13 @@ def test_qt_menusu_ve_simgeye_tiklama_komutlari_calistirir() -> None:
     assert simge.gorunur is True
     assert simge.ipucu == "Kütüphane Defteri"
     assert simge.menu is not None
-    assert [e.metin for e in simge.menu.eylemler] == ["Pencereyi aç", "Çık"]
+    assert [e.metin for e in simge.menu.gorunenler()] == ["Pencereyi aç", "Çık"]
     assert simge.icon.kaynak.veri.startswith(b"\x89PNG")  # .ico Pillow ile PNG'ye çevrildi
 
-    simge.menu.eylemler[0].triggered.emit(False)
+    simge.menu.gorunenler()[0].triggered.emit(False)
     simge.activated.emit(qt.QSystemTrayIcon.Trigger)
     simge.activated.emit(qt.QSystemTrayIcon.Context)  # sağ tık yalnız menüyü açar
-    simge.menu.eylemler[1].triggered.emit(False)
+    simge.menu.gorunenler()[1].triggered.emit(False)
 
     assert (sayac.goster, sayac.cik) == (2, 1)
     tepsi.stop()
@@ -582,3 +634,272 @@ def test_tepsi_geri_cagrisi_pystray_ve_qt_ile_uyumlu() -> None:
     sarili()
     sarili(False)
     assert cagri == [1, 1]
+
+
+# ------------------------------------------------ kip matrisi (§4.4, §5.10-13)
+
+
+class _Masa:
+    """Tepsinin bütün hedeflerini kaydeden taklit masaüstü (kip değiştirilebilir)."""
+
+    def __init__(self, kip: str = "yonetici", *, katalog_acik: bool = False) -> None:
+        self.kip = kip
+        self.acik = katalog_acik
+        self.cagrilar: list[str] = []
+
+    def _kaydet(self, ad: str) -> Callable[[], None]:
+        def kaydet() -> None:
+            self.cagrilar.append(ad)
+
+        return kaydet
+
+    def eylemler(self) -> TrayActions:
+        return TrayActions(
+            show=self._kaydet("pencere"),
+            quit=self._kaydet("cik"),
+            kip=lambda: self.kip,
+            quit_gorevli=self._kaydet("cik-parola-spa"),
+            katalog_satiri=lambda: (
+                "Ağ Kataloğu: açık — http://192.168.10.5:8765/"
+                if self.acik
+                else "Ağ Kataloğu: kapalı"
+            ),
+            katalog_acik=lambda: self.acik,
+            katalog_ac=self._kaydet("katalog-ac"),
+            katalog_kapat=self._kaydet("katalog-kapat"),
+            katalog_goster=self._kaydet("katalog-tarayici"),
+            gorevli_kipine_gec=self._kaydet("gorevli"),
+            kilitle=self._kaydet("kilitle"),
+        )
+
+
+def _gorunen(masa: _Masa) -> list[tuple[str, bool]]:
+    return [(o.metin, o.etkin) for o in menu_durumu(masa.eylemler()) if o.gorunur]
+
+
+def test_kip_matrisi_tasarim_tablosuyla_birebir() -> None:
+    """§4.4 tablosu anlık görüntüsü: değişiklik bilinçli yapılır."""
+    assert {kod: sorted(sutunlar) for kod, sutunlar in KIP_MATRISI.items()} == {
+        "pencere": ["gorevli", "kilitli", "yonetici"],
+        "katalog_durum": ["gorevli", "kilitli", "yonetici"],
+        "katalog_ac_kapa": ["yonetici"],
+        "gorevli": ["yonetici"],
+        "kilitle": ["gorevli", "yonetici"],
+        "cik": ["gorevli", "kilitli", "yonetici"],
+    }
+
+
+def test_yonetici_kipinde_butun_komutlar() -> None:
+    masa = _Masa("yonetici", katalog_acik=True)
+
+    assert _gorunen(masa) == [
+        ("Pencereyi aç", True),
+        ("Ağ Kataloğu: açık — http://192.168.10.5:8765/", True),  # tıklanınca tarayıcıda açılır
+        ("Ağ Kataloğunu kapat", True),
+        ("Görevli kipine geç", True),
+        ("Kilitle", True),
+        ("Çık", True),
+    ]
+
+
+def test_yonetici_kipinde_katalog_kapaliyken_ac_komutu() -> None:
+    masa = _Masa("yonetici", katalog_acik=False)
+
+    gorunen = _gorunen(masa)
+
+    assert ("Ağ Kataloğunu aç", True) in gorunen
+    assert ("Ağ Kataloğu: kapalı", False) in gorunen  # adres yok: tıklanmaz
+
+
+def test_gorevli_kipinde_ayar_degistiren_komut_yok_katalog_yalniz_bilgi() -> None:
+    masa = _Masa("gorevli", katalog_acik=True)
+
+    assert _gorunen(masa) == [
+        ("Pencereyi aç", True),
+        ("Ağ Kataloğu: açık — http://192.168.10.5:8765/", False),  # bilgi
+        ("Kilitle", True),
+        ("Çık", True),
+    ]
+
+
+@pytest.mark.parametrize(
+    "kip", ["kilitli", "kurulum", "guvenlik_dosyasi_kayip", "yeniden_baslat", "bilinmeyen"]
+)
+def test_kilitli_sutunu(kip: str) -> None:
+    masa = _Masa(kip, katalog_acik=True)
+
+    assert _gorunen(masa) == [
+        ("Pencereyi aç", True),
+        ("Ağ Kataloğu: açık — http://192.168.10.5:8765/", False),
+        ("Çık", True),
+    ]
+    assert kip_sutunu(kip) == "kilitli"
+
+
+def test_gorevli_kipinde_ayar_degistiren_komut_eski_menuden_de_reddedilir() -> None:
+    """§5.10-13: menü yönetici kipinde kuruldu, kip sonra görevliye indi; komut reddedilir."""
+    masa = _Masa("yonetici", katalog_acik=False)
+    eylemler = masa.eylemler()
+    menu_durumu(eylemler)  # menü yönetici kipinde çizildi
+    masa.kip = "gorevli"
+
+    for kod in ("katalog_ac_kapa", "gorevli"):
+        assert komutu_calistir(eylemler, kod) is False
+    assert komutu_calistir(eylemler, "katalog_durum") is False  # yalnız bilgi
+
+    assert masa.cagrilar == []
+
+
+def test_kilitliyken_kilitle_ve_ayar_komutlari_reddedilir() -> None:
+    masa = _Masa("kilitli")
+    eylemler = masa.eylemler()
+
+    for kod in ("katalog_ac_kapa", "gorevli", "kilitle", "katalog_durum", "bilinmeyen"):
+        assert komutu_calistir(eylemler, kod) is False
+    assert masa.cagrilar == []
+
+
+def test_cik_goreli_kipte_parolayi_spada_ister_digerlerinde_dogrudan() -> None:
+    """§4.2-4: yönetici ve kilitli doğrudan; görevli pencere + SPA'da yönetici parolası."""
+    masa = _Masa("gorevli")
+    eylemler = masa.eylemler()
+
+    komutu_calistir(eylemler, "cik")
+    masa.kip = "yonetici"
+    komutu_calistir(eylemler, "cik")
+    masa.kip = "kilitli"
+    komutu_calistir(eylemler, "cik")
+
+    assert masa.cagrilar == ["cik-parola-spa", "cik", "cik"]
+
+
+def test_yonetici_komutlari_hedeflerine_gider() -> None:
+    masa = _Masa("yonetici", katalog_acik=True)
+    eylemler = masa.eylemler()
+
+    for kod in ("pencere", "katalog_durum", "katalog_ac_kapa", "gorevli", "kilitle"):
+        assert komutu_calistir(eylemler, kod) is True
+    masa.acik = False
+    komutu_calistir(eylemler, "katalog_ac_kapa")
+
+    assert masa.cagrilar == [
+        "pencere",
+        "katalog-tarayici",
+        "katalog-kapat",
+        "gorevli",
+        "kilitle",
+        "katalog-ac",
+    ]
+
+
+def test_kip_okunamazsa_kilitli_sayilir() -> None:
+    def patla() -> str:
+        raise RuntimeError("veritabanı meşgul")
+
+    eylemler = TrayActions(show=lambda: None, quit=lambda: None, kip=patla, kilitle=lambda: None)
+
+    assert [o.kod for o in menu_durumu(eylemler) if o.gorunur] == ["pencere", "cik"]
+    assert komutu_calistir(eylemler, "kilitle") is False
+
+
+def test_windows_tepsisi_menuyu_kip_degisince_yeniden_kurar() -> None:
+    """pystray Win32 menüyü bir kez kurar: değişiklik `update_menu` ile yansır."""
+    sahte = _SahtePystray()
+    masa = _Masa("yonetici")
+    tepsi = PystrayTray(masa.eylemler(), pystray_module=sahte, yenileme_sn=3600)
+    tepsi.start()
+    (ikon,) = sahte.ikonlar
+    try:
+        assert [i.text for i in ikon.gorunenler()] == [
+            "Pencereyi aç",
+            "Ağ Kataloğu: kapalı",
+            "Ağ Kataloğunu aç",
+            "Görevli kipine geç",
+            "Kilitle",
+            "Çık",
+        ]
+
+        assert tepsi.yenile() is False  # değişiklik yok: menü yeniden kurulmaz
+        masa.kip = "gorevli"
+        assert tepsi.yenile() is True
+        assert ikon.guncelleme == 1
+        assert [i.text for i in ikon.gorunenler()] == [
+            "Pencereyi aç",
+            "Ağ Kataloğu: kapalı",
+            "Kilitle",
+            "Çık",
+        ]
+        assert [i.enabled for i in ikon.gorunenler()] == [True, False, True, True]
+
+        # Görevli kipinde Çık menüden seçilince parola SPA'da istenir.
+        ikon.gorunenler()[-1].action()
+        assert masa.cagrilar == ["cik-parola-spa"]
+    finally:
+        tepsi.stop()
+
+
+def test_windows_tepsisi_yenileme_is_parcacigi_kd_tepsi_ve_cikista_durur() -> None:
+    import threading
+
+    sahte = _SahtePystray()
+    masa = _Masa("yonetici")
+    tepsi = PystrayTray(masa.eylemler(), pystray_module=sahte, yenileme_sn=0.01)
+    tepsi.start()
+    adlar = {t.name for t in threading.enumerate()}
+    masa.kip = "kilitli"
+
+    import time
+
+    son = time.monotonic() + 5
+    while sahte.ikonlar[0].guncelleme == 0 and time.monotonic() < son:
+        time.sleep(0.01)
+    tepsi.stop()
+
+    assert "kd-tepsi" in adlar
+    assert sahte.ikonlar[0].guncelleme >= 1
+    assert "kd-tepsi" not in {t.name for t in threading.enumerate()}
+
+
+def test_qt_menusu_acilirken_kip_matrisine_gore_guncellenir() -> None:
+    qt = _SahteQt()
+    masa = _Masa("yonetici", katalog_acik=True)
+    tepsi = QtTray(masa.eylemler(), qt_loader=qt.yukleyici, signal_installer=_SinyalKaydi())
+    tepsi.start()
+    (simge,) = qt.tepsiler
+    assert simge.menu is not None
+    try:
+        assert len(simge.menu.gorunenler()) == 6
+
+        masa.kip = "gorevli"
+        simge.menu.aboutToShow.emit()
+
+        assert [e.metin for e in simge.menu.gorunenler()] == [
+            "Pencereyi aç",
+            "Ağ Kataloğu: açık — http://192.168.10.5:8765/",
+            "Kilitle",
+            "Çık",
+        ]
+        assert simge.menu.gorunenler()[1].etkin is False
+        # Gizli komut tetiklenebilse bile reddedilir.
+        simge.menu.eylemler[2].triggered.emit(False)  # "Ağ Kataloğunu kapat"
+        assert masa.cagrilar == []
+    finally:
+        tepsi.stop()
+
+
+def test_ayar_acik_ama_katalog_acilamadiysa_tepsi_kapat_sunar() -> None:
+    """F5 düzeltmesi: "Güvenlik duvarı izni yok" durumunda da ayar kapatılabilmeli.
+
+    Durum satırı adres olmadığı için tıklanmaz (`katalog_acik` yanlış); aç/kapa
+    ise `katalog_kapatilabilir`'e bakar ve "kapat"ı çalıştırır.
+    """
+    masa = _Masa("yonetici", katalog_acik=False)
+    eylemler = masa.eylemler()
+    eylemler = TrayActions(**{**eylemler.__dict__, "katalog_kapatilabilir": lambda: True})
+
+    gorunen = [(o.metin, o.etkin) for o in menu_durumu(eylemler) if o.gorunur]
+
+    assert ("Ağ Kataloğunu kapat", True) in gorunen
+    assert ("Ağ Kataloğu: kapalı", False) in gorunen
+    assert komutu_calistir(eylemler, "katalog_ac_kapa") is True
+    assert masa.cagrilar == ["katalog-kapat"]

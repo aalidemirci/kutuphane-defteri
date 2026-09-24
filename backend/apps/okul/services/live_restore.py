@@ -39,7 +39,7 @@ from django.conf import settings
 from django.db import connections
 from django.utils import timezone
 
-from apps.okul import restart_gate
+from apps.okul import masaustu_kanca, restart_gate
 from apps.okul.services import app_password, backup_restore
 
 logger = logging.getLogger("kutuphane_defteri.restore")
@@ -104,6 +104,11 @@ def restore_and_require_restart(
         kaynak = gecici
     else:
         kaynak = _resolve_named(name)
+    # Ağ Kataloğu takastan ÖNCE bakım kapısına alınır (§5.3, GA-4/UY-8): yeni
+    # istekler veritabanına dokunmadan 503 alır, uçuştaki istekler biter,
+    # dinleyici ve kanallar kapanır, gün değişimi işleri bakım kilidinde bekler.
+    # Masaüstü dışında (kanca yok) etkisizdir.
+    masaustu_kanca.katalog_bakima_al()
     try:
         # Takas öncesi TÜM bağlantılar kapatılır; sonraki istekler zaten
         # restart_gate'e takılacağından yeniden açılmaları sorun olmaz.
@@ -114,9 +119,14 @@ def restore_and_require_restart(
             password=password or None,
             recovery_key=recovery_key or None,
         )
+    except BaseException:
+        # Hedefe dokunulmadı (çekirdek garantisi): katalog eski hâline döner.
+        masaustu_kanca.katalog_bakimdan_cik()
+        raise
     finally:
         if gecici is not None:
             gecici.unlink(missing_ok=True)
+    # Başarı: katalog program yeniden açılana dek KAPALI kalır (§5.3-5).
     # Bellekteki DEK eski veritabanına aittir; düşürülür. Kapı kurulunca kilit
     # ekranı dahil tüm API kesilir — tek çıkış programı kapatıp yeniden açmaktır.
     app_password.lock()

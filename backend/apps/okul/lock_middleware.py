@@ -25,7 +25,9 @@ açılmamışken hassas alanlar zaten okunamaz (şifreli token döner) ve yazıl
      `guvenlik.json`'u yedeğin kurtarma başlığından yeniden yazar
      (`backup_restore._ensure_state_file`). Diğer çıkış yolu dosyanın yedeğini
      veri klasörüne geri koymaktır; kapı her istekte diske bakar, dosya
-     döndüğü anda normal kilit durumuna geçilir.
+     döndüğü anda normal kilit durumuna geçilir;
+   - `POST app/quit/` — Çık (F5, §4.2-4): kilitliyken ve kayıp kilidinde
+     parolasızdır (`views_app`).
 2. **Kilitli** (`423 locked`): parola kurulu, anahtar bellekte değil.
    Açık kalanlar:
    - `/api/v1/security/` ön eki — durum, kilit açma, kurtarma anahtarı, kip
@@ -35,7 +37,8 @@ açılmamışken hassas alanlar zaten okunamaz (şifreli token döner) ve yazıl
    - `GET setup/status/` — açılış sağlık denetimi; yanıtı kişisel veri içermez
      ve istek zaten oturum belirteci gerektirir. Kurulum sihirbazının YAZMA
      uçları kapalı kalır;
-   - `/api/v1/updates/` — kişisel veri içermeyen sürüm denetimi.
+   - `/api/v1/updates/` — kişisel veri içermeyen sürüm denetimi;
+   - `/api/v1/app/quit/` — Çık (parolasız; tepsisiz Linux'ta tek çıkış yolu, TB13).
 
 Parola hiç kurulmamışsa ("kurulum" durumu) kapı bir şey yapmaz: kişi yazan
 uçları izin sınıfı (`permissions.RequiresAdminPassword`, 409) keser.
@@ -67,6 +70,10 @@ ALLOWED_PREFIXES = (
     # Kişisel veri içermez; kilit ekranında başlayan otomatik sürüm denetimi (F8).
     "/api/v1/updates/",
 )
+# Kilitliyken izin verilen TEKİL yollar (tam yol eşleşmesi): Çık (F5, §4.2-4)
+# kilitliyken parolasızdır; tepsisiz Linux'ta tek çıkış yoludur (TB13). Ön ek
+# değildir: `app/` altına ileride eklenecek bir yol kilit kapısını aşmasın.
+LOCKED_ALLOWED_PATHS = frozenset({"/api/v1/app/quit/"})
 # `security/` ön ekinde olup kilitliyken YİNE DE kesilen uçlar (TAM yol). Kurtarma
 # anahtarı çıktısı (E14), saklandı damgası ve anahtar yenileme (F1 eki, karar 2)
 # bellekteki anahtara karşı doğrular ve kilit açmanın bir yolu değildir:
@@ -91,6 +98,8 @@ SECURITY_FILE_MISSING_ALLOWED_PATHS = frozenset(
         "/api/v1/security/state/reset/",
         "/api/v1/backups/",
         "/api/v1/backups/restore/",
+        # Çık (F5, §4.2-4): kayıp kilidinde de parolasız çıkılır.
+        "/api/v1/app/quit/",
     }
 )
 
@@ -124,7 +133,8 @@ class AppLockMiddleware:
                 if path not in SECURITY_FILE_MISSING_ALLOWED_PATHS:
                     return JsonResponse(_SECURITY_FILE_MISSING_BODY, status=423)
             elif (
-                not path.startswith(ALLOWED_PREFIXES) or path in LOCKED_DENIED_PATHS
+                not (path.startswith(ALLOWED_PREFIXES) or path in LOCKED_ALLOWED_PATHS)
+                or path in LOCKED_DENIED_PATHS
             ) and app_password.is_locked():
                 return JsonResponse(_LOCKED_BODY, status=423)
         return self._get_response(request)

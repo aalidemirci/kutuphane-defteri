@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  {% comment %}Katalog afişi (E3; tasarım §5.6). Kütüphaneye, öğretmenler odasına ve
+  sınıflara asılır. ADRES BÜYÜK VE BİRİNCİLDİR, QR küçük ve ikincildir: kapsamdaki
+  bilgisayarlar ve tahtalar QR okumaz (SU-14). Dayanak yazılmaz (§10 E3). Resmî
+  antet yoktur: afiş bir duyurudur, yazışma değildir. Adresin punto boyu
+  sunucuda DejaVu ölçüleriyle hesaplanır (`adres_punto`) ki en uzun adres de tek
+  satıra sığsın. Stil <head> içindedir: gövdedeki <style> ve satır içi stildeki
+  CSS değişkenlerini WeasyPrint yok sayar. text-transform YOK (TR "i" tuzağı).
+  Sayfa bütçesi: TEK sayfa, en uzun adres ve 500 karakterlik saat metniyle
+  (test_ag_belgeleri.py).{% endcomment %}
+  <style>
+    {% include "print/_design.css" %}
+    @page { size: A4 portrait; margin: 1.6cm 1.6cm 1.4cm 1.6cm; }
+    body { font-family: "DejaVu Sans", sans-serif; color: var(--pr-text); margin: 0; }
+    .okul { text-align: center; font-size: 15pt; font-weight: bold; color: var(--pr-ink); }
+    .birim { text-align: center; font-size: 11pt; color: var(--pr-secondary); margin-top: 2pt; }
+    .baslik { text-align: center; font-size: 34pt; font-weight: bold; color: var(--pr-ink);
+              margin-top: 24pt; letter-spacing: 0.5pt; }
+    .alt-baslik { text-align: center; font-size: 15pt; color: var(--pr-secondary); margin-top: 8pt; }
+    .adres-kutusu { margin: 30pt 0 8pt; border: 3pt solid var(--pr-ink); padding: 22pt 6pt 18pt;
+                    text-align: center; break-inside: avoid; page-break-inside: avoid; }
+    .adres-etiketi { font-size: 13pt; color: var(--pr-secondary); }
+    .adres { font-weight: bold; color: var(--pr-ink); margin-top: 8pt; white-space: nowrap; }
+    .adres-notu { font-size: 10pt; color: var(--pr-secondary); margin-top: 8pt; }
+    .adimlar { margin: 22pt 0 0 22pt; padding: 0; font-size: 14.5pt; line-height: 1.4; }
+    .adimlar li { margin-bottom: 6pt; }
+    .saatler { margin-top: 18pt; border-top: 1pt solid var(--pr-line); padding-top: 10pt; }
+    .saatler-baslik { font-size: 13pt; font-weight: bold; color: var(--pr-ink); }
+    .saatler-metni { font-size: 11pt; margin-top: 3pt; white-space: pre-line; }
+    .alt { margin-top: 20pt; width: 100%; border-collapse: collapse; break-inside: avoid;
+           page-break-inside: avoid; }
+    .alt td { vertical-align: bottom; padding: 0; }
+    .alt td.bilgi { font-size: 10pt; color: var(--pr-secondary); line-height: 1.4; padding-right: 12pt; }
+    .alt td.qr { width: 30mm; text-align: center; }
+    .qr-notu { font-size: 7.5pt; color: var(--pr-muted); margin-top: 2pt; }
+  </style>
+</head>
+<body>
+  {% if school_name %}<div class="okul">{{ school_name }}</div>{% endif %}
+  <div class="birim">Kütüphane</div>
+
+  <div class="baslik">KÜTÜPHANE KATALOĞU</div>
+  <div class="alt-baslik">Okul ağındaki bilgisayarlardan ve etkileşimli tahtalardan kitap arayın</div>
+
+  <div class="adres-kutusu">
+    <div class="adres-etiketi">Tarayıcının adres çubuğuna yazın:</div>
+    <div class="adres" style="font-size: {{ adres_punto }}pt">{{ adres }}</div>
+    <div class="adres-notu">Adresin başındaki “http://” ile birlikte yazın; “www” eklemeyin.</div>
+  </div>
+
+  <ol class="adimlar">
+    <li>Okul ağına bağlı bir bilgisayarda ya da tahtada tarayıcıyı açın.</li>
+    <li>Yukarıdaki adresi yazıp Enter'a basın.</li>
+    <li>Kaynak adını, yazarı ya da konuyu yazıp arayın; ya da harf dizininden seçin.</li>
+    <li>Kitabın rafta olup olmadığını ve yer numarasını görün, kütüphaneden isteyin.</li>
+  </ol>
+
+  {% if kutuphane_saatleri %}
+  <div class="saatler">
+    <div class="saatler-baslik">Kütüphane saatleri</div>
+    <div class="saatler-metni">{{ kutuphane_saatleri }}</div>
+  </div>
+  {% endif %}
+
+  <table class="alt">
+    <tr>
+      <td class="bilgi">Ağ Kataloğu yalnız okul ağında açılır ve kişisel veri göstermez: kimin hangi kitabı aldığı görünmez. Ödünç ve iade kütüphanede yapılır.</td>
+      <td class="qr">{{ qr_svg|safe }}<div class="qr-notu">QR okuyabilen cihazlar için</div></td>
+    </tr>
+  </table>
+</body>
+</html>

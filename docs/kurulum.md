@@ -7,8 +7,8 @@ da kütüphaneden sorumlu öğretmen) ile okulun bilişim teknolojileri rehber
 > **Durum:** Program geliştirme aşamasındadır; henüz yayımlanmış sürüm yoktur.
 > Bu belge ilk sürüm için **hedeflenen** kurulum düzenini anlatır (genel
 > tasarım §4-§5). Özellikler fazlarla gelir; belge, sürüm çıkmadan önce
-> programın gerçek davranışıyla adım adım yeniden doğrulanır. "Hazırlanıyor"
-> diye işaretli bölümün içeriği henüz yazılmadı.
+> programın gerçek davranışıyla adım adım yeniden doğrulanır. Ağ Kataloğunun
+> okul ağında ve tahtalarda çalıştığının saha kanıtı henüz alınmadı (§8).
 
 Veri okulda kalır: tek bir yerel veritabanı dosyası, telemetri yok, bulut yok.
 Program **açılışta internete çıkmaz** ve okul dışına kişisel veri göndermez.
@@ -129,11 +129,18 @@ Ağ Kataloğu için güvenlik duvarı kuralı kurulum sırasında eklenir.
    kurucuyu başlatan hesaba yazılır; BTR'nin oturumunda başlatılırsa program
    masa hesabında kendiliğinden açılmaz.
 4. Kurucu şu seçenekleri sunar:
-   - **Oturum açılınca başlat:** program oturum açılışında kilit ekranıyla
-     açılır ve tepsiye iner (§5).
-   - **Yerel ağdan katalog taramasına izin ver:** güvenlik duvarına yalnız
-     yerel alt ağdan gelen bağlantılara izin veren bir kural ekler. Kural tek
-     başına bir şey açmaz; Ağ Kataloğu program içinden ayrıca açılır (§8).
+   - **Oturum açılınca Kütüphane Defteri'ni başlat:** Görev Zamanlayıcı'ya,
+     kurucuyu başlatan hesabın oturum açılışında tetiklenen bir görev
+     ("Kutuphane Defteri") yazar. Program kilit ekranıyla açılır. Alt seçenek
+     **Pencereyi açmadan tepside başlat** pencereyi göstermeden tepsiye iner
+     (§5). Kaldırmada görev silinir.
+   - **Yerel ağdan katalog taramasına izin ver (güvenlik duvarı kuralı):**
+     önce programa ait eski engelleme kurallarını siler, sonra yalnız yerel alt
+     ağdan (`LocalSubnet`) gelen TCP bağlantılarına izin veren "Kutuphane
+     Defteri Katalog" kuralını ekler (Etki alanı, Özel ve Genel profilleri).
+     Port, kayıt defterindeki `HKLM\SOFTWARE\KutuphaneDefteri\KatalogPortu`
+     değerinden okunur, yoksa 8765'tir. Kural tek başına bir şey açmaz; Ağ
+     Kataloğu program içinden ayrıca açılır (§8).
 5. Bilgisayarda Microsoft Edge WebView2 yoksa kurucu kurar. Gömülü önyükleyici
    internet ister; ağı kısıtlı bilgisayarda WebView2'yi önceden kurun.
 
@@ -158,8 +165,9 @@ indirip masa hesabında çalıştırın (§3.1'deki gibi).
 
 `...portable.zip` dosyasını bir klasöre açın, `kutuphane-defteri.exe`'yi
 çalıştırın. Veriler yine `%LOCALAPPDATA%\KutuphaneDefteri` altına yazılır; zip'i
-silmek verileri silmez. Taşınabilir sürümde **Ağ Kataloğu sunulmaz** (güvenlik
-duvarı kuralı kurulu programın yoluna bağlıdır) ve otomatik başlatma yoktur.
+silmek verileri silmez. Windows'un taşınabilir sürümünde **Ağ Kataloğu
+sunulmaz** (güvenlik duvarı kuralı kurulu programın yoluna bağlıdır) ve otomatik
+başlatma yoktur.
 
 ## 4. Pardus / Linux kurulumu
 
@@ -189,7 +197,9 @@ cd kutuphane-defteri-<sürüm>
 ```
 
 `kur.sh` programı kullanıcı klasörüne kurar ve menü kaydını ekler. Kaldırmak
-için `./kaldir.sh`.
+için `./kaldir.sh`. Taşınabilir arşivde Ağ Kataloğu açılır, ama ufw profili ve
+firewalld servis tanımı yalnız `.deb` paketiyle gelir: Ağ Doktoru bu durumda portu
+doğrudan açan komutu verir (§8.5).
 
 Güncellemede yeni `.deb` dosyasını §4.1'deki komutla kurmanız yeterlidir.
 Program içinden indirme yalnız Windows kurulum dosyası içindir.
@@ -215,9 +225,20 @@ Program içinden indirme yalnız Windows kurulum dosyası içindir.
 
 **Pencere ve tepsi.** Pencerenin çarpı düğmesi programı kapatmaz, pencereyi
 gizler; program saatin yanındaki simge alanında (tepside) çalışmaya devam
-eder. Programı kapatmak için tepsideki simgeden **Çık**'ı seçin. *(Sonraki
-sürümde:* görevli kipinde Çık yönetici parolası isteyecek; bugünkü sürümde
-tepsi menüsü kip okumaz ve Çık parolasızdır.*)*
+eder. Programı kapatmak için üst çubuktaki **Çık** düğmesini ya da tepsideki
+simgenin menüsünden **Çık**'ı seçin: program Ağ Kataloğunu kapatır ve
+veritabanını tek dosyada toparlayarak düzenli kapanır.
+
+- Görevli kipinde Çık **yönetici parolası** ister (tepsiden seçilirse pencere
+  öne gelir ve parola orada sorulur). Bu koruma kaza önleyicidir, güvenlik
+  sınırı değildir: Görev Yöneticisi süreci her durumda kapatabilir.
+- Yönetici kipinde ve kilitliyken üst çubuktaki Çık yalnız onay ister;
+  tepsiden seçilen Çık onay sormadan kapatır.
+- Tepsi menüsü kipe göre değişir: Ağ Kataloğunu açıp kapatma ve "Görevli
+  kipine geç" yalnız yönetici kipindedir; kilitliyken menüde pencere, Ağ
+  Kataloğunun durumu ve Çık kalır.
+- Masaüstünde sistem tepsisi yoksa (bazı Pardus masaüstleri) çarpı pencereyi
+  küçültür; çıkış yolu üst çubuktaki Çık düğmesidir.
 
 **Oturum açılmadan program çalışmaz.** Windows oturumu açılmadan ne program ne
 Ağ Kataloğu kalkar. Bilgisayar sabah açıldığında masa hesabında oturum açın.
@@ -230,19 +251,24 @@ Ağ Kataloğu kalkar. Bilgisayar sabah açıldığında masa hesabında oturum a
 | Otomatik yedekler | `%LOCALAPPDATA%\KutuphaneDefteri\backups` | `~/.local/share/kutuphane-defteri/backups` |
 | Günlükler | `%LOCALAPPDATA%\KutuphaneDefteri\logs` | `~/.local/state/kutuphane-defteri/logs` |
 
-Program **her açılışta** o güne ait bir otomatik yedek alır
-(`gunluk-<tarih>.kdbak`; aynı gün yeniden açılırsa ikinci yedek almaz) ve 14
-gün saklar; her sürüm güncellemesinden önce ayrıca bir yedek bırakır
+Program **her gün** o güne ait bir otomatik yedek alır
+(`gunluk-<tarih>.kdbak`): açılışta ve program açık kaldığı sürece gün
+değişince (aşağıdaki "Gün değişimi"). Aynı gün ikinci yedek almaz; yedekleri 14
+gün saklar ve her sürüm güncellemesinden önce ayrıca bir yedek bırakır
 (`pre-migrate-<sürüm>-<tarih>.kdbak`, son 5 adet). Yedekler şifrelidir ve ancak
 yönetici parolası ya da kurtarma anahtarıyla açılır. Yönetici parolası
-kurulmadan (ilk açılış) yedek alınmaz; ilk yedek parola kurulduktan sonraki
-açılışta alınır.
+kurulmadan (ilk açılış) yedek alınmaz; ilk yedek parola kurulduktan sonraki ilk
+denetimde, en geç bir saat içinde alınır.
 
-> **Bugünkü sürümde yedek açılışa bağlıdır.** Program tepside günlerce açık
-> kalırsa o günlerin yedeği alınmaz; gün değişiminde kendiliğinden yedek alan
-> günlük kapı sonraki sürümde gelecek. O zamana kadar bilgisayarı her sabah
-> kapatıp açın ya da haftada bir programı tepsiden Çık'la kapatıp yeniden
-> açın.
+**Gün değişimi.** Program tepside günlerce açık kalabilir. Günlük işler bu
+yüzden açılışa değil tarihe bağlıdır: program açılışta ve açık kaldığı sürece
+saatte bir tarihi denetler; gün değiştiyse o günün yedeğini alır, 14 günden
+eski yedekleri siler ve bilgisayarın ağ adresini denetler (adres değiştiyse Ağ
+Doktoru'nun "Katalog Durumu" kartında "… Afişi yeniden basın, yer imlerini
+güncelleyin." uyarısı çıkar, §8.3). Bir iş yapılamazsa (ör. parola henüz
+kurulmadıysa) bir saat sonra yeniden denenir. Yedek için kilidin açılması
+gerekmez; kayıtlar kilitliyken de alınır. Bilgisayar kapalıyken ya da uykudayken
+yedek alınmaz; uykudan uyanan bilgisayarda en geç bir saat içinde alınır.
 
 Yedekler bilgisayarın kendisindedir: disk bozulursa onlar da gider. Ayda bir
 Ayarlar → Güvenlik'ten **şifreli yedek indirip** USB belleğe alın ve USB'yi
@@ -312,7 +338,11 @@ Bilgisayar değişirse, yeniden kurulursa ya da disk değişirse sırayla:
 5. [ ] Programı açın; kitap, üye ve açık ödünç sayılarını eski bilgisayardaki
        son durumla karşılaştırın.
 6. [ ] Ağ Kataloğu kullanılıyorsa: Ağ Doktoru'nda **güvenlik duvarı**
-       denetiminin geçtiğini görün (§8).
+       denetiminin beş maddesinin geçtiğini görün. Yedekteki port varsayılandan
+       (8765) farklıysa yeni bilgisayarın kuralı kurulumda varsayılan portla
+       yazılmıştır ve port maddesi geçmez: Ağ Doktoru'ndaki **Kuralı
+       ekle/güncelle** kuralı ve kayıt defteri değerini ayardaki portla yeniden
+       yazar (UAC, §8.2).
 7. [ ] BTR'den **DHCP rezervasyonunun yeni bilgisayarın ağ kartı (MAC)
        adresine** taşınmasını isteyin. Aksi hâlde bilgisayarın IP adresi
        değişir ve eski adres çalışmaz.
@@ -321,27 +351,170 @@ Bilgisayar değişirse, yeniden kurulursa ya da disk değişirse sırayla:
 9. [ ] Eski bilgisayardaki veri klasörünü (§6) ve yedekleri, yeni kurulum
        çalıştıktan sonra silin; USB yedeği okulun imha kuralına göre saklayın.
 
-## 8. Ağ Kataloğu (hazırlanıyor)
+## 8. Ağ Kataloğu
 
 Ağ Kataloğu, okul ağındaki bilgisayarların ve etkileşimli tahtaların kütüphane
 kataloğunu tarayıcıyla, salt okur olarak taramasını sağlar. **Kişisel veri
 göstermez:** üye, ödünç alan, iade tarihi ya da ödünç geçmişi yoktur; yalnız
-künye, raf yeri ve nüshaların rafta mı ödünçte mi olduğu görünür.
+künye, sınıflama kodu, yer numarası, bölüm ve nüshaların durumu (rafta,
+ödünçte, sınıf kitaplığında, onarımda) görünür. Bir nüshanın ödünçte olduğu
+görünür, kimde olduğu ve ne zaman döneceği görünmez. Arama kaydedilmez, erişim
+günlüğü tutulmaz. Katalog kişisel veri taşımadığı için program kilitliyken de
+çalışır.
 
 Varsayılan olarak **kapalıdır** ve yalnız yönetici kipinde açılır. Açıldığında
 program okul ağına bir port (varsayılan 8765) üzerinden hizmet verir; bu
 yüzden açmadan önce okul BTR'sinin bilgisi alınır ve program BTR ile müdürün
-imzalayacağı bir **Ağ Hizmeti Bilgi Notu** üretir.
-
-Bu bölüm özellik geldiğinde yazılacak: güvenlik duvarı ve Ağ Doktoru, IP
-seçimi ve DHCP rezervasyonu, tahta ağından erişim, yer imi dağıtımı, üçüncü
-parti güvenlik duvarları, Pardus'ta ufw/firewalld. BTR için ayrıntılı ağ
-kılavuzu `docs/ag-kurulumu.md` olarak hazırlanacak.
+imzalayacağı bir **Ağ Hizmeti Bilgi Notu** üretir. BTR için ayrıntılı ağ
+kılavuzu [`docs/ag-kurulumu.md`](ag-kurulumu.md)'dir.
 
 Ağ Kataloğu yalnız **hizmet verir**, internete hiç çıkmaz: giden bağlantı bu
 bölümün konusu değildir (bkz. belgenin başındaki iki kapı).
 
-### 8.1 ISBN ile künye getirme — BTR sınaması (hazırlanıyor)
+### 8.1 Açma
+
+1. Ayarlar → **Ağ Kataloğu** sekmesini açın. İlk açılışta sekmenin başında
+   **Ağ Kataloğunu Açmadan Önce** adımları durur.
+2. **BTR'yle görüşün:** port, güvenlik duvarı kuralı ve bilgisayarın adresinin
+   sabit kalması (DHCP rezervasyonu) konuşulur. Ağ Hizmeti Bilgi Notu'nu basıp
+   BTR'ye ve okul müdürüne imzalatın; not okulda saklanır. İzin değil bilgi
+   notudur.
+3. **Güvenlik duvarı:** Windows'ta kurulumda "Yerel ağdan katalog taramasına
+   izin ver" seçildiyse kural hazırdır. Ağ Doktoru'nda beş denetimin geçtiğini
+   görün (§8.2). Pardus'ta kuralı BTR açar (§8.5).
+4. **Adres:** tek ağ bağlantılı bilgisayarda "Bu bilgisayarın bütün ağ
+   bağlantılarında" yeterlidir. İkinci ağ kartı varsa "Yalnız seçili IP
+   adresinde" seçeneğiyle katalog yalnız okul ağına açılır.
+5. **Ağ Kataloğunu aç** düğmesine basın.
+6. Ağ Doktoru'ndan **afişi basın** ve **yer imi dosyalarını** üretip BTR'ye
+   verin (§8.4). Afiş basıldıktan sonra adımlar gizlenir.
+
+Katalog tepsiden de açılıp kapatılabilir (yalnız yönetici kipinde). Ayar
+kalıcıdır: program yeniden açıldığında katalog da açılır. Windows oturumu
+açılmadan ne program ne katalog çalışır. Windows'un taşınabilir sürümünde Ağ
+Kataloğu sunulmaz (§3.3).
+
+### 8.2 Ağ Doktoru ve güvenlik duvarı (Windows)
+
+Ağ Doktoru (Ayarlar → Ağ Kataloğu → **Ağ Doktoru**) yalnız yönetici kipinde
+açılır. Kataloğun durumunu, portu, bu bilgisayarın ağ bağlantılarını ve
+adreslerini, ağ profilini, katalog adresini ve QR kodunu, son hatayı ve günlük
+sayfa ve arama sayılarını gösterir.
+
+**Beş denetim.** Katalog okul ağına ancak şunların hepsi tutarsa açılır:
+
+1. programa ait bir gelen izin kuralı var ve etkin;
+2. kuraldaki program bu bilgisayardaki `kutuphane-defteri.exe`;
+3. kuraldaki port ayardaki portla aynı;
+4. kural bu bilgisayarın etkin ağ profilini (Genel, Özel, Etki alanı) kapsıyor
+   (uzak adres "her yer" ise uyarı verilir ama dinleme engellenmez);
+5. program için bir gelen **engelleme** kuralı yok (eski "Windows Güvenlik
+   Uyarısı" penceresinde "İptal"e basılmışsa böyle bir kural kalmış olabilir).
+
+Denetim güvenlik duvarının yapılandırmasını doğrudan okur. Biri tutmazsa ya da
+denetim okunamazsa katalog **hiç dinlemez** ve Ağ Doktoru durumu "Güvenlik
+duvarı izni yok" olarak gösterir. **Kuralı ekle/güncelle** düğmesi kuralı yeniden
+yazar, programa ait engelleme kurallarını siler ve portu kayıt defterine
+yazar; Windows yönetici onayı (UAC) ister, kimliği BTR girer. Kurala Ayarlar →
+Ağ Kataloğu'ndaki **tahta ağı blokları** da (yerel alt ağa ek olarak) eklenir.
+
+**Dinleyici sınaması.** "Dinleyiciyi sına" kataloğun bu bilgisayardaki her ağ
+bağlantısında yanıt verdiğini sınar. Bu sınama güvenlik duvarını ya da VLAN'ı
+**kanıtlamaz**: bilgisayarın kendi adresine yapılan bağlantı ağa çıkmaz. Asıl
+kanıt okul ağındaki başka bir Windows bilgisayarda PowerShell'de alınır:
+
+```powershell
+Test-NetConnection <IP> -Port <port>
+```
+
+`TcpTestSucceeded : True` görülmelidir. Ağ Doktoru komutu gerçek adres ve portla
+hazır verir.
+
+**Üçüncü parti güvenlik yazılımları.** Bazı antivirüs programlarının kendi
+güvenlik duvarı Windows kuralını yok sayabilir. Beş denetim geçtiği hâlde başka
+bilgisayardan erişilemiyorsa o yazılımda da `kutuphane-defteri.exe` için
+yerel ağdan gelen bağlantıya izin verilmelidir.
+
+### 8.3 Adres ve ağ
+
+- **Adres sabit kalmalıdır.** BTR, DHCP'de bu bilgisayarın ağ kartına (MAC
+  adresine) rezervasyon yapar ya da bunu yetkili birimden ister. Kütüphane
+  yöneticisi bilgisayarın adresini elle değiştirmez: IP ve MAC adresi yalnız
+  Bakanlıkça yetkilendirilmiş kişilerce değiştirilir (Bilgi ve Sistem
+  Güvenliği Yönergesi md. 11/6).
+- **Adres değişirse** afiş ve yer imleri eski adresi gösterir. Program gün
+  değişiminde adresi denetler; son basılan afişteki adresten farklıysa Ağ
+  Doktoru'nun "Katalog Durumu" kartında "Bu bilgisayarın IP adresi değişti
+  (… → …). Afişi yeniden basın, yer imlerini güncelleyin." uyarısı çıkar.
+  Afişi yeniden basın (uyarı yeni afişle kalkar), yer imi dosyalarını yeniden
+  üretip eskilerin yerine koyun ve Ağ Hizmeti Bilgi Notu'nu yenileyin; PYS
+  talebi açıldıysa yeni adresi bildirin. "Yalnız seçili IP adresinde"
+  seçiliyken seçili adres kaybolursa: bilgisayarın tek adresi varsa katalog o
+  adreste açılır ve aynı uyarıyı verir, birden çok adresi varsa açılmaz; adres
+  Ayarlar → Ağ Kataloğu → Dinleme'den yeniden seçilir.
+- **Tahta ağı.** İdari ağ ile tahta ağı çoğu okulda ayrı bölümlerdedir; aradaki
+  geçiş okulda değiştirilemez. Tahtalardan erişim yoksa Ağ Doktoru'ndaki
+  **PYS talep metnini kopyala** düğmesi "yerel ağ VLAN düzenlemesi — tek yön"
+  talebini hazırlar; BTR müdürlük onayıyla FATİH PYS'ye girer.
+- **İkinci ağ kartı ya da bilgisayarı tahta ağına bağlamak** yalnız ilçe
+  sistem yöneticisinin uygun görüşüyle yapılır. Ağ Doktoru ikinci karttaki
+  "katalog bu ağda da erişilebilir" durumunu ve IP yönlendirmenin açık olup
+  olmadığını gösterir.
+
+### 8.4 Afiş ve yer imleri
+
+- **Afiş:** adres büyük ve birincildir, QR kodu küçük ve ikincildir (okul
+  bilgisayarları ve tahtalar QR okumaz). Afiş basılınca adres hatırlanır.
+- **Yer imi dosyaları** (tek arşiv):
+  - `pardus-etap/kutuphane-katalogu-chromium.json` → ETAP/Pardus'ta
+    `/etc/chromium/policies/managed/` altına: Chromium'un bütün hesaplarda
+    görünen yönetilen yer imi;
+  - `pardus-etap/kutuphane-katalogu.desktop` → `/usr/share/applications/`
+    altına: uygulama menüsü kısayolu (varsayılan tarayıcıda açar);
+  - `windows/Kutuphane-Katalogu.url` ve `Kutuphane-Katalogu-Tahta.url` →
+    Windows bilgisayarlar ve Windows tahtalar için internet kısayolu.
+
+  Tahtaya giden yer imleri kataloğu büyük dokunma düzeninde (tahta kipi)
+  açar; adresin sonunda `?tahta=1` vardır. Kullanıcı başına yer imi yetmez:
+  ETAP her öğretmene tahtada ayrı hesap açar ve bir hesaba eklenen yer imi
+  öbürlerinde görünmez. Politika dosyası bütün hesaplarda görünür; toplu
+  dağıtım (ör. Liderahenk) BTR'nin yetkisindedir.
+
+### 8.5 Pardus
+
+Program Pardus'ta güvenlik duvarı kuralı **açmaz**; paket ufw uygulama profilini
+(`/etc/ufw/applications.d/kutuphane-defteri`) ve firewalld servis tanımını
+(`/usr/lib/firewalld/services/kutuphane-defteri.xml`) bırakır. Ağ Doktoru
+bilgisayardaki aracı ve BTR'nin çalıştıracağı komutu gösterir. Komut **kaynak
+sınırlıdır**: yalnız bu bilgisayarın yerel ağına ve Ayarlar → Ağ Kataloğu'ndaki
+tahta ağı bloklarına izin verir, her blok ayrı satırdır (Windows kuralındaki
+`LocalSubnet` + bloklar kapsamının karşılığı; RFC1918'in tamamı ya da "her yer"
+açılmaz, çünkü MEB WAN'ındaki başka kurumlar da özel adres aralığındadır):
+
+```bash
+sudo ufw allow from <yerel-ağ> to any app 'Kutuphane Defteri'
+sudo ufw allow from <tahta-ağı> to any app 'Kutuphane Defteri'
+# firewalld kullanılıyorsa (her blok için bir zengin kural):
+sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="<yerel-ağ>" service name="kutuphane-defteri" accept'
+sudo firewall-cmd --reload
+```
+
+Port 8765'ten farklıysa ya da tanım dosyası yoksa (taşınabilir arşiv) profil yerine
+port açılır (`sudo ufw allow from <blok> to any port <port> proto tcp`; firewalld'de
+zengin kuralda `port port="<port>" protocol="tcp"`).
+
+### 8.6 Port değişikliği ve uyku
+
+- **Port** Ayarlar → Ağ Kataloğu → **Portu değiştir** ile değişir. Windows'ta
+  güvenlik duvarı kuralı ve kurucunun okuduğu kayıt defteri değeri de yeni
+  portla yazılır; UAC onayı verilmezse port değişmez. Port değişince afişi,
+  yer imlerini ve Ağ Hizmeti Bilgi Notu'nu yenileyin. Güncellemelerde kural ve
+  port korunur (§3.2).
+- **Uyku:** Ağ Kataloğu açıkken bilgisayarın boşta uykuya geçmesi engellenir;
+  kapak kapatma ya da elle uyutma engellenmez. Ayarlar → Ağ Kataloğu → Uyku
+  bölümünden kapatılabilir.
+
+### 8.7 ISBN ile künye getirme — BTR sınaması
 
 Bu özellik kitabın numarasından eser bilgilerini getirir, **varsayılan olarak
 kapalıdır** ve ayarlardan açılır. Açmadan önce okul ağından iki adrese

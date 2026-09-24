@@ -91,6 +91,7 @@ Mal Yönetmeliği · **OKY** Ortaöğretim Kurumları Yönetmeliği. Bölüm num
 | §3, §5.9 BTR bilgi notu | Yönerge 11/7 | "Aktif ağ cihazı" sistem yöneticisinin bilgisi dışında eklenemez; dinlenen port bu hükme ancak ihtiyatlı yorumla girer |
 | §3 U10 | Yönerge 4/1-s | "Sistem yöneticisi" tanımı. Okul BTR'si ve müdür bu tanıma girmez; U10 bunu bilerek BTR'nin bilgisiyle yetinir |
 | §3, §5.9, E3 | Yönerge 5/11 · 11/16 · 11/22 | Port ve hizmet açma; erişim hakkının yetkisiz kişiye verilmemesi |
+| §5.6 IP değişimi (kılavuzun Ağ Kataloğu bölümü, `docs/kurulum.md` §8.3) | Yönerge 11/6 | Bilgisayara tahsis edilen IP ve MAC adresi yalnız Bakanlıkça yetkilendirilmiş kişilerce değiştirilir: sabit adres BTR aracılığıyla (DHCP'de) ayrılır ya da yetkili birimden istenir; kütüphane yöneticisi adresi elle değiştirmez |
 | §3 | Yönerge 11/9 · 11/20-21 · 11/25 · 14/3 | Uzaktan erişim (yönetim erişimi); erişim noktası, DHCP, DNS, proxy yok; veri toplayan form yok; internet sitesi bağlamı |
 | §3, sihirbaz | Yönerge 11/8 · 11/23 | Program yalnız kurum demirbaşı bilgisayara kurulur |
 | §8.2 AI köprüsü | Yönerge 11/23 · 11/3-h, ı | Veriyi dış hizmete taşıma; asıl yol Excel'dir |

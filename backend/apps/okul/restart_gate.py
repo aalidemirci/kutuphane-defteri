@@ -23,6 +23,10 @@ from collections.abc import Callable
 from django.http import HttpRequest, HttpResponse, JsonResponse
 
 API_PREFIX = "/api/"
+# Kapının geçirdiği TEK yol: Çık (F5, §4.2-4 — "yeniden başlat gerektiğinde
+# parolasız"). Kapının tek çıkışı programı kapatmaktır; tepsisi olmayan Linux
+# masaüstünde bu uç o çıkışın kendisidir (TB13).
+CIKIS_YOLU = "/api/v1/app/quit/"
 
 RESTART_MESSAGE = "Yedekten geri yükleme uygulandı. Devam etmek için programı kapatıp yeniden açın."
 
@@ -54,6 +58,6 @@ class RestartRequiredMiddleware:
         self._get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
-        if _restart_required and request.path.startswith(API_PREFIX):
+        if _restart_required and request.path.startswith(API_PREFIX) and request.path != CIKIS_YOLU:
             return JsonResponse(_BODY, status=503)
         return self._get_response(request)

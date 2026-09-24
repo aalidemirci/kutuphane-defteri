@@ -140,7 +140,7 @@ def sahte_calisma(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     """`run()` çevresini izole eder: veri hazırlığı ve sunucu sahte."""
     kayit: dict[str, Any] = {"pencere": 0, "hata": [], "servis": 0}
 
-    def sahte_serve(paths: Any, token: str, autotest: bool, channel: Any = None) -> int:
+    def sahte_serve(paths: Any, token: str, autotest: bool, channel: Any = None, **_: Any) -> int:
         kayit["servis"] += 1
         kayit["kanal"] = channel
         return EXIT_OK
@@ -197,7 +197,7 @@ def test_webview_yoksa_ozel_cikis_kodu(
 ) -> None:
     monkeypatch.setenv(ENV_APP_HOME, str(tmp_path))
 
-    def patla(paths: Any, token: str, autotest: bool, channel: Any = None) -> int:
+    def patla(paths: Any, token: str, autotest: bool, channel: Any = None, **_: Any) -> int:
         raise WebViewUnavailableError("WebView2 yok.", hint="Kurun.")
 
     monkeypatch.setattr(main_mod, "serve", patla)
@@ -417,9 +417,10 @@ def pencere_oturumu(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         kayit["eylemler"] = eylemler
         return _SahteTepsi(sira, var=True)
 
-    def pencere(url: str, *, storage_path: Path, controller: Any) -> None:
+    def pencere(url: str, *, storage_path: Path, controller: Any, **kw: Any) -> None:
         sira.append("pencere")
         kayit["denetci"] = controller
+        kayit["pencere_kw"] = kw
         if kayit.get("pencere_hatasi"):
             raise RuntimeError("pencere motoru çöktü")
 
@@ -511,7 +512,7 @@ def test_isaret_yoksa_beklenmedik_kapanma_backende_bildirilir(
     _db_olustur(tmp_path)  # önceki oturum vardı, işaret yazmadan öldü
     gorulen: list[str] = []
 
-    def serve(paths: Any, token: str, autotest: bool, channel: Any = None) -> int:
+    def serve(paths: Any, token: str, autotest: bool, channel: Any = None, **_: Any) -> int:
         gorulen.append(os.environ[ENV_PREVIOUS_SESSION])  # Django ayarlarından önce yazılmış
         return EXIT_OK
 
@@ -531,7 +532,7 @@ def test_beklenmeyen_hatada_isaret_yazilmaz(
     main_mod.run([])
     assert _isaret(tmp_path).is_file()
 
-    def patla(paths: Any, token: str, autotest: bool, channel: Any = None) -> int:
+    def patla(paths: Any, token: str, autotest: bool, channel: Any = None, **_: Any) -> int:
         raise RuntimeError("pencere motoru çöktü")
 
     monkeypatch.setattr(main_mod, "serve", patla)

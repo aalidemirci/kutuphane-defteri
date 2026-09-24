@@ -12,17 +12,29 @@
        yedeği alınmadıysa rotasyon da koşmaz (tasarım §6.3-6)
     8. Göç öncesi yedek + `migrate --no-input`
     9. Gömülü sunucu (waitress, 127.0.0.1, boş port) + sağlık denetimi
-       → Ağ Kataloğu (ikinci waitress, 127.0.0.1:8765, öz sınamalı); hatası
-       ölümcül DEĞİL, çıkışta yönetim sunucusundan önce kapanır
-   10. Tepsi + pencere (pywebview) — `--autotest` kipinde AÇILMAZ
+   10. Katalog denetçisi (`katalog_kontrol`, T16) ve çıkış kancası backend'e
+       kaydolur; `kd-gunluk` başlar: önce Ağ Kataloğunu AYARA göre kaldırır
+       (varsayılan kapalı; açıksa güvenlik duvarı denetimi + öz sınama — hatası
+       ölümcül DEĞİL), sonra gün değişimi kapısını koşar (günlük yedek,
+       rotasyon, IP denetimi; saatte bir yinelenir) ve uyku engelini yönetir
+   11. Tepsi (kip matrisi) + pencere (pywebview; `--tepside` ile gizli)
+   `--autotest` kipinde 10-11 yerine Ağ Kataloğu yalnız loopback'te kalkar
+   ve öz sınanır (paket duman testi soket yolunu kanıtlar), pencere açılmaz.
 
 Adım sırası bilinçlidir: bütünlük denetimi yedeklemeden ÖNCE koşar; veritabanı
 bozukken rotasyonun sağlam eski yedekleri silmesi istenmez.
 
 **Kapanış** (§4.2-4/5). Çarpı pencereyi gizler; program yalnız "Çık" ile
-(tepsi menüsü ya da kurucunun `KutuphaneDefteri.Kapat` olayı) kapanır. Sıra:
-pencere → kanal → tepsi (`icon.stop()`) → Ağ Kataloğu → yönetim sunucusu →
+(tepsi menüsü, arayüzdeki Çık — `POST app/quit/`, kurucunun
+`KutuphaneDefteri.Kapat` olayı ya da Linux oturum kapanışı) kapanır. Sıra:
+pencere → kanal → tepsi (`icon.stop()`) → kancalar bırakılır → Ağ Kataloğu →
+`kd-gunluk` (uyku engeli kalkar) → yönetim sunucusu → WAL checkpoint (TB14) →
 temiz kapanış işareti → kilit. Mutex'ler süreç bitene dek kalır (lock.py).
+
+**Yükseltilmiş yardımcı kip.** `--guvenlik-duvari-kurali` (UAC ile, Ağ
+Doktoru'nun "Kuralı ekle/güncelle" düğmesi) güvenlik duvarı kuralını ve HKLM
+portunu yazar ve çıkar; pencere, kilit, veri dizini ve günlük AÇMAZ
+(`desktop/guvenlik_duvari.py`).
 
 Herhangi bir adım başarısız olursa pencere açılmaz; kullanıcıya Türkçe ileti +
 "son yedekten dön" yolu gösterilir ve hataya özel bir çıkış kodu döner (CI ve
@@ -37,9 +49,14 @@ import argparse
 import logging
 import os
 import sys
-from collections.abc import Sequence
+import threading
+import webbrowser
+from collections.abc import Callable, Sequence
+from datetime import date, timedelta
 from pathlib import Path
+from typing import Any
 
+from desktop import guvenlik_duvari
 from desktop.backup import (
     daily_backup,
     encrypt_legacy_backups,
@@ -57,8 +74,10 @@ from desktop.django_bootstrap import (
     assert_session_guard_installed,
     build_wsgi_application,
     has_pending_migrations,
+    is_parcacigi_baglantisiyla,
     prepare_django,
     run_migrations,
+    wal_checkpoint,
 )
 from desktop.errors import (
     EXIT_OK,
@@ -67,8 +86,15 @@ from desktop.errors import (
     AlreadyRunningError,
     StartupError,
 )
+from desktop.gunluk import (
+    DAMGA_DOSYASI,
+    GunDegisimiKapisi,
+    acik_kalma_saati,
+    uyku_engelleyici,
+)
 from desktop.instance_channel import COMMAND_QUIT, COMMAND_SHOW, CommandChannel, open_channel
 from desktop.integrity import check_database_integrity
+from desktop.katalog_kontrol import KatalogKontrol, django_ayar_dinleyicisi
 from desktop.katalog_server import KatalogServer, start_catalog, stop_catalog
 from desktop.lock import SingleInstanceLock, signal_running_instance
 from desktop.logging_setup import configure_logging, enable_crash_log
@@ -95,7 +121,8 @@ logger = logging.getLogger("kutuphane_defteri")
 _UNEXPECTED_MESSAGE = "Program açılırken beklenmeyen bir hata oluştu."
 _UNEXPECTED_HINT = (
     "Programı yeniden başlatmayı deneyin. Sorun sürerse veri klasöründeki "
-    "logs/uygulama.log dosyasını okul bilişim sorumlusuna iletin."
+    "logs/uygulama.log dosyasını okulun bilişim teknolojileri rehber "
+    "öğretmenine (BTR) iletin."
 )
 
 
@@ -140,6 +167,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--evet",
         action="store_true",
         help="Geri yükleme onay sorusunu ve kapanış beklemesini atlar.",
+    )
+    parser.add_argument(
+        "--tepside",
+        action="store_true",
+        help=(
+            "Pencereyi açmadan tepside başlar (otomatik başlatma için isteğe bağlı; "
+            "tepsi kurulamazsa pencere yine açılır)."
+        ),
     )
     return parser
 
@@ -189,29 +224,116 @@ def dispatch_command(command: str, controller: WindowController) -> None:
         controller.request_quit()
 
 
+#: Arayüzden gelen Çık (`POST app/quit/`) HTTP yanıtı gönderildikten SONRA başlasın.
+_CIKIS_GECIKMESI_SN = 0.3
+
+
+def cikis_kancasi(controller: WindowController) -> Callable[[], None]:
+    """`app/quit/` için kanca: kapanışı ayrı iş parçacığında, yanıttan sonra başlatır."""
+
+    def iste() -> None:
+        zamanlayici = threading.Timer(_CIKIS_GECIKMESI_SN, controller.request_quit)
+        zamanlayici.daemon = True
+        zamanlayici.name = "kd-cikis"
+        zamanlayici.start()
+
+    return iste
+
+
+def kip_durumu() -> str:
+    """Tepsinin okuduğu kip (T16: `KipDurumu` tek kaynaktır); geri yükleme sonrası kilitli sütunu."""
+    from apps.okul import restart_gate
+    from apps.okul.kip import KIP
+
+    if restart_gate.restart_required():
+        return "yeniden_baslat"
+    return is_parcacigi_baglantisiyla(KIP.durum)
+
+
+def _gorevli_kipine_gec() -> None:
+    from apps.okul.kip import KIP, KipGecisHatasi
+
+    try:
+        is_parcacigi_baglantisiyla(KIP.gorevliye_gec)
+    except KipGecisHatasi as exc:
+        logger.warning("Tepsi: görevli kipine geçilemedi (%s).", exc.durum)
+    else:
+        logger.info("Tepsi: görevli kipine geçildi.")
+
+
+def _kilitle() -> None:
+    from apps.okul.services import app_password
+
+    is_parcacigi_baglantisiyla(app_password.lock)
+    logger.info("Tepsi: program kilitlendi.")
+
+
+def _arka_planda(ad: str, islem: Callable[[], Any]) -> Callable[[], None]:
+    """Uzun süren tepsi komutu (güvenlik duvarı denetimi) menü döngüsünü bekletmesin."""
+
+    def calistir() -> None:
+        threading.Thread(target=islem, name=ad, daemon=True).start()
+
+    return calistir
+
+
+def _katalogu_tarayicida_ac(kontrol: KatalogKontrol) -> None:
+    """Katalog LAN adresiyle harici tarayıcıda açılır (§4.1: 127.0.0.1 kullanılmaz)."""
+    adres = kontrol.adres()
+    if adres:
+        webbrowser.open(adres)
+
+
+def tepsi_eylemleri(controller: WindowController, kontrol: KatalogKontrol | None) -> TrayActions:
+    """Tepsi kip matrisinin hedefleri (§4.4)."""
+    if kontrol is None:
+        return TrayActions(show=controller.show, quit=controller.request_quit)
+    return TrayActions(
+        show=controller.show,
+        quit=controller.request_quit,
+        kip=kip_durumu,
+        quit_gorevli=controller.ask_quit_in_spa,
+        katalog_satiri=kontrol.tepsi_satiri,
+        katalog_acik=kontrol.acik_mi,
+        katalog_kapatilabilir=kontrol.kapatilabilir_mi,
+        katalog_ac=_arka_planda("kd-katalog-ac", kontrol.ac),
+        katalog_kapat=_arka_planda("kd-katalog-kapat", kontrol.kapat),
+        katalog_goster=lambda: _katalogu_tarayicida_ac(kontrol),
+        gorevli_kipine_gec=_gorevli_kipine_gec,
+        kilitle=_kilitle,
+    )
+
+
 def run_window_session(
     url: str,
     storage_path: Path,
     channel: CommandChannel | None,
     *,
     platform: str = sys.platform,
+    kontrol: KatalogKontrol | None = None,
+    tepside: bool = False,
 ) -> None:
     """Tepsi + kanal + pencere; "Çık" gelene dek bloklar (ANA iş parçacığında).
 
     Tepsi pencereden ÖNCE kurulur: Linux'ta Qt tepsisi ana iş parçacığında ve
     `webview.start`'tan önce kurulmak zorundadır (desktop/tray.py). Çıkışta
     kanal ve tepsi her durumda kapatılır; `icon.stop()` atlanırsa süreç asılı
-    kalırdı.
+    kalırdı. Arayüzdeki Çık (`POST app/quit/`) aynı denetçiye bağlıdır
+    (`masaustu_kanca`); tepsisiz Linux masaüstünün çıkış yolu odur (TB13).
     """
     controller = WindowController(platform=platform)
-    tray = start_tray(
-        TrayActions(show=controller.show, quit=controller.request_quit), platform=platform
-    )
+    tray = start_tray(tepsi_eylemleri(controller, kontrol), platform=platform)
     controller.tray_available = tray.available
+    _kancalari_kaydet(cikis=cikis_kancasi(controller))
     try:
         if channel is not None:
             channel.start(lambda command: dispatch_command(command, controller))
-        open_window(url, storage_path=storage_path, controller=controller)
+        open_window(
+            url,
+            storage_path=storage_path,
+            controller=controller,
+            hidden=tepside and tray.available,
+        )
     finally:
         if channel is not None:
             channel.close()
@@ -219,8 +341,110 @@ def run_window_session(
     logger.info("Pencere kapandı; program düzenli kapanıyor.")
 
 
+def _kancalari_kaydet(**kancalar: Any) -> None:
+    """Masaüstü kancalarını backend'e kaydeder (T16). Backend yoksa (testte) sessiz."""
+    try:
+        from apps.okul import masaustu_kanca
+    except ImportError:
+        return
+    masaustu_kanca.kaydet(**kancalar)
+
+
+def _kancalari_birak() -> None:
+    try:
+        from apps.okul import masaustu_kanca
+    except ImportError:
+        return
+    masaustu_kanca.kaldir()
+
+
+def katalog_kontrolu_kur() -> KatalogKontrol:
+    """Ağ Kataloğu denetçisi; backend'e kanca olarak kaydolur ve ayar değişikliğini dinler (T16)."""
+    kontrol = KatalogKontrol()
+    _kancalari_kaydet(katalog=kontrol)
+    try:
+        django_ayar_dinleyicisi(kontrol.ayar_degisince)
+    except ImportError:
+        logger.warning(
+            "Ağ Kataloğu ayar dinleyicisi kurulamadı; değişiklik yeniden açılışta uygulanır."
+        )
+    return kontrol
+
+
+def gun_kapisi_kur(
+    paths: AppPaths,
+    kontrol: KatalogKontrol,
+    *,
+    bugun: Callable[[], date] = date.today,
+) -> GunDegisimiKapisi:
+    """`kd-gunluk`: yerleşik işler (yedek + rotasyon, IP denetimi) + backend işleri."""
+    kapi = GunDegisimiKapisi(
+        damga_yolu=paths.data / DAMGA_DOSYASI,
+        bugun=bugun,
+        uyku=uyku_engelleyici(),
+        uyku_gerekli=kontrol.uyku_gerekli,
+    )
+    kapi.kaydet("gunluk-yedek", gunluk_yedek_isi(paths, bugun=bugun))
+    kapi.kaydet("ip-denetimi", kontrol.ip_denetle)
+    # Damgasız: dinlenen seçili IP'nin gün içinde kaybolması ve geçici hatayla
+    # kapalı kalan katalog günlük değil saatlik yakalanır.
+    kapi.saatlik_kaydet("katalog-saatlik", kontrol.saatlik_denetle)
+    kapi.backend_islerini_ekle()
+    kontrol.uyku_dinleyicisi_ekle(kapi.uyandir)
+    return kapi
+
+
+def gunluk_yedek_isi(
+    paths: AppPaths,
+    *,
+    bugun: Callable[[], date] = date.today,
+    saat: Callable[[], float] = acik_kalma_saati,
+) -> Callable[[], bool]:
+    """Günlük yedek + 14 gün rotasyonu; yedek alınmadıysa rotasyon koşmaz (GA-2).
+
+    Oturum içi rotasyon SAAT SIÇRAMASINA karşı korunur: program günlerce açık
+    kalırken sistem saati 14 günden fazla ileri sıçrarsa (NTP ya da elle yanlış
+    ayar) `bugün - 14` kesimi geçmiş günlerin bütün yedeklerini silerdi. İşin
+    ilk koşusu bir çapa tutar (o günkü tarih + uyku dahil açık kalma saati);
+    rotasyon `min(bugün, çapa + gerçekte geçen gün + 1)` tarihiyle yapılır.
+    Saat doğruyken iki değer aynıdır (tatilde uykuda kalan bilgisayarda da:
+    açık kalma saati uykuyu sayar); saat ileri sıçramışsa kesim gerçek süreye
+    göre konur. "En çok 14 gün" saklama sözü (TB8, §6.4) bozulmaz: hiçbir
+    yedek gerçek yaşı 14 günü aştığı hâlde tutulmaz. Açılıştaki rotasyon
+    (`prepare_data`) çapasızdır, F1'deki gibi kalır.
+    """
+    capa: list[tuple[date, float]] = []
+
+    def calistir() -> bool:
+        gun = bugun()
+        simdi = saat()
+        if not capa:
+            capa.append((gun, simdi))
+        capa_gunu, capa_saati = capa[0]
+        gecen_gun = max(0, int((simdi - capa_saati) // 86_400))
+        guvenilir = capa_gunu + timedelta(days=gecen_gun + 1)
+        if daily_backup(paths.db_path, paths.backups, today=gun) is None:
+            return False  # parola kurulmadı / güvenlik dosyası kayıp: bir saat sonra yeniden
+        rotasyon_gunu = min(gun, guvenilir)
+        if rotasyon_gunu < gun:
+            logger.warning(
+                "Sistem saati programın açık kaldığı süreden %d gün ileride; eski yedekler "
+                "gerçek süreye göre döndürülüyor. Saati denetleyin.",
+                (gun - rotasyon_gunu).days,
+            )
+        rotate_backups(paths.backups, today=rotasyon_gunu)
+        return True
+
+    return calistir
+
+
 def serve(
-    paths: AppPaths, token: str, autotest: bool, channel: CommandChannel | None = None
+    paths: AppPaths,
+    token: str,
+    autotest: bool,
+    channel: CommandChannel | None = None,
+    *,
+    tepside: bool = False,
 ) -> int:
     """Gömülü sunucuyu başlatır; `--autotest` değilse tepsiyi ve pencereyi açar."""
     application = build_wsgi_application()
@@ -229,32 +453,45 @@ def serve(
     server = BackgroundServer(application)
     server.start()
     katalog: KatalogServer | None = None
+    kontrol: KatalogKontrol | None = None
+    kapi: GunDegisimiKapisi | None = None
     try:
         server.wait_until_ready()
         check_health(server.base_url, token)
-        # Ağ Kataloğu (tasarım §4.2-2) yönetim sağlık denetiminden SONRA kalkar; hatası
-        # ölümcül değildir (günlüğe düşer, `None` döner). `--autotest` de kaldırır ki
-        # paket duman testinde soket yolu (Windows'ta SO_EXCLUSIVEADDRUSE) gerçekten koşsun.
-        katalog = start_catalog()
         if autotest:
-            # Duman testi kipinde katalog hatası ÖLÜMCÜLDÜR: paket koşusu (CI) soket
-            # yolunun gerçekten çalıştığını çıkış koduyla kanıtlamalı. Normal açılışta
-            # hata ölümcül değildir (yukarıdaki yorum).
+            # Duman testi: katalog yalnız loopback'te kalkar ve öz sınanır; hatası
+            # ÖLÜMCÜLDÜR — paket koşusu (CI) soket yolunun (Windows'ta
+            # SO_EXCLUSIVEADDRUSE) gerçekten çalıştığını çıkış koduyla kanıtlamalı.
+            katalog = start_catalog()
             if katalog is None:
                 logger.error("Açılış denetimi: Ağ Kataloğu kalkmadı.")
                 return EXIT_SERVER_FAILED
             logger.info("Açılış denetimi başarılı.")
             return EXIT_OK
         require_window_runtime()
+        # Ağ Kataloğu (§4.2-2) yönetim sağlık denetiminden SONRA ve AYARA göre
+        # kalkar; güvenlik duvarı denetimi süreceği için pencereyi bekletmez:
+        # `kd-gunluk` ilk iş olarak onu kaldırır. Hatası ölümcül değildir.
+        kontrol = katalog_kontrolu_kur()
+        kapi = gun_kapisi_kur(paths, kontrol)
+        kapi.baslat(ilk_is=kontrol.acilista_baslat)
         run_window_session(
             window_url(server.base_url, token),
             paths.webview_storage_path,
             channel,
+            kontrol=kontrol,
+            tepside=tepside,
         )
         return EXIT_OK
     finally:
+        _kancalari_birak()
+        if kontrol is not None:
+            kontrol.kapanis()
+        if kapi is not None:
+            kapi.durdur()
         stop_catalog(katalog)
         server.stop()
+        wal_checkpoint(paths.db_path)
 
 
 def _run_locked(paths: AppPaths, args: argparse.Namespace, app_version: str) -> int:
@@ -269,7 +506,7 @@ def _run_locked(paths: AppPaths, args: argparse.Namespace, app_version: str) -> 
         os.environ[ENV_TOKEN] = token
         try:
             prepare_data(paths, app_version)
-            code = serve(paths, token, args.autotest, channel)
+            code = serve(paths, token, args.autotest, channel, tepside=args.tepside)
         except StartupError:
             # Bu oturumda veriye işlem yazılmadı: önceki oturumun durumu korunur.
             restore_after_failed_startup(previous, paths.data, app_version)
@@ -284,7 +521,12 @@ def _run_locked(paths: AppPaths, args: argparse.Namespace, app_version: str) -> 
 
 def run(argv: Sequence[str] | None = None) -> int:
     """Programı çalıştırır ve süreç çıkış kodunu döndürür."""
-    args = build_parser().parse_args(argv)
+    ham = list(sys.argv[1:] if argv is None else argv)
+    if guvenlik_duvari.UAC_BAYRAGI in ham:
+        # Yükseltilmiş yardımcı kip: veri dizini, günlük, kilit ve pencere AÇILMAZ
+        # (süreç UAC'ye kimliği girilen hesapta koşabilir).
+        return guvenlik_duvari.yukseltilmis_kip(ham)
+    args = build_parser().parse_args(ham)
     paths = resolve_paths(args)
     paths.ensure()
     configure_logging(paths.logs, echo=args.autotest)

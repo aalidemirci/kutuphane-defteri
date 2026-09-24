@@ -20,7 +20,14 @@ from __future__ import annotations
 
 from django.urls import path
 
-from apps.kutuphane import views, views_import, views_kunye, views_kuyruk
+from apps.kutuphane import (
+    views,
+    views_ag_doktoru,
+    views_import,
+    views_katalog,
+    views_kunye,
+    views_kuyruk,
+)
 from apps.kutuphane.labels import urls as label_urls
 
 urlpatterns = [
@@ -79,6 +86,70 @@ urlpatterns = [
     ),
     # Kütüphane politikası (tek satır; PUT kısmidir — gönderilmeyen alana dokunulmaz)
     path("library/policy/", views.LibraryPolicyView.as_view(), name="library-policy"),
+    # Ağ Kataloğu ayarı (F5; tek satır, PUT kısmidir). Yalnız yönetici kipinde
+    # yazılır; görevli kipi izin listesinde DEĞİLDİR.
+    path(
+        "library/network-catalog/settings/",
+        views_katalog.NetworkCatalogSettingsView.as_view(),
+        name="library-network-catalog-settings",
+    ),
+    # Ağ Doktoru (F5, §5.9): durum, denetim, eylemler ve belgeler. Hepsi yalnız
+    # yönetici kipinde; hiçbiri görevli kipi izin listesinde DEĞİLDİR.
+    path(
+        "library/network-catalog/status/",
+        views_ag_doktoru.NetworkCatalogStatusView.as_view(),
+        name="library-network-catalog-status",
+    ),
+    path(
+        "library/network-catalog/control/",
+        views_ag_doktoru.NetworkCatalogControlView.as_view(),
+        name="library-network-catalog-control",
+    ),
+    path(
+        "library/network-catalog/firewall/",
+        views_ag_doktoru.NetworkCatalogFirewallView.as_view(),
+        name="library-network-catalog-firewall",
+    ),
+    path(
+        "library/network-catalog/firewall-rule/",
+        views_ag_doktoru.NetworkCatalogFirewallRuleView.as_view(),
+        name="library-network-catalog-firewall-rule",
+    ),
+    path(
+        "library/network-catalog/interfaces/",
+        views_ag_doktoru.NetworkCatalogInterfacesView.as_view(),
+        name="library-network-catalog-interfaces",
+    ),
+    path(
+        "library/network-catalog/listener-test/",
+        views_ag_doktoru.NetworkCatalogListenerTestView.as_view(),
+        name="library-network-catalog-listener-test",
+    ),
+    path(
+        "library/network-catalog/port/",
+        views_ag_doktoru.NetworkCatalogPortView.as_view(),
+        name="library-network-catalog-port",
+    ),
+    path(
+        "library/network-catalog/poster/",
+        views_ag_doktoru.NetworkCatalogPosterView.as_view(),
+        name="library-network-catalog-poster",
+    ),
+    path(
+        "library/network-catalog/info-note/",
+        views_ag_doktoru.NetworkCatalogInfoNoteView.as_view(),
+        name="library-network-catalog-info-note",
+    ),
+    path(
+        "library/network-catalog/bookmarks/",
+        views_ag_doktoru.NetworkCatalogBookmarksView.as_view(),
+        name="library-network-catalog-bookmarks",
+    ),
+    path(
+        "library/network-catalog/pys-text/",
+        views_ag_doktoru.NetworkCatalogPysTextView.as_view(),
+        name="library-network-catalog-pys-text",
+    ),
     # Koleksiyon özeti ve sıradaki nüsha numarası (kişisel veri yok)
     path("library/stats/", views.LibraryStatsView.as_view(), name="library-stats"),
     # Bölümler (kontrollü liste)

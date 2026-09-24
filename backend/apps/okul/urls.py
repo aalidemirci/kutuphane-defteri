@@ -13,9 +13,12 @@ from __future__ import annotations
 
 from django.urls import path
 
-from apps.okul import views, views_calendar, views_mode, views_pool
+from apps.okul import views, views_app, views_calendar, views_mode, views_pool
 
 urlpatterns = [
+    # Arayüzden düzenli çıkış (tasarım §4.2-4, TB13). Görevli kipinde gövdede yönetici
+    # parolası ister; kilit ve yeniden başlat kapıları bu yolu geçirir (views_app).
+    path("app/quit/", views_app.AppQuitView.as_view(), name="app-quit"),
     # Kurulum sihirbazı
     path("setup/status/", views.SetupStatusView.as_view(), name="setup-status"),
     path("setup/school-config/", views.SchoolConfigView.as_view(), name="setup-school-config"),

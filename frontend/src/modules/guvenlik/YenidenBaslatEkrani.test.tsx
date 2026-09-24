@@ -18,8 +18,10 @@ describe("YenidenBaslatEkrani", () => {
     const ekran = screen.getByRole("alertdialog", { name: "Programı yeniden başlatın" });
     expect(ekran).toHaveTextContent("Programı kapatıp yeniden açın");
     expect(ekran).toHaveTextContent("db-onceki-");
-    // Kapatma düğmesi yok: tek çıkış programı yeniden başlatmaktır.
-    expect(screen.queryByRole("button")).toBeNull();
+    // Örtüyü kapatan düğme yok: tek çıkış programı yeniden başlatmaktır. Tek düğme
+    // programdan çıkıştır (F5, TB13: tepsisiz masaüstünün çıkış yolu).
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Programdan çık" })).toBeInTheDocument();
   });
 
   // Çarpı programı KAPATMAZ, tepsiye gizler (desktop/window.py::on_closing);
@@ -31,7 +33,7 @@ describe("YenidenBaslatEkrani", () => {
     const ekran = screen.getByRole("alertdialog", { name: "Programı yeniden başlatın" });
     expect(ekran).toHaveTextContent("Pencerenin çarpı düğmesi programı kapatmaz");
     expect(ekran).toHaveTextContent("tepside");
-    expect(ekran).toHaveTextContent("“Çık”ı seçin");
+    expect(ekran).toHaveTextContent("“Çık”ı seçerek");
     expect(ekran).not.toHaveTextContent("pencereyi kapatın");
   });
 });
