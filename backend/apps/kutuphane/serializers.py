@@ -341,6 +341,7 @@ class CopyReadSerializer(serializers.ModelSerializer[Copy]):
             "not_loanable_reason",
             "label_printed_at",
             "label_verified_at",
+            "spine_label_printed_at",
             "created_at",
         ]
         read_only_fields = fields

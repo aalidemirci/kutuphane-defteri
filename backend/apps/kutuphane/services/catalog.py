@@ -271,9 +271,15 @@ def ensure_copy_allowed(work: Work, *, is_bound_periodical: bool) -> None:
         )
 
 
-@transaction.atomic
-def create_copy(*, work: Work, acquisition: Acquisition, **fields: Any) -> Copy:
-    """Tek nüsha açar: numara sayaçtan gelir, kurallar uygulanır, durum "Rafta"dır."""
+def validate_new_copy(*, work: Work, acquisition: Acquisition, **fields: Any) -> dict[str, Any]:
+    """Yeni nüshanın kurallarını uygular; numarasız, yazılmaya hazır alanları döndürür.
+
+    `create_copy` ile F4'ün boş barkod bağlaması (`services.barcode_reservations`)
+    AYNI kapıdan geçer: numaranın sayaçtan mı yoksa önceden ayrılmış bir boş
+    etiketten mi geldiği, nüsha kurallarını (dijital kaynak, ciltsiz süreli
+    yayın, silinmiş eser/edinim/bölüm) değiştirmez. Kimlik alanları dışarıdan
+    verilemez — ayrılmış numarayı da çağıran bu işlevden SONRA ekler.
+    """
     for alan in PROTECTED_COPY_FIELDS:
         if alan in fields:
             raise ValidationError(
@@ -286,16 +292,20 @@ def create_copy(*, work: Work, acquisition: Acquisition, **fields: Any) -> Copy:
     section = fields.get("section")
     if section is not None:
         _require_alive(section, field="section", label="Seçilen bölüm")
-
-    accession_no, barcode = numbering.next_copy_identity()
-    copy: Copy = Copy.objects.create(
-        work=work,
-        acquisition=acquisition,
-        accession_no=accession_no,
-        barcode=barcode,
-        is_bound_periodical=is_bound_periodical,
+    return {
+        "work": work,
+        "acquisition": acquisition,
+        "is_bound_periodical": is_bound_periodical,
         **fields,
-    )
+    }
+
+
+@transaction.atomic
+def create_copy(*, work: Work, acquisition: Acquisition, **fields: Any) -> Copy:
+    """Tek nüsha açar: numara sayaçtan gelir, kurallar uygulanır, durum "Rafta"dır."""
+    alanlar = validate_new_copy(work=work, acquisition=acquisition, **fields)
+    accession_no, barcode = numbering.next_copy_identity()
+    copy: Copy = Copy.objects.create(accession_no=accession_no, barcode=barcode, **alanlar)
     return copy
 
 

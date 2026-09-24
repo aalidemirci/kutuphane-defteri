@@ -4,8 +4,8 @@
 // Kapsam (F2): katalog Excel şablonu (F1'den), kütüphane politikası, bölümler,
 // eserler, nüshalar, komisyon kararları, edinimler ve bağış ön kayıtları.
 // F3: toplu katalog aktarımı (önizleme/uygulama/geçmiş), yapay zekâ köprüsünün
-// komut metni ve ISBN ile künye getirme. Etiket basımı (F4), üyelik ve dolaşım
-// (F6) uçları kendi fazlarında eklenir.
+// komut metni ve ISBN ile künye getirme. Etiket uçları (F4) `etiketApi.ts`'tedir;
+// üyelik ve dolaşım (F6) uçları kendi fazlarında eklenir.
 //
 // İki sözleşme notu:
 //   * Liste uçları SAYFALIDIR (tasarım D9): `{count, next, previous, results}`
@@ -347,8 +347,11 @@ export interface Copy {
   is_loanable: boolean;
   /** Verilemiyorsa gerekçe (kişisel veri taşımaz); verilebiliyorsa "". */
   not_loanable_reason: string;
+  /** BARKOD etiketinin onaylı basım işareti (D10); boşsa barkod kuyruğunda. */
   label_printed_at: string | null;
   label_verified_at: string | null;
+  /** SIRT etiketinin onaylı basım işareti (F4); boşsa sırt kuyruğunda. */
+  spine_label_printed_at: string | null;
   created_at: string;
 }
 

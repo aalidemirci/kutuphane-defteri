@@ -10,6 +10,15 @@
 // katalog kitap kitap kurulur) ve İçe Aktarma (Excel şablonundan sonra). Hızlı
 // Kayıt bölümü iki geçiş yolunu ("önce liste" / "önce etiket") karşılaştırarak
 // açar; testi hangisinin asıl yol olduğunu da kilitler.
+// F4 bölümü: Etiketler (Hızlı Kayıt'ın ardında). Sekme, düğme ve seçenek adları
+// ekran sabitlerinden (ETIKETLER_SEKMELERI, ETIKET_YOLLARI, ETIKET_ICERIGI_TR,
+// BASIM_SIRASI_TR, PARTI_DURUMU_TR) doğrulanır; sabiti olmayan düğme ve alan
+// adları ekranın kaynağından (EtiketKuyrugu, etiketOrtak, BasimGecmisi,
+// BosBarkodPaneli, DogrulamaOkutmasi, SablonlarPaneli) birebir kopyalandı.
+// Kilitlenenler: satın alma notu (QR kararı tabakayı belirler), kalibrasyon
+// adımları ve işaret kuralı, basım sırası, "PDF'i almak basıldı saymaz" ve geri
+// alma, doğrulama okutması, önce etiket yolunun SIRALI adımları, bozulan ve
+// kaybolan etiketin iki ayrı yolu, sırtı dar kitap ve koruyucu bant önerisi.
 //
 // Üç tür kilit var:
 // 1. Ekran adları DEPODAN gelir: kısayol, kip ekranı başlığı, kapalı gün türleri,
@@ -30,11 +39,21 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
 import { DOSYA_KAYIP_BASLIGI } from "../guvenlik/metinler";
-import { GOREVLI_EKRANI_BASLIGI } from "../kip/GorevliEkrani";
+import {
+  GOREVLI_DOGRULAMA_BITIR,
+  GOREVLI_DOGRULAMA_DUGMESI,
+  GOREVLI_EKRANI_BASLIGI,
+} from "../kip/GorevliEkrani";
 import { GOREVLI_KISAYOLU } from "../kip/KipGostergesi";
 import { EDINIMLER_BASLIGI } from "../kutuphane/EdinimlerPage";
 import { ESER_DETAY_BASLIGI } from "../kutuphane/EserDetayPage";
-import { HIZLI_KAYIT_BASLIGI } from "../kutuphane/HizliKayitPage";
+import { BASIM_SIRASI_TR, ETIKET_ICERIGI_TR, PARTI_DURUMU_TR } from "../kutuphane/etiketApi";
+import {
+  ETIKETLER_ADRESI,
+  ETIKETLER_BASLIGI,
+  ETIKETLER_SEKMELERI,
+} from "../kutuphane/EtiketlerPage";
+import { ETIKET_YOLLARI, HIZLI_KAYIT_BASLIGI } from "../kutuphane/HizliKayitPage";
 import { ICE_AKTARMA_ADRESI, ICE_AKTARMA_BASLIGI } from "../kutuphane/IceAktarmaPage";
 import { EDINIMLER_ADRESI } from "../kutuphane/KatalogPage";
 import {
@@ -78,6 +97,7 @@ const BEKLENEN_BASLIKLAR = [
   "Kapalı Günler",
   "Katalog",
   "Hızlı Kayıt",
+  "Etiketler",
   "Katalog Excel Şablonu",
   "İçe Aktarma",
   "Yedek ve Güvenlik Dosyası",
@@ -159,7 +179,8 @@ describe("KilavuzPage — kabuk ve bölümler", () => {
 
     expect(new Set(hedef("Ayarlar → Güvenlik"))).toEqual(new Set(["/ayarlar?tab=guvenlik"]));
     expect(hedef("Ayarlar → Kapalı Günler")).toEqual(["/ayarlar?tab=kapali-gunler"]);
-    expect(hedef("Ayarlar → Okul Bilgileri")).toEqual(["/ayarlar?tab=okul"]);
+    // Okul Bilgileri'ne iki bölümden bağlanılır (ilk kurulum + etiketlerin kısa okul adı).
+    expect(new Set(hedef("Ayarlar → Okul Bilgileri"))).toEqual(new Set(["/ayarlar?tab=okul"]));
     expect(hedef("Ayarlar → Şubeler")).toEqual(["/ayarlar?tab=subeler"]);
     expect(hedef("Ayarlar → Bölümler")).toEqual(["/ayarlar?tab=bolumler"]);
     // Kütüphane Politikası'na iki bölümden bağlanılır (katalog + hızlı kayıt).
@@ -170,8 +191,9 @@ describe("KilavuzPage — kabuk ve bölümler", () => {
     expect(new Set(hedef("Genel Bakış"))).toEqual(new Set(["/"]));
     // "Katalog" iki bağlantıdır: "Bu kılavuzda" çapası ve ekran bağlantısı.
     expect(new Set(hedef("Katalog"))).toEqual(new Set(["#katalog", "/katalog"]));
-    // Edinimler ekranının adresi katalog sayfasının sabitinden doğrulanır.
-    expect(hedef(EDINIMLER_BASLIGI)).toEqual([EDINIMLER_ADRESI]);
+    // Edinimler ekranının adresi katalog sayfasının sabitinden doğrulanır; ona katalog
+    // ve etiketler (önce etiket yolunda edinim partisi) bölümlerinden bağlanılır.
+    expect(new Set(hedef(EDINIMLER_BASLIGI))).toEqual(new Set([EDINIMLER_ADRESI]));
     // F3 ekranlarına birden çok bölümden bağlanılır (katalog + hızlı kayıt +
     // içe aktarma); adresler sayfa sabitlerinden doğrulanır.
     expect(new Set(hedef(`Katalog → ${HIZLI_KAYIT_BASLIGI}`))).toEqual(
@@ -181,6 +203,24 @@ describe("KilavuzPage — kabuk ve bölümler", () => {
       new Set([ICE_AKTARMA_ADRESI]),
     );
     expect(new Set(hedef("Katalog → Nüshalar"))).toEqual(new Set(["/katalog?tab=nushalar"]));
+    // Etiketler ekranına Hızlı Kayıt ve Etiketler bölümlerinden bağlanılır (F4).
+    expect(new Set(hedef(`Katalog → ${ETIKETLER_BASLIGI}`))).toEqual(new Set([ETIKETLER_ADRESI]));
+    // Etiketler sekmelerine doğrudan bağlanılır; `?tab=` değeri sekme tanımının
+    // anahtarından doğrulanır (sekme adı ya da anahtarı değişirse test kırılır).
+    const sekmeAnahtari = (ad: string) =>
+      Object.entries(ETIKETLER_SEKMELERI).find(([, sekme]) => sekme === ad)?.[0];
+    for (const sekme of [
+      "Şablonlar ve Kalibrasyon",
+      "Basım Geçmişi",
+      "Doğrulama Okutması",
+      "Boş Barkod Aralığı",
+    ]) {
+      const anahtar = sekmeAnahtari(sekme);
+      expect(anahtar).toBeDefined();
+      expect(hedef(`${ETIKETLER_BASLIGI} → ${sekme}`)).toEqual([
+        `${ETIKETLER_ADRESI}?tab=${anahtar}`,
+      ]);
+    }
     // Çevrimdışı künye yoluna doğrudan sekmesiyle bağlanılır.
     expect(hedef(`Katalog → ${ICE_AKTARMA_BASLIGI} → Çevrimdışı Künye`)).toEqual([
       `${ICE_AKTARMA_ADRESI}?tab=cevrimdisi`,
@@ -268,6 +308,9 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     expect(metin).toContain("kurtarma anahtarını DEĞİŞTİRMEZ");
     expect(metin).toContain("“Kurtarma Anahtarını Yenile”");
     expect(metin).toContain("Pencerenin çarpı düğmesi programı ne kapatır ne kilitler");
+    // Görevliye açık tek etiket işi: doğrulama okutması (kullanıcı kararı 24.09.2026).
+    expect(metin).toContain(`“${GOREVLI_DOGRULAMA_DUGMESI}” düğmesiyle`);
+    expect(metin).toContain("“Doğrulanmamış Etiketler” listesi yönetici kipindedir");
   });
 
   it("kişiler: e-Okul raporları, şube kapsamı, tam liste onayı, ayrılış havuzu ve birleştirme", () => {
@@ -527,8 +570,9 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     expect(metin).toContain("Önce etiket");
     expect(metin).toContain("Okulun asıl yolu budur");
     expect(metin).toContain("hazır bir kitap listesi yoktur");
-    // Etiket basımı henüz yok: kılavuz söz vermez, bekleyenin nerede görüneceğini söyler.
-    expect(metin).toContain("Etiket basımı sonraki sürümde gelecek");
+    // Etiket basımı artık vardır (F4): kılavuz ekranı gösterir, "sonraki sürüm" sözü kalmaz.
+    expect(metin).toContain("Katalog → Etiketler");
+    expect(sayfaMetni(document.body)).not.toContain("Etiket basımı sonraki sürümde");
     // Geçiş dönemi kuralı (§8.1): etiketsiz kitap masaya gelirse hemen kaydedilir.
     expect(metin).toContain("kâğıt defter");
   });
@@ -546,6 +590,8 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     expect(metin).toContain("“ISBN ile künye getirme açık”");
     expect(metin).toContain("“Nüshayı aç”");
     expect(metin).toContain("“Bu esere nüsha ekle”");
+    // Bağlı etiket: kitap büyük olasılıkla zaten kayıtlıdır (barcode_reservations._bound_message).
+    expect(metin).toContain("kitabı yeniden kaydetmeyin");
     expect(metin).toContain("“Yalnız etiketlenmemişler”");
     // Yanlış kod okutulduğunda gösterilen ileti kılavuzda da yazılıdır (§7.1).
     expect(metin).toContain("Bu bir kütüphane etiketi.");
@@ -567,6 +613,248 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     expect(metin).toContain("telefon ya da mobil modem bağlayarak internet alınmaz");
     // Barkod programın verdiği numaradır ve yeniden kullanılmaz.
     expect(metin).toContain("numara asla yeniden kullanılmaz");
+    // Kitaptaki etiket (F4): iki yolun adı ekrandaki seçeneklerle birebir.
+    expect(metin).toContain(`“${ETIKET_YOLLARI.etiket}”`);
+    expect(metin).toContain(`“${ETIKET_YOLLARI.yeni}”`);
+    expect(metin).toContain("“Kütüphane etiketi”");
+    expect(metin).toContain("“Etiketini bas”");
+    expect(metin).toContain("“Sırt etiketini bas”");
+    expect(metin).toContain("eser açılmaz");
+    // Etiket yolunda her etiket tek nüshadır ve etiketi okutmak kaydı bitirir
+    // (HizliKayitPage: "Nüsha sayısı" yalnız yeni numara yolunda; Enter → kaydet).
+    expect(metin).toContain("“Nüsha sayısı” sorulmaz");
+    expect(metin).toContain("okuyucunun gönderdiği Enter kaydı bitirir");
+    // Etiket yolunda ISBN kutusuna etiket okutulursa ileti etiket kutusunu gösterir
+    // (HizliKayitPage ETIKET_ISBN_KUTUSUNDA).
+    expect(metin).toContain("etiketi de “Kütüphane etiketi” kutusuna okutmanızı söyler");
+  });
+
+  it("etiketler: sekmeler, etiket türleri ve nereye yapıştırılacağı", () => {
+    renderPage();
+    const metin = bolumMetni("etiketler");
+
+    expect(metin).toContain(`Katalog → ${ETIKETLER_BASLIGI}`);
+    for (const sekme of Object.values(ETIKETLER_SEKMELERI)) expect(metin).toContain(sekme);
+    // Sayfanın sayaç şeridi (EtiketlerPage OzetSeridi) ekrandaki adlarıyla.
+    for (const sayac of [
+      "“Sırt etiketi bekleyen”",
+      "“Barkod etiketi bekleyen”",
+      "“Doğrulanmamış etiket”",
+      "“Bağlanmamış boş etiket”",
+    ]) {
+      expect(metin).toContain(sayac);
+    }
+    // Sırt etiketi yer numarasını boşluktan bölerek alt alta basar (labels/content.py).
+    expect(metin).toContain("boşlukla ayrılmış parçaları alt alta basılır");
+    expect(metin).toContain("“894.3533 ALİ 2. cilt”");
+    // Üç etiket türü; boş barkod etiketinde künye yoktur.
+    expect(metin).toContain("Boş barkod etiketi önce etiket yolunda");
+    expect(metin).toContain("kitaba ait bilgi yoktur");
+    // Sırtı dar kitapta ön kapak (§7.2); köşe dayatılmaz, AYNI köşe önerilir.
+    expect(metin).toContain("Sırtı dar kitaplarda");
+    expect(metin).toContain("ön kapağa, sırta yakın köşeye");
+    expect(metin).toContain("Bütün ince kitaplarda aynı köşeyi kullanın");
+    expect(metin).not.toContain("sol üst");
+    // Önce etiket yolunda ISBN de okutulur: etiket ISBN barkodunu örtmez.
+    expect(metin).toContain("ISBN barkodunun ve kapak yazısının üstüne gelmesin");
+    expect(metin).toContain("şeffaf koruyucu bant");
+  });
+
+  it("etiketler: tabaka seçimi ve satın alma notu — QR kararı tabakayı belirler", () => {
+    renderPage();
+    const metin = bolumMetni("etiketler");
+
+    // Hazır şablonlar (labels/seed.py) milimetreyle; kâğıt boyunun kısa adı yazılmaz.
+    expect(metin).toContain("38,1 × 21,2 mm");
+    expect(metin).toContain("48,5 × 25,4 mm");
+    expect(metin).toContain("52,5 × 29,7 mm");
+    // Satın alma QR kararından SONRA yapılır (tasarım §7.2, S4).
+    expect(metin).toContain("Tabaka almadan önce QR kararını verin.");
+    expect(metin).toContain("varsayılan olarak kapalıdır");
+    expect(metin).toContain("QR 65'li tabakanın etiketine sığmaz");
+    expect(metin).toContain("QR yalnız barkod numarasını taşır, adres taşımaz");
+    expect(metin).toContain("iki boyutlu (2D) okuyucu");
+    expect(metin).toContain("1.000 kitap için 16 barkod ve 16 sırt tabakası");
+    // Ayrı sırt tabakası aynı satır × sütun düzeninde olmalıdır (etiketOrtak BasimAyarlari).
+    expect(metin).toContain("“Sırt etiketi tabakası”");
+    expect(metin).toContain("satır ve sütun sayısı barkod tabakasınınkiyle aynı olmalıdır");
+    for (const ad of ["“Yeni şablon”", "“QR'a uygun”", "“Barkod bu etikete sığmaz”"]) {
+      expect(metin).toContain(ad);
+    }
+    expect(metin).toContain("“yaklaşık ölçü”");
+    expect(metin).toContain("40'lı tabaka kâğıdın kenarına kadar uzanır");
+    // Güvenli basım payı (labels/geometry.py PRINT_SAFE_MARGIN_MM = 5 mm).
+    expect(metin).toContain("sayfa kenarından en az 5 mm içeride");
+    // Program yalnız 210 × 297 mm sayfaya dizer (labels/geometry.py); kısa adı yazılmaz.
+    expect(metin).toContain("210 × 297 mm'lik sayfaya dizer");
+    // Düzeni tutmayan sırt tabakasında iki etiket ayrı basılır (validate_print_setup).
+    expect(metin).toContain("iki etiketi ayrı basın");
+    // Kısa okul adı Okul Bilgileri'nden gelir (SchoolConfig.kisa_ad, en çok 24).
+    expect(metin).toContain("Ayarlar → Okul Bilgileri");
+    expect(metin).toContain("en çok 24 karakterdir");
+  });
+
+  it("etiketler: kalibrasyon adım adım, kalibrasyon sayfasının diliyle", () => {
+    renderPage();
+    const metin = bolumMetni("etiketler");
+
+    // Şablonlar ve Kalibrasyon sekmesinin gerçek adları (SablonlarPaneli).
+    for (const ad of [
+      "“Kalibrasyon”",
+      "“Sayfaya uygulanacak kayma”",
+      "“— yok —”",
+      "“PDF'i indir”",
+      "“Yeni yazıcı kalibrasyonu”",
+      "“Yazıcı adı”",
+      "“Okunan yatay değer”",
+      "“Okunan dikey değer”",
+      "“Kaymaya ekle”",
+      "“Yatay kayma (mm)”",
+      "“Dikey kayma (mm)”",
+      "“Kaydet”",
+      "“Kayıtlı yazıcılar”",
+      "“Düzenle”",
+      "“Yazıcı (kalibrasyon)”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+    // Kalibrasyon sayfasının kendi talimatıyla aynı dil (etiket_kalibrasyon.html).
+    expect(metin).toContain("gerçek boyutta (%100)");
+    expect(metin).toContain("100 mm olmalıdır");
+    expect(metin).toContain("cetvelin sağ ve alt tarafı artı");
+    // Kâğıt kenarına yakın cetvel iç kenara konur (labels/calibration.py measured_edges).
+    expect(metin).toContain("yan etiketle arasındaki kesime");
+    expect(metin).toContain("cetvelin 0 çizgisindeki çerçeveye ait kesimi okuyun");
+    expect(metin).toContain("Artı değer sağa ve aşağı");
+    expect(metin).toContain("sorun kayma değil ölçektir");
+    // Kayma şablon + yazıcı çiftine yazılır; başka yazıcı ayrıca kalibre edilir.
+    expect(metin).toContain("her şablon ve yazıcı çifti için bir kez");
+    expect(metin).toContain("bir yazıcının kayması başka yazıcıya uymaz");
+    expect(metin).toContain("Kayma en çok 10 mm olabilir");
+    // Adımlar sırasıyla: sayfa bas → oku → kaymaya ekle → doğrula.
+    const adimlar = [
+      "“Sayfaya uygulanacak kayma” seçicisi “— yok —” kalsın",
+      "Çıktıyı etiket tabakasının üstüne koyup ışığa tutun",
+      "“Yeni yazıcı kalibrasyonu” deyin",
+      "Kayıttan sonra “Sayfaya uygulanacak kayma” seçicisinde bu yazıcı seçili gelir",
+    ];
+    const konumlar = adimlar.map((adim) => metin.indexOf(adim));
+    for (const konum of konumlar) expect(konum).toBeGreaterThan(-1);
+    expect(konumlar).toEqual([...konumlar].sort((a, b) => a - b));
+  });
+
+  it("etiketler: basım sırası, PDF almak basıldı saymaz, geri alma ve doğrulama", () => {
+    renderPage();
+    const metin = bolumMetni("etiketler");
+
+    for (const ad of Object.values(ETIKET_ICERIGI_TR)) expect(metin).toContain(`“${ad}”`);
+    for (const sira of Object.values(BASIM_SIRASI_TR)) expect(metin).toContain(sira);
+    // Kuyruk süzgeçleri ve basım ayarları (EtiketKuyrugu, etiketOrtak).
+    for (const ad of [
+      "“Bölüm”",
+      "“Edinim partisi”",
+      "“Boş barkod aralığı”",
+      "“Basım Ayarları”",
+      "“Etiket şablonu”",
+      "“Başlangıç hücresi”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+    expect(metin).toContain("hücreler satır satır, soldan sağa sayılır");
+    expect(metin).toContain("aynı sıra ve hücre düzeninde");
+    expect(metin).toContain("önce sırt tabakaları, sonra barkod tabakaları");
+    expect(metin).toContain("Yer numarası olmayan nüshalar sona düşer");
+    expect(metin).toContain("kitapların masadan geçtiği sıradır");
+    expect(metin).toContain("1.300");
+    // D10: işaret onaylıdır ve geri alınabilir; PDF hiçbir işarete dokunmaz.
+    expect(metin).toContain("PDF'i almak “basıldı” saymaz.");
+    expect(metin).toContain("hiçbir işarete dokunmaz");
+    expect(metin).toContain(`“${PARTI_DURUMU_TR.PENDING}”`);
+    expect(metin).toContain("“Onay bekleyen partide”");
+    for (const dugme of [
+      "“Basım partisini hazırla”",
+      "“Önizle”",
+      "“PDF'i indir”",
+      "“Basıldı olarak işaretle”",
+      "“Partiden vazgeç”",
+      "“Basım işaretini geri al”",
+      "“Yeniden bas”",
+      "“Nüshaları göster”",
+      "“Kutuya dön”",
+    ]) {
+      expect(metin).toContain(dugme);
+    }
+    // Geri alma işareti SİLMEZ, bu basımdan önceki hâline döndürür; doğrulanmış etiket
+    // korunur; sonradan yeniden basılmış nüshası olan parti önce o parti geri alınmadan
+    // geri alınamaz (services/label_queue.py::revert_batch).
+    expect(metin).toContain("bu basımdan önceki hâline döner");
+    expect(metin).toContain("Okutularak doğrulanmış etiketlerin işareti korunur");
+    // Kullanıcı kararı (24.09.2026): sırt ve barkod partisinde doğrulanmış nüshanın sırt
+    // işareti de korunur.
+    expect(metin).toContain("sırt işareti de korunur ve nüsha hiçbir kuyruğa dönmez");
+    expect(metin).toContain("önce o partinin işaretini geri almanızı ister");
+    // Barkod etiketi içeren partinin onayı doğrulamayı sıfırlar (confirm_batch); numara
+    // değişmediği için eski etiketi okutmak yeniden doğrular.
+    expect(metin).toContain("o nüshaların doğrulaması sıfırlanır");
+    expect(metin).toContain("kitaplardaki eski etiketleri okutmak onları yeniden doğrular");
+    // Doğrulama okutması: yalnız barkod etiketi; ret türleri ayrı iletilerle.
+    expect(metin).toContain("Doğrulama barkod etiketi içindir");
+    expect(metin).toContain("numarası iptal edilmiş boş etiket");
+    expect(metin).toContain("“Doğrulanmamış Etiketler”");
+    expect(metin).toContain("Basım Geçmişi'nden yeniden basın");
+    // Görevli kipinde okutma görevli ekranından açılır ve kapanır (GorevliEkrani sabitleri).
+    expect(metin).toContain("Okutmayı masadaki görevli de yapabilir");
+    expect(metin).toContain(`“${GOREVLI_DOGRULAMA_DUGMESI}” düğmesiyle açılır`);
+    expect(metin).toContain(`“${GOREVLI_DOGRULAMA_BITIR}” ile kapanır`);
+  });
+
+  it("etiketler: önce etiket yolu adım adım; numara yeniden verilmez", () => {
+    renderPage();
+    const metin = bolumMetni("etiketler");
+
+    expect(metin).toContain("Önce etiket yolu adım adım");
+    expect(metin).toContain("Okulun asıl yolu budur");
+    // Sıra: ayır → bas → yapıştır → Hızlı Kayıt'ta künye + etiket → sırt → iptal.
+    const adimlar = [
+      "Numara ayırın.",
+      "Basın.",
+      "Yapıştırın.",
+      "Kaydedin.",
+      "Sırt etiketlerini basın.",
+      "Kullanılmayanları iptal edin.",
+    ];
+    const konumlar = adimlar.map((adim) => metin.indexOf(adim));
+    for (const konum of konumlar) expect(konum).toBeGreaterThan(-1);
+    expect(konumlar).toEqual([...konumlar].sort((a, b) => a - b));
+    // Boş Barkod Aralığı sekmesinin gerçek adları (BosBarkodPaneli).
+    for (const ad of [
+      "“Numara Ayır”",
+      "“Adet”",
+      "“Açıklama”",
+      "“Numara ayır”",
+      "“Seçilen Aralık”",
+      "“Numaralar”",
+      "“Seçilenleri iptal et”",
+      "“Bağlanmamış bütün numaraları iptal et”",
+      "“Sırt etiketlerini bas”",
+      "“Bu numaraların etiketlerinin kitaplara yapıştırılmadığını denetledim.”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+    expect(metin).toContain(`“${ETIKET_YOLLARI.etiket}”`);
+    expect(metin).toContain(`“${ETIKET_YOLLARI.yeni}”`);
+    expect(metin).toContain("“Kütüphane etiketi”");
+    expect(metin).toContain("ayrılan numara başka hiçbir kitaba verilmez");
+    // Hızlı Kayıt edinimsiz nüsha açmaz: eski koleksiyonun edinim yolu önceden açılır.
+    expect(metin).toContain("“Mevcut koleksiyon (programa aktarım)”");
+    expect(metin).toContain("İptal geri alınmaz ve numara sayaca dönmez");
+    // Bozulan etiket eldeyse aynı numara yeniden basılır; kaybolan etiketin
+    // numarası iptal edilir; toplu iptal ancak bütün kitaplar kaydedilince.
+    expect(metin).toContain("Bozulan etiket elinizdeyse");
+    expect(metin).toContain("Kaybolan ya da artan etiketlerin numaralarını");
+    expect(metin).toContain("Toplu iptali yalnız o aralığın bütün kitapları");
+    // Etiketsiz kitabın tek etiket kısayolu (TekEtiketBasimi) kartın adıyla.
+    expect(metin).toContain("“Etiket Basımı”");
   });
 
   it("içe aktarma: önizleme yazmaz, kararlar sorulur, aynı dosya ikinci kez uygulanmaz", () => {
@@ -601,6 +889,9 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     expect(metin).toContain("danışma kaynağı sayılan");
     // Toplu aktarımda dış istek YOKTUR (§8.5-2) ve kılavuz bunu söyler.
     expect(metin).toContain("internetten künye getirmez");
+    // Uygulamadan sonraki etiket kısayolu (§8.1; AktarimPaneli) kuyruğu partiye süzer.
+    expect(metin).toContain("“Bu partinin etiketlerini bas”");
+    expect(metin).toContain("bu edinim partisine süzülmüş açar");
     // Çevrimdışı yol AYRI CİHAZ demektir (Yönerge 11/18, birebir alıntı).
     expect(metin).toContain("başka bir cihazda");
     expect(metin).toContain(
@@ -720,6 +1011,16 @@ describe("KilavuzPage — sözlük ve kalıntı denetimi", () => {
       // "yapay zekâ" düzeltme işaretiyle yazılır; "AI" kısaltması kullanılmaz.
       /yapay zeka/i,
       /\bAI\b/,
+      // Etiket sözlüğünün "kullanılmaz" sütunu (docs/sozluk.md §1, F4).
+      /rezervasyon/i,
+      /sticker/i,
+      /\bof+set\b/i,
+      /hizalama ayarı/i,
+      /yazıcı profili/i,
+      /baskı kuyruğu/i,
+      /yazdırma kuyruğu/i,
+      /barkod stoğu/i,
+      /yöntem [AB]\b/,
     ]) {
       expect(metin).not.toMatch(yasak);
     }

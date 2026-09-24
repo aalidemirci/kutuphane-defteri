@@ -16,6 +16,19 @@
 // Katalogda aynı ISBN'li eser varsa kullanıcıya SORULUR: yeni eser açmak yerine
 // var olan esere nüsha eklemek, yöntem B'de en sık yapılan iştir (aynı kitaptan
 // ikinci nüsha). Bu arama yereldir, dışarıya çıkmaz.
+//
+// KİTAPTAKİ ETİKET (F4, yöntem B): boş barkod etiketleri önceden basılıp
+// kitaplara yapıştırıldıysa nüsha O numarayla açılır. Sıra bağlayıcıdır:
+//   1. etiket sunucuya SORULUR (`check/`, yazma yok) — bağlanamayacak bir etiket
+//      için eser açılıp nüshasız kalmasın;
+//   2. eser açılır (ya da seçilen esere eklenir);
+//   3. nüsha etiketin numarasıyla açılır (`copies/from-label/`).
+// Etiketi olmayan kitap için "Etiket yok — yeni numara ver" yolu F3'teki
+// davranıştır (sayaçtan yeni numara) ve açılan nüshanın etiketi aynı ekrandan
+// tek etiket kısayoluyla basılır. Açık boş etiket varsa ekran etiket yoluyla açılır.
+//
+// Eser açılıp nüsha açılamazsa (ör. etiket o arada başka kitaba bağlandı) eser
+// SEÇİLİ kalır: yeniden denemede ikinci bir eser açılmaz.
 
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -41,6 +54,8 @@ import type {
   Work,
   WorkBody,
 } from "./api";
+import { etiketApi } from "./etiketApi";
+import type { EtiketIcerigi } from "./etiketApi";
 import KunyeAlanlari, { kunyeGovdesi, varsayilanSecim } from "./KunyeAlanlari";
 import type { KunyeSecimi } from "./KunyeAlanlari";
 import {
@@ -52,9 +67,26 @@ import {
   useBolumler,
 } from "./ortak";
 import { isbnNormalize, kodTuru } from "./tarama";
+import TekEtiketBasimi from "./TekEtiketBasimi";
 
 /** Sayfanın başlığı — üst çubuktaki başlıkla aynıdır (docs/sozluk.md §4). */
 export const HIZLI_KAYIT_BASLIGI = "Hızlı Kayıt";
+
+/**
+ * Kitabın etiketi için iki yol (docs/sozluk.md §4.7). Adlar sunucu iletileriyle
+ * aynıdır: etiket reddedilince sunucu "“Etiket yok — yeni numara ver”
+ * seçeneğini kullanın" der.
+ */
+export const ETIKET_YOLLARI = {
+  etiket: "Kitaptaki etiketi okutun",
+  yeni: "Etiket yok — yeni numara ver",
+} as const;
+
+type EtiketYolu = keyof typeof ETIKET_YOLLARI;
+
+/** Etiket yolunda ISBN kutusuna kütüphane etiketi okutulursa. */
+const ETIKET_ISBN_KUTUSUNDA =
+  "Bu bir kütüphane etiketi. Önce kitabın arka kapağındaki ISBN barkodunu okutun; etiketi “Kütüphane etiketi” kutusuna okutun.";
 
 /** Yanlış kod okutulduğunda gösterilen iletiler (§7.1; sözlük dili). */
 const KOD_ILETILERI: Record<string, string> = {
@@ -73,6 +105,8 @@ interface KayitSonucu {
   eser: Work;
   nushalar: Copy[];
   yeniEser: boolean;
+  /** Nüsha kitaptaki önceden basılmış etiketin numarasıyla mı açıldı? */
+  etiketli: boolean;
 }
 
 export default function HizliKayitPage() {
@@ -118,9 +152,45 @@ export default function HizliKayitPage() {
   const [eskiKayitNo, setEskiKayitNo] = useState("");
   const [danisma, setDanisma] = useState(false);
 
+  // --- kitaptaki etiket (yöntem B) ---
+  const [etiketYolu, setEtiketYolu] = useState<EtiketYolu>("yeni");
+  // Kullanıcı yolu kendisi seçtiyse açılıştaki kendiliğinden seçim onu ezmez.
+  const yolSecildi = useRef(false);
+  const etiketRef = useRef<HTMLInputElement>(null);
+  // Etiket kutusu fareyle odak alınca metin seçili kalsın diye (bkz. onMouseUp).
+  const etiketFareyleOdak = useRef(false);
+
+  /**
+   * Etiket kutusunda duran kod SEÇİLİR: okuyucunun sıradaki okutması eskisinin
+   * sonuna eklenmez, onu siler. Yalnız odak zaten kutudaysa (odak çalınmaz).
+   */
+  const etiketiSec = (): void => {
+    if (document.activeElement === etiketRef.current) etiketRef.current?.select();
+  };
+  const [etiketKodu, setEtiketKodu] = useState("");
+  const [etiketIpucu, setEtiketIpucu] = useState("");
+
   const [busy, setBusy] = useState(false);
   const [hata, setHata] = useState<SayfaHatasi | null>(null);
   const [sonuc, setSonuc] = useState<KayitSonucu | null>(null);
+  // Tek etiket kısayolu: sonuç kartından açılır, sıradaki kitap okutulunca da kalır.
+  const [basim, setBasim] = useState<{ nushalar: Copy[]; icerik: EtiketIcerigi } | null>(null);
+
+  // Bağlanmamış boş etiket varsa okul önce etiket yolundadır: ekran o yolla açılır.
+  useEffect(() => {
+    let iptal = false;
+    etiketApi
+      .ozet()
+      .then((ozet) => {
+        if (!iptal && !yolSecildi.current && ozet.reservations.open > 0) setEtiketYolu("etiket");
+      })
+      .catch(() => {
+        // Sayaç okunamazsa bugünkü yol (yeni numara) kalır; kullanıcı seçebilir.
+      });
+    return () => {
+      iptal = true;
+    };
+  }, []);
 
   // Ayar okunur; okunamazsa KAPALI sayılır — dış istek kapısı fail-closed'dır.
   useEffect(() => {
@@ -248,7 +318,11 @@ export default function HizliKayitPage() {
     setSonuc(null);
     const tur = kodTuru(ham);
     if (tur !== "ISBN") {
-      setKodUyarisi(KOD_ILETILERI[tur] ?? KOD_ILETILERI.UNKNOWN);
+      setKodUyarisi(
+        tur === "COPY" && etiketYolu === "etiket"
+          ? ETIKET_ISBN_KUTUSUNDA
+          : (KOD_ILETILERI[tur] ?? KOD_ILETILERI.UNKNOWN),
+      );
       // Tanınmayan kodun HAM metni ISBN alanına yazılmaz: raf etiketi, QR ya da
       // URL parçası olabilir ve alanda duran değeri ezerdi. Sadeleştirilmiş
       // biçim yalnız alan boşken yazılır (elle yazılan ISBN-10 kolaylığı).
@@ -262,15 +336,24 @@ export default function HizliKayitPage() {
     setIsbn(numara);
 
     // Yerel katalog araması: aynı kitabın ikinci nüshası yöntem B'nin olağan işi.
+    let benzerSayisi = 0;
     try {
       const sayfa = await kutuphaneApi.listWorks({ q: numara, limit: 5 });
       setBenzerler(sayfa.results);
+      benzerSayisi = sayfa.results.length;
     } catch {
       setBenzerler([]);
     }
 
-    if (!kunyeAcik) return;
-    await kunyeSor(numara);
+    if (kunyeAcik) await kunyeSor(numara);
+
+    // Etiket yolunda sıradaki iş kitaptaki etiketi okutmaktır: odak oraya geçer.
+    // Katalogda aynı numarayla eser varsa geçmez — önce "Bu esere nüsha ekle"
+    // kararı verilmeli, yoksa etiket okutulunca ikinci bir eser açılırdı.
+    // Odak okutma kutusunda kalırsa ISBN seçilir: sıradaki okutma onun sonuna
+    // eklenmez, onu siler.
+    if (etiketYolu === "etiket" && benzerSayisi === 0) etiketRef.current?.focus();
+    else if (document.activeElement === kodRef.current) kodRef.current?.select();
   };
 
   /** Formu sıfırlar ve odağı okutma kutusuna döndürür.
@@ -303,29 +386,64 @@ export default function HizliKayitPage() {
     setAdet("1");
     setEskiKayitNo("");
     setDanisma(false);
+    setEtiketKodu("");
+    setEtiketIpucu("");
     clearErrors();
     setHata(null);
     kodRef.current?.focus();
   };
 
+  const yolDegisti = (yol: EtiketYolu): void => {
+    yolSecildi.current = true;
+    setEtiketYolu(yol);
+    setEtiketIpucu("");
+    clearErrors();
+  };
+
   const kaydet = async (): Promise<void> => {
+    // Okuyucunun Enter'ı ile tıklama üst üste gelirse ikinci istek gitmesin.
+    if (busy) return;
     clearErrors();
     setHata(null);
+    setEtiketIpucu("");
+    const etiketle = etiketYolu === "etiket";
+    const etiket = etiketKodu.trim();
+    // Erken dönüşlerde okutulmuş etiket kutuda SEÇİLİ kalır: künye tamamlanıp
+    // etiket yeniden okutulunca iki kod birleşmesin ("2026-0001012026-000101").
     if (eser === null && !title.trim()) {
       setFieldError("title", "Kaynak adı yazılmalıdır.");
+      if (etiketle) etiketiSec();
       return;
     }
     if (!edinim) {
       setFieldError("acquisition", "Edinim seçilmelidir.");
+      if (etiketle) etiketiSec();
       return;
     }
-    const sayi = Number(adet);
+    const sayi = etiketle ? 1 : Number(adet);
     if (!Number.isInteger(sayi) || sayi < 1) {
       setFieldError("count", "Nüsha sayısı en az 1 olmalıdır.");
       return;
     }
+    if (etiketle && !etiket) {
+      setFieldError("label_code", "Kitaba yapıştırdığınız kütüphane etiketini okutun.");
+      etiketRef.current?.focus();
+      return;
+    }
     setBusy(true);
+    // Bu kayıtta açılan eser: nüsha açılamazsa seçili kalır (yeniden denemede ikinci eser açılmaz).
+    let acilanEser: Work | null = null;
     try {
+      // 1) Etiket ÖNCE sorulur: bağlanamayacak etiket için eser açılmaz.
+      if (etiketle) {
+        const denetim = await etiketApi.etiketDenetle(etiket);
+        if (!denetim.bindable) {
+          setFieldError("label_code", denetim.message);
+          setEtiketIpucu(denetim.hint);
+          etiketRef.current?.select();
+          return;
+        }
+      }
       const yeniEser = eser === null;
       const govde: WorkBody = {
         title: title.trim(),
@@ -342,25 +460,47 @@ export default function HizliKayitPage() {
         language: language.trim(),
         section: bolum ? Number(bolum) : null,
       };
-      const kayit = eser ?? (await kutuphaneApi.createWork(govde));
+      if (eser === null) acilanEser = await kutuphaneApi.createWork(govde);
+      const kayit = eser ?? (acilanEser as Work);
       if (kayit.isbn_warning) snackbar.show(kayit.isbn_warning, { duration: 6000 });
-      const nushalar = await kutuphaneApi.createCopies({
+      const nushaAlanlari = {
         work: kayit.id,
         acquisition: Number(edinim),
-        count: sayi,
         section: bolum ? Number(bolum) : (kayit.section ?? null),
         old_register_no: eskiKayitNo.trim(),
         is_reference: danisma,
-      });
-      snackbar.success(`${formatNumber(nushalar.count)} nüsha açıldı.`);
+      };
+      let nushalar: Copy[];
+      if (etiketle) {
+        // 3) Nüsha kitaptaki etiketin numarasıyla açılır.
+        const nusha = await etiketApi.etiketleNushaAc({ ...nushaAlanlari, label_code: etiket });
+        nushalar = [nusha];
+        snackbar.success(`Nüsha ${nusha.barcode_display} numarasıyla açıldı.`);
+      } else {
+        const sonucNushalar = await kutuphaneApi.createCopies({ ...nushaAlanlari, count: sayi });
+        nushalar = sonucNushalar.results;
+        snackbar.success(`${formatNumber(sonucNushalar.count)} nüsha açıldı.`);
+      }
       // Form SIFIRLANIR ve odak okutma kutusuna döner: sıradaki kitap doğrudan
       // okutulabilsin. Sıfırlanmasaydı B kitabı A'nın künyesiyle, A'nın eski
       // kayıt numarasıyla ve A'nın danışma işaretiyle kaydedilirdi.
       temizle();
-      setSonuc({ eser: kayit, nushalar: nushalar.results, yeniEser });
+      setSonuc({ eser: kayit, nushalar, yeniEser, etiketli: etiketle });
     } catch (e) {
       applyApiError(e);
-      setHata(hataOku(e, "Kayıt tamamlanamadı."));
+      const okunan = hataOku(e, "Kayıt tamamlanamadı.");
+      if (acilanEser !== null) {
+        // Eser açıldı, nüsha açılamadı: eser seçili kalır ki yeniden denemede
+        // ikinci bir eser açılmasın. Künye formu kapanır, "Seçilen eser" görünür.
+        setEser(acilanEser);
+        setHata({
+          ...okunan,
+          message: `${okunan.message} Eser kaydedildi; sorunu giderip yeniden “Nüshayı aç” deyin.`,
+        });
+      } else {
+        setHata(okunan);
+      }
+      if (etiketle) etiketRef.current?.select();
     } finally {
       setBusy(false);
     }
@@ -371,9 +511,10 @@ export default function HizliKayitPage() {
       <ModuleHeader backTo="/katalog" moduleLabel="Katalog" title={HIZLI_KAYIT_BASLIGI} />
 
       <p className="kd-page-description max-w-4xl">
-        Kitap elinizdeyken ISBN barkodunu okutun: künye önerisi gelir ya da elle yazarsınız, bölüm
-        ve yer numarasını seçip nüshayı açarsınız. Barkod ve kayıt numarasını program verir; numara
-        asla yeniden kullanılmaz.
+        Kitap elinizdeyken ISBN barkodunu okutun: künye önerisi gelir ya da elle yazarsınız. Kitaba
+        önceden basılmış boş barkod etiketi yapıştırdıysanız etiketi okutursunuz ve nüsha o
+        numarayla açılır; etiketsiz kitaba program yeni numara verir. Numara asla yeniden
+        kullanılmaz.
       </p>
 
       {hata && <ErrorBand hata={hata} />}
@@ -489,6 +630,16 @@ export default function HizliKayitPage() {
                     onClick={() => {
                       setEser(aday);
                       setBolum(aday.section === null ? "" : String(aday.section));
+                      // Odak düğmede kalırsa okuyucunun gönderdiği rakamlar
+                      // kaybolur, sondaki Enter düğmeye yeniden basar. Etiket
+                      // yolunda sıradaki iş etiketi okutmaktır; yeni numara
+                      // yolunda odak okutma kutusuna döner (ISBN seçili).
+                      if (etiketYolu === "etiket") {
+                        etiketRef.current?.focus();
+                      } else {
+                        kodRef.current?.focus();
+                        kodRef.current?.select();
+                      }
                     }}
                   >
                     Bu esere nüsha ekle
@@ -606,6 +757,70 @@ export default function HizliKayitPage() {
         </Card>
       )}
 
+      <Card elevation={0} className="space-y-3 p-[var(--kd-panel-padding)] shadow-elevation-1">
+        <p className="text-title-medium text-on-surface">Kitabın etiketi</p>
+        <fieldset className="flex flex-wrap gap-x-6 gap-y-1">
+          <legend className="sr-only">Kitabın etiketi</legend>
+          {(Object.keys(ETIKET_YOLLARI) as EtiketYolu[]).map((yol) => (
+            <label
+              key={yol}
+              className="flex min-h-11 cursor-pointer items-center gap-2 text-body-medium text-on-surface"
+            >
+              <input
+                type="radio"
+                name="etiket-yolu"
+                checked={etiketYolu === yol}
+                onChange={() => yolDegisti(yol)}
+                className="size-5 shrink-0 accent-primary"
+              />
+              {ETIKET_YOLLARI[yol]}
+            </label>
+          ))}
+        </fieldset>
+        {etiketYolu === "etiket" ? (
+          <>
+            <TextField
+              className="max-w-xl"
+              label="Kütüphane etiketi"
+              ref={etiketRef}
+              value={etiketKodu}
+              autoComplete="off"
+              onChange={(e) => setEtiketKodu(e.target.value)}
+              // Kutu odak alınca kod seçilir: yeniden okutulan etiket eskisinin
+              // siler. Fareyle tıklamada tarayıcı fare bırakılınca seçimi
+              // kaldırır; o bırakma bir kez yutulur.
+              onFocus={(e) => e.currentTarget.select()}
+              onMouseDown={() => {
+                etiketFareyleOdak.current = document.activeElement !== etiketRef.current;
+              }}
+              onMouseUp={(e) => {
+                if (etiketFareyleOdak.current) {
+                  e.preventDefault();
+                  etiketFareyleOdak.current = false;
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void kaydet();
+                }
+              }}
+              placeholder="2026-000123"
+              error={errors.label_code}
+              helperText="Kitaba yapıştırdığınız boş barkod etiketini okutun; okutunca nüsha o numarayla açılır."
+            />
+            {etiketIpucu && (
+              <p className="text-body-small text-on-surface-variant">{etiketIpucu}</p>
+            )}
+          </>
+        ) : (
+          <p className="text-body-small text-on-surface-variant">
+            Program sayaçtan yeni numara verir. Nüsha açıldıktan sonra etiketini bu ekrandan
+            basabilirsiniz.
+          </p>
+        )}
+      </Card>
+
       <Card elevation={0} className="space-y-4 p-[var(--kd-panel-padding)] shadow-elevation-1">
         <p className="text-title-medium text-on-surface">Nüsha</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -625,14 +840,16 @@ export default function HizliKayitPage() {
                   : "Her nüsha bir edinim partisinden gelir."
             }
           />
-          <TextField
-            label="Nüsha sayısı"
-            inputMode="numeric"
-            value={adet}
-            onChange={(e) => setAdet(e.target.value)}
-            error={errors.count}
-            helperText="Aynı künyeden birden çok nüsha açabilirsiniz."
-          />
+          {etiketYolu === "yeni" && (
+            <TextField
+              label="Nüsha sayısı"
+              inputMode="numeric"
+              value={adet}
+              onChange={(e) => setAdet(e.target.value)}
+              error={errors.count}
+              helperText="Aynı künyeden birden çok nüsha açabilirsiniz."
+            />
+          )}
           <Select
             label="Bölüm"
             placeholder="— yok —"
@@ -666,13 +883,40 @@ export default function HizliKayitPage() {
       </Card>
 
       {sonuc && (
-        <SonucKarti sonuc={sonuc} onAc={() => navigate(`/katalog/eser/${sonuc.eser.id}`)} />
+        <SonucKarti
+          sonuc={sonuc}
+          onAc={() => navigate(`/katalog/eser/${sonuc.eser.id}`)}
+          onEtiketBas={() =>
+            setBasim({ nushalar: sonuc.nushalar, icerik: sonuc.etiketli ? "SPINE" : "BOTH" })
+          }
+        />
+      )}
+
+      {basim && (
+        <TekEtiketBasimi
+          // Başka nüshanın kısayolu açılınca kart sıfırdan kurulur.
+          key={basim.nushalar.map((n) => n.id).join(",")}
+          nushalar={basim.nushalar}
+          ilkIcerik={basim.icerik}
+          onKapat={() => {
+            setBasim(null);
+            kodRef.current?.focus();
+          }}
+        />
       )}
     </div>
   );
 }
 
-function SonucKarti({ sonuc, onAc }: { sonuc: KayitSonucu; onAc: () => void }) {
+function SonucKarti({
+  sonuc,
+  onAc,
+  onEtiketBas,
+}: {
+  sonuc: KayitSonucu;
+  onAc: () => void;
+  onEtiketBas: () => void;
+}) {
   return (
     <Card elevation={0} className="space-y-2 p-[var(--kd-panel-padding)] shadow-elevation-1">
       <p className="flex items-center gap-2 text-title-medium text-on-surface">
@@ -684,10 +928,14 @@ function SonucKarti({ sonuc, onAc }: { sonuc: KayitSonucu; onAc: () => void }) {
         {sonuc.nushalar.map((nusha) => nusha.barcode_display).join(", ")}
       </p>
       <p className="text-body-small text-on-surface-variant">
-        Bu nüsha henüz etiketlenmedi. Katalog → Nüshalar sekmesinde “Yalnız etiketlenmemişler”
-        süzgeciyle etiket bekleyenleri bir arada görebilirsiniz.
+        {sonuc.etiketli
+          ? "Nüsha kitaptaki etiketin numarasıyla açıldı; barkod etiketi okutulmuş sayılır. Sırt etiketi Etiketler → Basım Kuyruğu'nda bekler."
+          : "Bu nüshanın etiketi henüz basılmadı; Etiketler → Basım Kuyruğu'nda bekler. Kitap elinizdeyse etiketini şimdi basabilirsiniz."}
       </p>
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button variant="outlined" icon="print" onClick={onEtiketBas}>
+          {sonuc.etiketli ? "Sırt etiketini bas" : "Etiketini bas"}
+        </Button>
         <Button variant="text" icon="open_in_new" onClick={onAc}>
           Künyeyi aç
         </Button>

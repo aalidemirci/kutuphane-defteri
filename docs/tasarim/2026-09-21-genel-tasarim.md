@@ -399,6 +399,7 @@ Ayrıca `GÜVENLİK_DOSYASI_KAYIP` ve `YENİDEN_BAŞLAT_GEREK` durumları vardı
 | Nüsha durum sorgusu | Üye listesi, okuma geçmişi, gecikme listesi |
 | Katalog okuma: `works` ve `copies` GET, ağ kataloğunun alan listesine denk serializer ile | `acquisitions`, `commission-decisions`, bağışçı, fiyat, TKYS alanları |
 | Teslimden geri alma okutması (U11) | Teslim verme |
+| Etiket doğrulama okutması (`library-label-verify` POST; yanıtta yalnız barkod ve eser adı — §14.1 F4 ekleri 11) | Etiket basımı, basım işareti ve geri alma, doğrulanmamışlar listesi, boş barkod aralığı, şablon ve kalibrasyon |
 | Kip ve güvenlik durum uçları · kip yükseltme (gövdede yönetici parolası) · `app/quit/` (gövdede yönetici parolası; parolasız istek 403) | Raporlar, ayarlar, yedek, içe aktarma, sayım onayı, ayıklama, kayıp dosyaları, ilişik |
 
 **Görevlinin gördüğü iletiler.**
@@ -1053,7 +1054,8 @@ Aydınlatma metni bu kapsamı aynen yazar.
   düzeninde** basılır.
 - Basım onayından sonra "basıldı" işaretlenir ve geri alınabilir (D10).
 - **Etiket doğrulama okutması** yapıştırmadan sonra `label_verified_at` alanını yazar.
-  Doğrulanmamış nüshalar raporlanır.
+  Doğrulanmamış nüshalar raporlanır. Okutma görevli kipinde de açıktır; rapor yönetici
+  kipindedir (§14.1 F4 ekleri 11).
 
 ### 7.3 Dolaşım masası (durum tablosu)
 
@@ -1906,6 +1908,140 @@ kararlar.
    Kütük kalıcıdır ve koşu satırının silme ucu yoktur; sütunu kaymış bir okul
    listesinde ham "Eser Adı" hücresi bir kişi adı olabilir. Kütüğe satır numarası,
    kova ve sayılar girer; ham metin API yanıtında (geçici, ekranda) kalır.
+
+**F4 ekleri (24.09.2026).** F4'te tasarımdan bilinçli sapmalar ve tasarımda yazmayan
+kararlar. Kod kapısı (§14.1 F4 satırı) ve `bash scripts/gates.sh` yeşildir; gerçek
+yazıcı ve gerçek okuyucu kanıtı F12'ye ertelendi (madde 9).
+
+1. **§7.2, D10 — iki basım işareti.** `Copy.label_printed_at` yalnız **barkod
+   etiketinin**, yeni `Copy.spine_label_printed_at` **sırt etiketinin** işaretidir.
+   Kuyruk iki sayaçla çalışır ("Sırt etiketi bekleyen", "Barkod etiketi bekleyen").
+   Tek işaret, "sırt ve barkod etiketi" ayrı ayrı basılabildiği için eksik kalan
+   etiketi gizlerdi. Basım kaydı `LabelPrintBatch` + `LabelPrintBatchItem`'dır; kalem
+   her nüshanın **basımdan önceki** damgalarını saklar. Kurallar:
+   - Barkod etiketi içeren partinin onayı o nüshaların doğrulamasını sıfırlar (yeni
+     etiket henüz okutulmamıştır).
+   - Geri alma işareti silmez, basımdan önceki hâline döndürür. Barkodu okutularak
+     doğrulanmış nüshanın işaretleri korunur (sırt ve barkod partisinde İKİSİ de —
+     madde 11) ve sayısı yanıtta bildirilir. Yanıt kuyruğa DÖNEN nüshayı (`requeued`)
+     işareti önceki basıma dönen nüshadan (`restored`) ayırır: yeniden basım partisi
+     geri alınınca nüshalar kuyruğa girmez.
+   - Nüshası sonradan başka partiyle yeniden basılmış bir parti, o parti hâlâ onaylıysa
+     önce o parti geri alınmadan geri alınamaz. Sonraki parti geri alınmışsa engel
+     kalkar; doğrulandığı için işareti o partide korunan nüshaya dokunulmaz (denetim,
+     24.09.2026: önceden iki parti de bir daha geri alınamıyordu).
+   - Parti açıldıktan sonra silinen ya da elden çıkan nüsha (`Copy.is_labelable`)
+     partiden düşmez: partinin PDF'inde hücresi BOŞ kalır (sonraki etiketler kaymaz),
+     onay onun işaretine dokunmaz, yeniden basım onu almaz (kalanların sırası korunur).
+   - Yeniden basım aynı nüshaları aynı sırayla yeni bir partide basar
+     (`reprint_of`). Şablon değişirse eski kalibrasyon taşınmaz. Gövdede
+     `calibration: null` açıkça "kalibrasyonsuz" demektir; alan hiç gönderilmezse
+     aynı şablonun kalibrasyonu taşınır.
+   - Doğrulanmış nüshada sırt işaretinin korunup korunmayacağı açık karardı;
+     kullanıcı 24.09.2026'da karar verdi: ikisi de korunur (madde 11).
+2. **§7.2 — uçların yeri ve ekran.** Şablon ve kalibrasyon uçları motor
+   paketindedir (`apps/kutuphane/labels/urls.py`): `library/label-templates/`,
+   `library/label-calibrations/`, kalibrasyon sayfası `library/labels/calibration/`
+   ve **hiçbir kayıt yazmayan** önizleme `library/labels/preview/`. Önizlemenin boş
+   barkod içeriği yalnız AÇIK ayrılmış numaraya basar (iptal edilmiş, bağlı ve sayacın
+   henüz vermediği numara reddedilir — aralığın PDF'iyle aynı kural). Kuyruk, basım
+   partisi, doğrulama ve boş barkod aralığı uçları `views_kuyruk.py`'dedir. Şablon ve
+   kalibrasyon ekranı Ayarlar'da değil, **Etiketler → Şablonlar ve Kalibrasyon**
+   sekmesindedir (Ayarlar'da DEĞİL: şablon ve kalibrasyon basımla birlikte kullanılır,
+   kalibrasyon sayfası da oradan basılır); parti ve aralık ayrıntısı pencere değil
+   sayfa içi karttır. Yeni uçlardan görevli kipi izin listesine YALNIZ
+   `library-label-verify` POST girdi (madde 11); gerisi kapalıdır.
+3. **§7.2 — Code128 yazıcı noktasına hizalıdır.** Modül X = 0,254 mm'dir. Barkodun
+   sayfadaki sol kenarı da kalibrasyon kaymasından SONRA X'in katına çekilir. Böylece
+   modül kenarları 300 ve 600 dpi yazıcının nokta sınırına düşer. Modül genişliği
+   PDF'in çizim komutlarından okunarak sınanır.
+4. **§7.2 — sırt etiketinde taşma yok.** Yer numarası boşlukla ayrılmış parçalarından
+   alt alta en çok üç satır basılır. Sığmayan satırda **yalnız o satırın** yazısı
+   küçülür, diğer satırlar okunur boyda kalır. Ölçüm gömülü DejaVu'nun genişlik
+   tablosuyla yapılır. Kısaltılmış kaynak adı tek satırdır ve Türkçe güvenli kırpılır.
+   Sayfa bütçesi testleri en uzun kaynak adı, yer numarası ve okul kısa adıyla koşar.
+5. **§7.2 — tek belgede en çok 1.300 etiket** (20 tam tabaka 65'li). Daha büyük iş
+   Türkçe iletiyle ("listeyi parçalara bölün") reddedilir; bölmeyi kullanıcı yapar.
+   Sözleşmede bir üst sınır yoktu.
+6. **§7.2 — hazır şablonlar kod içi tohumdur** (`labels/seed.py`,
+   `ensure_default_templates()`, göç yok). 38,1 × 21,2 mm 65'li tabaka varsayılan
+   barkod **ve** sırt tabakasıdır; iki şablonun ızgarası aynı olduğu için "sırt ve
+   barkod etiketi" aynı satır × sütun düzeninde basılır. Farklı ızgaralı bir sırt
+   tabakası bu içerikte reddedilir. 44'lü ve 40'lı tabakanın ölçü belirsizliği
+   TB29'dadır. Şablon adlarında kâğıt boyunun kısa adı geçmez; sayfa her şablonda
+   210 × 297 mm'dir (sözlük §1). **Yazıcının basamadığı kenar payı:** bar, QR modülü
+   ve yazı sayfa kenarından en az 5 mm içeride basılır (`PRINT_SAFE_MARGIN_MM`; sessiz
+   bölge paya taşabilir); kenarsız 40'lı tabakanın dış hücrelerinde içerik içeri kayar.
+   Kalibrasyon sayfası cetveli dış kenarı basılamıyorsa etiketin iç kenarına koyar.
+7. **§8.1 yöntem B — boş barkod aralığı.** Modeller `BarcodeReservation` (aralık) ve
+   `ReservedBarcode` (numara başına durum). Numaralar tek sayaçtan alınır; iptal
+   geri alınmaz ve numara sayaca dönmez. Hızlı Kayıt'ta sıra şöyledir:
+   1. `GET library/barcode-reservations/check/?code=` ile ön denetim yapılır;
+   2. eser açılır;
+   3. `POST library/copies/from-label/` (gövdede `label_code`) ile nüsha bağlanır.
+   Ön denetim olmasaydı reddedilen etiket nüshasız bir eser bırakabilirdi. Ekran,
+   açık (bağlanmamış) boş etiket aralığı varken **etiket yoluyla** açılır; etiket
+   kutusunun Enter'ı kaydı başlatır ("Kaydet"e basmakla aynıdır — okuyucu kodun
+   sonuna Enter gönderir, ayrıca düğmeye gitmek gerekmez). Etiketsiz kitabın "tek
+   etiket basma kısayolu" PDF'i doğrudan üretmez, tek nüshalı bir basım partisi açar;
+   onay ve geri alma kuralları aynıdır (D10: PDF basıldı değildir). `classify_scan` ayrılmış ama
+   bağlanmamış numarayı ayrı durum (`RESERVED`) olarak döndürür; İPTAL EDİLMİŞ numara
+   ayrı bir durumdur (`CANCELLED`, denetim 24.09.2026): F6 masasının `RESERVED`'a
+   diyeceği "bu etiket henüz bir kitaba bağlanmadı" iletisi iptal edilmiş etikete
+   yanlış olurdu. Modül saf kalır: veritabanına bakan sorgu işlevini çağıran verir.
+   F6 dolaşım masası bunu kullanır. Numara başka bir canlı nüshaya bağlıysa Hızlı
+   Kayıt "kitap zaten kayıtlı olabilir" der ve "yeni numara ver" önermez.
+8. **§14.1 F4 kapısı — sayaç yarışı.** Yarış testi paylaşımlı bellek içi SQLite
+   üzerinde, kilit hatasında yeniden deneyerek koşar. İki numaranın çakışmadığını
+   kanıtlar. Masaüstündeki dosya tabanlı WAL ve `busy_timeout` beklemesi ayrıca
+   ölçülmedi.
+9. **F4 eki → F12 (saha).** Gerçek yazıcıda basım ve kalibrasyon ölçümü, gerçek
+   okuyucuyla doğrulama okutması, hızlı okutmada sıraya alma ve PDF önizlemenin
+   WebView2 ile Pardus'taki Qt WebEngine'de görünmesi. Önizleme görünmezse
+   "PDF'i indir" yolu tam işlevlidir.
+10. **Açık kalan.** Tek nüshanın barkod etiketini yeniden basmanın yolu henüz
+    yoktur. "Yeniden bas" bütün partiyi basar ve onayı partideki bütün nüshaların
+    doğrulamasını sıfırlar. Etiket yoluyla bağlanmış nüshanın hiç basım partisi de
+    yoktur. Arka uç `create_batch(copy_ids=[…])` ile tek nüshalı partiyi zaten
+    kabul eder. Eksik olan, Doğrulanmamış Etiketler ya da Eser Ayrıntısı satırındaki
+    "Etiketini yeniden bas" düğmesidir.
+11. **§4.4, §7.2, D10 — İKİ KULLANICI KARARI (24.09.2026).**
+    - **Doğrulama okutması görevli kipine açılır.** İzin listesine
+      (`apps/okul/kip_izinleri.py`) YALNIZ `library-label-verify` POST girdi; öbür
+      etiket uçları (kuyruk, basım partisi, onay, geri alma, doğrulanmamışlar listesi,
+      boş barkod aralığı, şablon, kalibrasyon, önizleme) ve aynı ucun GET'i görevli
+      kipinde 403 `kip_yetkisiz` döner. Yanıt zaten kişisel veri taşımıyordu; görevli
+      kipinde yine de daralır: nüsha özeti yalnız `barcode`, `barcode_display`,
+      `work_title` (`label_queue.STAFF_COPY_FIELDS`, anlık görüntüyle sınanır). Yönetici
+      işine yönelten üç ileti (basıldı olarak işaretlenmemiş nüsha, bağlanmamış ve iptal
+      edilmiş boş etiket) görevliye "Kitabı ayırın ve kütüphane yöneticisine gösterin."
+      der: basım onayı ve Hızlı Kayıt ona kapalıdır. Kip, görünümde ara katmanla aynı
+      süreç içi `KIP` nesnesinden okunur. Ön yüzde okutma görevli ekranından açılır
+      ("Doğrulama okutmasını aç" / "Okutmayı bitir"; h1 "Görevli Kipi" kalır, iş bölüm
+      başlığıdır); "Doğrulanmamış Etiketler" listesi görevli kipinde istenmez ve
+      gösterilmez. Etiketler sayfasının kendisi görevliye kapalı kalır (kip kapısı
+      rotanın yerine görevli ekranını koyar). Testler: `test_kip_koruma.py` anlık
+      görüntüsü, `test_etiket_kuyrugu_uclari.py::TestKapilar` (verify POST 200 +
+      daraltılmış gövde, diğer her etiket ucu her yöntemde 403),
+      `test_uc_kapilari.py` (katalog yüzeyinde tek istisna bu çifttir).
+    - **Sırt ve barkod partisi geri alınınca doğrulanmış nüshanın İKİ işareti de
+      korunur.** Barkod etiketi içeren partide barkodu okutularak doğrulanmış nüshaya
+      geri almada hiç dokunulmaz: barkod ve sırt işareti kalır, nüsha ne barkod ne
+      sırt kuyruğuna döner (`label_queue.revert_batch`, `_kept_verified`). Yalnız sırt
+      basan partide doğrulama yoktur, bütün sırt işaretleri geri alınır. Sayaçlar
+      ayrıktır: korunan nüsha yalnız `kept_verified`'a girer, `restored`'a ve
+      `requeued`'a girmez (`requeued ≤ restored`, `restored + kept_verified ≤ nüsha
+      sayısı`). Dokunulmadığı için doğrulanmış nüshanın sonraki bir partideki işareti
+      "önce o partiyi geri alın" reddini de tetiklemez; doğrulanmamış nüshada kural
+      aynıdır. Geri alma onayı ve iletisi partinin içeriğine göre konuşur ("sırt ve
+      barkod işareti" / "barkod işareti"; sırt partisinde doğrulamadan söz edilmez).
+12. **§18 sözlük §3 — indirme adlarında iç kimlik yok.** Basım partisinin PDF'i belge
+    adı + yerel tarih (`Sırt-ve-Barkod-Etiketi_24.09.2026.pdf`), boş barkod
+    etiketleri belge adı + numara aralığı + tarih
+    (`Boş-Barkod-Etiketi_2026-000101_2026-000165_24.09.2026.pdf`) taşır; parti ve
+    aralık numarası dosya adına girmez. Önizleme ucu da aynı biçimi kullanır (boş
+    barkod içeriğinde basılan numaraların aralığıyla). Biçim ön yüzün
+    `lib/download.ts::dosyaAdi` çıktısıyla aynıdır.
 
 ### 14.2 Saha hazırlık hattı (kod dışı — F0 ile başlar)
 

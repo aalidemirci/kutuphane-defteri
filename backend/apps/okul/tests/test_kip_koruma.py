@@ -93,6 +93,9 @@ def gorevli() -> Iterator[None]:
 def test_izin_listesi_anlik_goruntuyle_sabittir() -> None:
     """Listeye uç eklemek bilinçli bir karardır: bu anlık görüntü de güncellenir."""
     assert sorted((k.uc, k.yontem) for k in IZIN_LISTESI) == [
+        # Etiket doğrulama okutması (F4, kullanıcı kararı 24.09.2026). Yanıt görevli
+        # kipinde daralır; öbür etiket uçları kapalıdır (test_etiket_kuyrugu_uclari.py).
+        ("library-label-verify", "POST"),
         ("security-lock", "POST"),
         ("security-mode", "GET"),
         ("security-mode-admin", "POST"),

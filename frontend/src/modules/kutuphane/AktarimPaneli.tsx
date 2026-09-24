@@ -18,6 +18,7 @@
 // önceki önizleme koşusu İPTAL edilir; yoksa geçmiş yarım denemelerle dolar.
 
 import { useEffect, useId, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { useFormErrors } from "../../hooks/useFormErrors";
 import { formatNumber, todayIso } from "../../lib/format";
@@ -433,7 +434,11 @@ function uygulamaEngelleri(rapor: AktarimRaporu): string[] {
   return engeller;
 }
 
-/** Uygulamadan sonra açılan parti — F4'ün etiket kuyruğu buraya bağlanır. */
+/**
+ * Uygulamadan sonra açılan parti ve "Bu partinin etiketlerini bas" kısayolu
+ * (tasarım §8.1): Etiketler → Basım Kuyruğu o edinim partisine süzülmüş açılır
+ * (`?edinim=`); nüsha kimlikleri taşınmaz, kuyruk partiyi kendisi bulur.
+ */
 function SonucKarti({ rapor }: { rapor: AktarimRaporu }) {
   const parti = rapor.label_batch;
   return (
@@ -451,9 +456,18 @@ function SonucKarti({ rapor }: { rapor: AktarimRaporu }) {
             {barkodBicimle(parti.first_barcode)} ile {barkodBicimle(parti.last_barcode)} arasında.
           </p>
           <p className="text-body-small text-on-surface-variant">
-            Bu nüshaların hiçbiri henüz etiketlenmedi. Katalog → Nüshalar sekmesinde “Yalnız
-            etiketlenmemişler” süzgeciyle hepsini bir arada görebilirsiniz.
+            Bu nüshaların etiketleri henüz basılmadı; Etiketler → Basım Kuyruğu'nda bekler. Yer
+            numarası sırasında basıp raf raf yapıştırabilirsiniz.
           </p>
+          <div className="flex justify-end">
+            <Link
+              to={`/katalog/etiketler?edinim=${parti.acquisition}`}
+              className="inline-flex min-h-[var(--kd-control-height)] items-center gap-2 rounded-shape-md border border-outline-variant bg-surface-container-lowest px-4 text-label-large font-semibold text-primary transition hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <Icon name="print" size="lg" />
+              Bu partinin etiketlerini bas
+            </Link>
+          </div>
         </>
       )}
     </Card>

@@ -61,6 +61,14 @@ IZIN_LISTESI: tuple[IzinKurali, ...] = (
         "POST",
         gerekce="yönetici kipine geçiş; gövdede yönetici parolası",
     ),
+    IzinKurali(
+        "library-label-verify",
+        "POST",
+        gerekce=(
+            "etiket doğrulama okutması (kullanıcı kararı 24.09.2026); yanıt görevli kipinde "
+            "yalnız barkod ve eser adını taşır. Öbür etiket uçları kapalıdır"
+        ),
+    ),
 )
 
 _KURALLAR: dict[tuple[str, str], IzinKurali] = {

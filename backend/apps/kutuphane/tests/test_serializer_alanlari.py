@@ -115,6 +115,9 @@ ALANLAR: dict[str, list[str]] = {
         "not_loanable_reason",
         "label_printed_at",
         "label_verified_at",
+        # F4-Q: sırt etiketinin ayrı basım işareti (yöntem B — barkodu önceden
+        # basılmış kitabın sırt etiketi künye tamamlanınca basılır).
+        "spine_label_printed_at",
         "created_at",
     ],
     "CopyWriteSerializer": [

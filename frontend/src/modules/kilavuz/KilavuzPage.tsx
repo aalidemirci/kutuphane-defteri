@@ -27,6 +27,25 @@
 // anlatılmadan önce karar verir. Yolların adı kullanıcı dilindedir; "yöntem A/B"
 // iç adlandırması kılavuza girmez.
 //
+// F4 bölümü "Etiketler" Hızlı Kayıt'ın hemen ardından gelir: önce etiket yolu
+// (okulun asıl yolu) boş barkod etiketleriyle başlar, liste yolu da içe
+// aktarmadan sonra etikete döner. Bölümün sırası kullanıcının iş sırasıdır:
+// etiket türleri → nereye yapıştırılır (sırtı dar kitapta ön kapak, koruyucu
+// bant — §7.2, SU-13) → tabaka seçimi ve satın alma (QR kararı tabakayı
+// belirler, satın alma ondan sonra — SU-12, S4) → kalibrasyon adım adım
+// (kalibrasyon sayfasının kendi talimatıyla aynı dil: sağa ve aşağı artı) →
+// basım kuyruğu ve basım sırası (D20) → "PDF'i almak basıldı saymaz" ve geri
+// alma (D10) → yapıştırma ve doğrulama okutması → önce etiket yolu adım adım
+// (ayır → bas → yapıştır → Hızlı Kayıt'ta künye + etiket → sırt → iptal) →
+// etiketi olmayan kitap. Kâğıt ölçüsünün kısa adı yazılmaz (iç kod denetimi
+// onu kod sanar); ölçüler milimetreyle yazılır.
+//
+// Sırtı dar kitapta köşe (üst/alt) bilinçli olarak dayatılmaz: tasarım yalnız
+// "ön kapağa" der; kılavuz sırta yakın köşeyi ve bütün ince kitaplarda AYNI
+// köşeyi önerir. Bozulan boş etiket için iki ayrı yol vardır ve kılavuz ikisini
+// ayırır: etiket eldeyse aynı numaranın yenisi basılır (bozuğu atılır),
+// kaybolduysa numara iptal edilir — kaybolan etiket bir kitapta çıkabilir.
+//
 // Metin kuralları (docs/sozluk.md — bağlayıcı): düğme, sekme ve alan adları
 // ekrandaki metinle BİREBİR yazılır (depodan doğrulandı; test bir kısmını ekran
 // sabitlerinden kilitler). İç kodlar (F1, U5, E14…) geçmez. Program kendini
@@ -59,6 +78,7 @@ const BOLUMLER = {
   "kapali-gunler": { baslik: "Kapalı Günler", ikon: "event_busy" },
   katalog: { baslik: "Katalog", ikon: "menu_book" },
   "hizli-kayit": { baslik: "Hızlı Kayıt", ikon: "bolt" },
+  etiketler: { baslik: "Etiketler", ikon: "label" },
   "katalog-sablonu": { baslik: "Katalog Excel Şablonu", ikon: "table_view" },
   "ice-aktarma": { baslik: "İçe Aktarma", ikon: "upload_file" },
   yedek: { baslik: "Yedek ve Güvenlik Dosyası", ikon: "backup" },
@@ -374,7 +394,10 @@ export default function KilavuzPage() {
           <li>
             <strong>Görevli kipi</strong> masadaki görevli (öğrenci görevli ya da personel) içindir.
             Menüdeki bağlantılar gizlenir, ekranda “Görevli Kipi” sayfası durur. Yönetici işleri bu
-            kipte kapalıdır; program onları arka planda da reddeder.
+            kipte kapalıdır; program onları arka planda da reddeder. Görevli, kitaplara yapıştırılan
+            etiketleri bu sayfadaki “Doğrulama okutmasını aç” düğmesiyle okutup doğrulayabilir;
+            etiket basmak, basım işaretini geri almak ve “Doğrulanmamış Etiketler” listesi yönetici
+            kipindedir.
           </li>
         </ul>
 
@@ -680,9 +703,9 @@ export default function KilavuzPage() {
         <p>
           “Nüshalar” sekmesi fiziksel eksendir: barkodun tamamını yazarak tek kitabı bulursunuz
           (numaranın bir parçasıyla arama yapılmaz), bölüme ve duruma göre süzersiniz. Üç kutu
-          listeyi daraltır: “Yalnız ödünç verilebilenler”, “Yalnız etiketlenmemişler” (etiketi
-          basılmamış nüshalar) ve “Kayıttan düşülenleri gizle”. Listeler sayfalıdır; bir süzgeci
-          değiştirince ilk sayfaya dönülür.
+          listeyi daraltır: “Yalnız ödünç verilebilenler”, “Yalnız etiketlenmemişler” (barkod
+          etiketi basılmamış nüshalar) ve “Kayıttan düşülenleri gizle”. Listeler sayfalıdır; bir
+          süzgeci değiştirince ilk sayfaya dönülür.
         </p>
         <p>
           Yeni künye “Eser ekle” düğmesiyle açılır. Listede bir satıra tıklamak{" "}
@@ -759,9 +782,10 @@ export default function KilavuzPage() {
           hanedir, ilk dört hane nüshanın açıldığı yıl, kalan altı hane o yılın sıra numarasıdır;
           etikette ve ekranda “2026-000123” diye yazılır. Kayıt no aynı sayının düz hâlidir
           (2026000123) ve Taşınır Kütüphane Defteri dökümünde bu sayı kullanılır. Numaraları siz
-          girmezsiniz ve değiştiremezsiniz; nüsha penceresinde barkod, kayıt no ile etiket basım ve
-          doğrulama tarihleri yalnız bilgi satırıdır. Etiket basımı sonraki sürümde gelecek, tarih
-          alanlarını o doldurur.
+          girmezsiniz ve değiştiremezsiniz; nüsha penceresinde barkod, kayıt no ile barkod etiketi,
+          sırt etiketi ve etiket doğrulaması tarihleri yalnız bilgi satırıdır. Tarihleri Etiketler
+          ekranı yazar: basım tarihini “Basıldı olarak işaretle”, doğrulama tarihini doğrulama
+          okutması.
         </p>
         <p>
           <strong>Bir numara asla yeniden kullanılmaz.</strong> Yanlış açılmış bir nüshayı
@@ -939,23 +963,24 @@ export default function KilavuzPage() {
             Katalog Excel Şablonu ve İçe Aktarma bölümlerinde anlatılır.
           </li>
           <li>
-            <strong>Önce etiket:</strong> boş barkodlu etiketler önceden basılır; kitap elde ISBN
-            okutulur, künye yazılır, nüsha açılır ve etiket kitaba yapıştırılır.{" "}
-            <strong>Okulun asıl yolu budur</strong>, çünkü okulda hazır bir kitap listesi yoktur ve
-            katalog kitap kitap kurulur. Bu yolun ekranı{" "}
+            <strong>Önce etiket:</strong> boş barkod etiketleri önceden basılıp kitaplara
+            yapıştırılır; kitap elde ISBN okutulur, künye yazılır ve kitaptaki etiket okutularak
+            nüsha o numarayla açılır. <strong>Okulun asıl yolu budur</strong>, çünkü okulda hazır
+            bir kitap listesi yoktur ve katalog kitap kitap kurulur. Bu yolun ekranı{" "}
             <Ekran to="/katalog/hizli-kayit">Katalog → Hızlı Kayıt</Ekran>&apos;tır.
           </li>
         </ul>
         <p>
           İki yol birbirini dışlamaz: listesi olan bölümleri aktarıp gerisini kitap kitap
-          girebilirsiniz. Etiket basımı sonraki sürümde gelecek; o zamana kadar açtığınız nüshalar
-          etiketsiz kalır ve <Ekran to="/katalog?tab=nushalar">Katalog → Nüshalar</Ekran>{" "}
-          sekmesindeki “Yalnız etiketlenmemişler” kutusunda birikir.
+          girebilirsiniz. Etiketler iki yolda da{" "}
+          <Ekran to="/katalog/etiketler">Katalog → Etiketler</Ekran> ekranından basılır; önce etiket
+          yolunun adımları aşağıdaki Etiketler bölümünde sırasıyla anlatılır.
         </p>
         <Ipucu>
           <p>
             Geçiş dönemindeki kural: ödünç istenen etiketsiz bir kitap masaya geldiğinde onu
-            bekletmeyin, Hızlı Kayıt&apos;la o an kaydedip tek etiketini basın. Dönüşüm bitene kadar
+            bekletmeyin, Hızlı Kayıt&apos;ta “Etiket yok — yeni numara ver” seçeneğiyle o an
+            kaydedip çıkan “Etiketini bas” düğmesiyle tek etiketini basın. Dönüşüm bitene kadar
             kâğıt defter açık kalır, bittiğinde kapatılır.
           </p>
         </Ipucu>
@@ -972,7 +997,8 @@ export default function KilavuzPage() {
         <p>
           Program ne okuttuğunuzu tanır: kütüphane etiketi ya da üye kartı okutulursa kayıt
           başlamaz, “Bu bir kütüphane etiketi. Hızlı kayıtta kitabın arka kapağındaki ISBN barkodu
-          okutulur.” der.
+          okutulur.” der. “Kitaptaki etiketi okutun” seçiliyken bu kutuya etiket okutursanız program
+          önce ISBN barkodunu okutmanızı, etiketi de “Kütüphane etiketi” kutusuna okutmanızı söyler.
         </p>
         <AltBaslik>Künye nereden gelir</AltBaslik>
         <p>
@@ -1031,9 +1057,398 @@ export default function KilavuzPage() {
           Sonra “Nüsha” bölümünde edinimi, nüsha sayısını, bölümü ve gerekiyorsa eski kayıt
           numarasını yazıp “Nüshayı aç” deyin; ders kitabı gibi ödünç verilmeyecek bir kaynaksa
           “Danışma kaynağı (ödünç verilmez)” kutusunu işaretleyin. Barkod ve kayıt numarasını
-          program verir; numara asla yeniden kullanılmaz. Açılan nüsha etiketsizdir:{" "}
+          program verir; numara asla yeniden kullanılmaz. Açılan nüshanın etiketi Etiketler → Basım
+          Kuyruğu&apos;nda bekler; kitap elinizdeyse kayıttan sonra çıkan “Etiketini bas” düğmesiyle
+          hemen basabilirsiniz. Etiket bekleyenleri{" "}
           <Ekran to="/katalog?tab=nushalar">Katalog → Nüshalar</Ekran> sekmesinde “Yalnız
-          etiketlenmemişler” kutusuyla etiket bekleyenleri bir arada görürsünüz.
+          etiketlenmemişler” kutusuyla da görürsünüz.
+        </p>
+        <AltBaslik>Kitaptaki etiketi okutmak</AltBaslik>
+        <p>
+          Kitaplara önceden basılmış boş barkod etiketi yapıştırdıysanız “Kitabın etiketi” kartında{" "}
+          <strong>“Kitaptaki etiketi okutun”</strong> seçili olsun; bağlanmamış boş etiket varken
+          ekran bu seçenekle açılır. Bu yolda her etiket tek bir nüshadır, “Nüsha sayısı” sorulmaz.
+          ISBN okutulduktan sonra imleç “Kütüphane etiketi” kutusuna geçer. Künye eksikse önce onu
+          tamamlayın, sonra kitaba yapıştırdığınız etiketi bu kutuya okutun: okuyucunun gönderdiği
+          Enter kaydı bitirir, nüsha o numarayla açılır, barkod etiketi okutulmuş sayılır ve yalnız
+          sırt etiketi basılmayı bekler. Katalogda aynı ISBN&apos;li eser varsa imleç önce ISBN
+          kutusunda kalır: “Bu esere nüsha ekle” deyin, imleç etiket kutusuna geçer, sonra etiketi
+          okutun. Etiketi künyeyi tamamlamadan okuttuysanız kod kutuda seçili kalır; künyeyi
+          tamamlayıp etiketi yeniden okutunca eski kod silinir, yenisi yazılır.
+        </p>
+        <p>
+          Program etiketi eseri açmadan önce denetler: numara boş barkod aralığından değilse, başka
+          bir kitaba bağlıysa ya da iptal edildiyse nedenini söyler ve eser açılmaz. Etiket zaten
+          kayıtlı bir nüshanınsa elinizdeki kitap büyük olasılıkla o nüshadır: kitabı yeniden
+          kaydetmeyin; başka bir kitapsa etiketi sökün ve boş bir etiket yapıştırın. Kitapta etiket
+          yoksa <strong>“Etiket yok — yeni numara ver”</strong> seçeneğine geçin. Kayıttan sonra
+          çıkan “Sırt etiketini bas” düğmesi o kitabın sırt etiketini hemen basmanızı sağlar; önce
+          etiket yolunun bütün adımları aşağıdaki Etiketler bölümündedir.
+        </p>
+      </Bolum>
+
+      {/* ------------------------------------------------------------------ */}
+      <Bolum id="etiketler">
+        <p>
+          <Ekran to="/katalog/etiketler">Katalog → Etiketler</Ekran> ekranı kitapların sırt ve
+          barkod etiketlerini basar, basılanı kayda geçirir ve yapıştırılan etiketi okutarak
+          doğrular. Beş sekmesi vardır: Basım Kuyruğu, Basım Geçmişi, Boş Barkod Aralığı, Doğrulama
+          Okutması, Şablonlar ve Kalibrasyon. Sayfanın üstündeki sayaçlar (“Sırt etiketi bekleyen”,
+          “Barkod etiketi bekleyen”, “Doğrulanmamış etiket”, “Bağlanmamış boş etiket”) tıklanınca
+          ilgili sekmeyi açar. Basıldı olarak işaretlenmemiş bir basım partisi varsa sayaçların
+          üstünde uyarı durur.
+        </p>
+
+        <AltBaslik>Etiket türleri</AltBaslik>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong>Sırt etiketi</strong> kitabın rafta nereye döneceğini söyler. Yer numarasının
+            boşlukla ayrılmış parçaları alt alta basılır: “813.54 STE” iki satır olur; cilt ya da
+            nüsha bilgisini yer numarasının sonuna yazarsanız (“894.3533 ALİ 2. cilt”) üçüncü satıra
+            geçer. Altında okulun kısa adı yazar. Yer numarası çıkarılamayan kitabın sırtına çizgi
+            (—) basılır; böyle bir kitabın sırt etiketini künyesi tamamlandıktan sonra basın.
+          </li>
+          <li>
+            <strong>Barkod etiketi</strong> masada okutulan kütüphane etiketidir: barkodu, okunur
+            numarası (“2026-000123”), yer numarasını, kısaltılmış kaynak adını ve okulun kısa adını
+            taşır.
+          </li>
+          <li>
+            <strong>Boş barkod etiketi</strong> önce etiket yolunda, kitap kataloğa girmeden
+            basılır: üzerinde yalnız barkod, okunur numara ve okulun kısa adı vardır, kitaba ait
+            bilgi yoktur.
+          </li>
+        </ul>
+        <p>
+          Okulun kısa adı <Ekran to="/ayarlar?tab=okul">Ayarlar → Okul Bilgileri</Ekran>
+          &apos;ndeki “Kısa ad” alanından gelir; en çok 24 karakterdir. Etiket basmadan önce bu
+          alanı doldurun.
+        </p>
+
+        <AltBaslik>Etiket nereye yapıştırılır</AltBaslik>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            Sırt etiketini bütün kitaplarda sırtın alt kenarından aynı yüksekliğe yapıştırın: rafta
+            yer numaraları bir hizada okunur.
+          </li>
+          <li>
+            Sırtı dar kitaplarda (ince çocuk kitapları, broşürler) sırt etiketi sırta sığmaz; onu ön
+            kapağa, sırta yakın köşeye yapıştırın. Bütün ince kitaplarda aynı köşeyi kullanın ki
+            etiket her kitapta aynı yerde aransın.
+          </li>
+          <li>
+            Barkod etiketini de bütün kitaplarda aynı yere yapıştırın; kitabın ISBN barkodunun ve
+            kapak yazısının üstüne gelmesin. Önce etiket yolunda Hızlı Kayıt&apos;ta ISBN barkodu da
+            okutulur.
+          </li>
+        </ul>
+        <Ipucu>
+          <p>
+            Etiketlerin üzerine şeffaf koruyucu bant yapıştırmanızı öneririz: en çok sırt etiketi
+            aşınır, elden ele geçen kitapta barkod da okunmaz hâle gelir. Bandı yapıştırdıktan sonra
+            doğrulama okutmasını yapın; bant parlayıp okuyucuyu şaşırtıyorsa bunu hemen görürsünüz.
+          </p>
+        </Ipucu>
+
+        <AltBaslik>Etiket tabakası seçimi ve satın alma</AltBaslik>
+        <p>
+          Program yaygın tabakaların hazır şablonlarıyla gelir: 38,1 × 21,2 mm ölçüsünde 65&apos;li
+          tabaka (varsayılan; barkod etiketi ve sırt etiketi için aynı tabaka), 48,5 × 25,4 mm
+          ölçüsünde 44&apos;lü ve 52,5 × 29,7 mm ölçüsünde 40&apos;lı tabaka. Şablonların listesi
+          Şablonlar ve Kalibrasyon sekmesindedir.
+        </p>
+        <Ipucu>
+          <p>
+            <strong>Tabaka almadan önce QR kararını verin.</strong> Barkodun yanına QR eklemek
+            isteğe bağlıdır ve varsayılan olarak kapalıdır. QR 65&apos;li tabakanın etiketine
+            sığmaz; QR istenirse 44&apos;lü ya da 40&apos;lı tabaka alınır ve bir tabakaya daha az
+            etiket düşer. QR yalnız barkod numarasını taşır, adres taşımaz. Çizgili barkodu her
+            okuyucu okur, QR&apos;ı okumak için iki boyutlu (2D) okuyucu gerekir; okuyucu
+            alacaksanız ikisini de okuyan iki boyutlu bir USB okuyucu önerilir.
+          </p>
+        </Ipucu>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong>Kâğıt boyu:</strong> program etiketleri 210 × 297 mm&apos;lik sayfaya dizer; bu
+            boydan başka tabaka almayın.
+          </li>
+          <li>
+            <strong>Kaç tabaka:</strong> her kitaba bir barkod ve bir sırt etiketi gider. 65&apos;li
+            tabakayla 1.000 kitap için 16 barkod ve 16 sırt tabakası gerekir; bozulan etiketler için
+            pay bırakın.
+          </li>
+          <li>
+            <strong>Sırt etiketinin tabakası:</strong> raftaki kitapların sırt genişliğine bakarak
+            seçin; yazı sırtın genişliğine sığmalıdır. Hazır sırt şablonu barkod tabakasıyla aynı
+            65&apos;li tabakadır. Başka bir sırt tabakası alır ve iki etiketi birlikte basmak
+            isterseniz o tabakanın satır ve sütun sayısı barkod tabakasınınkiyle aynı olmalıdır:
+            “Sırt etiketi tabakası” seçicisi yalnız böyle tabakaları listeler. Düzeni tutmayan bir
+            sırt tabakasında iki etiketi ayrı basın: önce “Barkod etiketi”, sonra “Sırt etiketi”
+            içeriğiyle, aynı süzgeç ve basım sırasıyla; etiketler yine aynı kitap sırasıyla çıkar.
+          </li>
+          <li>
+            <strong>Farklı ölçüde tabaka:</strong> Şablonlar ve Kalibrasyon sekmesinde “Yeni şablon”
+            deyip tabaka kutusundaki üretici ölçülerini yazın: etiket genişliği ve yüksekliği, üst
+            ve sol kenar boşluğu, sütun ve satır aralığı, satır ve sütun sayısı. Şablon kartındaki
+            “QR&apos;a uygun” rozeti QR&apos;ın sığdığını, “Barkod bu etikete sığmaz” rozeti
+            tabakanın barkod etiketi için küçük olduğunu gösterir.
+          </li>
+          <li>
+            44&apos;lü şablonun kenar boşlukları yaklaşıktır (adında “yaklaşık ölçü” yazar); ilk
+            basımdan önce kalibrasyon sayfasıyla denetleyin. 40&apos;lı tabaka kâğıdın kenarına
+            kadar uzanır; yazıcıların çoğu ise kâğıdın kenarından 4-5 milimetreyi basamaz. Program
+            bu yüzden dış sütun ve satırlardaki etiketlerde barkodu, QR&apos;ı ve yazıyı sayfa
+            kenarından en az 5 mm içeride basar: içerik o etiketlerde kenardan biraz içeri kayar.
+            Yazıcınızın basamadığı kenar 5 mm&apos;den genişse (yazıcının kılavuzunda “basılamayan
+            alan” diye geçer) 40&apos;lı tabaka yerine kenar boşluklu bir tabaka seçin.
+          </li>
+        </ul>
+
+        <AltBaslik>Kalibrasyon</AltBaslik>
+        <p>
+          Her yazıcı kâğıdı biraz kaydırarak basar ve bu kayma iki yazıcıda farklıdır. Kalibrasyon
+          kaymayı ölçüp basıma uygular; her şablon ve yazıcı çifti için bir kez, ilk etiket
+          basımından önce düz kâğıtla yapılır:
+        </p>
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>
+            <Ekran to="/katalog/etiketler?tab=sablonlar">
+              Etiketler → Şablonlar ve Kalibrasyon
+            </Ekran>
+            &apos;da kullanacağınız şablonun “Kalibrasyon” düğmesine basın. “Sayfaya uygulanacak
+            kayma” seçicisi “— yok —” kalsın; “PDF&apos;i indir” deyip kalibrasyon sayfasını düz
+            kâğıda <strong>gerçek boyutta (%100)</strong> yazdırın. Sayfanın ortasındaki çizgi 100
+            mm olmalıdır; değilse yazdırma penceresinde “sayfaya sığdır” seçeneğini kapatıp yeniden
+            yazdırın.
+          </li>
+          <li>
+            Çıktıyı etiket tabakasının üstüne koyup ışığa tutun. Dört köşe etiketinin birer dikey ve
+            yatay kenarında milimetre cetveli vardır; cetvelin 0 çizgisi basılı çerçevedir. Etiketin
+            gerçek kenarının cetvelde düştüğü değeri okuyun: cetvelin sağ ve alt tarafı artı, sol ve
+            üst tarafı eksidir. Yazıcı kâğıdın kenarından birkaç milimetreyi basamadığı için kâğıt
+            kenarına yakın cetvel etiketin iç kenarına, yan etiketle arasındaki kesime konur; okuma
+            kuralı aynıdır. Etiketler arasında boşluk olan tabakada bu cetvelde yan etiketin kesimi
+            de görünür: cetvelin 0 çizgisindeki çerçeveye ait kesimi okuyun.
+          </li>
+          <li>
+            “Yeni yazıcı kalibrasyonu” deyin ve “Yazıcı adı”na yazıcıyı tanıyacağınız bir ad yazın.
+            Okuduğunuz değerleri işaretleriyle “Okunan yatay değer” ve “Okunan dikey değer”
+            kutularına yazıp “Kaymaya ekle” deyin: değerler “Yatay kayma (mm)” ve “Dikey kayma (mm)”
+            alanlarına eklenir. Artı değer sağa ve aşağı, eksi değer sola ve yukarı kaydırır;
+            ondalık için virgül de nokta da kullanılabilir. Sonra “Kaydet” deyin.
+          </li>
+          <li>
+            Kayıttan sonra “Sayfaya uygulanacak kayma” seçicisinde bu yazıcı seçili gelir; sayfayı
+            yeniden indirip basın. Etiketlerin kenarı cetvelde 0&apos;a oturuyorsa kalibrasyon
+            tamamdır. Oturmuyorsa “Kayıtlı yazıcılar” listesinde yazıcının “Düzenle” düğmesine basıp
+            yeni okuduğunuz değeri yine “Kaymaya ekle” ile ekleyin.
+          </li>
+        </ol>
+        <p>
+          Dört köşede okunan değer aynı değilse sorun kayma değil ölçektir: yazıcı sayfayı
+          küçültüyor ya da büyütüyordur; yazdırma ayarında ölçeklemeyi kapatın. Kayma en çok 10 mm
+          olabilir; daha büyük bir fark çıkarsa yazdırma penceresinde kâğıt boyunu (210 × 297 mm) ve
+          ölçeği denetleyin, sonra şablonun ölçülerini tabakanın kutusundaki ölçülerle
+          karşılaştırın.
+        </p>
+        <p>
+          Etiket basarken “Yazıcı (kalibrasyon)” seçicisinde o an kullandığınız yazıcıyı seçin.
+          Şablonun tek kayıtlı yazıcısı varsa kendiliğinden seçilir; “— yok —” seçiliyse etiketler
+          kaymasız basılır. Etiketi başka bir yazıcıda (ör. idarenin yazıcısında) basacaksanız o
+          yazıcıyı da ayrıca kalibre edin: bir yazıcının kayması başka yazıcıya uymaz.
+        </p>
+
+        <AltBaslik>Basım kuyruğu ve basım sırası</AltBaslik>
+        <p>
+          Açılan her nüsha kendiliğinden Basım Kuyruğu&apos;na girer; etiketi basıldı olarak
+          işaretlenince kuyruktan çıkar. “Etiket içeriği” seçicisi ne basılacağını söyler: “Sırt ve
+          barkod etiketi” iki etiketi de basılmamış nüshaları, “Barkod etiketi” ve “Sırt etiketi”
+          yalnız o etiketi basılmamış nüshaları gösterir. Kuyruğu “Bölüm”, “Edinim partisi”, “Boş
+          barkod aralığı” ve kayıt tarihine göre süzebilirsiniz. İçe Aktarma&apos;nın sonucundaki
+          “Bu partinin etiketlerini bas” düğmesi kuyruğu o edinim partisine süzülmüş açar.
+        </p>
+        <p>“Basım sırası” üç türlüdür:</p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong>Yer numarası</strong> (varsayılan): etiketler raftaki sırayla çıkar, raf raf
+            yapıştırılır. Yer numarası olmayan nüshalar sona düşer.
+          </li>
+          <li>
+            <strong>İçe aktarma sırası</strong>: nüshaların kayda girdiği sıradır. Excel aktarımında
+            dosyanın satır sırası, Hızlı Kayıt&apos;ta kitapların masadan geçtiği sıradır.
+          </li>
+          <li>
+            <strong>Barkod</strong>: numara sırası.
+          </li>
+        </ul>
+        <p>
+          “Sırt ve barkod etiketi” birlikte basılırken PDF&apos;te önce sırt tabakaları, sonra
+          barkod tabakaları gelir. İkisi aynı sıra ve hücre düzeninde çıkar: iki tabakanın aynı
+          hücresi aynı kitabındır, barkod etiketindeki kaynak adı sırt etiketinin hangi kitaba
+          gideceğini gösterir. Bir partiye en çok 1.300 nüsha girer; kuyruk daha uzunsa kalanlar
+          kuyrukta kalır ve bir sonraki parti kaldığı yerden devam eder.
+        </p>
+
+        <AltBaslik>Basmak ve “Basıldı olarak işaretle”</AltBaslik>
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>
+            Basım Kuyruğu&apos;nda basılacak nüshaları seçin; seçim yapmazsanız süzgece uyan kuyruk
+            seçilen sırayla basılır.
+          </li>
+          <li>
+            “Basım Ayarları”nda “Etiket şablonu”nu ve “Yazıcı (kalibrasyon)”u seçin. Kısmen
+            kullanılmış bir tabakaya basacaksanız tabakanın küçük resminde ilk boş hücreye tıklayın
+            ya da numarasını “Başlangıç hücresi” kutusuna yazın: hücreler satır satır, soldan sağa
+            sayılır ve ondan önceki hücreler boş bırakılır. Ekran kaç etiket ve kaç tabaka
+            basılacağını yazar.
+          </li>
+          <li>
+            “Basım partisini hazırla” deyin. Hazırlanan partinin kartında “Önizle” ile bakın,
+            “PDF&apos;i indir” ile alıp gerçek boyutta (%100) yazdırın.
+          </li>
+          <li>
+            Tabakayı denetleyin. Etiketler hücrelere düzgün oturduysa “Basıldı olarak işaretle”
+            deyin ve onaylayın; nüshalar kuyruktan çıkar.
+          </li>
+        </ol>
+        <p>
+          <strong>PDF&apos;i almak “basıldı” saymaz.</strong> “Önizle” ve “PDF&apos;i indir” hiçbir
+          işarete dokunmaz; PDF&apos;i istediğiniz kadar yeniden alabilirsiniz. Yazıcı sıkışır,
+          kâğıt ters takılır ya da PDF hiç yazdırılmazsa nüshalar kuyrukta kalır; işaretlenmeyen
+          parti Basım Geçmişi&apos;nde “Basım onayı bekliyor” olarak durur ve nüshaları kuyrukta
+          “Onay bekleyen partide” rozetiyle görünür. Aynı etiketi iki kez basmamak için yeni parti
+          hazırlamadan önce o partiyi işaretleyin; hiç basmadıysanız “Partiden vazgeç” deyin.
+        </p>
+        <p>
+          Bir tabaka sonradan hatalı çıktıysa{" "}
+          <Ekran to="/katalog/etiketler?tab=gecmis">Etiketler → Basım Geçmişi</Ekran>&apos;nde
+          partinin satırına tıklayıp “Basım işaretini geri al” deyin: nüshaların işareti bu basımdan
+          önceki hâline döner (etiketi ilk kez basılan nüshalar kuyruğa geri gelir), parti iz olarak
+          kalır. Okutularak doğrulanmış etiketlerin işareti korunur, çünkü o etiketler kitabın
+          üzerindedir: sırt ve barkod etiketi partisinde barkodu okutulmuş nüshanın sırt işareti de
+          korunur ve nüsha hiçbir kuyruğa dönmez. Partideki nüshaların etiketi sonradan başka bir
+          partiyle yeniden basıldıysa ve o parti hâlâ basılmış görünüyorsa program önce o partinin
+          işaretini geri almanızı ister.
+        </p>
+        <p>
+          Partideki bir nüsha sonradan silinir ya da kayıttan düşülürse partinin PDF&apos;i yine
+          alınır: o nüshanın hücresi boş kalır, sonraki etiketler kaymaz. “Nüshaları göster”
+          listesinde böyle nüshanın yanında “PDF&apos;te hücresi boş kalır” yazar; “Basıldı olarak
+          işaretle” ona dokunmaz, “Yeniden bas” onu yeni partiye almaz.
+        </p>
+        <p>
+          “Yeniden bas” aynı nüshaları aynı sırayla yeni bir partide basar; yalnız bozulan içeriği
+          (ör. yalnız barkod etiketini), başka bir şablonu, yazıcıyı ya da başlangıç hücresini
+          seçebilirsiniz. Yeni parti de aynı kuralla işaretlenir. Barkod etiketi içeren bir parti
+          basıldı olarak işaretlenince o nüshaların doğrulaması sıfırlanır: yeni etiket henüz
+          okutulmamıştır. “Nüshaları göster” partinin nüshalarını tabakadaki sırasıyla listeler.
+        </p>
+
+        <AltBaslik>Yapıştırma ve doğrulama okutması</AltBaslik>
+        <p>
+          Etiketleri raf raf yapıştırın: yer numarası sırasında basılan tabaka raftaki sırayı izler.
+          Sonra <Ekran to="/katalog/etiketler?tab=dogrulama">Etiketler → Doğrulama Okutması</Ekran>
+          &apos;nı açın ve yapıştırdığınız her barkod etiketini “Kütüphane etiketi” kutusuna okutun.
+          Okunan etiket doğrulanır; kutu her okutmadan sonra boşalır ve imleç kutuda kalır,
+          kitapları arka arkaya okutabilirsiniz. Yanlış bir şey okutursanız program söyler: kitabın
+          ISBN barkodu, üye kartı, henüz bir kitaba bağlanmamış ya da numarası iptal edilmiş boş
+          etiket ve basıldı olarak işaretlenmemiş nüsha ayrı iletilerle ayrılır. Okutmayı masadaki
+          görevli de yapabilir: görevli kipinde “Görevli Kipi” sayfasındaki “Doğrulama okutmasını
+          aç” düğmesiyle açılır, “Okutmayı bitir” ile kapanır; ekranda yalnız okutulan etiketin
+          numarası ve kaynak adı görünür, yönetici işi gerektiren etiket için görevliye kitabı
+          ayırıp kütüphane yöneticisine göstermesi söylenir.
+        </p>
+        <p>
+          Doğrulama barkod etiketi içindir; sırt etiketinde barkod yoktur, okutulmaz. Önce etiket
+          yolunda kaydedilen kitapların barkod etiketi kayıt sırasında okutulduğu için doğrulanmış
+          sayılır. Okutulmayan etiketler “Doğrulanmamış Etiketler” listesinde kalır; listede kalan
+          kitabın etiketi ya yapıştırılmamıştır ya da okunmuyordur. Önce kitabı bulup etiketini
+          yeniden okutmayı deneyin. Etiket yoksa ya da bozuksa etiketini Basım Geçmişi&apos;nden
+          yeniden basın. “Yeniden bas” partideki bütün nüshaların etiketini basar ve yeni parti
+          işaretlenince o nüshaların hepsi doğrulanmamış sayılır; numara değişmediği için
+          kitaplardaki eski etiketleri okutmak onları yeniden doğrular.
+        </p>
+        <Ipucu>
+          <p>
+            Okutma kutusu odakta değilse ekranda uyarı çıkar; “Kutuya dön” deyin. Okuyucu klavye
+            gibi yazar: imleç başka bir yazı kutusundayken okuttuğunuz kod oraya yazılır. İmleç
+            hiçbir yazı kutusunda değilse okutulan kod kendiliğinden okutma kutusuna gider.
+          </p>
+        </Ipucu>
+
+        <AltBaslik>Önce etiket yolu adım adım</AltBaslik>
+        <p>
+          Okulun asıl yolu budur: kitaplar kataloğa girmeden önce boş barkod etiketleri basılıp
+          kitaplara yapıştırılır, künye kitap elde girilir.
+        </p>
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>
+            <strong>Numara ayırın.</strong>{" "}
+            <Ekran to="/katalog/etiketler?tab=bos-barkod">Etiketler → Boş Barkod Aralığı</Ekran>
+            &apos;nda “Numara Ayır” kartının “Adet” kutusuna kaç etiket istediğinizi yazın
+            (tabakanın katları kâğıt israfını önler; bir seferde en çok 1.300). “Açıklama”ya
+            etiketlerin nerede kullanılacağını yazabilirsiniz (ör. hangi raf; kişi adı yazmayın).
+            “Numara ayır” deyip onaylayın. Numaralar kütüphanenin tek sayacından sırayla alınır;
+            ayrılan numara başka hiçbir kitaba verilmez.
+          </li>
+          <li>
+            <strong>Basın.</strong> Ayırdığınız aralık “Seçilen Aralık” kartında açılır (sonra da
+            listede satırına tıklayarak açarsınız). Şablonu, yazıcıyı ve başlangıç hücresini seçip
+            “PDF&apos;i indir” deyin ve gerçek boyutta (%100) yazdırın; tabaka düzgünse “Basıldı
+            olarak işaretle” deyin. PDF yalnız bağlanmamış ve iptal edilmemiş numaraların etiketini
+            basar. Aralıktan hiçbir etiket kitaba bağlanmadıysa basım işareti geri alınabilir.
+          </li>
+          <li>
+            <strong>Yapıştırın.</strong> Etiketleri raf başında kitaplara, bütün kitaplarda aynı
+            yere ve ISBN barkodunu örtmeden yapıştırın.
+          </li>
+          <li>
+            <strong>Kaydedin.</strong>{" "}
+            <Ekran to="/katalog/hizli-kayit">Katalog → Hızlı Kayıt</Ekran>&apos;ta “Kitabın etiketi”
+            kartında “Kitaptaki etiketi okutun” seçiliyken kitabın ISBN barkodunu okutun ve künyeyi
+            tamamlayın. Sonra kitaba yapıştırdığınız etiketi “Kütüphane etiketi” kutusuna okutun:
+            okuyucunun gönderdiği Enter kaydı bitirir, nüsha o numarayla açılır ve barkod etiketi
+            okutulmuş sayılır. Bu yüzden “Nüsha” kartındaki edinim ve bölüm etiketi okutmadan önce
+            seçili olsun; seçim kitaptan kitaba korunur. Raftaki eski kitaplar için edinimi önceden{" "}
+            <Ekran to="/katalog/edinimler">Edinimler ve Bağışlar</Ekran>&apos;da “Mevcut koleksiyon
+            (programa aktarım)” yoluyla açın. Aynı kitaptan birden çok nüsha varsa her birini kendi
+            etiketiyle ayrı ayrı kaydedin.
+          </li>
+          <li>
+            <strong>Sırt etiketlerini basın.</strong> Bu kitapların sırt etiketleri Basım
+            Kuyruğu&apos;nda “Sırt etiketi” içeriğiyle birikir. Aralığın kartındaki “Sırt
+            etiketlerini bas” bağlantısı kuyruğu o aralığa süzülmüş açar. Kitaplar masadan
+            geçtikleri sırayla duruyorsa “İçe aktarma sırası”nı, rafa yer numarasıyla dizildiyse
+            “Yer numarası”nı seçin. Sırt etiketinde barkod yoktur: yer numarasına bakarak doğru
+            kitaba yapıştırın.
+          </li>
+          <li>
+            <strong>Kullanılmayanları iptal edin.</strong> Bozulan etiket elinizdeyse numarasını
+            aralığın “Numaralar” tablosunda seçip PDF&apos;i yeniden alın: yalnız o numaranın
+            etiketi basılır, bozuk etiketi atın. Kaybolan ya da artan etiketlerin numaralarını seçip
+            “Seçilenleri iptal et” deyin; bütün kitaplar kaydedildikten sonra kalanlar için
+            “Bağlanmamış bütün numaraları iptal et” düğmesi vardır. Onay penceresinde “Bu
+            numaraların etiketlerinin kitaplara yapıştırılmadığını denetledim.” kutusunu
+            işaretlemeden iptal düğmesi açılmaz. İptal geri alınmaz ve numara sayaca dönmez;
+            kaybolan etiket bir gün bir kitapta çıkar da okutulursa program numaranın iptal
+            edildiğini söyler: etiketi sökün ve kitaba başka bir boş etiket yapıştırın.
+          </li>
+        </ol>
+        <Ipucu>
+          <p>
+            Bağlanmamış görünen bir numaranın etiketi rafta bir kitaba yapıştırılmış, kitap henüz
+            kaydedilmemiş olabilir. Toplu iptali yalnız o aralığın bütün kitapları Hızlı
+            Kayıt&apos;tan geçtikten sonra yapın.
+          </p>
+        </Ipucu>
+
+        <AltBaslik>Etiketi olmayan kitap</AltBaslik>
+        <p>
+          Masaya etiketsiz bir kitap gelirse Hızlı Kayıt&apos;ta “Etiket yok — yeni numara ver”
+          seçeneğiyle kaydedin: program sayaçtan yeni numara verir. Kayıttan sonra çıkan “Etiketini
+          bas” düğmesi aynı ekranda “Etiket Basımı” kartını açar: “Etiket içeriği”ni, şablonu ve
+          başlangıç hücresini seçip “Basım partisini hazırla” deyin, PDF&apos;i yazdırıp “Basıldı
+          olarak işaretle” deyin. Kısmen kullanılmış tabakada ilk boş hücreyi seçmeniz yeterlidir.
         </p>
       </Bolum>
 
@@ -1142,7 +1557,9 @@ export default function KilavuzPage() {
           Eksik kalmadıysa “Açılacak Edinim Partisi” bölümünde edinim yolunu ve tarihi seçip
           “Uygula” deyin. Aktarılan bütün nüshalar tek bir edinim partisinden doğar; uygulamadan
           sonra kaç nüsha açıldığı ve barkodların hangi iki numara arasında olduğu yazılır. Bu
-          nüshaların hiçbiri etiketli değildir.
+          nüshaların hiçbiri etiketli değildir: “Bu partinin etiketlerini bas” düğmesi Etiketler →
+          Basım Kuyruğu&apos;nu bu edinim partisine süzülmüş açar. Yer numarası sırasında basıp raf
+          raf yapıştırın (bkz. Etiketler bölümü).
         </p>
         <p>
           Toplu aktarımda program <strong>internetten künye getirmez</strong>: dosyada ne yazıyorsa
