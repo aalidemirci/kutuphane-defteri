@@ -6,7 +6,10 @@ yöntemde 403 `kip_yetkisiz` döner. Uç listesi ELLE TUTULMAZ: URL desenleri
 §5.10-2 gezgini; dönüştürücüler örnek değerle doldurulur). Başka kolların
 eklediği her yeni uç (takvim, kütüphane şablonu, F2+ dolaşım…) bu teste
 kendiliğinden girer ve izin listesine bilinçli eklenmedikçe kapalıdır.
-`override_reason` ve görevli yanıtlarının alan listesi F6'da dolar.
+F6'da doldu: uç + PARAMETRE kuralları (`override_reason` ya da kartsız ödünç
+alanı taşıyan ödünç 403, katalog okumada sorgu parametresi sınırı) burada;
+görevli yanıtlarının alan listesi anlık görüntüsü
+`apps/kutuphane/tests/test_masa_gorevli_yuzeyi.py`'dedir.
 
 §5.10-14: `X-KD-Etkinlik` başlığı olmayan periyodik istekler yönetici kipini
 canlı tutmaz; başlıklı istekler tutar; mutlak süre dolunca görevli kipine
@@ -29,7 +32,13 @@ from django.urls import resolve
 
 from apps.okul import kip_middleware
 from apps.okul.kip import KIP, KipSureleri
-from apps.okul.kip_izinleri import IZIN_LISTESI, IzinKurali, izinli_mi
+from apps.okul.kip_izinleri import (
+    IZIN_LISTESI,
+    IzinKurali,
+    govdede_yok,
+    izinli_mi,
+    yalniz_sorgu,
+)
 from apps.okul.kip_middleware import (
     HIC_KESILMEYEN_YOLLAR,
     HIC_KESILMEYEN_YONTEMLER,
@@ -96,17 +105,169 @@ def test_izin_listesi_anlik_goruntuyle_sabittir() -> None:
         # Çık (F5, §4.2-4): görevli kipinde gövdede yönetici parolası ister, parolasız
         # istek görünümde 403 alır (test_cikis_ucu.py, §5.10-18).
         ("app-quit", "POST"),
+        # F6 dolaşım masası (§4.4 tablosu, §7.3): ödünç ver, barkodla iade.
+        ("library-checkout", "POST"),
+        # Katalog okuma (F6, §4.4): works/copies GET, yanıt Ağ Kataloğuna denk.
+        ("library-copy-list", "GET"),
+        # GA-7: art arda geçersiz kart okutmasından sonra gövdede yönetici parolası.
+        ("library-desk-card-unlock", "POST"),
+        # Nüsha durum sorgusu ve kartla üye çözme (yalnız ad + kalan hak).
+        ("library-desk-copy-status", "GET"),
+        ("library-desk-member", "POST"),
         # Etiket doğrulama okutması (F4, kullanıcı kararı 24.09.2026). Yanıt görevli
         # kipinde daralır; öbür etiket uçları kapalıdır (test_etiket_kuyrugu_uclari.py).
         ("library-label-verify", "POST"),
+        ("library-return", "POST"),
+        ("library-work-detail", "GET"),
+        ("library-work-list", "GET"),
         ("security-lock", "POST"),
         ("security-mode", "GET"),
         ("security-mode-admin", "POST"),
         ("security-status", "GET"),
         ("setup-status", "GET"),
     ]
-    # F1'de parametre kuralı yoktur (F6: override_reason, üye çözme alanları).
-    assert all(k.parametre is None for k in IZIN_LISTESI)
+
+
+def test_parametre_kurallari_anlik_goruntuyle_sabittir() -> None:
+    """§5.10-8 (F6 dolu): uç + PARAMETRE. Görevli istisnalı/kartsız ödünç veremez,
+    üyeyi üyelik kaydıyla açamaz; katalogda edinim partisine, eski kayıt no'ya göre süzemez."""
+    kurallar = {(k.uc, k.yontem): k.parametre for k in IZIN_LISTESI if k.parametre is not None}
+    assert kurallar == {
+        ("library-checkout", "POST"): govdede_yok(
+            "override_reason", "override_note", "cardless", "cardless_reason", "membership_id"
+        ),
+        ("library-desk-member", "POST"): govdede_yok("membership_id"),
+        ("library-desk-copy-status", "GET"): yalniz_sorgu("barcode"),
+        ("library-work-list", "GET"): yalniz_sorgu(
+            "q", "order", "resource_type", "section", "limit", "offset"
+        ),
+        ("library-work-detail", "GET"): yalniz_sorgu(),
+        ("library-copy-list", "GET"): yalniz_sorgu(
+            "work", "section", "status", "only_loanable", "limit", "offset"
+        ),
+    }
+
+
+ODUNC_YOLU = "/api/v1/library/checkout/"
+UYE_YOLU = "/api/v1/library/desk/member/"
+
+
+@pytest.mark.parametrize(
+    "govde",
+    [
+        {"override_reason": "COURSE_NEED", "override_note": "x"},
+        {"override_reason": ""},
+        {"override_note": "x"},
+        {"cardless": True},
+        {"cardless_reason": "CARD_LOST"},
+        {"membership_id": 1},
+    ],
+)
+def test_gorevli_kipinde_istisnali_ya_da_kartsiz_odunc_403(
+    gorevli: None, govde: dict[str, Any]
+) -> None:
+    """`override_reason` (ya da kartsız ödünç alanı) TAŞIYAN ödünç 403 — değeri boş olsa da."""
+    resp = Client().post(
+        ODUNC_YOLU, {"card_no": "94718263", "barcode": "2026000001", **govde}, "application/json"
+    )
+    assert resp.status_code == 403
+    assert resp.json()["code"] == "kip_yetkisiz"
+
+
+def test_gorevli_kipinde_yasak_alan_sorgu_dizesinde_de_403(gorevli: None) -> None:
+    resp = Client().post(
+        ODUNC_YOLU + "?override_reason=COURSE_NEED",
+        {"card_no": "94718263", "barcode": "2026000001"},
+        "application/json",
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.parametrize(
+    ("icerik", "govde"),
+    [
+        ("application/x-www-form-urlencoded", "card_no=94718263&override_reason=X"),
+        ("text/plain", '{"card_no": "94718263"}'),
+        ("application/json", "[1, 2]"),
+        ("application/json", "{bozuk"),
+    ],
+)
+def test_gorevli_kipinde_json_olmayan_ya_da_okunamayan_govde_403(
+    gorevli: None, icerik: str, govde: str
+) -> None:
+    """Denetçi okuyamadığı gövdeyi geçirmez (fail-closed)."""
+    resp = Client().generic("POST", ODUNC_YOLU, govde, content_type=icerik)
+    assert resp.status_code == 403
+    assert resp.json()["code"] == "kip_yetkisiz"
+
+
+@pytest.mark.parametrize(
+    ("charset", "govde"),
+    [
+        # utf-7'de "+AF8-" alt çizgidir: denetçi `override+AF8-reason`, DRF `override_reason`
+        # görürdü (F6 düzeltme turu).
+        ("utf-7", b'{"card_no":"94718263","barcode":"1","override+AF8-reason":"OTHER"}'),
+        ("utf-16", '{"card_no":"94718263","barcode":"1"}'.encode("utf-16")),
+        ("UTF-7", b'{"card_no":"94718263","barcode":"1"}'),
+        ("latin-1", b'{"card_no":"94718263","barcode":"1"}'),
+    ],
+)
+def test_gorevli_kipinde_utf8_disi_karakter_kumesi_403(
+    gorevli: None, charset: str, govde: bytes
+) -> None:
+    """Denetçi ile görünüm aynı baytları farklı okuyamasın: `charset` yalnız UTF-8."""
+    for yol in (ODUNC_YOLU, UYE_YOLU):
+        resp = Client().generic(
+            "POST", yol, govde, content_type=f"application/json; charset={charset}"
+        )
+        assert resp.status_code == 403, (yol, charset)
+        assert resp.json()["code"] == "kip_yetkisiz"
+
+
+@pytest.mark.parametrize("charset", ["utf-8", "UTF-8", "utf8", '"utf-8"'])
+def test_gorevli_kipinde_utf8_karakter_kumesi_gecer(gorevli: None, charset: str) -> None:
+    resp = Client().generic(
+        "POST",
+        UYE_YOLU,
+        b'{"card_no":"94718263"}',
+        content_type=f"application/json; charset={charset}",
+    )
+    assert resp.status_code == 200
+
+
+def test_gorevli_kipinde_kartla_odunc_ve_uye_cozme_kapidan_gecer(gorevli: None) -> None:
+    """Yasak alan yoksa istek görünüme ulaşır (görünüm kendi kararını verir; 403 değil)."""
+    odunc = Client().post(
+        ODUNC_YOLU, {"card_no": "94718263", "barcode": "2026000001"}, "application/json"
+    )
+    uye = Client().post(UYE_YOLU, {"card_no": "94718263"}, "application/json")
+    assert odunc.status_code != 403
+    assert uye.status_code == 200
+    kartsiz = Client().post(UYE_YOLU, {"membership_id": 1}, "application/json")
+    assert kartsiz.status_code == 403
+
+
+@pytest.mark.parametrize(
+    ("yol", "sorgu", "gecer"),
+    [
+        ("/api/v1/library/works/", "?q=%C5%9Fiir&order=title&limit=25&offset=0", True),
+        ("/api/v1/library/works/", "?acquisition=1", False),
+        ("/api/v1/library/works/", "?q=x&format=json", False),
+        ("/api/v1/library/works/1/", "", True),
+        ("/api/v1/library/works/1/", "?x=1", False),
+        ("/api/v1/library/copies/", "?work=1&only_loanable=true", True),
+        ("/api/v1/library/copies/", "?acquisition=1", False),
+        ("/api/v1/library/copies/", "?old_register_no=12", False),
+        ("/api/v1/library/copies/", "?barcode=2026000001", False),
+        ("/api/v1/library/desk/copy-status/", "?barcode=2026000001", True),
+        ("/api/v1/library/desk/copy-status/", "?barcode=2026000001&loan=1", False),
+    ],
+)
+def test_gorevli_kipinde_katalog_okumada_sorgu_parametresi_siniri(
+    gorevli: None, yol: str, sorgu: str, gecer: bool
+) -> None:
+    resp = _yalniz_kip_kapisi("GET", yol + sorgu)
+    assert (resp.content == b"gecti") is gecer
 
 
 def test_izin_listesindeki_her_uc_gercekten_vardir() -> None:

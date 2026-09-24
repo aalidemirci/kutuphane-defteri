@@ -19,6 +19,7 @@ import { useSnackbar } from "../../ui/SnackbarProvider";
 import KatalogSablonuKarti from "../kutuphane/KatalogSablonuKarti";
 import { okulApi } from "../okul/api";
 import type { RoadmapManualItem, SetupStatus } from "../okul/api";
+import DolasimKartlari from "../uyelik/DolasimKartlari";
 import AyrilisHavuzuKarti from "./AyrilisHavuzuKarti";
 import BaslangicYolHaritasi from "./BaslangicYolHaritasi";
 
@@ -83,6 +84,9 @@ export default function PanelPage() {
           onGizle={() => void gizle()}
         />
       )}
+      {/* F6: beklenmedik kapanışta "Son Oturumu Kontrol Edin" ve gecikme varsa
+          "Gecikmiş Ödünçler" (yalnız sayı; liste yönetici kipinde — A11, T15). */}
+      <DolasimKartlari />
       {/* Havuz boşsa görünmez; yalnız sayı okunur (F1 eki 7). */}
       <AyrilisHavuzuKarti />
       <div className="grid gap-4 sm:grid-cols-2">

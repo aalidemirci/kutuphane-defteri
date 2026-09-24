@@ -359,13 +359,15 @@ describe("App — kurulum kapısı", () => {
 });
 
 describe("App — kabuk gezinmesi", () => {
-  it("gezinme tam olarak Genel Bakış, Kişiler, Katalog, Ayarlar ve Kılavuz'dur (bu sırayla)", async () => {
+  it("gezinme tam olarak Genel Bakış, Dolaşım Masası, Kişiler, Katalog, Ayarlar ve Kılavuz'dur (bu sırayla)", async () => {
     ekranaBas("/");
     await screen.findByRole("heading", { name: "Genel Bakış" });
     const gezinme = screen.getByRole("navigation", { name: "Ana gezinme" });
     const baglantilar = within(gezinme).getAllByRole("link");
     const beklenen: Array<[ad: string, yol: string]> = [
       ["Genel Bakış", "/"],
+      // F6: masa işi en sık yapılan iştir (docs/sozluk.md §4.1).
+      ["Dolaşım Masası", "/dolasim"],
       ["Kişiler", "/kisiler"],
       ["Katalog", "/katalog"],
       ["Ayarlar", "/ayarlar"],
@@ -428,7 +430,10 @@ describe("App — kabuk gezinmesi", () => {
   // üst çubuk "Genel bakış", sayfa "Panel", gezinme "Panel" diyordu.
   it.each([
     ["/", "Genel Bakış"],
+    ["/dolasim", "Dolaşım Masası"],
     ["/kisiler", "Kişiler"],
+    // F6 (E kolu): menüde yok, Genel Bakış'taki gecikme kartından açılır.
+    ["/gecikmis-oduncler", "Gecikmiş Ödünçler"],
     ["/katalog", "Katalog"],
     // Alt sayfaların başlığı kökünkinden ÖNCE eşleşir (AppShell sıralaması).
     ["/katalog/eser/3", "Eser Ayrıntısı"],

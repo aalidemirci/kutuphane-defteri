@@ -19,8 +19,12 @@ parametreleri çözülür ve servisin döndürdüğü nesne serileştirilir.
 * Kilitli ya da güvenlik dosyası kayıpken bütün `/api/` uçları 423 döner
   (`apps.okul.lock_middleware`) — şifreli alan taşıyan uçlar dahil.
 * Görevli kipinde izin listesi dışındaki her uç 403 `kip_yetkisiz` döner
-  (`apps.okul.kip_middleware`). Buradaki uçların HİÇBİRİ izin listesinde
-  DEĞİLDİR ve olmamalıdır: katalog düzenlemek masa işi değildir (CLAUDE.md §2-4).
+  (`apps.okul.kip_middleware`). Buradan izin listesinde YALNIZ katalog okuma
+  vardır (F6, §4.4): `library-work-list`, `library-work-detail` ve
+  `library-copy-list` GET — sorgu parametresi kuralıyla; görevli kipinde yanıt
+  Ağ Kataloğunun alan listesine denk serializer'la daralır
+  (`serializers_masa.GorevliEserSerializer`/`GorevliNushaSerializer`). Katalog
+  DÜZENLEMEK masa işi değildir; yazma yöntemleri kapalıdır (CLAUDE.md §2-4).
 * Yönetici parolası kurulmadan şifreli alana (bağışçı, komisyon adları) yazan
   istek `KeyMissingError` ile durur ve 409 `parola_gerekli` döner (§6.3-3).
 
@@ -77,11 +81,13 @@ from apps.kutuphane.serializers import (
     SectionSerializer,
     WorkSerializer,
 )
+from apps.kutuphane.serializers_masa import GorevliEserSerializer, GorevliNushaSerializer
 from apps.kutuphane.services import catalog as catalog_service
 from apps.kutuphane.services import commissions as commission_service
 from apps.kutuphane.services import donations as donation_service
 from apps.kutuphane.services import numbering as numbering_service
 from apps.kutuphane.services import policy as policy_service
+from apps.okul.kip import KIP
 
 XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
@@ -242,6 +248,10 @@ class WorkListCreateView(generics.ListCreateAPIView[Work]):
     serializer_class = WorkSerializer
     pagination_class = KatalogSayfalama
 
+    def get_serializer_class(self) -> Any:
+        # F6: görevli kipinde katalog okuma açıktır, yanıt daralır (§4.4).
+        return GorevliEserSerializer if KIP.gorevli_mi() else WorkSerializer
+
     def get_queryset(self) -> Any:
         params = self.request.query_params
         return selectors.works_with_copy_counts(
@@ -265,6 +275,10 @@ class WorkDetailView(generics.RetrieveUpdateDestroyAPIView[Work]):
     """
 
     serializer_class = WorkSerializer
+
+    def get_serializer_class(self) -> Any:
+        # F6: görevli kipinde yalnız GET açıktır ve yanıt daralır (§4.4).
+        return GorevliEserSerializer if KIP.gorevli_mi() else WorkSerializer
 
     def get_queryset(self) -> Any:
         return selectors.works_with_copy_counts()
@@ -313,7 +327,22 @@ class CopyListCreateView(generics.ListCreateAPIView[Copy]):
     serializer_class = CopyReadSerializer
     pagination_class = KatalogSayfalama
 
+    def get_serializer_class(self) -> Any:
+        # F6: görevli kipinde katalog okuma açıktır, yanıt daralır (§4.4).
+        return GorevliNushaSerializer if KIP.gorevli_mi() else CopyReadSerializer
+
     def get_queryset(self) -> Any:
+        if KIP.gorevli_mi():
+            # Görevliye Ağ Kataloğu gibi yalnız elde bulunan nüshalar (kayıttan
+            # düşülen ve devredilen yok); süzgeçler izin listesinde sınırlıdır.
+            params = self.request.query_params
+            return selectors.copies(
+                work_id=_int_param(params, "work", "Eser kimliği"),
+                section_id=_int_param(params, "section", "Bölüm kimliği"),
+                status=_choice_param(params, "status", CopyStatus.values, "durum"),
+                only_loanable=_bool_param(params, "only_loanable"),
+                include_terminal=False,
+            ).select_related("work__section")
         return _copy_queryset(self.request.query_params)
 
     def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:

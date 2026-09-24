@@ -25,12 +25,26 @@ vi.mock("../kutuphane/etiketApi", async (importOriginal) => {
   return { ...actual, etiketApi: { ...actual.etiketApi, ...etiket } };
 });
 
+const katalog = vi.hoisted(() => ({
+  eserAra: vi.fn(),
+  nushalar: vi.fn(),
+}));
+
+vi.mock("../dolasim/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../dolasim/api")>();
+  return { ...actual, katalogOkumaApi: { ...actual.katalogOkumaApi, ...katalog } };
+});
+
+import { OKUTMA_KUTUSU } from "../dolasim/DolasimMasasi";
 import GorevliEkrani, {
   BEKLEYEN_ANAHTAR_METNI,
   GOREVLI_DOGRULAMA_BASLIGI,
   GOREVLI_DOGRULAMA_BITIR,
   GOREVLI_DOGRULAMA_DUGMESI,
   GOREVLI_EKRANI_METNI,
+  GOREVLI_KATALOG_DUGMESI,
+  GOREVLI_MASA_BASLIGI,
+  GOREVLI_MASAYA_DON,
 } from "./GorevliEkrani";
 
 beforeEach(() => {
@@ -91,5 +105,77 @@ describe("GorevliEkrani — doğrulama okutması", () => {
     });
 
     expect(screen.getByText(BEKLEYEN_ANAHTAR_METNI)).toBeInTheDocument();
+  });
+});
+
+describe("GorevliEkrani — dolaşım masası ve katalog (F6)", () => {
+  it("varsayılan iş dolaşım masasıdır; okutma kutusu odaktadır", () => {
+    render(<GorevliEkrani onGecti={vi.fn()} />);
+
+    expect(screen.getByRole("heading", { level: 1, name: "Görevli Kipi" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 2, name: GOREVLI_MASA_BASLIGI })).toBeVisible();
+    expect(screen.getByLabelText(OKUTMA_KUTUSU)).toHaveFocus();
+    // Yönetici işleri görevli ekranında yoktur.
+    expect(screen.queryByRole("button", { name: "Kartsız ödünç" })).toBeNull();
+  });
+
+  it("katalogda arama yalnız izinli sorgu parametreleriyle yapılır; masaya dönülür", async () => {
+    const user = userEvent.setup();
+    katalog.eserAra.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 5,
+          title: "Şiir Defteri",
+          authors: "Deneme Yazar",
+          translator: "",
+          edition: "",
+          publisher: "",
+          publish_year: null,
+          isbn: "",
+          subjects: "",
+          language: "",
+          resource_type: "BOOK",
+          resource_type_display: "Kitap",
+          classification_code: "811",
+          call_number: "811 DEN",
+          section_name: "Edebiyat",
+          copy_count: 2,
+          available_copy_count: 1,
+        },
+      ],
+    });
+    katalog.nushalar.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 9,
+          work: 5,
+          work_title: "Şiir Defteri",
+          call_number: "811 DEN",
+          section_name: "Edebiyat",
+          status: "ON_LOAN",
+          status_display: "Ödünçte",
+          is_loanable: false,
+          not_loanable_reason: "Ödünçte — ödünç verilemez.",
+        },
+      ],
+    });
+    render(<GorevliEkrani onGecti={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: GOREVLI_KATALOG_DUGMESI }));
+    await user.type(screen.getByLabelText(/Kaynak adı, yazar/), "şiir{Enter}");
+    await user.click(await screen.findByRole("button", { name: /Şiir Defteri/ }));
+
+    expect(katalog.eserAra).toHaveBeenCalledWith("şiir", 0);
+    expect(katalog.nushalar).toHaveBeenCalledWith(5);
+    expect(await screen.findByText("Edebiyat · Ödünçte")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: GOREVLI_MASAYA_DON }));
+    expect(screen.getByLabelText(OKUTMA_KUTUSU)).toBeInTheDocument();
   });
 });

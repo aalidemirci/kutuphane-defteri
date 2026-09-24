@@ -8,9 +8,10 @@ dolaşılır, sonra eklenen her uç bu testlere kendiliğinden girer.
    anahtar bellekte değilse bütün `/api/` yüzeyi 423 `locked` döner. Şifreli
    alan taşıyan uçlar (edinim, komisyon kararı, bağış ön kaydı) buraya dahildir.
 2. **Görevli kipi** (`apps.okul.kip_middleware`): izin listesi dışındaki her uç
-   403 `kip_yetkisiz`. Katalog yüzeyinden izin listesinde YALNIZ etiket
-   doğrulama okutması (`library-label-verify` POST; kullanıcı kararı
-   24.09.2026) vardır — katalog düzenlemek masa işi değildir (CLAUDE.md §2-4).
+   403 `kip_yetkisiz`. Kütüphane yüzeyinden izin listesinde etiket doğrulama
+   okutması (`library-label-verify` POST; kullanıcı kararı 24.09.2026), F6
+   dolaşım masası uçları ve katalog OKUMA (works/copies GET, yanıt daralır)
+   vardır — katalog düzenlemek masa işi değildir (CLAUDE.md §2-4).
    Genel dolaşma `apps/okul/tests/test_kip_koruma.py`'dedir; burada katalog
    yüzeyi AÇIKÇA sabitlenir ki listeye sessizce uç eklenmesin.
 3. **Parola kurulmamış** (`shared.crypto` fail-closed, §6.3-3): kişi ADI taşıyan
@@ -37,9 +38,23 @@ pytestmark = pytest.mark.django_db
 
 #: Kilitliyken ve görevli kipinde denenen yöntemler (okuma + bir yazma).
 YONTEMLER = ("get", "post")
-#: Katalog yüzeyinde görevli kipinde açık TEK (uç, yöntem) çifti: etiket doğrulama
-#: okutması (kullanıcı kararı 24.09.2026; `apps/okul/kip_izinleri.py`).
-GOREVLI_ACIK = frozenset({("library-label-verify", "POST")})
+#: Kütüphane yüzeyinde görevli kipinde açık (uç, yöntem) çiftleri
+#: (`apps/okul/kip_izinleri.py`): etiket doğrulama okutması (kullanıcı kararı
+#: 24.09.2026), F6 dolaşım masası ve katalog OKUMA (§4.4 tablosu). Yanıtların
+#: görevli kipindeki alan listesi `test_masa_gorevli_yuzeyi.py`'dedir.
+GOREVLI_ACIK = frozenset(
+    {
+        ("library-label-verify", "POST"),
+        ("library-desk-member", "POST"),
+        ("library-checkout", "POST"),
+        ("library-return", "POST"),
+        ("library-desk-copy-status", "GET"),
+        ("library-desk-card-unlock", "POST"),
+        ("library-work-list", "GET"),
+        ("library-work-detail", "GET"),
+        ("library-copy-list", "GET"),
+    }
+)
 
 
 def _kutuphane_uclari() -> list[tuple[str, str]]:
@@ -122,11 +137,13 @@ def test_gorevli_kipinde_her_katalog_ucu_403_doner() -> None:
     assert KIP.durum() == "gorevli", "dolaşma sırasında kip değişti"
 
 
-def test_katalog_uclarindan_yalniz_dogrulama_okutmasi_izin_listesinde() -> None:
+def test_katalog_uclarindan_yalniz_masa_isleri_izin_listesinde() -> None:
     """Testi yeşile çekmek için listeye uç eklemek kusurdur (CLAUDE.md §2-4).
 
-    Tek istisna bilinçli bir kullanıcı kararıdır (24.09.2026): etiket doğrulama
-    okutması, yalnız POST.
+    Açık olanlar bilinçli kararlardır: etiket doğrulama okutması (kullanıcı
+    kararı 24.09.2026) ve tasarım §4.4 tablosunun masa işleri (F6) — kartla üye
+    çözme, ödünç ver, barkodla iade, nüsha durum sorgusu, GA-7 kilidi ve katalog
+    okuma (yalnız GET).
     """
     from apps.okul.kip_izinleri import IZIN_LISTESI
 

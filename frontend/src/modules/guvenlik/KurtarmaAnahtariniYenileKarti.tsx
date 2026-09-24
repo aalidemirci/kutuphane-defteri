@@ -11,8 +11,9 @@
 // sökülse de kaybolmaz; sihirbaz ve Güvenlik ekranı onu `KurtarmaAnahtariPaneli`
 // ile saklatıp doğrulatır. Metinler dürüsttür: eski yedeklerin eski anahtarla
 // açıldığını ve yenilemenin ele geçmiş anahtara karşı koruma olmadığını söyler.
+// Pencere açılınca parola alanı odaktadır (`ui/Dialog` `initialFocusRef`).
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import { ApiError } from "../../lib/api";
@@ -42,6 +43,7 @@ export default function KurtarmaAnahtariniYenileKarti({
 }) {
   const snackbar = useSnackbar();
   const [acik, setAcik] = useState(false);
+  const parolaAlani = useRef<HTMLInputElement>(null);
   const [parola, setParola] = useState("");
   const [hata, setHata] = useState<string | null>(null);
   const [calisiyor, setCalisiyor] = useState(false);
@@ -82,12 +84,18 @@ export default function KurtarmaAnahtariniYenileKarti({
         </Button>
       </div>
 
-      <Dialog open={acik} onClose={kapat} title="Kurtarma anahtarı yenilensin mi?">
+      <Dialog
+        open={acik}
+        onClose={kapat}
+        title="Kurtarma anahtarı yenilensin mi?"
+        initialFocusRef={parolaAlani}
+      >
         <form onSubmit={yenile} className="flex flex-col gap-4">
           <p className="text-body-medium text-on-surface">{YENILEME_SONUCU_METNI}</p>
           <p className="text-body-medium text-on-surface-variant">{ESKI_YEDEK_METNI}</p>
           <p className="text-body-small text-on-surface-variant">{ELE_GECMIS_ANAHTAR_METNI}</p>
           <TextField
+            ref={parolaAlani}
             label="Yönetici parolası"
             type="password"
             value={parola}

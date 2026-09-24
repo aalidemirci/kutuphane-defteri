@@ -43,6 +43,13 @@ describe("YoneticiParolaDiyalogu", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  // `autoFocus` ortak Dialog'un panel odağına yeniliyordu; parola alanı
+  // `initialFocusRef` ile odaklanır (tasarım §14.1 F6 ekleri 23).
+  it("açılışta parola alanı odaktadır", () => {
+    bas();
+    expect(screen.getByLabelText(/Yönetici parolası/)).toHaveFocus();
+  });
+
   it("parola girilmeden gönderme düğmesi kapalıdır", () => {
     bas();
     expect(screen.getByRole("button", { name: "Yönetici kipine geç" })).toBeDisabled();

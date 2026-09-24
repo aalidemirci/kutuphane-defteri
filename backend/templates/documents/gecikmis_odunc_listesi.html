@@ -1,0 +1,64 @@
+{% extends "documents/base.html" %}
+{% comment %}Gecikmiş ödünç listesi (E4; tasarım §9-13, sözlük §5) — bağlam
+apps/kutuphane/dolasim_belgeleri.py::overdue_list_context'ten gelir.
+
+Liste kişisel veri içerir ve yalnız yönetici kipinde basılır. Her sayfanın
+dibinde "Kişisel veri içerir — asılmaz, çoğaltılmaz." dipnotu durur (sayfa
+numarasıyla aynı kutuda; base.html'in @bottom-center kuralı burada
+genişletilir). Veri en aza indirme: okul no basılmaz. Uzatma, ceza ve harç
+yoktur; tabloda "gecikme" yalnız gün sayısıdır.
+
+WeasyPrint kuralları: tablo `table-layout: fixed` + yalnız bu tabloya
+`box-sizing: border-box` (yüzde + dolgu sayfayı taşırmasın); satır sayfa
+arasında bölünmez (`tr { break-inside: avoid }`); başlık satırı her sayfada
+yinelenir (thead). `text-transform` YOK.{% endcomment %}
+{% block extra_style %}
+<style>
+  @page {
+    margin: 1.3cm 1.5cm 1.6cm 1.5cm;
+    @bottom-center {
+      content: "{{ footnote }}   ·   Sayfa " counter(page) " / " counter(pages);
+      font-family: "DejaVu Sans"; font-size: 7.5pt; color: #334155;
+    }
+  }
+  body { font-size: 9pt; }
+  .doc-title { margin: 8pt 0 2pt; }
+  .info { margin: 4pt 0 6pt; }
+  .info td { padding: 2.5pt 7pt; font-size: 8.8pt; }
+  .info td.label { width: 28%; }
+  table.liste { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 8.3pt; }
+  table.liste th, table.liste td { box-sizing: border-box; border: 0.5pt solid var(--pr-line);
+    padding: 2.5pt 4pt; vertical-align: top; overflow-wrap: break-word; }
+  table.liste th { background: var(--pr-fill-head); color: var(--pr-ink); text-align: left;
+    font-weight: bold; font-size: 8pt; }
+  table.liste tr { break-inside: avoid; page-break-inside: avoid; }
+  table.liste td.sayi, table.liste th.sayi { text-align: right; }
+  table.liste td.tek { white-space: nowrap; }
+  .bos { margin-top: 10pt; font-size: 9.5pt; color: var(--pr-secondary); }
+</style>
+{% endblock %}
+{% block content %}
+  <div class="doc-title">{{ document_title }}</div>
+  <table class="info">
+    <tr><td class="label">Düzenlenme tarihi</td><td>{{ issued_on }}</td></tr>
+    <tr><td class="label">Kapsam</td><td>{{ scope }}</td></tr>
+    <tr><td class="label">Toplam</td><td>{{ person_count }} kişide {{ loan_count }} gecikmiş ödünç</td></tr>
+  </table>
+  {% if rows %}
+  <table class="liste">
+    <colgroup>
+      <col style="width:6%"><col style="width:23%"><col style="width:11%"><col style="width:25%">
+      <col style="width:13%"><col style="width:12%"><col style="width:10%">
+    </colgroup>
+    <thead>
+      <tr><th class="sayi">Sıra</th><th>Ad soyad</th><th>Sınıf / üye türü</th><th>Kaynak adı</th><th>Barkod</th><th>İade tarihi</th><th class="sayi">Gecikme</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}<tr><td class="sayi">{{ r.no }}</td><td>{{ r.name }}</td><td>{{ r.label }}</td><td>{{ r.title }}</td><td class="tek">{{ r.barcode }}</td><td class="tek">{{ r.due }}</td><td class="sayi">{{ r.days }} gün</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="bos">Bu kapsamda gecikmiş ödünç yok.</p>
+  {% endif %}
+{% endblock %}

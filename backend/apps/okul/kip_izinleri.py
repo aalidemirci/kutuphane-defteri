@@ -14,10 +14,27 @@ Kural düzeyi: **uç + yöntem (+ parametre)**.
   içerebilir, ad değişmez.
 * Yöntem büyük harfli HTTP yöntemidir. HEAD ve OPTIONS ayrıca yazılmadıkça
   kapalıdır.
-* Parametre kuralı (F6'da dolaşım uçlarıyla gelir; ör. `override_reason`
-  taşıyan ödünç 403, kartla üye çözmede yalnız ad + kalan hak): isteği alıp
-  geçip geçmeyeceğini söyleyen bir denetçi. Denetçi yanlış dönerse istek
-  kesilir. F1'de hiçbir kuralın parametre denetçisi yoktur.
+* Parametre kuralı (F6): isteği alıp geçip geçmeyeceğini söyleyen bir denetçi.
+  Denetçi yanlış dönerse istek kesilir. İki biçimi vardır:
+  - `yalniz_sorgu(...)`: GET ucunun sorgu dizesinde YALNIZ sayılan anahtarlar
+    bulunabilir (katalog okuma — görevli edinim partisine, eski kayıt no'ya
+    göre süzemez; bilinmeyen anahtar da kesilir, fail-closed);
+  - `govdede_yok(...)`: gövdede (ve sorgu dizesinde) sayılan anahtarların
+    HİÇBİRİ bulunamaz — `override_reason`/`override_note` (gecikme istisnası),
+    `cardless`/`cardless_reason` (kartsız ödünç) ve `membership_id` (kartsız
+    üye açma) taşıyan ödünç ya da üye çözme isteği 403 alır (§4.4, §5.10-8).
+    Gövde JSON değilse (ya da okunamıyorsa) istek kesilir: masa uçları yalnız
+    JSON kabul eder (`views_masa`), denetçinin okuyamadığı bir gövde görünüme
+    ulaşmamalıdır. Boş gövde geçer (görünüm doğrulamayla reddeder).
+    **Karakter kümesi yalnız UTF-8'dir** (F6 düzeltme turu): denetçi baytları
+    `json.loads` ile okur (UTF-8/16/32 kendiliğinden sezilir), DRF ise gövdeyi
+    `Content-Type`'taki `charset` ile çözer. `charset=utf-7` gönderen bir istemci
+    `override+AF8-reason` anahtarını denetçiye başka, görünüme `override_reason`
+    olarak gösterebilirdi. `charset` UTF-8 dışında bir şeyse istek kesilir;
+    masa görünümleri de UTF-8 dışı gövdeyi reddeder (`views_masa`).
+  Anahtarın DEĞERİNE bakılmaz, VARLIĞINA bakılır: boş bir `override_reason`
+  bile görevli kipinde 403'tür. Yanıtların daralması (kartla üye çözmede yalnız
+  ad + kalan hak) görünümün işidir (`apps/kutuphane/serializers_masa.py`).
 
 `setup/status/` (masaüstü sağlık denetimi), `security/status/` ve
 `security/mode/` ara katmanda HİÇBİR durumda kesilmez (§4.4) — yalnız GET/HEAD;
@@ -32,12 +49,82 @@ Teklik `tests/test_kip_koruma.py`'de sabitlenir.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from dataclasses import dataclass
 
 from django.http import HttpRequest
 
 ParametreDenetcisi = Callable[[HttpRequest], bool]
+
+#: Masa uçlarının kabul ettiği tek gövde biçimi.
+JSON_ICERIK = "application/json"
+#: Gövdenin kabul edilen tek karakter kümesi (adı büyük/küçük harf ve tire farkı gözetmeden).
+UTF8_ADLARI = frozenset({"utf-8", "utf8"})
+
+
+def utf8_mi(charset: str | None) -> bool:
+    """`Content-Type`'taki `charset` yok ya da UTF-8 mi? (Başkası → fail-closed.)"""
+    if charset is None:
+        return True
+    return charset.strip().strip('"').lower().replace("_", "-") in UTF8_ADLARI
+
+
+@dataclass(frozen=True)
+class SorguSiniri:
+    """GET ucunda sorgu dizesinde bulunabilecek anahtarlar (başkası → 403)."""
+
+    izinli: frozenset[str]
+
+    def __call__(self, request: HttpRequest) -> bool:
+        return set(request.GET.keys()) <= self.izinli
+
+
+@dataclass(frozen=True)
+class GovdeYasagi:
+    """Gövdede ve sorgu dizesinde bulunamayacak anahtarlar (varlık yeter → 403)."""
+
+    yasak: frozenset[str]
+
+    def __call__(self, request: HttpRequest) -> bool:
+        if set(request.GET.keys()) & self.yasak:
+            return False
+        try:
+            ham = request.body
+        except Exception:  # okunamayan (ör. aşırı büyük) gövde: fail-closed
+            return False
+        if not ham.strip():
+            return True
+        if (request.content_type or "").lower() != JSON_ICERIK:
+            return False
+        if not utf8_mi((request.content_params or {}).get("charset")):
+            return False
+        try:
+            govde = json.loads(ham)
+        except (ValueError, UnicodeDecodeError):
+            return False
+        if not isinstance(govde, dict):
+            return False
+        return not (set(govde) & self.yasak)
+
+
+def yalniz_sorgu(*anahtarlar: str) -> SorguSiniri:
+    return SorguSiniri(frozenset(anahtarlar))
+
+
+def govdede_yok(*anahtarlar: str) -> GovdeYasagi:
+    return GovdeYasagi(frozenset(anahtarlar))
+
+
+#: Görevli kipinde ödünç ve üye çözme isteğinde bulunamayacak alanlar (§4.4):
+#: gecikme engeli istisnası, kartsız ödünç ve üyelik kaydıyla (kartsız) üye açma.
+YONETICI_ODUNC_ALANLARI: tuple[str, ...] = (
+    "override_reason",
+    "override_note",
+    "cardless",
+    "cardless_reason",
+    "membership_id",
+)
 
 
 @dataclass(frozen=True)
@@ -75,6 +162,67 @@ IZIN_LISTESI: tuple[IzinKurali, ...] = (
         gerekce=(
             "etiket doğrulama okutması (kullanıcı kararı 24.09.2026); yanıt görevli kipinde "
             "yalnız barkod ve eser adını taşır. Öbür etiket uçları kapalıdır"
+        ),
+    ),
+    # --- F6: dolaşım masası (§4.4 tablosu, §7.3). Yanıtlar görevli kipinde daralır
+    # (`apps/kutuphane/serializers_masa.py`). Kapalı kalanlar: okul no ya da adla
+    # üye arama, üye listesi, ödünç geçmişi, gecikme listesi, son işlemler.
+    IzinKurali(
+        "library-desk-member",
+        "POST",
+        parametre=govdede_yok("membership_id"),
+        gerekce=(
+            "kartla üye çözme; yanıtta YALNIZ ad + kalan hak (sınıf yok). Üyelik kaydıyla "
+            "üye açma (kartsız ödünç) yönetici işidir; art arda geçersiz kart → parola (GA-7)"
+        ),
+    ),
+    IzinKurali(
+        "library-checkout",
+        "POST",
+        parametre=govdede_yok(*YONETICI_ODUNC_ALANLARI),
+        gerekce=(
+            "ödünç ver; gerekçeli istisna (override_*) ve kartsız ödünç (cardless*, "
+            "membership_id) taşıyan istek 403. Sayı sınırı ve Md. 16/1 hiçbir kipte istisna almaz"
+        ),
+    ),
+    IzinKurali(
+        "library-return",
+        "POST",
+        gerekce="barkodla iade; yanıtta ödünç alanın kimliği ve gecikme günü YOK",
+    ),
+    IzinKurali(
+        "library-desk-copy-status",
+        "GET",
+        parametre=yalniz_sorgu("barcode"),
+        gerekce="nüsha durum sorgusu; ödünç kimde, ne zaman dönecek görevliye gösterilmez",
+    ),
+    IzinKurali(
+        "library-desk-card-unlock",
+        "POST",
+        gerekce="GA-7 kart okutma kilidini açma; gövdede yönetici parolası (görünüm denetler)",
+    ),
+    # Katalog okuma: works/copies GET, Ağ Kataloğunun alan listesine denk serializer
+    # (görevli kipinde `GorevliEserSerializer`/`GorevliNushaSerializer`). Edinim,
+    # komisyon kararı, bağış, fiyat ve TKYS alanları kapalı; süzgeçler sınırlı.
+    IzinKurali(
+        "library-work-list",
+        "GET",
+        parametre=yalniz_sorgu("q", "order", "resource_type", "section", "limit", "offset"),
+        gerekce="katalogda arama (künye alanları; edinim ve etiket damgaları yok)",
+    ),
+    IzinKurali(
+        "library-work-detail",
+        "GET",
+        parametre=yalniz_sorgu(),
+        gerekce="eser künyesi (Ağ Kataloğunun eser sayfasına denk)",
+    ),
+    IzinKurali(
+        "library-copy-list",
+        "GET",
+        parametre=yalniz_sorgu("work", "section", "status", "only_loanable", "limit", "offset"),
+        gerekce=(
+            "eserin nüshaları: durum, bölüm, ödünç verilebilirlik (kayıttan düşülenler "
+            "görevliye gösterilmez); edinim partisine ve eski kayıt no'ya göre süzme yok"
         ),
     ),
 )

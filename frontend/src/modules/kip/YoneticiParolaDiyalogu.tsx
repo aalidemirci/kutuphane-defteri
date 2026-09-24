@@ -1,8 +1,10 @@
 // Yönetici kipine geçiş diyaloğu — görevli kipinden çıkış yönetici parolası
 // ister (tasarım §4.4). Parola yalnız istek gövdesinde gider; diyalog
-// kapanınca alan temizlenir (bir sonraki açılışta ekranda kalmasın).
+// kapanınca alan temizlenir (bir sonraki açılışta ekranda kalmasın). Açılışta
+// parola alanı odaktadır (`ui/Dialog` `initialFocusRef`; `autoFocus` panel
+// odağına yenilirdi).
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import Button from "../../ui/Button";
@@ -28,6 +30,7 @@ export default function YoneticiParolaDiyalogu({
   onGecti,
 }: YoneticiParolaDiyaloguProps) {
   const formId = useId();
+  const parolaAlani = useRef<HTMLInputElement>(null);
   const [parola, setParola] = useState("");
   const [hata, setHata] = useState<string | null>(null);
   const [calisiyor, setCalisiyor] = useState(false);
@@ -59,6 +62,7 @@ export default function YoneticiParolaDiyalogu({
       open={open}
       onClose={kapat}
       title="Yönetici kipine geç"
+      initialFocusRef={parolaAlani}
       actions={
         <>
           <Button variant="text" type="button" onClick={kapat}>
@@ -73,12 +77,12 @@ export default function YoneticiParolaDiyalogu({
       <form id={formId} onSubmit={gonder} className="flex flex-col gap-4">
         <p>Görevli kipinden çıkmak için yönetici parolasını girin.</p>
         <TextField
+          ref={parolaAlani}
           label="Yönetici parolası"
           type="password"
           value={parola}
           onChange={(e) => setParola(e.target.value)}
           autoComplete="current-password"
-          autoFocus
           error={hata ?? undefined}
           required
         />

@@ -8,6 +8,7 @@
 // HİÇ YOKTUR — sicil ad-soyad + okul no + sınıf/şube (personelde üye türü) ile
 // yürür. Okul no şifreli saklanır: arama numaranın tamamıyla yapılır. Sekme URL'de
 // tutulur (`?tab=personel`, `?tab=havuz`): başka ekranlar doğrudan o sekmeye bağlanır.
+// F6: "Üyeler", "Üyelik İstek Listesi" ve "Kart Basımı" sekmeleri `modules/uyelik`tedir.
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -41,6 +42,9 @@ import type {
   Student,
   StudentWriteBody,
 } from "../okul/api";
+import IstekListesi from "../uyelik/IstekListesi";
+import KartBasimi from "../uyelik/KartBasimi";
+import UyelerSekmesi from "../uyelik/UyelerSekmesi";
 import AktarimPaneli from "./AktarimPaneli";
 import AyrilisHavuzu from "./AyrilisHavuzu";
 import { DurumRozeti, ErrorBand, hataOku } from "./ortak";
@@ -50,7 +54,15 @@ import type { SayfaHatasi } from "./ortak";
 const PAGE_SIZE = 25;
 
 // TAB_KEYS[0] varsayılan sekmedir (useTabParam fallback) — başa yeni anahtar EKLEME.
-const TAB_KEYS = ["ogrenciler", "personel", "havuz"] as const;
+const TAB_KEYS = [
+  "ogrenciler",
+  "personel",
+  "havuz",
+  // F6 üyelik (modules/uyelik): üye listesi, şube bazlı istek listesi, kart basımı.
+  "uyeler",
+  "uyelik-istekleri",
+  "kart-basimi",
+] as const;
 type TabKey = (typeof TAB_KEYS)[number];
 
 // Sözlük: "personel" tek başına öğretmen anlamında kullanılmaz; üye türleri
@@ -59,6 +71,9 @@ const TABS: TabItem[] = [
   { key: "ogrenciler", label: "Öğrenciler", icon: "school" },
   { key: "personel", label: "Öğretmenler ve Diğer Personel", icon: "badge" },
   { key: "havuz", label: "Ayrılış Havuzu", icon: "pending_actions" },
+  { key: "uyeler", label: "Üyeler", icon: "badge" },
+  { key: "uyelik-istekleri", label: "Üyelik İstek Listesi", icon: "how_to_reg" },
+  { key: "kart-basimi", label: "Kart Basımı", icon: "print" },
 ];
 
 /** Ayrılış onayının ortak sonucu cümlesi (F1 eki 7: ayrılış kaydı silmez). */
@@ -94,6 +109,9 @@ export default function KisilerPage() {
         {active === "ogrenciler" && <OgrencilerSekmesi />}
         {active === "personel" && <PersonelSekmesi />}
         {active === "havuz" && <AyrilisHavuzu />}
+        {active === "uyeler" && <UyelerSekmesi />}
+        {active === "uyelik-istekleri" && <IstekListesi />}
+        {active === "kart-basimi" && <KartBasimi />}
       </div>
     </div>
   );

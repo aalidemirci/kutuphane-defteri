@@ -14,6 +14,7 @@ import AppShell from "./AppShell";
 import KurulumKapisi from "./KurulumKapisi";
 import AgDoktoruPage from "./modules/agkatalogu/AgDoktoruPage";
 import AyarlarPage from "./modules/ayarlar/AyarlarPage";
+import DolasimMasasiPage from "./modules/dolasim/DolasimMasasiPage";
 import GuvenlikKapisi from "./modules/guvenlik/GuvenlikKapisi";
 import YenidenBaslatEkrani from "./modules/guvenlik/YenidenBaslatEkrani";
 import HakkindaPage from "./modules/hakkinda/HakkindaPage";
@@ -28,6 +29,7 @@ import HizliKayitPage from "./modules/kutuphane/HizliKayitPage";
 import IceAktarmaPage from "./modules/kutuphane/IceAktarmaPage";
 import KatalogPage from "./modules/kutuphane/KatalogPage";
 import PanelPage from "./modules/panel/PanelPage";
+import GecikmisOdunclerPage from "./modules/uyelik/GecikmisOdunclerPage";
 
 export default function App() {
   return (
@@ -40,10 +42,16 @@ export default function App() {
           <KipKapisi>
             <Routes>
               <Route path="/" element={<PanelPage />} />
+              {/* Dolaşım Masası (F6, §7.3): ödünç, iade, kartsız ödünç ve istisna.
+                  Görevli kipinde aynı masa görevli ekranındadır (KipKapisi). */}
+              <Route path="/dolasim" element={<DolasimMasasiPage />} />
               {/* Kurulum sihirbazı — kapının izin verdiği tek rota (bkz. KurulumKapisi). */}
               <Route path="/kurulum" element={<KurulumPage />} />
               {/* Öğrenci + öğretmen sicili ve e-Okul içe aktarma. */}
               <Route path="/kisiler" element={<KisilerPage />} />
+              {/* Gecikmiş ödünçler, iade hatırlatma pusulası ve toplu liste (F6, E4);
+                  menüde yok, Genel Bakış kartından açılır. Yalnız yönetici kipinde. */}
+              <Route path="/gecikmis-oduncler" element={<GecikmisOdunclerPage />} />
               {/* Katalog: eser ve nüsha listeleri, eser ayrıntısı, edinimler ve bağışlar. */}
               <Route path="/katalog" element={<KatalogPage />} />
               <Route path="/katalog/eser/:id" element={<EserDetayPage />} />

@@ -1,12 +1,16 @@
 """Ağ Kataloğunun veri erişimi — authorizer, görünümler, parite (tasarım §5.3, §5.10-4/5/11).
 
-§5.10-4 **F6 ve F7'de yeniden koşar**: `Loan` ve `Membership` o fazlarda gelir.
-Bugün bu tablolar olmadığı için "doğrudan okunamaz" iki yoldan sınanır:
-(1) authorizer işlevine bu tabloların adıyla doğrudan sorulur; (2) aynı adlı
-tablolar ve onlara uzanan kötü bir görünüm taşıyan ayrı bir SQLite dosyası
-katalog bağlantısıyla açılır. F6'da gerçek tablolar gelince (2)'deki kurgu
-test veritabanının kendisiyle de koşar ve kaydedici authorizer anlık görüntüsü
-(aşağıda) hiç değişmemelidir.
+§5.10-4 **F6 ve F7'de yeniden koşar**. F5'te `Loan` ve `Membership` yoktu;
+"doğrudan okunamaz" iki yoldan sınanıyordu: (1) authorizer işlevine bu
+tabloların adıyla doğrudan sorulur; (2) aynı adlı tablolar ve onlara uzanan kötü
+bir görünüm taşıyan ayrı bir SQLite dosyası katalog bağlantısıyla açılır.
+
+F6 eki (24.09.2026): gerçek tablolar geldi (`kutuphane_membership`,
+`kutuphane_loan`, `kutuphane_issuedcard`, `kutuphane_cardrevocation`). Test
+veritabanının kendisinde, VERİ DOLUYKEN bu tabloların katalog bağlantısından
+okunamadığı ayrıca sınanır ve kaydedici authorizer anlık görüntüsü
+(`_genis_kurgu` artık üye ve ödünç de kurar) DEĞİŞMEDEN geçer: görünümler
+üyelik ve ödünç tablolarına hiç uzanmaz.
 """
 
 from __future__ import annotations
@@ -33,6 +37,8 @@ from apps.kutuphane.models import (
     ResourceType,
     Work,
 )
+from apps.kutuphane.services import circulation, memberships
+from apps.kutuphane.tests.dolasim_ortak import odunc_ver, ogrenci, uye
 from apps.kutuphane.tests.ortak import bolum, edinim, eser, nusha
 from katalog import veri
 from katalog.tests.conftest import KatalogIstemcisi
@@ -93,6 +99,10 @@ def _db_yolu() -> Path:
         (OKUMA, "kutuphane_work", "title", None, DENY),
         (OKUMA, "kutuphane_loan", "id", None, DENY),
         (OKUMA, "kutuphane_membership", "id", None, DENY),
+        # F6: kart tabloları da (kişisiz olsalar bile) okunamaz.
+        (OKUMA, "kutuphane_issuedcard", "card_no_index", None, DENY),
+        (OKUMA, "kutuphane_cardrevocation", "card_no_index", "kd_katalog_nusha", DENY),
+        (OKUMA, "kutuphane_loan", "due_date", "kd_katalog_nusha", DENY),
         (OKUMA, "sqlite_master", "sql", None, DENY),
         # Geri kalan her şey → RED
         (sqlite3.SQLITE_PRAGMA, "query_only", "OFF", None, DENY),
@@ -317,6 +327,41 @@ def test_odunc_ve_uyelik_tablolari_dogrudan_da_gorunumden_de_okunamaz(
         conn.execute(sql).fetchall()
 
 
+def _uye_ve_odunc_kurgusu() -> None:
+    """Gerçek F6 tablolarını doldurur: öğrenci üye, açık ve iade edilmiş ödünç,
+    yenilenmiş (iptal edilmiş) kart."""
+    uyelik = uye(ogrenci(first_name="Katalogdenemeuye"))
+    memberships.renew_card(uyelik)
+    odunc_ver(uyelik)
+    iade = odunc_ver(uyelik)
+    circulation.return_copy(copy=iade.copy)
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT * FROM kutuphane_loan",
+        "SELECT due_date FROM kutuphane_loan",
+        "SELECT count(*) FROM kutuphane_loan",
+        "SELECT * FROM kutuphane_membership",
+        "SELECT card_no FROM kutuphane_membership",
+        "SELECT card_no_index FROM kutuphane_membership",
+        "SELECT * FROM kutuphane_issuedcard",
+        "SELECT * FROM kutuphane_cardrevocation",
+        "SELECT e.baslik FROM kd_katalog_eser e JOIN kutuphane_loan l ON l.id = e.id",
+    ],
+)
+def test_gercek_uyelik_ve_odunc_tablolari_katalog_baglantisindan_okunamaz(sql: str) -> None:
+    """F6: tablolar artık gerçek ve doludur; katalog bağlantısı yine okuyamaz."""
+    _uye_ve_odunc_kurgusu()
+    with connection.cursor() as imlec:  # kurgu gerçekten doldu (Django bağlantısı)
+        imlec.execute("SELECT count(*) FROM kutuphane_loan")
+        assert imlec.fetchone()[0] == 2
+
+    with pytest.raises(veri.VeriHatasi), veri.baglan(_db_yolu()) as conn:
+        conn.execute(sql).fetchall()
+
+
 def test_kurguda_izinli_okuma_gecer(tmp_path: Path) -> None:
     """Kurgu doğru: izin listesindeki sütunu okuyan (kümedeki adlı) görünüm geçer."""
     yol = tmp_path / "yarin.sqlite3"
@@ -402,6 +447,10 @@ def _genis_kurgu() -> list[int]:
         sira=1,
         hesaplanma="2026-09-20",
     )
+    # F6: üye ve ödünç verisi DOLUYKEN görünümlerin okuduğu küme değişmez.
+    uyelik = uye(ogrenci())
+    odunc_ver(uyelik, nusha(w1))
+    circulation.return_copy(copy=odunc_ver(uyelik, nusha(w3)).copy)
     return [w.pk for w in (w1, w2, w3, w4, w5)]
 
 
@@ -455,6 +504,12 @@ def test_izin_listesi_yalniz_katalog_tablolarini_ve_kisisiz_sutunlari_kapsar() -
     [
         "kutuphane_loan",  # yalın "loan" nüsha durumu 'ON_LOAN'da da geçer
         "membership",
+        "issuedcard",
+        "cardrevocation",
+        "card_no",
+        "due_date",
+        "override",
+        "cardless",
         "acquisition",
         "donation",
         "commission",

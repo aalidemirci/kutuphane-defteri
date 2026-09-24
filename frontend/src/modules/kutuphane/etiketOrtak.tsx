@@ -206,7 +206,18 @@ export function TabakaIzgarasi({
   onBaslangic,
   adet,
 }: {
-  sablon: EtiketSablonu;
+  /** Yalnız ızgara ölçüleri gerekir (üye kartı şablonu da kullanır — F6). */
+  sablon: Pick<
+    EtiketSablonu,
+    | "labels_per_sheet"
+    | "cols"
+    | "page_margin_left"
+    | "page_margin_top"
+    | "label_width"
+    | "label_height"
+    | "gutter_x"
+    | "gutter_y"
+  >;
   baslangic: number;
   onBaslangic: (hucre: number) => void;
   /** Basılacak etiket sayısı (ilk tabakada dolacak hücreleri vurgulamak için). */

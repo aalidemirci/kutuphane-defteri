@@ -192,7 +192,12 @@ function Rozet({ ikon, children }: { ikon: string; children: string }) {
 // Kalibrasyon
 // ---------------------------------------------------------------------------
 
-function KalibrasyonPaneli({ sablon }: { sablon: EtiketSablonu }) {
+/**
+ * Bir şablonun yazıcı kalibrasyonu (sayfa + kayıtlı yazıcılar). Yalnız şablonun
+ * kimliği ve adı gerekir: üye kartı şablonu da (Kişiler → Kart Basımı, F6) aynı
+ * paneli kullanır.
+ */
+export function KalibrasyonPaneli({ sablon }: { sablon: Pick<EtiketSablonu, "id" | "name"> }) {
   const confirm = useConfirm();
   const snackbar = useSnackbar();
   const [tazeleme, setTazeleme] = useState(0);
@@ -344,7 +349,7 @@ function KalibrasyonFormu({
   onKapat,
   onKaydedildi,
 }: {
-  sablon: EtiketSablonu;
+  sablon: Pick<EtiketSablonu, "id" | "name">;
   kalibrasyon: YaziciKalibrasyonu | null;
   onKapat: () => void;
   onKaydedildi: (kayit: YaziciKalibrasyonu) => void;

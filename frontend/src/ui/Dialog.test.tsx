@@ -3,11 +3,12 @@
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import Button from "./Button";
 import Dialog from "./Dialog";
+import TextField from "./TextField";
 
 /** Gerçek kullanım kalıbı: bir buton dialogu açar, dialog kendini kapatır. */
 function AcKapa() {
@@ -127,4 +128,93 @@ it("Tab odak tuzağı: son öğeden ilkine, Shift+Tab ilkinden sonuncuya sarar (
   // İlk öğedeyken Shift+Tab → tekrar sona sarar.
   await user.keyboard("{Shift>}{Tab}{/Shift}");
   expect(son).toHaveFocus();
+});
+
+/** Parola penceresi kalıbı: açılışta parola alanı odakta olmalı (`initialFocusRef`). */
+function ParolaPenceresi({ alanliMi = true }: { alanliMi?: boolean }) {
+  const [acik, setAcik] = useState(false);
+  const [parola, setParola] = useState("");
+  const alan = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <button type="button" onClick={() => setAcik(true)}>
+        Aç
+      </button>
+      {/* onClose her render'da YENİ işlevdir: yazı yazarken efekt yeniden koşmamalı. */}
+      <Dialog open={acik} onClose={() => setAcik(false)} title="Parola" initialFocusRef={alan}>
+        {alanliMi && (
+          <TextField
+            ref={alan}
+            label="Yönetici parolası"
+            type="password"
+            value={parola}
+            onChange={(e) => setParola(e.target.value)}
+          />
+        )}
+        <button type="button">Başka</button>
+      </Dialog>
+    </>
+  );
+}
+
+describe("Dialog — ilk odak (initialFocusRef)", () => {
+  it("açılışta verilen alan odaktadır, kapanışta odak açan öğeye döner", async () => {
+    const user = userEvent.setup();
+    render(<ParolaPenceresi />);
+    const acici = screen.getByRole("button", { name: "Aç" });
+
+    await user.click(acici);
+    expect(screen.getByLabelText("Yönetici parolası")).toHaveFocus();
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(acici).toHaveFocus();
+  });
+
+  it("yazı yazarken odak alanda kalır (efekt yalnız açılışta koşar)", async () => {
+    const user = userEvent.setup();
+    render(<ParolaPenceresi />);
+    await user.click(screen.getByRole("button", { name: "Aç" }));
+
+    await user.keyboard("Gizli-Parola-1");
+
+    const alan = screen.getByLabelText("Yönetici parolası");
+    expect(alan).toHaveValue("Gizli-Parola-1");
+    expect(alan).toHaveFocus();
+  });
+
+  it("ref boşsa (alan basılmadı) odak panele alınır", async () => {
+    const user = userEvent.setup();
+    render(<ParolaPenceresi alanliMi={false} />);
+    await user.click(screen.getByRole("button", { name: "Aç" }));
+    expect(screen.getByRole("dialog")).toHaveFocus();
+  });
+
+  // Kaynak taraması: `autoFocus` Dialog içinde etkisizdir (açılış efekti odağı panele
+  // alır) ve açan öğenin kaydını bozar (kapanışta odak geri verilemez). İlk odak
+  // `initialFocusRef` ile verilir. Tarama bütün kaynak ağacını okur; süre açıkça
+  // verilir (format.test.ts'teki tarih taramasıyla aynı kalıp).
+  it("ui/Dialog kullanan dosyalarda autoFocus yok", async () => {
+    const { readdirSync, readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+
+    const suclular: string[] = [];
+    const tara = (dizin: string): void => {
+      for (const girdi of readdirSync(dizin, { withFileTypes: true })) {
+        const yol = join(dizin, girdi.name);
+        if (girdi.isDirectory()) {
+          tara(yol);
+        } else if (/\.tsx$/.test(girdi.name) && !girdi.name.includes(".test.")) {
+          const metin = readFileSync(yol, "utf8");
+          const dialogKullanir = /from "(\.\.\/)*(ui\/|\.\/)Dialog"/.test(metin);
+          if (dialogKullanir && /\sautoFocus(\s*=|\s*\/?>|\s*$)/m.test(metin)) {
+            suclular.push(yol);
+          }
+        }
+      }
+    };
+    tara(join(__dirname, ".."));
+
+    expect(suclular).toEqual([]);
+  }, 60_000);
 });

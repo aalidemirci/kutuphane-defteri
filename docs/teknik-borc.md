@@ -315,6 +315,51 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   Önekli ama kümede olmayan ad (CTE, ileride eklenecek tablo) authorizer'da
   reddedilir (§14.1 F5 ekleri 20). Katalog kullanıcı girdisinden SQL üreten bir yol
   kazanırsa bu kalem yeniden açılır.
+- **TB32 — Son sınıflara ayrı son ödünç tarihi görevliye sınıf düzeyini sezdirir (F6,
+  tasarım §8.3; 24.09.2026):** `last_loan_date_graduating` tanımlıysa iki tarih
+  arasındaki günlerde son sınıf öğrencisinin ödüncü reddedilir, öbür sınıflarınki
+  verilir. Görevli iletisi tarihsizdir ve iki ret aynı metindir ("Yıl sonu son ödünç
+  tarihi geçti — …"; §14.1 F6 ekleri 15), ama masadaki görevli retin o günlerde
+  yalnız bazı öğrencilere geldiğini görerek kartın sahibinin son sınıfta olduğunu
+  sezebilir. Kişi masadadır ve bilgi yaşından da çoğu zaman bellidir; kapatmanın tek
+  yolu son sınıf tarihini kaldırmaktır. Azaltma: ayar isteğe bağlıdır, masa kartı
+  görevliye ekranda görülenin paylaşılmayacağını söyler.
+- **TB33 — Veri dizini de kaybolursa yedekten sonra verilen kart numaraları yeniden
+  çekilebilir (F6, tasarım §7.1, D21; 24.09.2026):** geri yükleme `IssuedCard`'ı geri
+  sarar; güvenceyi veri dizinindeki yalnız-eklenen verilmiş kart defteri
+  (`verilmis-kartlar.txt`, kişisiz kör indeksler) taşır (§14.1 F6 ekleri 18). Defter
+  yedeğe girmez (geri yüklemeden etkilenmemesi için). Bilgisayar değişip program yeni
+  veri dizinine yalnız yedekten kurulursa defter yoktur; yedekten sonra basılmış
+  kartların numarası 10⁶'lık uzaydan yeniden çekilebilir (her yeni kartta yaklaşık
+  "kayıp kart sayısı / 10⁶" olasılıkla). Azaltma: taşıma kontrol listesinde yedek
+  eski bilgisayarda taşımadan hemen önce alınır (`docs/kurulum.md` §7), yani
+  `IssuedCard` güncel gelir; risk yalnız eski bir yedeğin boş veri dizinine geri
+  yüklendiği arıza yolundadır. Geri yüklemeden sonra tanınmayan kartlar toplanır ve
+  üyelik yeniden açılır (kılavuz). DEK değişirse (güvenlik dosyasını
+  sıfırlayıp kuruluma dönmek) defterdeki indeksler eşleşmez; o yol yalnız boş
+  veritabanında açıktır.
+- **TB34 — Görevli, kartını bildiği üyenin elindeki kitapları barkod deneyerek
+  çıkarabilir (F6, tasarım §7.3, §4.4; 25.09.2026):** görevli kipinde ödünçteki bir
+  kitap okutulunca masa "Bu kitap zaten bu üyede." ile "Bu kitap başka bir üyede."
+  arasında ayrım yapar (§7.3 tablosu aynen; §14.1 F6 ekleri 6, 26). Bir üyenin kartını
+  ya da kart numarasını bilen görevli o kartı okutup kitapların barkodlarını tek tek
+  denerse, "bu üyede" iletisinden o üyenin elindeki kitapları çıkarabilir. Ret yazma
+  yapmaz ve kart geçerli olduğu için hiçbir sayaç artmaz. Kitap adları durum
+  sorgusundan zaten açıktır; açığa çıkan, kitabın o üyede olduğudur. **Azaltma:**
+  görevli ayrımı yalnız engeli olmayan üyede görür: görevli kipinde üyeye bağlı
+  engeller (üyelik, yıl sonu, gecikme, sayı sınırı) nüshanın kimde olduğundan ÖNCE
+  koşar, gecikmesi olan ya da sınırı dolu üyede her kitap aynı reddi alır; gecikmiş
+  kitap bu yoldan çıkarılamaz (F6 ekleri 14) · GA-7 kart denetimi: kart numarası
+  rastgele ve sağlamalıdır, iki kilit kuralı numara denemeyi durdurur; görevli
+  başkasının kartını tahminle bulamaz, kartın kendisine ya da numarasına sahip olması
+  gerekir (§4.3, F6 ekleri 19) · görevli öğrencilerin müdürlükçe yazılı
+  görevlendirilmesi ve gizlilik bilgilendirmesi (S7) · masa kartındaki gizlilik
+  uyarısı ("kimin hangi kitabı aldığını söylemeyin", E19). Aydınlatma metni
+  görevlinin okuttuğu kitabın o üyede olup olmadığını gördüğünü söyler (F6 ekleri
+  24). Tam kapanış görevli kipinde tek ret kodu olurdu ("Bu kitap ödünçte. Önce iade
+  alınsın mı?" + yalnız "İade al"); bu, §7.3'ün görevliye verdiği "başka üyede →
+  iade + uyarı" akışını değiştirirdi. **Karar kullanıcınındır (25.09.2026):** ayrım
+  korunur, kalem kabul edilmiş kalan risktir.
 
 ## Kapanan
 

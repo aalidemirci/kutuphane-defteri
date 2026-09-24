@@ -291,6 +291,31 @@ describe("GuvenlikAyarlari", () => {
     expect(await screen.findByText("Yönetici parolası değiştirildi.")).toBeInTheDocument();
   });
 
+  // Parola pencereleri açılınca parola alanı odaktadır (`ui/Dialog` `initialFocusRef`;
+  // tasarım §14.1 F6 ekleri 23).
+  it("parola değiştirme penceresi açılınca “Mevcut parola” alanı odaktadır", async () => {
+    const kullanici = userEvent.setup();
+    guvenlik.durum.mockResolvedValue(PAROLALI);
+    ekranaBas();
+
+    await kullanici.click(await screen.findByRole("button", { name: "Parolayı değiştir" }));
+
+    expect(screen.getByLabelText(/Mevcut parola/)).toHaveFocus();
+  });
+
+  it("kurtarma anahtarı yenileme penceresi açılınca parola alanı odaktadır", async () => {
+    const kullanici = userEvent.setup();
+    guvenlik.durum.mockResolvedValue(PAROLALI);
+    ekranaBas();
+
+    await kullanici.click(
+      await screen.findByRole("button", { name: "Kurtarma anahtarını yenile" }),
+    );
+    const diyalog = await screen.findByRole("dialog", { name: "Kurtarma anahtarı yenilensin mi?" });
+
+    expect(within(diyalog).getByLabelText(/^Yönetici parolası/)).toHaveFocus();
+  });
+
   it("eşleşmeyen yeni parola tekrarında istek atmaz", async () => {
     const kullanici = userEvent.setup();
     guvenlik.durum.mockResolvedValue(PAROLALI);

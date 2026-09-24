@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <title>Masa Kartı</title>
+  {% comment %}Masa kartı (E19; tasarım §10, KVKK md. 12/1) — bağlam
+  apps/kutuphane/dolasim_belgeleri.py::desk_card_context'ten gelir.
+
+  Kütüphane masasında görev yapan öğrenci ve personel için TEK SAYFA kullanım
+  ve gizlilik uyarısı. Kişisel veri taşımaz. İletiler masa ekranındaki
+  metinlerle birebirdir (tasarım §4.4, §7.3; sözlük §5): görevli yalnız ad ve
+  kalan ödünç hakkını görür; gecikmede "Ödünç verilemiyor — kütüphane
+  yöneticisine yönlendirin."; iptal kartta "İptal edilmiş kart — kütüphane
+  yöneticisine yönlendirin."; kartsız ödünç yalnız yönetici kipindedir.
+  "Kilitle" görevli kipinde parolasızdır, kilidi yalnız yönetici parolası açar.
+
+  text-transform YOK (başlıklar doğrudan büyük harfle). Sayfa bütçesi: tek sayfa
+  (test_dolasim_belgeleri.py).{% endcomment %}
+  <style>
+    {% include "print/_design.css" %}
+    @page { size: A4 portrait; margin: 1.4cm 1.8cm 1.4cm 1.8cm; }
+    body { font-family: "DejaVu Sans", sans-serif; color: var(--pr-text); margin: 0;
+           font-size: 12.5pt; line-height: 1.4; }
+    .ust { text-align: center; }
+    .okul { font-size: 11pt; font-weight: bold; color: var(--pr-ink); }
+    .baslik { font-size: 26pt; font-weight: bold; color: var(--pr-ink); margin-top: 6pt;
+              letter-spacing: 1pt; }
+    .alt-baslik { font-size: 10.5pt; color: var(--pr-secondary); margin-top: 2pt; }
+    .cizgi { height: 2pt; background: var(--pr-ink); margin: 10pt 0 4pt; }
+    .bolum { margin-top: 12pt; break-inside: avoid; page-break-inside: avoid; }
+    .bolum-baslik { font-size: 14pt; font-weight: bold; color: var(--pr-ink);
+                    border-bottom: 1.5pt solid var(--pr-ink); padding-bottom: 2pt; }
+    ol, ul { margin: 6pt 0 0 0; padding-left: 18pt; }
+    li { margin-bottom: 5pt; }
+    .ileti { font-weight: bold; }
+    .dipnot { margin-top: 16pt; font-size: 8.5pt; color: var(--pr-muted); text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="ust">
+    {% if okul %}<div class="okul">{{ okul }}</div>{% endif %}
+    <div class="baslik">{{ document_title }}</div>
+    <div class="alt-baslik">Kütüphane masasında görevli öğrenci ve personel için</div>
+  </div>
+  <div class="cizgi"></div>
+
+  <div class="bolum">
+    <div class="bolum-baslik">MASADA NASIL ÇALIŞILIR</div>
+    <ol>
+      <li><b>Ödünç:</b> Önce üyenin kartını, sonra kitabın kütüphane etiketini okutun. Ekranda üyenin yalnız adı ve kalan ödünç hakkı görünür.</li>
+      <li><b>İade:</b> Kitabın kütüphane etiketini okutun; kart gerekmez.</li>
+      <li>Kitabın arkasındaki ISBN barkodunu değil, kütüphane etiketini okutun.</li>
+      <li>Ekranda <span class="ileti">“Ödünç verilemiyor — kütüphane yöneticisine yönlendirin.”</span> ya da <span class="ileti">“İptal edilmiş kart — kütüphane yöneticisine yönlendirin.”</span> yazarsa nedenini sormayın; üyeyi kütüphane yöneticisine yönlendirin.</li>
+      <li>Kartı yanında olmayan üyeye ödünç vermeyin, kütüphane yöneticisine yönlendirin. Bir kartla yalnız kartın sahibine ödünç verilir.</li>
+      <li>Program yönetici parolası isterse kütüphane yöneticisini çağırın. Yönetici parolası görevlide bulunmaz.</li>
+    </ol>
+  </div>
+
+  <div class="bolum">
+    <div class="bolum-baslik">GİZLİLİK</div>
+    <ul>
+      <li>Ekranda gördüğünüz adları ve bilgileri kimseyle paylaşmayın; kimin hangi kitabı aldığını söylemeyin.</li>
+      <li>Ekranın fotoğrafını çekmeyin, ekran görüntüsü almayın, bilgileri bir yere yazmayın.</li>
+      <li>Masayı boş bırakmanız gerekirse ekranın üstündeki <span class="ileti">“Kilitle”</span> düğmesine basın. Kilidi yalnız kütüphane yöneticisi açar.</li>
+      <li>Görevinizi bitirdikten sonra da masada öğrendiklerinizi başkasına anlatmayın.</li>
+    </ul>
+  </div>
+
+  <div class="dipnot">Bu kart, kişisel verilerin korunması için alınan idari tedbirlerdendir (6698 sayılı Kişisel Verilerin Korunması Kanunu md. 12/1).</div>
+</body>
+</html>

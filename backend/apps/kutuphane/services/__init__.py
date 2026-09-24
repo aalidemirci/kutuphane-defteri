@@ -10,11 +10,16 @@ Alt modüller (OYS'nin tek `services.py` dosyası bölündü — tasarım §12):
 - `catalog`: bölüm, eser, nüsha ve edinim yazma yolları;
 - `commissions`: komisyon kararı + karar türü denetimi (D7);
 - `donations`: bağış ön kaydı ve karardan sonra toplu kataloglama;
-- `policy`: kütüphane politikası (tek satır) okuma ve yazma.
+- `policy`: kütüphane politikası (tek satır) okuma ve yazma;
+- `memberships` (F6): üyelik, kart no (asla yeniden kullanılmaz), kartı yenile,
+  sonlandırma ve kişi kayıt defterlerine kaydolan kancalar;
+- `circulation` (F6): ödünç ve iade — §9 dolaşım kurallarının tek yeri;
+- `yonetici_kipi` (F6): "yalnız yönetici kipinde" işlerin servis katmanı kapısı.
 
 Hatalar `django.core.exceptions.ValidationError` ile yükseltilir; DRF katmanında
 `shared.exceptions.kd_exception_handler` bunu 400'e ve `{code, message, fields}`
-gövdesine çevirir.
+gövdesine çevirir. Dolaşım kuralı retleri `circulation.DolasimReddi` (400 + kararlı
+`code`), yönetici kipi retleri `yonetici_kipi.KipYetkisiz`dir (403 `kip_yetkisiz`).
 """
 
 from __future__ import annotations

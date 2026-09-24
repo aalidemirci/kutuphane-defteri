@@ -24,6 +24,8 @@ interface NavItem {
 // testiyle sabittir.
 const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Genel Bakış", icon: "space_dashboard" },
+  // F6: masa işi en sık yapılan iştir; Genel Bakış'ın hemen altında durur.
+  { to: "/dolasim", label: "Dolaşım Masası", icon: "sync_alt" },
   { to: "/kisiler", label: "Kişiler", icon: "group" },
   { to: "/katalog", label: "Katalog", icon: "menu_book" },
   { to: "/ayarlar", label: "Ayarlar", icon: "settings" },
@@ -34,7 +36,9 @@ const NAV_ITEMS: NavItem[] = [
 // Düzeninde tam ad. Bir sayfanın h1'i değişirse burası da değişir; eşlik
 // `App.test.tsx` "üst çubuk başlığı" testiyle korunur.
 const PAGE_TITLES: Array<[prefix: string, title: string]> = [
+  ["/dolasim", "Dolaşım Masası"],
   ["/kisiler", "Kişiler"],
+  ["/gecikmis-oduncler", "Gecikmiş Ödünçler"],
   // Sıra anlamlıdır: alt sayfalar köke göre ÖNCE gelir ("/katalog/eser/3"
   // "/katalog" desenine de uyar, önce kendi başlığını bulmalıdır.)
   ["/katalog/eser", "Eser Ayrıntısı"],

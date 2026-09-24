@@ -10,7 +10,7 @@
 // | Tür | Biçim | Örnek |
 // |---|---|---|
 // | Nüsha barkodu (kütüphane etiketi) | 10 hane: `YYYY` + 6 hane sıra | `2026000123` |
-// | Üye kartı | 8 hane: `9` + 7 hane | `94718263` |
+// | Üye kartı | 8 hane: `9` + 6 rastgele + 1 sağlama (Luhn) | `94718263` |
 // | Kitabın ISBN barkodu | 13 hane, 978/979 | `9789750812345` |
 //
 // Kalan belirsizlik (TB22, backend ile aynı): ilk dört hanesi 2000-2999'a düşen

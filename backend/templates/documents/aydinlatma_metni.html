@@ -1,0 +1,132 @@
+{% extends "documents/base.html" %}
+{% comment %}Kütüphane aydınlatma metni (E13; tasarım §3 KVKK, §6.4; teknik borç TB16) —
+bağlam apps/kutuphane/dolasim_belgeleri.py::privacy_notice_context'ten gelir.
+
+6698 sayılı Kanun md. 10/1'in ve Aydınlatma Tebliği md. 4'ün asgari unsurları
+sırasıyla: (a) veri sorumlusu, (b) amaçlar, (c) kimlere ve hangi amaçla
+aktarılabileceği, (ç) toplama yöntemi ve hukuki sebep, (d) md. 11 hakları.
+Tebliğ md. 5: sade dil, belirli amaç, yöntemin otomatik olup olmadığı,
+yanıltıcı bilgi yok. Tasarım §3'ün ek maddeleri: masadaki öğrenci görevliler
+dahil kimlerin gördüğü, Bakanlık sistemine geçişte taşınabilirlik, saklama.
+
+SAKLAMA BUGÜNKÜ GERÇEĞİ SÖYLER (TB16): ayrılış kaydı silmez — üye OLMAYAN
+kişininkini de —, saklama taraması henüz yoktur; üye olmuş kişinin kaydı
+kullanıcı "Sil"iyle de silinemez (apps/okul/services/persons.py::_ensure_deletable).
+Yedek süreleri desktop/backup.py sabitleridir; geri yüklemede kenara alınan
+`db-onceki-*` kopyası da anılır. Saklama taraması (F11) gelince bu bölüm değişir.
+
+ŞİFRELEME CÜMLESİ TB1'İ SÖYLER: adlar, okul no, kart no ve gerekçe metinleri
+şifreli; sınıf/şube, üye türü, eser ve ödünç tarihleri düzdür (Tebliğ md. 5:
+yanıltıcı bilgi yok). Görevlinin gördüğü: ad + kalan hak; bir kitabın kartı
+okutulan üyede olduğu masa iletisinden anlaşılır ("Bu kitap zaten bu üyede").
+
+Kanun alıntıları (“…” içindekiler ve md. 11 bentleri) docs/mevzuat/6698-kvkk.md
+metniyle BİREBİRDİR — test_dolasim_belgeleri.py sınar. Konum dili: program
+Bakanlık otomasyon sisteminin yerine geçmez, "yerel araç"tır (CLAUDE.md §2-13).
+text-transform YOK. Sayfa bütçesi: en uzun okul adı ve başvuru adresiyle en çok
+iki sayfa.{% endcomment %}
+{% block extra_style %}
+<style>
+  @page { margin: 1.2cm 1.6cm 1.3cm 1.6cm; }
+  body { font-size: 8.8pt; }
+  .doc-title { margin: 7pt 0 1pt; }
+  .doc-subtitle { margin-bottom: 4pt; }
+  .section { margin-top: 4pt; }
+  .section-title { font-size: 8.8pt; }
+  .para { margin: 2pt 0; font-size: 8.6pt; line-height: 1.32; }
+  .kisa { margin: 1.5pt 0 0 13pt; padding: 0; font-size: 8.5pt; line-height: 1.3; }
+  .kisa li { margin-bottom: 1pt; }
+  .bentler { margin: 2pt 0 0 0; padding: 0; list-style: none; font-size: 8.4pt; line-height: 1.3; }
+  .bentler li { margin: 0 0 1pt 0; padding-left: 13pt; text-indent: -13pt; }
+  .alinti { font-style: italic; }
+  .signature { margin-top: 10pt; }
+  .signature .date { margin-bottom: 14pt; }
+</style>
+{% endblock %}
+{% block content %}
+  <div class="doc-title">{{ document_title }}</div>
+  <div class="doc-subtitle">Okul kütüphanesinin üyelik ve ödünç işleri · 6698 sayılı Kişisel Verilerin Korunması Kanunu md. 10</div>
+
+  <p class="para">{{ okul }} Müdürlüğü olarak, okul kütüphanesinin üyelik ve ödünç işlerinde işlenen kişisel verileriniz hakkında sizi bilgilendiririz. Bu işler, okulun kütüphane işlerini yürüttüğü yerel araç olan Kütüphane Defteri programıyla yürütülür; program okulun kütüphane bilgisayarında çalışır.</p>
+
+  <div class="section">
+    <div class="section-title">1. VERİ SORUMLUSU</div>
+    <p class="para">Millî Eğitim Bakanlığı — {{ okul }} Müdürlüğü{% if okul_yeri %} ({{ okul_yeri }}){% endif %}.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">2. İŞLENEN KİŞİSEL VERİLER</div>
+    <ul class="kisa">
+      <li>Öğrenci: ad, soyad, okul numarası, sınıf ve şube.</li>
+      <li>Öğretmen ve diğer personel: ad, soyad, üye türü (öğretmen ya da diğer personel).</li>
+      <li>Üyelik: kart numarası, üyelik isteğinin, başlangıcının ve sona ermesinin tarihi, sona erme nedeni.</li>
+      <li>Ödünç: hangi kaynağın hangi gün verildiği, iade tarihi ve iadenin alındığı gün; gecikmesi olan üyeye gerekçeli istisnayla ya da kartsız ödünç verildiyse seçilen gerekçe ve açıklaması.</li>
+    </ul>
+    <p class="para">T.C. kimlik numarası, veli bilgisi, cinsiyet, fotoğraf, unvan ve branş bu programda tutulmaz.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">3. İŞLEME AMAÇLARI</div>
+    <ul class="kisa">
+      <li>Kütüphane üyeliğinin açılması, üye kartının düzenlenmesi ve üyeliğin sona erdirilmesi.</li>
+      <li>Kaynakların ödünç verilmesi, iadesinin alınması ve iade tarihinin izlenmesi.</li>
+      <li>İadesi geciken kaynaklar için kişiye özel hatırlatma yapılması.</li>
+      <li>Okuldan ayrılan kişinin ödünç aldığı kaynağın kütüphaneye iadesinin sağlanması.</li>
+      <li>Kişisel veri içermeyen sayısal istatistik (ör. toplam ödünç sayısı) hazırlanması.</li>
+    </ul>
+    <p class="para">Ödünç kaydı yalnız bir kaynağın kimde olduğunu ve ne zaman döneceğini gösterir. Bu kayıttan kişi bazında konu dağılımı çıkarılmaz, kayıt not ya da başarı değerlendirmesinde kullanılmaz, öğrenci bazında ödünç sayısı öğretmenlere ya da e-Okul'a aktarılmaz.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">4. HUKUKİ SEBEP VE TOPLAMA YÖNTEMİ</div>
+    <p class="para">Kişisel verileriniz 6698 sayılı Kanun md. 5/2-ç'deki <span class="alinti">“{{ kvkk_5_2_c }}”</span> şartına dayanılarak işlenir. Yükümlülük Okul Kütüphaneleri Yönetmeliği'nden doğar: ödünç verme işlemlerinin yönetilmesi ve iadenin takibi (md. 8/1-f), ödünç verme servisi ve üyelik (md. 16 ve 17), ödünç alma süresi, iadesi yapılmayan kitapların takibi ve okuldan ayrılışta iadenin sağlanması (md. 18), kullanıcı kartı (md. 20) ve ödünç verme işlemi (md. 23). Yönetmelik bu işlerin Bakanlık otomasyon sistemi üzerinden yürütülmesini öngörür; Kütüphane Defteri o sistemin yerine geçmez, okulun bu işleri yürüttüğü yerel araçtır.</p>
+    <p class="para">Öğrenci ve personel bilgileri e-Okul'dan alınan listelerin programa aktarılmasıyla ya da kütüphane yöneticisinin elle girmesiyle; ödünç ve iade bilgileri kütüphane masasında üye kartının ve kitabın kütüphane etiketinin okutulmasıyla, kısmen otomatik yolla elde edilir.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">5. KİMLER GÖRÜR, KİMLERE AKTARILIR</div>
+    <ul class="kisa">
+      <li>Veriler okulun kütüphane bilgisayarında durur. Ad, soyad, okul numarası, kart numarası ve gerekçe açıklamaları şifrelidir; sınıf ve şube, üye türü, verilen kaynak ve ödünç tarihleri arama ve sayım için şifresiz tutulur ve bilgisayara erişimin sınırlanmasıyla korunur. Program kişisel veriyi internete, buluta ya da başka bir kuruma göndermez; yurt içinde ya da yurt dışında üçüncü kişilere aktarım yapılmaz.</li>
+      <li>Kütüphane yöneticisi (kütüphaneci ya da kütüphaneden sorumlu öğretmen) ve okul müdürlüğünce yönetici parolası verilen personel kayıtların tamamını görür.</li>
+      <li>Kütüphane masasında görevli olarak çalışan öğrenci ve personel, okutulan kartın sahibinin yalnız adını ve kalan ödünç hakkını görür; sınıfı, ödünç geçmişini ve gecikme bilgisini görmez, okuttuğu kitabın o üyede olup olmadığını görür.</li>
+      <li>Okul ağındaki Ağ Kataloğu kişisel veri göstermez; yalnız kaynakların künyesini ve durumunu gösterir.</li>
+      <li>İade hatırlatma pusulası kişiye özeldir; kütüphane yöneticisi ya da sınıf rehber öğretmeni eliyle verilir.</li>
+      <li>Bakanlık otomasyon sistemi okulda kullanıma girdiğinde kayıtlar, Yönetmelik gereği bu işlerin yürütüleceği o sisteme okul müdürlüğünce aktarılabilir.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <div class="section-title">6. SAKLAMA</div>
+    <ul class="kisa">
+      <li>Üyelik sona erdiğinde (okuldan ayrılma, üyenin isteği ya da yanlış kayıt) kişinin kaydı, üyeliği ve ödünç kayıtları silinmez; iade edilmemiş kaynak varsa izlenebilir.</li>
+      <li>Programın bu sürümünde süresi dolan kayıtları silen ya da anonim hâle getiren saklama taraması yoktur; okuldan ayrılan kişilerin kayıtları (üye olsunlar ya da olmasınlar) ile üyelik ve ödünç kayıtları şimdilik süre sınırı olmadan saklanır, saklama süreleri belirlendiğinde bu metin yenilenir. Hiç üye olmamış ve açık yükümlülüğü olmayan kişinin kaydını kütüphane yöneticisi elle silebilir.</li>
+      <li>Programın kendiliğinden aldığı şifreli yedekler kütüphane bilgisayarında saklanır: günlük yedekler {{ yedek_gun }} gün, program güncellemesinden önce alınan yedekler son {{ yedek_guncelleme }} güncellemeye kadar. Geri yüklemede önceki veritabanı da bilgisayarda ayrı bir dosya olarak kalır; onu kütüphane yöneticisi siler. Kütüphane yöneticisinin indirdiği yedeklerin (ör. taşınabilir bellekteki kopyaların) saklanması ve imhası okul müdürlüğünün sorumluluğundadır.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <div class="section-title">7. HAKLARINIZ</div>
+    <p class="para">6698 sayılı Kanun md. 11 uyarınca veri sorumlusuna başvurarak kendinizle ilgili;</p>
+    <ul class="bentler">
+      {% for h in haklar %}<li>{{ h.bent }}) <span class="alinti">{{ h.metin }}</span></li>
+      {% endfor %}
+    </ul>
+    <p class="para">haklarına sahipsiniz.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">8. BAŞVURU</div>
+    <p class="para">Kanun md. 13/1: <span class="alinti">“{{ kvkk_13_1 }}”</span> Başvurunuzu yazılı olarak {{ okul }} Müdürlüğüne iletebilirsiniz. Md. 13/2: <span class="alinti">“{{ kvkk_13_2 }}”</span></p>
+    <table class="info">
+      <tr><td class="label">Başvuru adresi</td><td>{% if basvuru_adresi %}{{ basvuru_adresi }}{% else %}……………………………………………………………………{% endif %}</td></tr>
+      <tr><td class="label">E-posta ya da telefon</td><td>{% if iletisim %}{{ iletisim }}{% else %}……………………………………{% endif %}</td></tr>
+    </table>
+  </div>
+
+  <div class="signature">
+    <div class="date">{{ issued_on }}</div>
+    <div class="sig-line"></div>
+    <div class="name">{% if principal_name %}{{ principal_name }}{% else %}……………………………{% endif %}</div>
+    <div class="role">Okul Müdürü</div>
+  </div>
+{% endblock %}
