@@ -25,6 +25,7 @@ from apps.kutuphane.models import (
     PopulerPencereTuru,
     ResourceType,
 )
+from apps.kutuphane.services import circulation, memberships
 from apps.kutuphane.tests.ortak import bolum, edinim, eser, karar, nusha
 from apps.okul.models import Personnel, SchoolConfig, Student
 from katalog import sabitler
@@ -266,14 +267,14 @@ def _gez(katalog: KatalogIstemcisi, baslangic: list[str], *, sinir: int = 400) -
 
 
 def test_sentetik_kisi_verisi_hicbir_katalog_sayfasinda_gecmez(katalog: KatalogIstemcisi) -> None:
-    Student.objects.create(
+    ogrenci_ = Student.objects.create(
         first_name=SENTINELLER["ogrenci_ad"],
         last_name=SENTINELLER["ogrenci_soyad"],
         student_number=SENTINELLER["okul_no"],
         class_level=9,
         class_section="A",
     )
-    Personnel.objects.create(first_name=SENTINELLER["personel_ad"], last_name="Deneme")
+    personel_ = Personnel.objects.create(first_name=SENTINELLER["personel_ad"], last_name="Deneme")
     karar_ = karar(chair_name=SENTINELLER["komisyon_baskani"])
     bagis = Acquisition.objects.create(
         method=AcquisitionMethod.DONATION,
@@ -303,7 +304,25 @@ def test_sentetik_kisi_verisi_hicbir_katalog_sayfasinda_gecmez(katalog: KatalogI
         external_asset_ref=SENTINELLER["tkys"],
         old_register_no=SENTINELLER["eski_kayit"],
     )
-    Copy.objects.filter(pk=copy.pk).update(status=CopyStatus.ON_LOAN)
+    # F6 (§5.10-4/5 yeniden koşar): sentetik öğrenci ve personel ÜYEDİR, ödünçleri
+    # vardır (biri kartsız, biri iade edilmiş, bir kart yenilenmiş). Üyelik ve ödünç
+    # tabloları katalog görünümlerine girmez: ad, okul no, kart no ve iade tarihi
+    # hiçbir sayfada geçmez.
+    ogrenci_uyelik = memberships.create_membership(student=ogrenci_)
+    personel_uyelik = memberships.create_membership(personnel=personel_)
+    eski_kart = personel_uyelik.card_no
+    memberships.renew_card(personel_uyelik)
+    oduncler = [
+        circulation.checkout(copy=copy, membership=ogrenci_uyelik).loan,
+        circulation.checkout(
+            copy=nusha(work), membership=personel_uyelik, cardless_reason="CARD_LOST"
+        ).loan,
+    ]
+    iade = circulation.checkout(copy=nusha(work), membership=personel_uyelik).loan
+    circulation.return_copy(copy=iade.copy)
+    uye_izleri = [ogrenci_uyelik.card_no, personel_uyelik.card_no, eski_kart]
+    for loan in [*oduncler, iade]:
+        uye_izleri += [f"{loan.due_date:%d.%m.%Y}", loan.due_date.isoformat()]
     nusha(eser(title="Başka Eser", authors="Ali Veli"))
     KatalogPopuler.objects.create(
         eser=work,
@@ -326,7 +345,11 @@ def test_sentetik_kisi_verisi_hicbir_katalog_sayfasinda_gecmez(katalog: KatalogI
             assert deger.casefold() not in metin.casefold(), f"{ad} {adres} sayfasında geçti"
         for barkod in barkodlar:
             assert barkod not in metin, f"barkod {adres} sayfasında geçti"
+        for iz in uye_izleri:
+            assert iz not in metin, f"üye/ödünç izi ({iz}) {adres} sayfasında geçti"
         assert "123.45" not in metin and "123,45" not in metin  # fiyat
+    # Ödünçteki nüsha katalogda durum olarak görünür (kimde olduğu değil).
+    assert "Ödünçte" in sayfalar[f"/eser/{work.pk}"]
 
 
 # ======================================= §5.10-9 program kilitliyken katalog çalışır

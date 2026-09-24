@@ -69,6 +69,26 @@
 // kullanıcı başına yer imi yetmez; politika dosyası) → tahta kipi → adres
 // değişirse → port → Pardus.
 //
+// F6 iki bölüm yazar ve ikisi de Etiketler'in ardından gelir (kitaplar önce
+// kataloglanır ve etiketlenir, sonra ödünç verilir): "Üyelik, Kart ve Belgeler" ile
+// "Dolaşım Masası". Üyelik bölümü AYDINLATMA METNİYLE açılır, çünkü metin e-Okul
+// aktarımından önce duyurulur (tasarım §3; KVKK 10/1 "elde edilmesi sırasında");
+// Kişiler bölümü de buna ipucuyla bağlanır. Sonra üyelik isteğe bağlıdır (Md. 16/1,
+// 17/1 — yalnız "üye olmak koşuluyla" / "üye olmak isteyen" parçaları alıntılanır,
+// çünkü maddelerin geri kalanı Bakanlığın sistemini anar) → istek listesi → kart
+// basımı (PDF basıldı saymaz) → kartı yenile ve sonlandırma → gecikme ve pusula
+// (dağıtım kuralı §9-13'ün cümlesi) → masa kartı (KVKK 12/1) → düzensiz kapanış.
+// Dolaşım bölümü masadaki işin sırasıyladır: kim alabilir → ödünç ver → süre ve
+// ödünç sınırı (Md. 18/1'in ilk ve son cümlesi, arası "…") → iade tarihinin kayması
+// İKİ AYRI kuraldır ve Yönetmeliğe bağlanmaz ("Md. 18 gereği" denmez) → gecikme
+// engeli ve gerekçeli istisna → iade → başka üyedeki kitap → kart ve etiket
+// iletileri → okutma kutusu → görevli kipinde masa (gördüğü, görmediği, gizlilik) →
+// kartsız ödünç (Md. 23/1-a'dan sapma) → yönetici kipinde masa. Ekran ve düğme adları
+// `modules/dolasim` ve `modules/uyelik` sabitlerinden; iletiler sunucudan
+// (`services/circulation.py`, `services/masa.py`, `selectors_dolasim.py`) birebir.
+// "uzatma", "ceza", "okuma geçmişi", "okuduğu kitap" kılavuzda geçmez (sözlük §1);
+// gecikmenin karşılığı "para alınmaz, süre değişmez, pusulayla hatırlatılır"dır.
+//
 // Ad kaynakları: tepsi menüsü `desktop/tray.py` sabitleri, durum satırı
 // `desktop/katalog_kontrol.py::tepsi_satiri`, adres uyarısı `ip_denetle`,
 // kurucu görevleri `packaging/windows/kutuphane-defteri.iss` [Tasks], Ağ
@@ -76,7 +96,7 @@
 // kataloğun kendi sayfa adları `backend/katalog/sablonlar`. Tepsiden seçilen Çık
 // yönetici kipinde ve kilitliyken ONAY SORMADAN kapatır
 // (`tepsi_eylemleri.quit = request_quit`); üst çubuktaki Çık sorar. Çok okunanlar
-// listesi bu sürümde boştur (ödünç verisi yok; hesap sonraki fazda) ve kılavuz
+// listesi bu sürümde boştur (ödünç F6'da geldi, hesap F10'da — `services/populer.py`) ve kılavuz
 // bunu söyler. "rezervasyon" sözcüğü sözlükte yasak olduğu için DHCP'deki sabit
 // adres "sabit adres ayırma" diye anlatılır.
 //
@@ -84,8 +104,9 @@
 // BİREBİR, madde numarası uydurulmaz: Yönerge 11/6, 11/8, 11/12, 11/22 (yalnız
 // ilk cümlesi) ve 11/23 (meb-bilgi-ve-sistem-guvenligi-yonergesi.md; atıf
 // haritası docs/mevzuat/BENIOKU.md §3.3), Yönetmelik 10/3, 10/5, 11/1, 14/1-a,
-// 16/1 ve 18/1 (meb-okul-kutuphaneleri-yonetmeligi.md), TBK 93
-// (6098-…-md92-93.md).
+// 16/1, 17/1 (yalnız "üye olmak isteyen" parçası), 18/1 ve 23/1-a
+// (meb-okul-kutuphaneleri-yonetmeligi.md), TBK 93 (6098-…-md92-93.md), KVKK 10/1
+// (yalnız "elde edilmesi sırasında" parçası) ve 12/1 (6698-kvkk.md).
 
 import { useEffect } from "react";
 import type { ReactNode } from "react";
@@ -106,6 +127,8 @@ const BOLUMLER = {
   katalog: { baslik: "Katalog", ikon: "menu_book" },
   "hizli-kayit": { baslik: "Hızlı Kayıt", ikon: "bolt" },
   etiketler: { baslik: "Etiketler", ikon: "label" },
+  uyelik: { baslik: "Üyelik, Kart ve Belgeler", ikon: "badge" },
+  dolasim: { baslik: "Dolaşım Masası", ikon: "sync_alt" },
   "katalog-sablonu": { baslik: "Katalog Excel Şablonu", ikon: "table_view" },
   "ice-aktarma": { baslik: "İçe Aktarma", ikon: "upload_file" },
   yedek: { baslik: "Yedek ve Güvenlik Dosyası", ikon: "backup" },
@@ -336,9 +359,10 @@ export default function KilavuzPage() {
         <p>
           Okul adı, programın bastığı evrakın antedinin ilk satırıdır. <strong>Kademe</strong>{" "}
           (İlkokul, Ortaokul ya da Ortaöğretim (lise)) ve <strong>kısa ad</strong> zorunludur. Kısa
-          ad etiketlerde ve üye kartlarında basılır, en çok 24 karakterdir. Kayıp kitap bedeli ve
-          sınıf kitaplığı kuralları kademeye göre uygulanır. İl, ilçe ve okul müdürü evrakta
-          kullanılır; “Hazırlık sınıfı” alanında “Var” seçilirse sınıf düzeylerine Hazırlık eklenir.
+          ad kitap etiketlerinde basılır, en çok 24 karakterdir; üye kartında okulun tam adı yazar.
+          Kayıp kitap bedeli ve sınıf kitaplığı kuralları kademeye göre uygulanır. İl, ilçe ve okul
+          müdürü evrakta kullanılır; “Hazırlık sınıfı” alanında “Var” seçilirse sınıf düzeylerine
+          Hazırlık eklenir.
         </p>
         <p>
           “Bu bilgisayar okul demirbaşıdır.” onayı zorunludur: program yalnız okulun demirbaşı olan
@@ -422,10 +446,11 @@ export default function KilavuzPage() {
           <li>
             <strong>Görevli kipi</strong> masadaki görevli (öğrenci görevli ya da personel) içindir.
             Menüdeki bağlantılar gizlenir, ekranda “Görevli Kipi” sayfası durur. Yönetici işleri bu
-            kipte kapalıdır; program onları arka planda da reddeder. Görevli, kitaplara yapıştırılan
-            etiketleri bu sayfadaki “Doğrulama okutmasını aç” düğmesiyle okutup doğrulayabilir;
-            etiket basmak, basım işaretini geri almak ve “Doğrulanmamış Etiketler” listesi yönetici
-            kipindedir.
+            kipte kapalıdır; program onları arka planda da reddeder. Sayfada Dolaşım Masası durur:
+            görevli ödünç verir, iade alır, kitabın durumuna ve katalogda bir kitaba bakabilir (bkz.
+            “Dolaşım Masası” bölümü). Görevli, kitaplara yapıştırılan etiketleri bu sayfadaki
+            “Doğrulama okutmasını aç” düğmesiyle okutup doğrulayabilir; etiket basmak, basım
+            işaretini geri almak ve “Doğrulanmamış Etiketler” listesi yönetici kipindedir.
           </li>
         </ul>
 
@@ -483,11 +508,13 @@ export default function KilavuzPage() {
       {/* ------------------------------------------------------------------ */}
       <Bolum id="kisiler">
         <p>
-          <Ekran to="/kisiler">Kişiler</Ekran> sayfasının üç sekmesi vardır: “Öğrenciler”,
-          “Öğretmenler ve Diğer Personel” ve “Ayrılış Havuzu”. Program T.C. kimlik numarası, veli
-          bilgisi, cinsiyet, unvan ve branş tutmaz. Öğrencide ad, soyad, okul no, sınıf ve şube;
-          öğretmen ve diğer personelde ad, soyad ve üye türü tutulur. Kişi kaydı için yönetici
-          parolasının kurulmuş olması gerekir.
+          <Ekran to="/kisiler">Kişiler</Ekran> sayfasının ilk üç sekmesi kişi kayıtlarını tutar:
+          “Öğrenciler”, “Öğretmenler ve Diğer Personel” ve “Ayrılış Havuzu”. Sonraki üç sekme
+          (“Üyeler”, “Üyelik İstek Listesi”, “Kart Basımı”) kütüphane üyeliği içindir ve “Üyelik,
+          Kart ve Belgeler” bölümünde anlatılır. Program T.C. kimlik numarası, veli bilgisi,
+          cinsiyet, unvan ve branş tutmaz. Öğrencide ad, soyad, okul no, sınıf ve şube; öğretmen ve
+          diğer personelde ad, soyad ve üye türü tutulur. Kişi kaydı için yönetici parolasının
+          kurulmuş olması gerekir.
         </p>
         <Ipucu>
           <p>
@@ -495,6 +522,16 @@ export default function KilavuzPage() {
             bulunmayan öğrenci ve personel “Ayrılış Havuzu” sekmesine eklenir, durumları aktif
             kalır. Ayrılıp ayrılmadıklarına siz karar verirsiniz; böylece iade edilmemiş kitabı olan
             kişi kayıp olmaz.
+          </p>
+        </Ipucu>
+        <Ipucu>
+          <p>
+            <strong>
+              e-Okul listelerini aktarmadan önce kütüphane aydınlatma metnini duyurun.
+            </strong>{" "}
+            Metin <Ekran to="/kisiler?tab=uyeler">Kişiler → Üyeler</Ekran> sekmesinin altındaki
+            “Üyelik Belgeleri” bölümünden basılır; öğrencilere ve personele hangi bilgilerin neden
+            tutulduğunu ve kimin gördüğünü anlatır (bkz. “Üyelik, Kart ve Belgeler” bölümü).
           </p>
         </Ipucu>
 
@@ -602,8 +639,9 @@ export default function KilavuzPage() {
           <p>
             Ayrılan kişilerin kayıtları bu sürümde programda kalır. Kayıtların ne kadar süre
             saklanacağı ve otomatik silinmesi sonraki sürümlerde gelecek; o zamana kadar gereksiz
-            bulduğunuz bir kaydı düzenleme penceresindeki “Sil” ile kaldırabilirsiniz (kütüphane
-            işlemi olmayan kayıtlarda).
+            bulduğunuz bir kaydı düzenleme penceresindeki “Sil” ile kaldırabilirsiniz. Bu yalnız hiç
+            kütüphane üyesi olmamış kişinin kaydında yapılabilir: üye olmuş kişinin kaydı, ödünç
+            kayıtları izlenebilsin diye silinmez.
           </p>
         </Ipucu>
 
@@ -796,10 +834,10 @@ export default function KilavuzPage() {
         <Ipucu>
           <p>
             Kitabın arkasındaki çizgili kod ISBN barkodudur, kütüphane etiketi değildir: 13
-            hanelidir ve 978 ya da 979 ile başlar. Barkod okuyucuyla ödünç verme sonraki sürümde
-            gelecek; o zaman ISBN barkodu okutulursa program “Bu ISBN barkodu. Kitabın kütüphane
-            etiketini okutun.” diyecek. Bu sürümde “Nüshalar” sekmesindeki “Barkod” kutusu yalnız
-            kütüphane etiketini arar: ISBN barkodu okutursanız liste boş kalır.
+            hanelidir ve 978 ya da 979 ile başlar. Dolaşım Masası&apos;nda ISBN barkodu okutulursa
+            program “Bu ISBN barkodu. Kitabın kütüphane etiketini okutun.” der. “Nüshalar”
+            sekmesindeki “Barkod” kutusu da yalnız kütüphane etiketini arar: ISBN barkodu
+            okutursanız liste boş kalır.
           </p>
         </Ipucu>
 
@@ -925,8 +963,8 @@ export default function KilavuzPage() {
         <AltBaslik>Kütüphane Politikası</AltBaslik>
         <p>
           <Ekran to="/ayarlar?tab=politika">Ayarlar → Kütüphane Politikası</Ekran> ödünç kurallarını
-          tutar. Ödünç ve iade ekranları sonraki sürümde gelecek; buradaki kurallar o ekranlarda
-          uygulanır.
+          tutar; kurallar ödünç verilirken Dolaşım Masası&apos;nda uygulanır (bkz. Dolaşım Masası
+          bölümü).
         </p>
         <p>
           <strong>Ödünç süresi burada bir ayar değildir ve değiştirilemez.</strong> Yönetmelik
@@ -948,7 +986,8 @@ export default function KilavuzPage() {
           </li>
           <li>
             <strong>“Gecikmiş kitabı olana yeni ödünç verilmez”:</strong> okulun tercihidir;
-            kapatılabilir.
+            kapatılabilir. Açıkken istisnası yalnız yönetici kipinde ve gerekçeyle yapılır (bkz.
+            Dolaşım Masası bölümü).
           </li>
           <li>
             <strong>“İade tarihi öğrenciye kapalı günlerde kaydırılır”:</strong> ara tatil ve
@@ -968,7 +1007,9 @@ export default function KilavuzPage() {
           <li>
             <strong>Saklama süreleri:</strong> üyelik sonlandıktan, ödünç iade edildikten, kayıp ya
             da hasar dosyası kapandıktan ve teslim geri alındıktan kaç yıl sonra kaydın kişiyle bağı
-            koparılacağını belirler.
+            koparılacağını belirler. Bu süreleri uygulayan saklama taraması sonraki bir sürümde
+            gelecek; o zamana kadar üyelik ve ödünç kayıtları silinmez. Kütüphane aydınlatma metni
+            de bunu böyle söyler.
           </li>
         </ul>
         <Ipucu>
@@ -1481,6 +1522,464 @@ export default function KilavuzPage() {
       </Bolum>
 
       {/* ------------------------------------------------------------------ */}
+      {/* F6 — üyelik, üye kartı, gecikme belgeleri, aydınlatma metni ve masa kartı.
+          Ekran adları `modules/uyelik` (UyelerSekmesi, IstekListesi, KartBasimi,
+          GecikmisOdunclerPage, DolasimKartlari) ve docs/sozluk.md §1 "Üyelik yönetimi",
+          "Kart basımı", "İade hatırlatma", "Üyelik belgeleri" satırlarıyla ve §4.11 ile
+          birebirdir. Aydınlatma metni bölümün BAŞINDADIR: e-Okul aktarımından önce
+          duyurulur (tasarım §3; KVKK md. 10/1 "elde edilmesi sırasında"). Pusulanın dağıtım
+          kuralı tasarım §9-13'ün cümlesidir. */}
+      <Bolum id="uyelik">
+        <p>
+          Ödünç almak için üye olmak gerekir; üyelik isteğe bağlıdır ve kimse kendiliğinden üye
+          olmaz. Yönetmelik ödünç verme servisinden öğrenci ve öğretmenin “üye olmak koşuluyla”
+          yararlanacağını söyler ve üyeliği “üye olmak isteyen” kişiye bağlar (md. 16/1 ve 17/1).
+          e-Okul listesini aktarmak da üyelik açmaz. Üyelik ekranları{" "}
+          <Ekran to="/kisiler?tab=uyeler">Kişiler → Üyeler</Ekran>,{" "}
+          <Ekran to="/kisiler?tab=uyelik-istekleri">Kişiler → Üyelik İstek Listesi</Ekran> ve{" "}
+          <Ekran to="/kisiler?tab=kart-basimi">Kişiler → Kart Basımı</Ekran> sekmeleridir; hepsi
+          yalnız yönetici kipinde açılır.
+        </p>
+
+        <AltBaslik>Önce aydınlatma metni</AltBaslik>
+        <p>
+          Kişiler → Üyeler sekmesinin altındaki “Üyelik Belgeleri” bölümünden kütüphane aydınlatma
+          metnini basın ve e-Okul listelerini programa aktarmadan önce öğrencilere ve personele
+          duyurun. 6698 sayılı Kişisel Verilerin Korunması Kanunu bilgilendirmenin kişisel verilerin
+          “elde edilmesi sırasında” yapılmasını ister (md. 10/1); bu programda o an listelerin
+          aktarılmasıdır. Listeleri daha önce aktardıysanız metni şimdi duyurun.
+        </p>
+        <p>
+          Metindeki okul adı, ilçe ve müdür adı{" "}
+          <Ekran to="/ayarlar?tab=okul">Ayarlar → Okul Bilgileri</Ekran>&apos;nden gelir. “Başvuru
+          adresi” ve “E-posta ya da telefon” alanlarına yazdıklarınız yalnız o basıma yazılır,
+          programda saklanmaz; boş bırakırsanız elle doldurulacak satır basılır. Metin hangi
+          bilgilerin tutulduğunu, masadaki öğrenci görevliler dahil kimin neyi gördüğünü ve
+          programın kayıtları bugün kendiliğinden silmediğini açıkça söyler.
+        </p>
+
+        <AltBaslik>Üyelik açmak</AltBaslik>
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>
+            Öğrenciler için Üyelik İstek Listesi&apos;nde şubeyi seçin. Şubedeki öğrenciler sınıf
+            listesi sırasıyla gelir; zaten üye olanın kutusu kapalıdır.
+          </li>
+          <li>
+            Üye olmak isteyenleri işaretleyin, gerekirse “Üyelik isteği tarihi”ni değiştirin ve
+            “Seçilenleri üye yap” deyin; onay penceresinde “Üyelik aç”ı seçin. Seçim bu arada
+            değişmişse (biri üye olmuş ya da okuldan ayrılmışsa) hiçbir üyelik açılmaz; liste
+            yenilenir, yeniden seçersiniz.
+          </li>
+          <li>
+            Öğretmen ve diğer personel için Üyeler sekmesinde “Personele üyelik aç” deyin. Diğer
+            personele üyelik, Kütüphane Politikası&apos;nda diğer personele ödünç müdürlük kararıyla
+            açıldıysa açılır.
+          </li>
+        </ol>
+        <p>
+          Her üyeye sekiz haneli bir kart numarası verilir. Numara rastgeledir ve hiçbir zaman başka
+          birine yeniden verilmez; üyelik silinse de, kart yenilense de, yedekten geri yükleme
+          yapılsa da. Geri yüklenen yedekten sonra verilen kartlar geri yüklemede kaybolan
+          üyeliklere aittir: masada “Bu kart tanınmadı — kütüphane yöneticisine yönlendirin.” der; o
+          üyelere üyeliği yeniden açıp yeni kart basın.
+        </p>
+
+        <AltBaslik>Üye kartını basmak</AltBaslik>
+        <p>
+          Yeni üyenin kartı Kart Basımı sekmesinde “Kart Basımı Bekleyen” listesine düşer. Kart 85 ×
+          54 mm&apos;dir, bir sayfaya 10 kart basılır. Kartta okulun adı, üyenin adı, üye türü ve
+          barkodlu kart numarası vardır; sınıf yazmaz, çünkü sınıf her yıl değişir. Öğrenci ve
+          öğretmen kartının altındaki kısa not, kartın Yönetmeliğin 20. maddesinde öngörülen
+          kullanıcı kartının okulca düzenlenen yerel karşılığı olduğunu söyler; Yönetmelik kullanıcı
+          kartını öğretmene ve öğrenciye öngörür. Diğer personelin kartında madde atfı yoktur, not
+          “Okulca düzenlenen yerel üye kartıdır; diğer personele ödünç okul müdürlüğü kararıyla
+          verilir.” der. Şube seçerseniz kartlar sınıf listesi sırasıyla çıkar ve dağıtırken
+          aranmaz.
+        </p>
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>
+            Kartları seçin; “Yazıcı (kalibrasyon)”, başlangıç hücresi ve “Kesim çizgisi bas”
+            seçeneğini ayarlayın. Düz kâğıda ya da kartona basıp keserken kesim çizgisini açık
+            bırakın, önceden kesilmiş kart tabakasında kapatın.
+          </li>
+          <li>
+            “Önizle” ya da “PDF&apos;i indir” ile yazdırın. Sayfayı gerçek boyutta (%100) yazdırın.
+          </li>
+          <li>
+            Kartlar düzgün çıktıysa “Basıldı olarak işaretle” deyin. PDF&apos;i almak kartı basılmış
+            saymaz; işaretlenmeyen kart kuyrukta kalır. İşaret “Kartı Basılmış” listesinden “Basım
+            işaretini geri al” ile geri alınır; kart numarası değişmez.
+          </li>
+        </ol>
+        <Ipucu>
+          Kart şablonunun kaydırması etiketlerdeki gibi yazıcı kalibrasyonuyla düzeltilir: Kart
+          Basımı sekmesinin altındaki “Yazıcı kalibrasyonunu göster” düğmesiyle kalibrasyon
+          sayfasını basın ve okuduğunuz kaymayı o yazıcıya kaydedin.
+        </Ipucu>
+
+        <AltBaslik>Kartı yenilemek, üyeliği sonlandırmak</AltBaslik>
+        <p>
+          Kart kaybolursa ya da bozulursa Üyeler sekmesinde üyeyi açıp “Kartı yenile” deyin; onay
+          penceresi “Kart yenilensin mi?” diye sorar. Üyeye yeni numara verilir, yeni kart basım
+          kuyruğuna girer; eski kart iptal edilir ve masada okutulunca “İptal edilmiş kart —
+          kütüphane yöneticisine yönlendirin.” iletisi çıkar. Açık ödünçler üyelikte kalır. Yeni
+          kart basılana kadar üyeye yönetici kipinde “Kartsız ödünç” ile ödünç verebilirsiniz (bkz.
+          Dolaşım Masası bölümü).
+        </p>
+        <p>
+          “Üyeliği sonlandır” nedeni listeden seçmeyi ister: “Üyenin isteği” ya da “Yanlış kayıt”.
+          Açık ödüncü olan üyelik sonlandırılamaz; önce iadeyi alın. Sonlandırmak kaydı ve ödünç
+          geçmişini silmez. Okuldan ayrılan kişi Kişiler ekranında “Ayrıldı olarak işaretle” ile
+          işlenir: üyeliği kendiliğinden sonlanır, iade etmediği kitap açık ödünç olarak izlenir.
+          Yanlışlıkla açılmış ve hiç ödünç kaydı olmayan üyelik “Üyeliği sil” ile silinir.
+        </p>
+
+        <AltBaslik>Gecikmiş ödünçler ve iade hatırlatma pusulası</AltBaslik>
+        <p>
+          İade tarihi geçmiş ödünç varsa Genel Bakış&apos;ta “Gecikmiş Ödünçler” kartı yalnız sayıyı
+          gösterir; liste kartın açtığı Gecikmiş Ödünçler sayfasındadır ve yalnız yönetici kipinde
+          açılır. Program gecikme için para almaz ve ödünç süresini değiştirmez; hatırlatma kişiye
+          özel pusulayla yapılır.
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            Pusulayı Gecikmiş Ödünçler sayfasında basarsınız: kişileri işaretleyin ya da “Şube”
+            süzgecini seçin; kişi seçmezseniz pusula süzgeçteki herkese basılır. Tek bir üyenin
+            pusulası, gecikmesi varsa Üyelik penceresinden de basılır.
+          </li>
+          <li>
+            İade hatırlatma pusulası tek kişiliktir; bir sayfada üç pusula vardır. Kesme çizgisinden
+            kesin, sağ bölümü katlama çizgisinden sola, yazılı yüz içe gelecek biçimde katlayın:
+            dışta “KİŞİYE ÖZELDİR” ibaresi, kişinin adı ve sınıfı (personelde üye türü), katlama
+            yönergesi ve “Kişinin kendisine elden verilir; sınıfta okunmaz.” notu kalır.
+            Kütüphanenin adı ve gecikmiş kaynaklar içte kalır; kâğıdın kütüphaneden geldiği dıştan
+            anlaşılmaz.
+          </li>
+          <li>
+            Pusulayı kütüphane yöneticisi ya da sınıf rehber öğretmeni dağıtır. Sınıfta okunmaz,
+            öğrenci görevliye dağıttırılmaz. Personelin pusulasını kütüphane yöneticisi verir.
+          </li>
+          <li>
+            Gecikmiş ödünç listesi her sayfasında “Kişisel veri içerir — asılmaz, çoğaltılmaz.”
+            dipnotunu taşır. Liste panoya asılmaz, yalnız iadeyi izlemek için kullanılır.
+          </li>
+        </ul>
+
+        <AltBaslik>Masa kartı</AltBaslik>
+        <p>
+          Masa kartı, kütüphane masasında görev yapan öğrenci ve personel için tek sayfalık kullanım
+          ve gizlilik uyarısıdır; aydınlatma metniyle aynı “Üyelik Belgeleri” bölümünden basılır.
+          Görevliye göreve başlamadan verin ve masada görünür bir yerde tutun. Kart masada nasıl
+          çalışılacağını, ekranda görülen adların ve bilgilerin kimseyle paylaşılmayacağını, ekranın
+          fotoğrafının çekilmeyeceğini ve masa boş kalırken “Kilitle”ye basılacağını anlatır.
+          Görevliyi böyle bilgilendirmek, okulun kişisel verileri korumak için alması gereken idari
+          önlemlerdendir:
+        </p>
+        <Mevzuat kaynak="6698 sayılı Kişisel Verilerin Korunması Kanunu, md. 12/1">
+          “Veri sorumlusu; a) Kişisel verilerin hukuka aykırı olarak işlenmesini önlemek, b) Kişisel
+          verilere hukuka aykırı olarak erişilmesini önlemek, c) Kişisel verilerin muhafazasını
+          sağlamak, amacıyla uygun güvenlik düzeyini temin etmeye yönelik gerekli her türlü teknik
+          ve idari tedbirleri almak zorundadır.”
+        </Mevzuat>
+
+        <AltBaslik>Program düzgün kapanmazsa</AltBaslik>
+        <p>
+          Elektrik kesilir ya da program zorla kapatılırsa son işlemler kayda geçmemiş olabilir.
+          Sonraki açılışta Genel Bakış&apos;ta “Son Oturumu Kontrol Edin” kartı çıkar ve kayda
+          geçmiş son ödünç ve iadeleri listeler. Masada verildiğini ya da alındığını bildiğiniz bir
+          kitap listede yoksa işlemi yeniden yapın, sonra “Kontrol ettim” deyin.
+        </p>
+      </Bolum>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* F6 — Dolaşım Masası. Sıra masadaki işin sırasıdır: kim alabilir → ödünç ver →
+          süre ve ödünç sınırı (Md. 18/1'in iki cümlesi; kaydırma İKİ AYRI kuraldır ve
+          Yönetmeliğe bağlanmaz — "Md. 18 gereği" denmez) → gecikme engeli ve gerekçeli
+          istisna → iade → başka üyedeki kitap → kart ve etiket iletileri → okutma kutusu →
+          görevli kipinde masa (gördüğü, görmediği, gizlilik) → kartsız ödünç (Md. 23/1-a'dan
+          sapma) → yönetici kipinde masa. Ekran adları `modules/dolasim` sabitlerinden,
+          iletiler `services/circulation.py` ve `services/masa.py`'den birebir (sözlük §4.10).
+          Md. 18/1'in orta cümleleri Bakanlığın sistemini adıyla andığı için alıntıda "…" ile
+          atlanır (kılavuzda o ad geçmez). */}
+      <Bolum id="dolasim">
+        <p>
+          Ödünç ve iade <Ekran to="/dolasim">Dolaşım Masası</Ekran>&apos;ndan yapılır. Görevli
+          kipinde aynı masa “Görevli Kipi” sayfasında durur; masadaki görevli ödünç verir ve iade
+          alır, yönetici işlerine ulaşamaz. Masada tek bir okutma kutusu vardır: “Üye kartı ya da
+          kütüphane etiketi”. Kutu kendiliğinden odaklanır; okuyucu kodun sonuna Enter gönderir,
+          elle yazdığınız numarayı da Enter ile gönderirsiniz.
+        </p>
+
+        <AltBaslik>Kim ödünç alabilir</AltBaslik>
+        <p>
+          Aktif üyeliği olan öğrenci ve öğretmen ödünç alır. Diğer personel, Kütüphane
+          Politikası&apos;ndaki “Diğer personele ödünç verilir” seçeneği müdürlük kararıyla
+          açıldıysa alır. Üyeliği sonlanmış kişiye (“Üyelik sonlanmış — ödünç verilemez.”) ve
+          okuldan ayrılmış kişiye (“Üye okuldan ayrılmış — ödünç verilemez.”) ödünç verilmez; ikisi
+          de ellerindeki kitabı iade edebilir. “Yıl sonu son ödünç tarihi” geçtiyse yeni ödünç
+          verilmez, iade alınmaya devam eder. Görevli kipinde bu ileti tarih yazmaz (“Yıl sonu son
+          ödünç tarihi geçti — yeni ödünç verilmez. İade alınabilir.”): son sınıflara ayrı tarih
+          tanımlıysa tarih, kartın sahibinin son sınıfta olduğunu gösterirdi.
+        </p>
+
+        <AltBaslik>Ödünç vermek</AltBaslik>
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>
+            Üye kartını okutun. Ekranda üyenin adı ve kalan ödünç hakkı görünür; sınıf yazmaz. Bir
+            kartla yalnız kartın sahibine ödünç verilir.
+          </li>
+          <li>
+            Kitabın kütüphane etiketini okutun; birden çok kitabı arka arkaya okutabilirsiniz. Her
+            kitap için “Ödünç verildi.” iletisi ve iade tarihi çıkar. Kitabın arka kapağındaki ISBN
+            barkodunu değil, kütüphane etiketini okutun.
+          </li>
+          <li>
+            İşiniz bitince “Bitti” düğmesine basın. Başka bir üyenin kartını okuttuğunuzda da, 60
+            saniye işlem yapmadığınızda da üye bağlamı kendiliğinden kapanır.
+          </li>
+        </ol>
+
+        <AltBaslik>Ödünç süresi ve ödünç sınırı</AltBaslik>
+        <Mevzuat kaynak={`${YONETMELIK}, md. 18/1`}>
+          “Bir kitabı ödünç alma süresi on beş gündür. … Öğrencilere bir defasında en fazla üç,
+          öğretmenlere en fazla beş kitap ödünç verilebilir.”
+        </Mevzuat>
+        <p>
+          Ödünç süresi on beş gündür ve değiştirilemez; programda bir ayar değildir, sonradan da
+          değişmez. İade tarihi, ödünç verildiği günden on beş gün sonrasıdır. O gün kapalı bir güne
+          rastlarsa iade tarihi izleyen ilk açık güne kayar. Bu kayma Yönetmelikten gelmez; iki ayrı
+          kuraldır ve dayanakları farklıdır (bkz. Kapalı Günler bölümü):
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong>Hafta sonu, resmî tatil ve dini bayram</strong> her zaman atlanır: Yönetmelik bu
+            durumu düzenlemez, program Türk Borçlar Kanunu&apos;ndaki genel kuralı kıyasen uygular.
+            İdari izin ve diğer kapalı günler de her zaman atlanır; bu programın kuralıdır.
+          </li>
+          <li>
+            <strong>Ara tatil ve yarıyıl</strong> (öğrenciye kapalı günler) yalnız Kütüphane
+            Politikası&apos;ndaki “İade tarihi öğrenciye kapalı günlerde kaydırılır” seçeneği açıksa
+            atlanır. Bu okulun tercihidir, mevzuatta dayanağı yoktur.
+          </li>
+        </ul>
+        <p>
+          İade tarihi dönemin sonunu aşarsa ödünçte uyarı çıkar (“… Süre kısaltılmaz.”); süre yine
+          on beş gündür.
+        </p>
+        <p>
+          Kayma yalnız Kapalı Günler&apos;e girilmiş günlere bakar. Bir ders yılını
+          aktifleştirdiğinizde (kurulum sihirbazında ya da Ayarlar → Ders Yılları&apos;nda) o ders
+          yılının iki takvim yılına resmî tatiller ve dini bayramlar kendiliğinden eklenir. İade
+          tarihinin düştüğü yılın resmî tatilleri ya da dini bayramları yine de eksikse ödünçte
+          uyarı çıkar (“… Kapalı Günler&apos;de eksik; iade tarihi bir tatile rastlamış olabilir.
+          …”): eksik günleri Ayarlar → Kapalı Günler&apos;den ekleyin.
+        </p>
+        <p>
+          Üyenin elindeki kitap sayısı Kütüphane Politikası&apos;ndaki ödünç sınırına ulaşınca yeni
+          ödünç verilmez; ekranda “Ödünç sınırı dolu (en çok 3 kitap).” gibi bir ileti çıkar. Sınır
+          öğrenciye en çok 3, öğretmene en çok 5&apos;tir; okul daha düşük tutabilir, diğer
+          personelin sınırını okul belirler. Ödünç verilmeyen bir kaynak (danışma kaynağı, piyasada
+          mevcudu olmayan eser, süreli yayın) okutulunca gerekçesi yazar, ör. “Ödünç verilmez —
+          kütüphanede okunur.” Ödünç sınırı ve ödünç verilmeyen kaynaklar hiçbir kipte istisna
+          almaz.
+        </p>
+
+        <AltBaslik>Gecikme engeli ve gerekçeli istisna</AltBaslik>
+        <p>
+          Kütüphane Politikası&apos;nda “Gecikmiş kitabı olana yeni ödünç verilmez” açıksa (okulun
+          tercihidir), iade tarihi geçmiş kitabı olan üyeye yeni ödünç verilmez. Görevli kipinde
+          ekranda yalnız “Ödünç verilemiyor — kütüphane yöneticisine yönlendirin.” yazar. Yönetici
+          kipinde ileti “Üyenin gecikmiş ödüncü var. Önce iade alın ya da gerekçeli istisnayla ödünç
+          verin.” olur ve “Gerekçeli istisna” penceresi açılır:
+        </p>
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>
+            “Gerekçe” listesinden birini seçin: “Ders ya da ödev için gerekli”, “Gecikmenin geçerli
+            bir mazereti var”, “Gecikmiş kaynağın iadesi için görüşüldü” ya da “Diğer”.
+          </li>
+          <li>“Açıklama” zorunludur. Açıklamaya sağlık ya da aile bilgisi yazmayın.</li>
+          <li>
+            “Gerekçeyle ödünç ver” deyin. İstisna, gerekçesi ve açıklamasıyla ödünç kaydına geçer.
+          </li>
+        </ol>
+        <p>
+          Pencere hangi kitap için açıldığını en üstte yazar (“Kitap: …”). Pencere açıkken
+          okuttuğunuz kitaplar kaybolmaz: sıraya girer ve pencere kapanınca okuttuğunuz sırayla
+          işlenir; her kitap için pencere yeniden açılır. Pencere açıkken üye bağlamının 60
+          saniyelik süresi işlemez.
+        </p>
+        <p>
+          Gerekçeli istisna yalnız gecikme engeli içindir ve yalnız yönetici kipinde yapılır; ödünç
+          sınırı ve ödünç verilmeyen kaynaklar için yoktur. Gecikme için para alınmaz, ödünç süresi
+          değişmez; gecikmiş kitap kişiye özel pusulayla hatırlatılır (bkz. Üyelik, Kart ve Belgeler
+          bölümü).
+        </p>
+
+        <AltBaslik>İade almak</AltBaslik>
+        <p>
+          Üye kartı okutmadan kitabın kütüphane etiketini okutun: kitap ödünçteyse iadesi alınır
+          (“İade alındı.”). Kitap ödünçte değilse program durumunu söyler: “Rafta — ödünç değil.”,
+          “Kayıp kaydında.”, “Onarımda.”, “Sınıf kitaplığında.” İade hiçbir durumda kilitlenmez:
+          üyeliği sonlanmış ya da okuldan ayrılmış kişinin kitabı da, gecikmiş kitap da, kart okutma
+          durdurulmuşken gelen kitap da iade edilir. Üye bağlamı açıkken iade almak için önce
+          “Bitti” deyin; bağlam açıkken okutulan kitap o üyeye ödünç verilmek istenir.
+        </p>
+
+        <AltBaslik>Kitap başka bir üyedeyse</AltBaslik>
+        <p>
+          Üye bağlamı açıkken üyenin zaten aldığı kitabı okutursanız program “Bu kitap zaten bu
+          üyede. İade alınsın mı?” diye sorar; “İade al” iadeyi alır. Başka bir üyede görünen kitabı
+          okutursanız “Bu kitap başka bir üyede. Önce iade alınsın mı?” sorusu çıkar; “İade al ve
+          ödünç ver” önce iadeyi alır, sonra kitabı karttaki üyeye verir ve “Kitap başka bir üyenin
+          ödüncündeydi; iadesi alındı. Durumu kütüphane yöneticisine bildirin.” uyarısını gösterir.
+          Bu, kitabın iadesi alınmadan elden ele geçtiğini gösterir; görevli durumu kütüphane
+          yöneticisine bildirir. Görevli kipinde önceki üyenin kim olduğu gösterilmez. İşlem
+          yapmayacaksanız “Vazgeç” deyin. “İade al ve ödünç ver”e bastıktan sonra iade sürerken
+          başka bir kart okutulursa kitap o yeni üyeye verilmez; ekranda “İade alındı; üye bağlamı
+          bu arada değiştiği için kitap ödünç verilmedi.” yazar.
+        </p>
+        <p>
+          Üyeliği sonlanmış, okuldan ayrılmış, ödünç sınırı dolmuş, gecikmiş kitabı olan ya da yıl
+          sonu tarihi geçmiş bir üyenin kartı okutulduktan sonra okutulan kitapta ret iletisinin
+          altında “Kitap iade için getirildiyse iadesi alınabilir.” yazar. Üye kitabı geri
+          getirdiyse “İade al” deyin; iade alınır, ödünç verilmez.
+        </p>
+
+        <AltBaslik>Kart ve etiket iletileri</AltBaslik>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            “İptal edilmiş kart — kütüphane yöneticisine yönlendirin.”: kartı yenilenmiş, üyeliği
+            silinmiş ya da kaydı birleştirilmiş kişinin eski kartıdır ve hiçbir kipte kullanılamaz.
+          </li>
+          <li>
+            “Bu kart tanınmadı — kütüphane yöneticisine yönlendirin.”: numara kart biçimindedir ama
+            programda böyle bir kart yoktur.
+          </li>
+          <li>
+            “Kart numarası hatalı. Kartı yeniden okutun.”: numara okunurken ya da yazılırken
+            bozulmuştur.
+          </li>
+          <li>
+            “Bu ISBN barkodu. Kitabın kütüphane etiketini okutun.”: kitabın arka kapağındaki barkod
+            okutulmuştur.
+          </li>
+          <li>
+            Henüz bir kitaba bağlanmamış boş barkod etiketi ya da numarası iptal edilmiş etiket
+            okutulursa program bunu söyler. Görevli kipinde “Kitabı ayırın ve kütüphane yöneticisine
+            gösterin.” yazar; kütüphane yöneticisi kitabı Hızlı Kayıt&apos;ta kaydeder (bkz.
+            Etiketler bölümü).
+          </li>
+        </ul>
+
+        <AltBaslik>Okutma kutusu</AltBaslik>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            Sonucu beklemeden okutmaya devam edebilirsiniz: okutmalar sıraya girer ve okuttuğunuz
+            sırayla işlenir, hiçbiri kaybolmaz. Sırada bekleyen okutma varsa kutunun altında sayısı
+            yazar.
+          </li>
+          <li>
+            Her okutmada kısa bir ses çıkar ve kutunun çerçevesi renk değiştirir: başarıda ince,
+            uyarıda orta, hatada iki kalın ses; “Yalnız durum sor” ile bakılan kitapta iki kısa ses
+            (ödünç verilmediği sesten de anlaşılsın diye). Ses “Okuma sesi açık” düğmesiyle
+            kapatılabilir; bu tercih bu bilgisayarda saklanır.
+          </li>
+          <li>
+            Bir pencere açıkken (ör. gerekçeli istisna) okuttuğunuz kodlar kaybolmaz: sıraya girer
+            ve pencere kapanınca işlenir. Pencerede bir yazı alanına yazarken okutma yapmayın; kod o
+            alana yazılır.
+          </li>
+          <li>
+            İmleç kutudan çıkarsa (ör. bir Windows bildirimi odağı çalarsa) kutunun altında uyarı
+            çıkar; “Kutuya dön” düğmesi ya da bir rakam tuşu imleci geri getirir.
+          </li>
+          <li>
+            “Yalnız durum sor” işaretliyken okutulan kitabın yalnız durumu gösterilir; ödünç ve iade
+            yapılmaz. Üye kartı okutulunca işaret kendiliğinden kalkar (“Yalnız durum sor”
+            kapatıldı: üye kartı okutuldu.), çünkü kart okutmak ödünç vermek içindir.
+          </li>
+        </ul>
+
+        <AltBaslik>Görevli kipinde masa</AltBaslik>
+        <p>
+          Masadaki görevli çoğu zaman bir öğrencidir. Ekran ona işini yapmaya yetecek kadarını
+          gösterir; program bunu arka planda da uygular, gösterilmeyen bilgi görevlinin ekranına hiç
+          gelmez.
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            Görevli üyenin yalnız adını ve kalan ödünç hakkını görür; sınıfı ve açık ödünçleri
+            görünmez. Gecikmiş kitabı olan üyeye ödünç verilmek istenirse ekranda yalnız “Ödünç
+            verilemiyor — kütüphane yöneticisine yönlendirin.” yazar; hangi kitabın kaç gün
+            geciktiği görevliye gösterilmez. Kişisel olmayan nedenler (ödünç sınırının dolması,
+            kaynağın ödünç verilmemesi) yazılır.
+          </li>
+          <li>
+            İade alınan kitabın kimden geldiği ve gecikip gecikmediği görevli ekranında görünmez.
+            “Yalnız durum sor” ile bakılan kitabın kimde olduğu da görünmez. Ekrandaki son işlemler
+            listesinde üye adı yazmaz.
+          </li>
+          <li>
+            Üye listesi, ödünç geçmişi, gecikmiş ödünçler, gerekçeli istisna ve kartsız ödünç
+            yönetici kipindedir. Kartı yanında olmayan üyeyi görevli kütüphane yöneticisine
+            yönlendirir.
+          </li>
+          <li>
+            Görevli “Katalogda ara” ile bir kitabın katalogda olup olmadığına, yer numarasına ve
+            nüshalarının rafta olup olmadığına bakabilir; kitabın kimde olduğu görünmez. “Dolaşım
+            masasına dön” masaya getirir.
+          </li>
+          <li>
+            Art arda beş geçersiz kart (iptal edilmiş, tanınmayan ya da numarası hatalı) okutulursa
+            ya da on dakika içinde beş tanınmayan veya iptal edilmiş kart okutulursa (araya geçerli
+            bir kart girse de) kart okutma durur ve okutma kutusunun üstünde “Kart okutma
+            durduruldu” şeridi çıkar. Kütüphane yöneticisi şeritteki alana yönetici parolasını yazıp
+            “Kart okutmayı aç” deyince kart okutma sürer; görevli kipinden çıkılmaz. Bu sırada da
+            iade alınabilir: şerit dururken okutulan kitabın iadesi alınır. Önlem, kart numaralarını
+            deneyerek ad öğrenmeye karşıdır.
+          </li>
+          <li>
+            Gecikmiş kitabı olan ya da ödünç sınırı dolmuş üyede, okutulan kitap kimde olursa olsun
+            aynı ret iletisi çıkar; görevli barkod deneyerek üyenin elindeki kitapları öğrenemez.
+            Kartı okutulan üyenin kendi kitabı okutulursa “Bu kitap zaten bu üyede. İade alınsın
+            mı?” sorusu çıkabilir; masadaki kitabın kimde olduğu bu kadarıyla görünür.
+          </li>
+          <li>
+            Gizlilik: görevliye göreve başlamadan masa kartını verin (bkz. Üyelik, Kart ve Belgeler
+            bölümü). Görevli ekranda gördüğü adları kimseyle paylaşmaz, ekranın fotoğrafını çekmez;
+            masayı boş bırakacaksa “Kilitle”ye basar.
+          </li>
+        </ul>
+
+        <AltBaslik>Kartsız ödünç</AltBaslik>
+        <p>
+          Olağan yol kartın okutulmasıdır. Yönetmelik, ödünç verilebilmesi için yapılacakların ilki
+          olarak kartın görevliye verilmesini sayar:
+        </p>
+        <Mevzuat kaynak={`${YONETMELIK}, md. 23/1-a`}>
+          “a) Öğrenci, öğretmen kartını kütüphane görevlisine verir.”
+        </Mevzuat>
+        <p>
+          Kartı yanında olmayan üyeye yalnız yönetici kipinde ödünç verilir. “Kartsız ödünç”
+          düğmesine basın, “Okul no ya da ad” alanına okul numarasının tamamını ya da adı yazıp
+          “Ara” deyin, listeden üyeyi seçin, gerekçeyi seçin (“Kart yanında değil”, “Kart kayıp —
+          yenilenecek”, “Kart henüz basılmadı”, “Kart okunmuyor”) ve “Üyeyi aç” deyin. Üye
+          bağlamında “Kartsız ödünç — gerekçe: …” şeridi durur; kitapları her zamanki gibi
+          okutursunuz. Bu yolla verilen ödünç kaydında kartsız ödünç işareti ve gerekçesi durur.
+          Kart kaybolduysa üyenin kartını da yenileyin.
+        </p>
+
+        <AltBaslik>Yönetici kipinde masa</AltBaslik>
+        <p>
+          Yönetici kipinde üye bağlamında üyenin türü, sınıfı ve açık ödünçleri iade tarihleriyle
+          görünür; iade alınınca kitabın kimden geldiği ve kaç gün geciktiği yazılır; “Yalnız durum
+          sor” kitabın kimde olduğunu ve iade tarihini de gösterir. Bunlar kişisel veridir: ekranı
+          masadaki görevliye açık bırakmayın, masadan kalkarken “Görevli kipine geç”i ya da
+          “Kilitle”yi seçin.
+        </p>
+      </Bolum>
+
+      {/* ------------------------------------------------------------------ */}
       <Bolum id="katalog-sablonu">
         <p>
           Çok sayıda kitabı tek tek yazmak yerine listenizi Excel&apos;de hazırlayabilirsiniz;
@@ -1915,7 +2414,7 @@ export default function KilavuzPage() {
         <p>
           Aramalar ve bağlanan bilgisayarların adresleri kaydedilmez. Katalog kişisel veri
           taşımadığı için kayıtlar kilitliyken de çalışır; internete hiç bağlanmaz. Çok okunanlarda
-          yalnız sıra görünür, sayı gösterilmez; bu liste ödünç işlemleriyle birlikte sonraki
+          yalnız sıra görünür, sayı gösterilmez; bu liste ödünç kayıtlarından hesaplanır ve sonraki
           sürümlerde dolmaya başlar, bu sürümde vitrinde yeni gelenler görünür.
         </p>
         <p>

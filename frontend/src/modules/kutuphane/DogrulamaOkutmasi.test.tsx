@@ -106,7 +106,7 @@ describe("Doğrulama Okutması", () => {
 
     // İkinci istek birinci bitmeden gitmez.
     expect(etiket.dogrula).toHaveBeenCalledTimes(1);
-    expect(screen.getByText(/sırada bekleyen okutma: 1/)).toBeInTheDocument();
+    expect(screen.getByText("Sırada bekleyen okutma: 1")).toBeInTheDocument();
 
     bekleyen[0](dogrulamaSonucu());
     await waitFor(() => expect(etiket.dogrula).toHaveBeenCalledTimes(2));

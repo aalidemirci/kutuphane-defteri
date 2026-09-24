@@ -3,8 +3,9 @@
 OYS'nin (Okul Yönetim Sistemi) `apps/kutuphane/models.py` dosyasından UYARLA
 (tasarım §6.2, §12). Ortak değişiklikler: `created_by`/`by_user` düşer (tek
 kullanıcılı masaüstü programı — "kim yaptı" anlamsız), `core.*` bağları
-`okul.*` olur, göç ağacı `0001`'den başlar. OYS'nin üyelik, ödünç, ayıklama ve
-sayım modelleri BU FAZDA GELMEZ; kendi fazlarında (F6-F9) eklenir.
+`okul.*` olur, göç ağacı `0001`'den başlar. Üyelik, kart ve ödünç modelleri
+F6'da (dosyanın sonunda) gelir; teslim, kayıp, ayıklama ve sayım modelleri kendi
+fazlarında (F7-F9) eklenir.
 
 Bu fazın kararları (tasarım §6.2, F2 sözleşmesi §1):
 
@@ -34,6 +35,12 @@ Bu fazın kararları (tasarım §6.2, F2 sözleşmesi §1):
   (`BarcodeReservation` + `ReservedBarcode`, yöntem B — numaralar AYNI sayaçtan,
   iptal edilen numara sayaca dönmez).
 
+- **F6 (üyelik ve dolaşım)**: `Membership` (kart no şifreli + kör indeks),
+  `IssuedCard` (verilmiş bütün kart numaralarının kişisiz kör indeksi — asla
+  yeniden kullanılmaz), `CardRevocation` (iptal edilmiş kart) ve `Loan`
+  (gerekçeler şifreli). Kurallar `services.memberships` ve
+  `services.circulation`'dadır.
+
 CLAUDE.md §3 "soft-delete ileri FK'da süzmez": `obj.fk` erişimi silinmiş kaydı
 geri getirir. Evraka ad basan yollar `deleted_at`'i elle denetler; katalog
 görünümleri (F5) silinmiş eser ve nüshayı TANIMLARINDA süzer.
@@ -41,17 +48,22 @@ görünümleri (F5) silinmiş eser ve nüshayı TANIMLARINDA süzer.
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils import timezone
 
+from apps.kutuphane import card_numbers, keys
 from apps.kutuphane import isbn as isbn_module
-from apps.kutuphane import keys
 from apps.kutuphane.import_schema import MAX_COPIES_PER_ROW
-from shared.crypto import EncryptedCharField, EncryptedTextField
+from shared.crypto import EncryptedCharField, EncryptedTextField, blind_index
 from shared.models import BaseModel
+
+if TYPE_CHECKING:
+    from apps.okul.models import Personnel, Student
 
 
 class ResourceType(models.TextChoices):
@@ -1791,3 +1803,484 @@ class KatalogPopuler(models.Model):
 
     def __str__(self) -> str:
         return f"{self.pencere_turu} {self.pencere} #{self.sira}"
+
+
+# ---------------------------------------------------------------------------
+# F6 — üyelik, kart ve ödünç (tasarım §6.2, §6.3, §7.1, §9)
+# ---------------------------------------------------------------------------
+def card_no_blind_index(card_no: object) -> str:
+    """Kart numarasının kör indeksi (tasarım §6.3, T14); rakamsız girdi → ''.
+
+    Yazmada (`Membership.save`, `IssuedCard`, `CardRevocation`) ve aramada
+    (kart okutma) AYNI yol kullanılır: `card_numbers.card_index_input` (rakamlar
+    + alan ayracı) + `crypto.blind_index`. Anahtar bellekte değilse
+    `KeyMissingError` (fail-closed).
+    """
+    return blind_index(card_numbers.card_index_input(card_no))
+
+
+class MemberType(models.TextChoices):
+    """Üye türü — kişiden TÜRER, saklanmaz (sözlük: öğrenci / öğretmen / diğer personel).
+
+    Öğrenci üyeliği öğrenci türündedir; personelde tür `Personnel.member_kind`'dan
+    okunur. Saklanmamasının nedeni tutarlılıktır: personelin türü e-Okul
+    aktarımında değişirse (öğretmen → diğer personel) Md. 18 sayı sınırı da
+    kendiliğinden değişmelidir; üyelik satırındaki eski bir kopya bunu bozardı.
+    """
+
+    STUDENT = "STUDENT", "öğrenci"
+    TEACHER = "TEACHER", "öğretmen"
+    STAFF = "STAFF", "diğer personel"
+
+
+class MembershipStatus(models.TextChoices):
+    """Üyelik durumu. Askıya alma YOKTUR: mevzuatta askı yok, yaptırım icat edilmez."""
+
+    ACTIVE = "ACTIVE", "Aktif"
+    TERMINATED = "TERMINATED", "Sonlandı"
+
+
+class TerminationReason(models.TextChoices):
+    """Üyeliğin sonlanma nedeni — KAPALI LİSTE, sonlanan üyelikte zorunlu (D12).
+
+    OYS nedeni doğrulamıyordu ve boş kalabiliyordu (D12). Burada DB kısıtı hem
+    listeyi hem zorunluluğu söyler. Serbest metin YOKTUR (kişisel bilgi yazılmasın).
+
+    - `LEFT_SCHOOL`: ayrılış kancası yazar (Md. 16/3'ün amacına uygun olarak
+      yerel kayıtta da üyelik sonlanır — §9-8). Elle seçilmez: ayrılan kişi
+      Kişiler ekranında "Ayrıldı olarak işaretle" ile işlenir.
+    - `MERGED`: personel birleştirmesinde hedefin zaten aktif üyeliği varsa
+      kaynağın üyeliği bu nedenle sonlanır. Elle seçilmez.
+    - `MEMBER_REQUEST`, `RECORD_ERROR`: yöneticinin elle sonlandırması
+      (`MANUAL_TERMINATION_REASONS`). Üyelik isteğe bağlıdır (Md. 17/1).
+    """
+
+    LEFT_SCHOOL = "LEFT_SCHOOL", "Okuldan ayrıldı"
+    MEMBER_REQUEST = "MEMBER_REQUEST", "Üyenin isteği"
+    RECORD_ERROR = "RECORD_ERROR", "Yanlış kayıt"
+    MERGED = "MERGED", "Kişi kayıtları birleştirildi"
+
+
+#: Yöneticinin "Üyeliği sonlandır" diyaloğunda seçebileceği nedenler.
+MANUAL_TERMINATION_REASONS: tuple[str, ...] = (
+    TerminationReason.MEMBER_REQUEST,
+    TerminationReason.RECORD_ERROR,
+)
+
+
+class Membership(BaseModel):
+    """Kütüphane üyeliği (Md. 16-17, 20) — kişi verisi taşır.
+
+    Üye XOR ile öğrenciye YA DA personele bağlanır (DB kısıtı). Kişi başına tek
+    AKTİF üyelik vardır (kısmi teklik kısıtları); dönen kişiye YENİ satır ve
+    yeni kart açılır, eski satır yeniden aktifleşmez (OYS kararı korundu).
+
+    **Kart no şifrelidir, eşleştirme kör indeksledir** (§6.3, T14): `card_no`
+    `EncryptedCharField`'dır; kart okutma, iptal kart denetimi ve teklik
+    `card_no_index` üzerinden TAM EŞLEŞMEDİR. İndeks YALNIZ `save()` ile yazılır
+    (`Student.save` dersi): `QuerySet.update(card_no=…)` indeksi eskide bırakır.
+    Teklik indekstedir ve kısmi DEĞİLDİR; asıl "asla yeniden kullanılmaz"
+    güvencesi `IssuedCard`'dır (üyelik katı silinse de kalır).
+
+    **Üye türü saklanmaz**, kişiden türer (`member_type`, `MemberType` yorumu).
+
+    `card_printed_at`: üye kartının onaylı basım işareti (D10 kuralı — PDF
+    üretmek "basıldı" değildir). Boş = kart basımı kuyruğunda. Kart
+    yenilenince boşalır. Basım akışı (E2) bu alanı kullanır.
+
+    Ad ve okul no kişi kaydındadır (şifreli); sıralama ve ad araması
+    selector'da Python'dadır (`selectors_dolasim`).
+    """
+
+    student = models.ForeignKey(
+        "okul.Student",
+        on_delete=models.PROTECT,
+        related_name="library_memberships",
+        verbose_name="öğrenci",
+        null=True,
+        blank=True,
+    )
+    personnel = models.ForeignKey(
+        "okul.Personnel",
+        on_delete=models.PROTECT,
+        related_name="library_memberships",
+        verbose_name="personel",
+        null=True,
+        blank=True,
+    )
+    card_no = EncryptedCharField("kart no", max_length=8)
+    card_no_index = models.CharField(
+        "kart no kör indeksi", max_length=64, unique=True, editable=False
+    )
+    card_printed_at = models.DateTimeField(
+        "kart basım tarihi",
+        null=True,
+        blank=True,
+        help_text="Onaylı basım işareti; boş = kart basımı kuyruğunda. Kart yenilenince boşalır.",
+    )
+    status = models.CharField(
+        "durum", max_length=12, choices=MembershipStatus.choices, default=MembershipStatus.ACTIVE
+    )
+    requested_at = models.DateField("üyelik isteği tarihi", default=timezone.localdate)
+    started_at = models.DateField("üyelik başlangıcı", default=timezone.localdate)
+    terminated_at = models.DateField("üyeliğin sonlandığı tarih", null=True, blank=True)
+    termination_reason = models.CharField(
+        "sonlanma nedeni",
+        max_length=16,
+        choices=TerminationReason.choices,
+        blank=True,
+        default="",
+    )
+
+    class Meta:
+        verbose_name = "üyelik"
+        verbose_name_plural = "üyelikler"
+        # Ad şifreli → DB'de ada göre sıralanamaz; kullanıcıya gösterilen sıra
+        # selector'da Python ile kurulur (`selectors_dolasim.memberships_sorted`).
+        ordering = ["pk"]
+        indexes = [
+            models.Index(fields=["status"], name="kutuphane_membership_st_idx"),
+        ]
+        constraints = [
+            # XOR: tam olarak biri dolu (öğrenci YA DA personel).
+            models.CheckConstraint(
+                name="ck_membership_xor_person",
+                condition=(
+                    models.Q(student__isnull=False, personnel__isnull=True)
+                    | models.Q(student__isnull=True, personnel__isnull=False)
+                ),
+            ),
+            # Kişi başına tek CANLI + AKTİF üyelik.
+            models.UniqueConstraint(
+                fields=["student"],
+                condition=models.Q(status="ACTIVE", deleted_at__isnull=True),
+                name="uq_membership_active_student",
+            ),
+            models.UniqueConstraint(
+                fields=["personnel"],
+                condition=models.Q(status="ACTIVE", deleted_at__isnull=True),
+                name="uq_membership_active_personnel",
+            ),
+            # Her üyeliğin kartı vardır (boş indeks = anahtarsız yazım hatası).
+            models.CheckConstraint(
+                name="ck_membership_card_index", condition=~models.Q(card_no_index="")
+            ),
+            models.CheckConstraint(
+                name="ck_membership_status",
+                condition=models.Q(status__in=MembershipStatus.values),
+            ),
+            # D12: sonlanan üyelikte tarih ve KAPALI LİSTEDEN neden zorunlu;
+            # aktif üyelikte ikisi de boş.
+            models.CheckConstraint(
+                name="ck_membership_termination",
+                condition=(
+                    models.Q(status="ACTIVE", terminated_at__isnull=True, termination_reason="")
+                    | models.Q(
+                        status="TERMINATED",
+                        terminated_at__isnull=False,
+                        termination_reason__in=TerminationReason.values,
+                    )
+                ),
+            ),
+            models.CheckConstraint(
+                name="ck_membership_request_before_start",
+                condition=models.Q(requested_at__lte=models.F("started_at")),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Üyelik #{self.pk} ({self.get_status_display()})"
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        """Kart no'nun kör indeksini günceller, sonra kaydeder (bkz. `Student.save`).
+
+        `update_fields` verilmiş ve kart no içinde değilse indeks yeniden
+        hesaplanmaz (numara değişmedi; anahtar gerekmez). İçindeyse indeks de
+        `update_fields`'e eklenir — yoksa yeni numara yazılır, indeks eskide kalırdı.
+        """
+        update_fields = kwargs.get("update_fields")
+        if update_fields is None or "card_no" in update_fields:
+            self.card_no_index = card_no_blind_index(self.card_no)
+            if update_fields is not None and "card_no_index" not in update_fields:
+                kwargs["update_fields"] = [*update_fields, "card_no_index"]
+        super().save(*args, **kwargs)
+
+    @property
+    def person(self) -> Student | Personnel:
+        """Üyenin kişi kaydı (öğrenci ya da personel)."""
+        kisi: Student | Personnel | None = (
+            self.student if self.student_id is not None else self.personnel
+        )
+        if kisi is None:  # XOR kısıtı bunu önler; savunma
+            raise ValueError("Üyelik bir kişiye bağlı değil.")
+        return kisi
+
+    @property
+    def member_type(self) -> str:
+        """Kişiden türeyen üye türü (`MemberType`)."""
+        if self.student_id is not None:
+            return str(MemberType.STUDENT)
+        if self.personnel is not None and self.personnel.member_kind == "STAFF":
+            return str(MemberType.STAFF)
+        return str(MemberType.TEACHER)
+
+    def get_member_type_display(self) -> str:
+        return str(MemberType(self.member_type).label)
+
+    @property
+    def full_name(self) -> str:
+        return self.person.full_name
+
+    @property
+    def is_active(self) -> bool:
+        return self.status == MembershipStatus.ACTIVE
+
+    @property
+    def person_is_active(self) -> bool:
+        """Kişi kaydı canlı ve aktif mi? (ayrılmış kişiye ödünç verilmez)"""
+        kisi = self.person
+        if kisi.deleted_at is not None:
+            return False
+        if self.student is not None:
+            return self.student.status == "ACTIVE"
+        return self.personnel is not None and self.personnel.is_active
+
+
+class IssuedCard(models.Model):
+    """Verilmiş BÜTÜN kart numaralarının kör indeksi — kişisiz, kalıcı (V2-05, D21).
+
+    "Kart no asla yeniden kullanılmaz" değişmezini bu tablo sağlar: yeni numara
+    burada varsa yeniden çekilir (`services.memberships.issue_card_number`).
+    Üyelik katı silinse, kart yenilense ya da anonimleştirilse de satır KALIR.
+    Kişiye bağ YOKTUR (yalnız indeks ve tarih): üyeliğin silinmesinden sonra
+    burada kalan hiçbir şey bir kişiyi göstermez.
+
+    `BaseModel` DEĞİLDİR (yumuşak silme yok — `CopyCounter`, `ReservedBarcode`
+    gibi): canlı sorgudan düşen bir satır numaranın yeniden verilmesine yol açardı.
+    """
+
+    card_no_index = models.CharField("kart no kör indeksi", max_length=64, unique=True)
+    issued_on = models.DateField("veriliş tarihi", default=timezone.localdate)
+
+    class Meta:
+        verbose_name = "verilmiş kart numarası"
+        verbose_name_plural = "verilmiş kart numaraları"
+        ordering = ["pk"]
+        constraints = [
+            models.CheckConstraint(
+                name="ck_issuedcard_index", condition=~models.Q(card_no_index="")
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Verilmiş kart #{self.pk}"
+
+
+class CardRevocationReason(models.TextChoices):
+    """Kartın neden iptal edildiği (kişisiz, kapalı liste)."""
+
+    RENEWED = "RENEWED", "Kart yenilendi"
+    MERGED = "MERGED", "Kişi kayıtları birleştirildi"
+    DELETED = "DELETED", "Üyelik silindi"
+
+
+class CardRevocation(models.Model):
+    """İptal edilmiş kart — okutulunca "İptal edilmiş kart" iletisi verilir (§4.4, sözlük).
+
+    Kartı yenile eski numaranın kör indeksini buraya yazar; açık ödünçler
+    üyelikte kalır. Birleştirmede (hedefin aktif üyeliği varsa) ve yanlış açılan
+    üyeliğin silinmesinde de kart iptal edilir: basılıp verilmiş bir kart
+    okutulduğunda "tanınmayan kart" değil "iptal edilmiş kart" denmelidir.
+
+    `membership` yalnız yönetici ekranı içindir (hangi üyeliğin eski kartı?);
+    üyelik silinir ya da anonimleştirilirse bağ düşer (SET_NULL), iptal kaydı
+    kalır. `BaseModel` DEĞİLDİR (yumuşak silme iptal bilgisini sessizce kaybettirirdi).
+    """
+
+    card_no_index = models.CharField("kart no kör indeksi", max_length=64, unique=True)
+    membership = models.ForeignKey(
+        Membership,
+        on_delete=models.SET_NULL,
+        related_name="card_revocations",
+        verbose_name="üyelik",
+        null=True,
+        blank=True,
+    )
+    reason = models.CharField(
+        "iptal nedeni",
+        max_length=10,
+        choices=CardRevocationReason.choices,
+        default=CardRevocationReason.RENEWED,
+    )
+    revoked_on = models.DateField("iptal tarihi", default=timezone.localdate)
+
+    class Meta:
+        verbose_name = "iptal edilmiş kart"
+        verbose_name_plural = "iptal edilmiş kartlar"
+        ordering = ["-revoked_on", "-pk"]
+        constraints = [
+            models.CheckConstraint(
+                name="ck_cardrevocation_index", condition=~models.Q(card_no_index="")
+            ),
+            models.CheckConstraint(
+                name="ck_cardrevocation_reason",
+                condition=models.Q(reason__in=CardRevocationReason.values),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"İptal edilmiş kart #{self.pk}"
+
+
+class LoanStatus(models.TextChoices):
+    """Ödünç durumu. "Gecikmiş" DURUM DEĞİLDİR: `status=OPEN` ve `due_date < bugün`
+    sorgusudur (selectors). Kayba dönüşme (Md. 19) F7'de eklenir."""
+
+    OPEN = "OPEN", "Açık"
+    RETURNED = "RETURNED", "İade edildi"
+
+
+class OverrideReason(models.TextChoices):
+    """Gecikme engeli istisnasının gerekçesi — kapalı liste (§4.4, §6.2; D12).
+
+    İstisna YALNIZ politika kuralı olan gecikme engeline (`block_loan_if_overdue`)
+    ve YALNIZ yönetici kipinde tanınır. Md. 18 sayı sınırı ve Md. 16/1
+    kaynakları hiçbir kipte istisna almaz — onlar için gerekçe alanı YOKTUR.
+    Seçilen gerekçeye ayrıca açıklama zorunludur (`Loan.override_note`).
+    """
+
+    COURSE_NEED = "COURSE_NEED", "Ders ya da ödev için gerekli"
+    EXCUSED_DELAY = "EXCUSED_DELAY", "Gecikmenin geçerli bir mazereti var"
+    RETURN_ARRANGED = "RETURN_ARRANGED", "Gecikmiş kaynağın iadesi için görüşüldü"
+    OTHER = "OTHER", "Diğer"
+
+
+class CardlessReason(models.TextChoices):
+    """Kartsız ödüncün gerekçesi — kapalı liste (U12, §4.4). Yalnız yönetici kipinde."""
+
+    CARD_NOT_WITH_MEMBER = "CARD_NOT_WITH_MEMBER", "Kart yanında değil"
+    CARD_LOST = "CARD_LOST", "Kart kayıp — yenilenecek"
+    CARD_NOT_PRINTED = "CARD_NOT_PRINTED", "Kart henüz basılmadı"
+    CARD_UNREADABLE = "CARD_UNREADABLE", "Kart okunmuyor"
+
+
+#: İstisna açıklamasının yardım metni (sözlük: `Loan.override_reason`).
+OVERRIDE_NOTE_HELP = "Sağlık ya da aile bilgisi yazmayın."
+
+
+class Loan(BaseModel):
+    """Ödünç kaydı (Md. 18, 21-23) — kişi verisi taşır (üyelik bağı).
+
+    **Ödünç ≠ okuduğu kitap** (tasarım §3, §9-14): bu kayıt bir kitabın kimde
+    olduğunu ve ne zaman döneceğini tutar; üye bazında konu ya da sınıf
+    dağılımı buradan ÜRETİLMEZ (profil yasağı, CLAUDE.md §2-5).
+
+    - `membership` SET_NULL: saklama süresi sonunda kişi bağı koparılır (§6.4,
+      F11); ödünç satırı kişisiz istatistik için kalır.
+    - `due_date` iade tarihidir: `verilme günü + 15` (Md. 18, sabit) ve kapalı
+      güne rastlarsa izleyen ilk açık gün (`services.circulation`). Uzatma, ceza
+      ve harç YOKTUR — model bunlar için alan taşımaz.
+    - **Bir nüshada tek açık ödünç** (§9-7): kısmi teklik kısıtı yarışta da
+      ikinci açık ödüncü keser.
+    - `override_reason` + `override_note`: gecikme engeli istisnası (kapalı
+      liste + açıklama); ikisi de ŞİFRELİDİR (§6.3), ikisi birlikte dolar.
+    - `cardless` + `cardless_reason`: kartsız ödünç (U12) işaretli kayıttır ve
+      gerekçesi (kapalı liste) ŞİFRELİDİR; Md. 23/1-a'dan sapma olarak kayda geçer.
+    """
+
+    copy = models.ForeignKey(
+        Copy, on_delete=models.PROTECT, related_name="loans", verbose_name="nüsha"
+    )
+    membership = models.ForeignKey(
+        Membership,
+        on_delete=models.SET_NULL,
+        related_name="loans",
+        verbose_name="üyelik",
+        null=True,
+        blank=True,
+    )
+    loaned_at = models.DateTimeField("verilme zamanı", default=timezone.now)
+    due_date = models.DateField("iade tarihi", db_index=True)
+    returned_at = models.DateTimeField("iade zamanı", null=True, blank=True)
+    status = models.CharField(
+        "durum", max_length=16, choices=LoanStatus.choices, default=LoanStatus.OPEN
+    )
+    override_reason = EncryptedCharField(
+        "istisna gerekçesi",
+        max_length=32,
+        blank=True,
+        default="",
+        help_text="Yalnız gecikme engeli istisnasında; kapalı listeden (yönetici kipi).",
+    )
+    override_note = EncryptedTextField(
+        "istisna açıklaması", blank=True, default="", help_text=OVERRIDE_NOTE_HELP
+    )
+    cardless = models.BooleanField("kartsız ödünç", default=False)
+    cardless_reason = EncryptedCharField(
+        "kartsız ödünç gerekçesi",
+        max_length=32,
+        blank=True,
+        default="",
+        help_text="Kapalı listeden (yönetici kipi).",
+    )
+
+    class Meta:
+        verbose_name = "ödünç"
+        verbose_name_plural = "ödünçler"
+        ordering = ["-loaned_at", "-pk"]
+        indexes = [
+            models.Index(fields=["status", "due_date"], name="kutuphane_loan_st_due_idx"),
+        ]
+        constraints = [
+            # §9-7: bir nüsha aynı anda tek açık ödünçte (yarış kısıtı).
+            models.UniqueConstraint(
+                fields=["copy"],
+                condition=models.Q(status="OPEN", deleted_at__isnull=True),
+                name="uq_loan_open_per_copy",
+            ),
+            models.CheckConstraint(
+                name="ck_loan_status", condition=models.Q(status__in=LoanStatus.values)
+            ),
+            # Açık ödüncün iade zamanı boş, iade edilenin dolu.
+            models.CheckConstraint(
+                name="ck_loan_returned_at",
+                condition=(
+                    models.Q(status="OPEN", returned_at__isnull=True)
+                    | models.Q(status="RETURNED", returned_at__isnull=False)
+                ),
+            ),
+            # D12: istisna gerekçesi ve açıklaması birlikte dolar (boş gerekçe yok).
+            models.CheckConstraint(
+                name="ck_loan_override_pair",
+                condition=(
+                    models.Q(override_reason="", override_note="")
+                    | (~models.Q(override_reason="") & ~models.Q(override_note=""))
+                ),
+            ),
+            # U12: kartsız ödünç işaretliyse gerekçe dolu; değilse boş.
+            models.CheckConstraint(
+                name="ck_loan_cardless_reason",
+                condition=(
+                    models.Q(cardless=False, cardless_reason="")
+                    | (models.Q(cardless=True) & ~models.Q(cardless_reason=""))
+                ),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Ödünç #{self.pk} ({self.get_status_display()})"
+
+    @property
+    def is_open(self) -> bool:
+        return self.status == LoanStatus.OPEN
+
+    def overdue_days(self, on: date | None = None) -> int:
+        """Gecikme günü (açık ve iade tarihi geçmişse); değilse 0."""
+        if not self.is_open:
+            return 0
+        bugun = on or timezone.localdate()
+        return max(0, (bugun - self.due_date).days)
+
+    @property
+    def has_override(self) -> bool:
+        return bool(self.override_reason)

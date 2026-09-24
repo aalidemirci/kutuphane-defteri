@@ -350,7 +350,7 @@ yönetim sunucusu → sağlık denetimi → WebView2 → pencere. Farkları:
 | Ağdaki bir cihaz yönetim işlevine ya da kişisel veriye ulaşmaya çalışır | Ayrı sunucu, ayrı uygulama, salt okur bağlantı, eylem kodlu authorizer, kişisel veri içermeyen görünümler (§5.3) | — |
 | Kötü niyetli sayfa DNS rebinding yapar | Belirteç çerezi `SameSite=Strict` ve yalnız WebView2 profilinde. Paketli yapıda `ALLOWED_HOSTS` yalnız 127.0.0.1 ve localhost; `backend` adı yalnız `KD_SESSION_TOKEN` boşken (geliştirme ve test) eklenir (GA-13) | — |
 | Disk, bilgisayar ya da yedek çalınır | Zorunlu parola + §6.3 şifreleme + X25519 şifreli yedek | Kopyalanan dosyada eser adları, şube, üye türü ve tarihler düzdür. Ad, okul no ve kart no olmadan kişiye doğrudan bağlanamazlar. Küçük gruplarda tahmin mümkündür (yukarıdaki satır). **Tam koruma için BitLocker** |
-| Görevli, kart numaralarını sırayla yazarak üye adlarını çıkarır (GA-7) | Kart no: 6 rastgele hane + sağlama hanesi · art arda 5 geçersiz kart → yönetici parolası | — |
+| Görevli, kart numaralarını sırayla yazarak üye adlarını çıkarır (GA-7) | Kart no: 6 rastgele hane + sağlama hanesi · art arda 5 geçersiz kart → yönetici parolası · son 10 dakikada 5 tanınmayan ya da iptal edilmiş kart → yönetici parolası; geçerli kart okutması bu sayıyı sıfırlamaz (§14.1 F6 ekleri 19) | Yavaş numaralandırma: pencere başına 4 deneme kilitsiz geçer; 1.000 üyeli okulda bir isabet için sürekli okutmayla onlarca saat gerekir |
 | **Dış servisin yanıtı programın içine girer** (U13, §8.5): künye sorgusuna dönen eser adı, yazar ve yayınevi metni katalog alanlarına, oradan TR arama anahtarlarına ve WeasyPrint evrakına basılır | Yanıt **güvenilmeyen girdidir**: boyut ve uzunluk tavanı, denetim karakteri temizliği, **NFC normalleştirmesi**, kısa zaman aşımı, yönlendirme izlenmez · hiçbir alan kullanıcı onaylamadan yazılmaz (ön izleme + kaynak ve tarih etiketi) · yerel önbellek aynı ISBN'i ikinci kez sormaz | Bakanlık ucunda TLS yoktur; yol üzerindeki bir aktör künyeyi değiştirebilir. Onay ekranı son katmandır ve kullanıcının dikkatine dayanır (TB20). Özellik varsayılan kapalıdır |
 | Ağdan yük bindirilir ya da slowloris saldırısı yapılır (GA-12) | Kendi havuzu, `connection_limit`, kısa zaman aşımı, IP başına token-bucket · kabul anında IP başına eşzamanlı bağlantı sınırı (dispatcher alt sınıfı) | Kalan risk yalnız katalogun erişilemez olmasıdır, veri riski yoktur |
 
@@ -1075,7 +1075,11 @@ Aydınlatma metni bu kapsamı aynen yazar.
 - gönderim anında alanı temizler ve okumaları kuyruğa alır;
 - sesli ve görsel geri bildirim verir;
 - odak kaybında görünür uyarı verir (Windows bildirimi ya da güncelleme penceresi
-  odağı çalabilir).
+  odağı çalabilir);
+- bir pencere açıkken kuyruk bekler; odak yazı alanında değilse okuyucunun kodu
+  tampona alınır ve pencere kapanınca işlenir (§14.1 F6 ekleri 22). Kart okutma
+  kilidi (GA-7) pencere değil, kutunun üstünde bir şerittir: iade kilitlenmez
+  (§14.1 F6 ekleri 21).
 
 **Kamerayla okuma v1'de yoktur.**
 
@@ -1579,20 +1583,20 @@ ifadeleri ters çevrilir: `settings.py:3-7`, `server.py:8`, `docs/kurulum.md:83-
 | D5 | İçe aktarım: `shelf_location` kayboluyor, idempotency yok, önizleme uygulamayla eşleşmiyor | §8.1 | F3 |
 | D6 | Yıl UTC'den alınıyor | `localdate()` | F2 |
 | D7 | Karar türü denetlenmiyor | Tür denetimi | F2, F8 |
-| D8 | Kartta okul adı boş, kartlar tekli basılıyor | §7.2 | F6 |
-| D9 | Sayfalama yok, 26. ödünç iade edilemiyor | Sayfalama + barkodla iade | F2, F6 |
+| D8 | Kartta okul adı boş, kartlar tekli basılıyor | §7.2 | F6 — kapandı (§14.1 F6 ekleri 12) |
+| D9 | Sayfalama yok, 26. ödünç iade edilemiyor | Sayfalama + barkodla iade | F2, F6 — kapandı (§14.1 F6 ekleri 12) |
 | D10 | "Basıldı" işareti PDF üretilince konuyor | Onaylı işaret | F4 |
 | D11 | `.upper()` Türkçe değil, soyad sezgisi yanlış | `tr_upper` + yazar biçimi kuralı | F2 |
-| D12 | İstisna gerekçesi boş kalabiliyor, sonlandırma nedeni doğrulanmıyor | Zorunlu alan + serializer | F6 |
+| D12 | İstisna gerekçesi boş kalabiliyor, sonlandırma nedeni doğrulanmıyor | Zorunlu alan + serializer | F6 — kapandı (§14.1 F6 ekleri 12) |
 | D13 | Anonimleştirme eksik (üyelik satırı, not metinleri) | §6.4 | F11 |
 | D14 | Nadir eser denetimi ve komisyon bağı yok | §6.2 | F8 |
 | D15 | Ayıklamada kalem silme ve teklif geri çekme yok | §6.2 | F8 |
 | D16 | Sayım fazlası eski barkodu raf alanına yazıyor | `surplus_barcode` | F9 |
 | D17 | Sayımda COMPLETED ile APPROVED arasında kilit boşluğu var (EK-12) | Kilit onaya kadar + onayda yeniden doğrulama | F9 |
 | D18 | TMY 32/3 zorunlu bir kilit gibi okunmuş, iade de kilitleniyor | §9-10 | F9 |
-| D19 | Ödünç süresi 1-15 arası ayarlanabilir; Md. 18 süreyi sabit koyuyor | 15 gün sabit | F6 |
+| D19 | Ödünç süresi 1-15 arası ayarlanabilir; Md. 18 süreyi sabit koyuyor | 15 gün sabit | F6 — kapandı (§14.1 F6 ekleri 12) |
 | D20 | Etiket kuyruğu barkod sırasında | Seçilebilir sıra | F4 |
-| D21 | Kart no sıralı, tahmin edilebilir | Rastgele + sağlama | F6 |
+| D21 | Kart no sıralı, tahmin edilebilir | Rastgele + sağlama | F6 — kapandı (§14.1 F6 ekleri 12) |
 
 ---
 
@@ -2325,6 +2329,185 @@ kilitlendi (madde 19-30). Kapı yeniden yeşildir.
     Genel"). Masaüstü modüllerinin kullanıcı metinleri bir sözlük taramasıyla
     korunur (`desktop/tests/test_sozluk_metinleri.py`). Kılavuz: geri yüklemeden
     sonra katalogun kalkması yedekteki ayara bağlıdır.
+
+**F6 ekleri (24.09.2026).** F6'da tasarımdan bilinçli sapmalar ve tasarımda yazmayan
+kararlar. Üç iş kolunda (üyelik, kart ve ödünç çekirdeği; dolaşım masası ve görevli
+kipi; evrak, üyelik yönetimi ve pano) yapıldı; ardından bütünleştirme denetiminin
+bulguları düzeltildi (madde 13-26). Kod kapısı (§14.1 F6 satırı) ve `bash
+scripts/gates.sh` yeşildir. **D8, D9, D12, D19 ve D21 kapandı** (§13; madde 12).
+Gerçek okuyucuyla hızlı okutma ve katlanmış pusulanın saha denemesi F12'dedir.
+
+1. **§6.2 — modeller ve tek göç.** `Membership` (öğrenci XOR personel, kişi başına tek
+   aktif üyelik — kısmi teklik; üye türü saklanmaz, kişiden türer; `card_no` şifreli
+   + `card_no_index` kör indeks, teklik indekste; `requested_at`, `started_at`,
+   `terminated_at`, `termination_reason` — sonlanan üyelikte zorunlu, DB kısıtı;
+   `card_printed_at`), `IssuedCard` (yalnız indeks ve tarih, `BaseModel` değil),
+   `CardRevocation` (nedeni `RENEWED`/`MERGED`/`DELETED`), `Loan` (bir nüshada tek açık
+   ödünç — kısmi teklik; `override_reason` + `override_note` ikisi birlikte ve şifreli;
+   `cardless` + `cardless_reason` ikisi birlikte ve gerekçe şifreli). Tek göç
+   `0005_uyelik_ve_odunc`. **Dönen kişiye YENİ üyelik ve yeni kart açılır**, eski satır
+   yeniden aktifleşmez (OYS kararı); sayılar (açık ödünç, gecikme, kalan hak) kişinin
+   BÜTÜN üyelikleri üzerinden sayılır: eski üyelikte iade edilmemiş kitap sınırı ve
+   gecikme engelini sıfırlamaz.
+2. **§4.4, D12 — kapalı listeler.** Gecikme istisnası gerekçesi: "Ders ya da ödev için
+   gerekli" · "Gecikmenin geçerli bir mazereti var" · "Gecikmiş kaynağın iadesi için
+   görüşüldü" · "Diğer" + zorunlu açıklama (en çok 500 karakter, "Sağlık ya da aile
+   bilgisi yazmayın."). Kartsız ödünç gerekçesi: "Kart yanında değil" · "Kart kayıp —
+   yenilenecek" · "Kart henüz basılmadı" · "Kart okunmuyor". Sonlandırma nedeni:
+   elle yalnız "Üyenin isteği" ve "Yanlış kayıt"; "Okuldan ayrıldı" ayrılış kancasının,
+   "Kişi kayıtları birleştirildi" birleştirmenin işidir. Açık ödüncü olan üyelik elle
+   sonlandırılamaz; ödünç kaydı olan üyelik silinmez (sonlandırılır). Gecikme engeli
+   yokken gönderilen gerekçe kayda GEÇMEZ (gereksiz gerekçe yanıltıcı olurdu).
+3. **§9-5 — dönem sonu uyarısı ve kaydırma işareti.** Uyarı etkin ders yılının ödünç
+   gününü kapsayan döneminden hesaplanır; ders yılı ya da dönem tanımlı değilse
+   üretilmez. Yönetici yanıtı `due_date_shifted` taşır; kaydırma "Md. 18 gereği" diye
+   sunulmaz (kaynak taramasıyla testli).
+4. **§8.3 — yıl sonu tarihi.** Son sınıf, `SchoolConfig.kademe`'nin son sınıfıdır (4 ·
+   8 · 12); `last_loan_date_graduating` tanımlıysa ona daha erken tarih uygulanır.
+   **Eski yılın tarihi uygulanmaz:** etkin ders yılı tarihten sonra başlamışsa kural
+   düşer (geçen Haziran'ın tarihi Eylül'de bütün ödünçleri kilitlemesin).
+5. **§4.4 — görevli yüzeyi.** İzin listesine beş masa ucu (`library-desk-member`,
+   `library-checkout`, `library-return`, `library-desk-copy-status`,
+   `library-desk-card-unlock`) ve katalog okumanın üç GET ucu (sorgu parametresi
+   sınırlı) girdi. `library-checkout` gövdesinde `override_*`, `cardless*`,
+   `membership_id`; `library-desk-member` gövdesinde `membership_id` bulunursa (değeri
+   boş olsa da) 403. Masa uçları yalnız JSON gövde kabul eder, kart no URL'ye yazılmaz
+   (POST). Görevli yanıtlarının alan listeleri `serializers_masa` sabitleridir ve
+   anlık görüntüyle sınanır (§5.10-8 dolu). Servis katmanı aynı kuralı bir kez daha
+   uygular (`yonetici_kipi.require_admin_mode`).
+6. **§7.3 — masa iletileri.** Tasarımın tablosuna "Bu kitap zaten bu üyede. İade
+   alınsın mı?" (düğme "İade al") eklendi: üyenin kendi kitabını "başka üyede" diye
+   okumak yanlış olurdu. Okutma bir olaydır (iade ve durum sorgusu 200 gövde döner),
+   ödünç bir eylemdir (ret 400 + kararlı kod). Nüsha durum sorgusu ("Yalnız durum
+   sor") yazma yapmaz; görevli kipinde kitabın kimde olduğu gösterilmez.
+7. **GA-7 — sayaç süreç içidir** ve anahtar dönemine bağlıdır (kilitleyip parolayla
+   açmak sıfırlar); yönetici kipinde sayılmaz, yönetici kipindeki bir okutma sıfırlar.
+   Sağlaması tutmayan numara veritabanına hiç sorulmaz. Kilit görevli kipinden
+   çıkmadan `card-unlock/` ile (gövdede yönetici parolası) açılır. İkinci kural madde
+   19'dadır.
+8. **§7.2, E2 — üye kartı.** Kart şablonu kod içi tohumdur (85 × 54 mm, A4'e 2 × 5,
+   simetrik kenar; göç yok, etiket şablonları ekranında görünmez), kesim çizgisi
+   seçmelidir, kaydırma yazıcı kalibrasyonuyla düzeltilir. Barkod modülü kartta 4/300
+   inçtir (≈ 0,339 mm; nokta ızgarasına hizalı, 99 modülle 33,5 mm). Basım işareti
+   üyelik satırındadır (`card_printed_at`); kart için basım partisi tutulmaz, geri
+   alma işareti boşaltır.
+9. **E4 — pusula geometrisi.** A4'te üç pusula (210 × 99 mm), sol 45 mm ad şeridi,
+   katlama çizgisi 127,5 mm'de (sağ 82,5 mm'lik bölüm orta bölümü tam örter), kesme
+   çizgileri yalnız pusulalar arasında. Pusulada en çok beş kaynak, fazlası "ve N
+   kaynak daha — kütüphane yöneticisine sorun." satırıdır. Kişinin eski üyeliğindeki
+   gecikmeler de aynı pusulaya girer (kişi bazında).
+10. **E13, E19 — aydınlatma metni ve masa kartı.** Başvuru adresi ve iletişim bilgisi
+    yalnız basıma yazılır, programda saklanmaz. Metin en uzun veride en çok iki
+    sayfadır; Kanun alıntıları `docs/mevzuat/6698-kvkk.md` ile birebir testlidir.
+    Masa kartı tek sayfadır ve masadaki iletileri ekranla aynı yazar.
+11. **T15 — beklenmedik kapanış kartı.** "Son Oturumu Kontrol Edin" kartı yalnız
+    yönetici kipinde görünür ve bu süreçten ÖNCEKİ son 30 ödünç/iadeyi listeler;
+    "Kontrol ettim" onayı süreç içidir (dosyaya yazılmaz).
+12. **D kalemleri.** D8: kartta okul adı `SchoolConfig`'ten gelir, kartlar tabakaya
+    basılır. D9: ödünç ve üyelik listeleri sayfalıdır, 26. ödünç barkodla iade edilir
+    (testli). D12: istisna gerekçesi ve sonlandırma nedeni kapalı listeden ve zorunlu
+    (servis + DB kısıtı + serializer). D19: süre ayar değildir (`LibraryPolicy`'de süre
+    alanı yok, testli). D21: kart no `9` + 6 rastgele hane + Luhn; `CardCounter` yok.
+
+*Düzeltme turu (24.09.2026).* Bütünleştirme sonrası denetimin bulguları yeniden
+doğrulandı; gerçek olanlar kök nedeninden düzeltildi ve her biri bir testle
+kilitlendi (madde 13-26). Tasarım kararını değiştirecek bir kalem uygulanmadı,
+açık karar olarak yazıldı; kullanıcı 25.09.2026'da §7.3'ün aynen kalmasına karar verdi
+(madde 26, TB34).
+
+13. **§9-5 — tatilsiz takvim yılı.** İade tarihi kaydırması yalnız Kapalı Günler'e
+    bakar; tatilleri yalnız kurulum sihirbazı tohumluyordu. İkinci yılda Ayarlar'dan
+    açılan ders yılının ikinci takvim yılı tatilsiz kalıyor, 1 Ocak'a ya da bayrama
+    düşen iade tarihi kaymıyordu (ertesi gün sahte gecikme ve gecikme engeli). İki
+    önlem: Ayarlar → Ders Yılları'nda aktifleştirme de iki takvim yılını tohumlar
+    (sihirbazla ortak `modules/takvim/tatilTohumu.ts`); iade tarihinin düştüğü yılda
+    resmî tatil ya da dini bayram kaydı yoksa ödünç uyarı döndürür
+    (`circulation.holidays_missing_warning`).
+14. **§4.4, §7.3 — görevli kipinde ret sırası.** Görevli, gecikmesi olan ya da sınırı
+    dolu bir üyenin kartıyla barkodları deneyip "bu üyede / başka üyede" retlerinden
+    üyenin elindeki (gecikmiş) kitapları çıkarabiliyordu (§4.4: gecikmeli üyede eser
+    adı gösterilmez). Görevli kipinde üyeye bağlı engeller (üyelik, yıl sonu, gecikme,
+    sayı sınırı) nüshanın kimde olduğundan ÖNCE koşar; yönetici kipinde sıra
+    korunur. Kalan ayrım madde 26'dadır.
+15. **§8.3 — görevliye tarihsiz yıl sonu iletisi.** Son sınıf tarihi görevliye kartın
+    sahibinin son sınıfta olduğunu gösteriyordu; görevli iletisi tarihsizdir. Ret
+    zamanlamasından çıkarım kalan risktir (TB32).
+16. **§9-8, §7.3 — üyeye bağlı retlerde iade önerisi.** Sonlanmış üyenin kartından sonra
+    okutulan kendi kitabı "Üyelik sonlanmış" retiyle kalıyordu. Masa, üyeye bağlı
+    retlerin (üyelik, ayrılış, yıl sonu, gecikme, sınır) altında "Kitap iade için
+    getirildiyse iadesi alınabilir." der ve "İade al" sunar. Sunucu sırası
+    değişmedi: iade önerisi kitabın kimde olduğunu söylemez.
+17. **§4.4 — birleştirmede iptal edilen kart.** Kaynak üyelik numarasını korur ama kartı
+    iptaldir; masa onu "Üyelik sonlanmış" diye okuyordu. Kart çözümünde iptal kaydına
+    ÖNCE bakılır.
+18. **§7.1, D21 — geri yükleme ve kart numarası.** Geri yükleme `IssuedCard`'ı da geri
+    sarıyordu; yedekten sonra basılıp dağıtılmış bir kartın numarası sonraki bir
+    üyeliğe yeniden çekilebilirdi. Verilen her numaranın kör indeksi veri dizinindeki
+    yalnız-eklenen `verilmis-kartlar.txt` defterine de yazılır (`card_ledger`; geri
+    yükleme dokunmaz, kişisiz); yeni numara iki kaynağa karşı denetlenir. Defter
+    okunamazsa kart yine verilir (asıl güvence veritabanıdır). Kalan risk TB33.
+19. **GA-7 — ikinci kural.** Geçerli bir kart "art arda" diziyi bozduğu için görevli
+    dört numaradan sonra kendi kartını okutup sınırsız deneyebiliyordu (§4.3'teki
+    "kalan risk —" yanlıştı). Ek kural: son 10 dakikada 5 tanınmayan ya da iptal
+    edilmiş kart okutması (sağlaması tutan, veritabanına sorulan) kart okutmayı
+    durdurur; geçerli kart bu sayıyı sıfırlamaz, kilit kendiliğinden kalkmaz, yalnız
+    yönetici parolası kaldırır. Sağlaması tutmayan okutma bu kurala sayılmaz (kimseyi
+    ele vermez); yıpranmış kartın yanlış okunması kilitlemesin diye "art arda" kuralı
+    aynen durur. §4.3 satırı güncellendi.
+20. **§4.4 — parametre denetçisi yalnız UTF-8.** Denetçi gövdeyi `json.loads` ile,
+    DRF ise `charset` ile çözüyordu; `charset=utf-7` ile `override+AF8-reason`
+    denetçiden geçip görünümde `override_reason` oluyordu (servis kapısı yine
+    kesiyordu, sömürülemezdi). `charset` UTF-8 dışındaysa ara katman 403 verir, masa
+    görünümleri 415 verir (`Utf8JSONParser`).
+21. **§7.3 — kart okutma kilidi pencere değil şerittir.** Kipsel pencere bütün
+    okutmaları yutuyordu ("iade kilitlenmez" sözü masada tutmuyordu). Kilit okutma
+    kutusunun üstünde bir şerittir; kutu açık kalır, kilitliyken okutulan kitabın
+    iadesi alınır, kart okutması 429 alır.
+22. **§7.3 — gerekçeli istisna penceresi ve kuyruk.** Pencere açıldıktan sonra okutulan
+    kitaplar kayboluyor, kuyrukta bekleyen retler açık pencereyi eziyordu (yalnız son
+    kitap istisnayla verilir, öbürleri raftan kayıtsız çıkabilirdi). Pencere açıkken
+    kuyruk bekler; odak yazı alanında değilse okuyucunun kodu kutunun tamponuna alınır
+    (okutmanın ortasında açılan pencere kodu ikiye bölmez) ve pencere kapanınca
+    sırayla işlenir; her kitap kendi penceresini alır. Pencere kitabı yazar ("Kitap:
+    …"). Pencere açıkken 60 sn bağlam süresi işlemez.
+23. **§7.3 — istem yarışı, durum sorgusu sesi, ilk odak.** "İade al ve ödünç ver"
+    bağlamı düğmeye basıldığı an yakalar; iade sürerken bağlam değiştiyse ödünç
+    verilmez ve söylenir. Durum sorgusu ödünçten ayrı bir sesle (iki kısa ton) biter;
+    üye kartı okutulunca "Yalnız durum sor" kendiliğinden kapanır. Ortak `ui/Dialog`
+    açılışta odağı panele aldığı için çocuktaki `autoFocus` etkisizdi (kartsız ödünç,
+    yönetici kipine geçiş ve Çık pencereleri); React `autoFocus`'u Dialog'un açılış
+    efektinden ÖNCE uyguladığı için Dialog açan öğe yerine alanın kendisini kaydediyor,
+    kapanışta odak geri verilemiyordu. *(25.09.2026)* `ui/Dialog`'a geriye uyumlu
+    `initialFocusRef` özelliği eklendi (KS kitinden bilinçli ve yalnız ekleyici sapma;
+    F1'de `ConfirmProvider`'a ve F3'te `TextField`'a yapılan eklerin kalıbı): açan öğe
+    önce kaydedilir, sonra verilen alan, o yoksa panel odaklanır; özellik verilmezse
+    davranış KS'dekiyle aynıdır. Yönetici kipine geçiş, Çık, Parolayı değiştir,
+    kurtarma anahtarı yenileme ve kartsız ödünç pencerelerinde açılışta alan odaktadır
+    (testli); kartsız ödüncün `setTimeout`'lu yerel kancası kalktı. `ui/Dialog`
+    kullanan dosyada `autoFocus` kaynak taramasıyla yasaktır (`ui/Dialog.test.tsx`).
+24. **§3, E13 — aydınlatma metni.** Saklama maddesi TB16'nın bugünkü kapsamını söyler:
+    okuldan ayrılan kişilerin kayıtları üye olsunlar olmasınlar süresiz kalır;
+    geri yüklemede kenara alınan önceki veritabanı da anılır. "Veriler şifreli durur"
+    cümlesi TB1'e göre düzeltildi (ad, okul no, kart no ve gerekçeler şifreli; sınıf,
+    üye türü ve ödünç tarihleri düz). Görevlinin, okuttuğu kitabın o üyede olup
+    olmadığını gördüğü yazıldı (madde 26).
+25. **Md. 20, §9-1 — kart notu ve pusula dış yüzü.** Md. 20 konum kalıbı yalnız öğrenci
+    ve öğretmen kartına basılır (Md. 20/1 kartı ikisine öngörür); diğer personelin
+    kartında atıfsız not vardır. Pusulanın katlanınca dışta kalan teslim notu
+    kütüphaneyi anmaz ("Kişinin kendisine elden verilir; sınıfta okunmaz."); şeridin
+    tam metni testle sabittir, kılavuz ve sözlük dış yüzü gerçeğe göre yazar.
+26. **Görevli kipinde "bu üyede / başka üyede" ayrımı KORUNUR (kullanıcı kararı,
+    25.09.2026).** Madde 14'ten sonra ayrım yalnız engeli olmayan üyede kalır:
+    görevli, kartını bildiği bir üyenin elindeki kitapları barkod deneyerek yine
+    öğrenebilir (kitap adları durum sorgusundan zaten açıktır, kimde olduğu değil;
+    gecikme bilgisi bu yoldan açılmaz). Tam kapanış görevli kipinde TEK ret kodu olurdu ("Bu kitap ödünçte.
+    Önce iade alınsın mı?" + yalnız "İade al"); bu, §7.3 tablosunun görevliye verdiği
+    "başka üyede → iade + uyarı" akışını değiştireceği için uygulanmadı. Kullanıcı
+    §7.3'ün aynen kalmasına karar verdi; kalan risk TB34'tür (azaltmalar: engelli
+    üyede ayrım görünmez, GA-7 kart denetimi, görevlilerin yazılı görevlendirilmesi,
+    masa kartındaki gizlilik uyarısı). Aydınlatma metni bugünkü davranışı söyler.
+    Ayrıca `kip_sureleri()` hâlâ A10 sabitlerindedir (F2 ekleri 1'in "F6'da
+    bağlanacak" notu F7'ye devredildi).
 
 ### 14.2 Saha hazırlık hattı (kod dışı — F0 ile başlar)
 

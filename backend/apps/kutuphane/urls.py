@@ -10,10 +10,16 @@ böylece API yüzeyi aynı kalır, ad uzayı düz kalır ve `?format=` son ekler
 **Ad teklikliği şarttır** (`test_kip_koruma.py::test_api_uc_adlari_tekildir`):
 bu dosyadaki adlar `apps.okul.urls` ile AYNI düz ad uzayındadır.
 
-Görevli kipi izin listesinde bu dosyadan YALNIZ `library-label-verify` POST
-vardır (etiket doğrulama okutması; kullanıcı kararı 24.09.2026). Geri kalan
+Görevli kipi izin listesinde bu dosyadan `library-label-verify` POST (etiket
+doğrulama okutması; kullanıcı kararı 24.09.2026), F6 dolaşım masası uçları
+(`library-desk-member`, `library-checkout`, `library-return`,
+`library-desk-copy-status`, `library-desk-card-unlock`) ve katalog okuma
+(`library-work-list`, `library-work-detail`, `library-copy-list` — yalnız GET,
+sorgu parametresi kuralıyla; yanıt görevli kipinde daralır) vardır. Geri kalan
 uçlar kapalıdır (varsayılan kapalı — CLAUDE.md §2-4): katalog düzenlemek,
-edinim açmak, bağış kararı işlemek ve etiket basmak yönetici işidir.
+edinim açmak, bağış kararı işlemek, etiket basmak ve üyelik yönetimi (F6:
+üyelik açma, kartı yenile, sonlandırma, istek listesi, ödünç geçmişi)
+yönetici işidir.
 """
 
 from __future__ import annotations
@@ -23,10 +29,13 @@ from django.urls import path
 from apps.kutuphane import (
     views,
     views_ag_doktoru,
+    views_evrak,
     views_import,
     views_katalog,
     views_kunye,
     views_kuyruk,
+    views_masa,
+    views_uyelik,
 )
 from apps.kutuphane.labels import urls as label_urls
 
@@ -318,6 +327,120 @@ urlpatterns = [
         "library/copies/from-label/",
         views_kuyruk.CopyFromLabelView.as_view(),
         name="library-copy-from-label",
+    ),
+    # --- F6: üyelik yönetimi (YALNIZ yönetici kipi; görevli izin listesinde YOK) ---
+    # Kişi yazar: `RequiresAdminPassword` (parola kurulmadan 409). Masa uçları ayrıdır.
+    path(
+        "library/memberships/",
+        views_uyelik.MembershipListCreateView.as_view(),
+        name="library-membership-list",
+    ),
+    path(
+        "library/memberships/<int:pk>/",
+        views_uyelik.MembershipDetailView.as_view(),
+        name="library-membership-detail",
+    ),
+    path(
+        "library/memberships/<int:pk>/renew-card/",
+        views_uyelik.MembershipRenewCardView.as_view(),
+        name="library-membership-renew-card",
+    ),
+    path(
+        "library/memberships/<int:pk>/terminate/",
+        views_uyelik.MembershipTerminateView.as_view(),
+        name="library-membership-terminate",
+    ),
+    path(
+        "library/memberships/<int:pk>/loans/",
+        views_uyelik.MembershipLoansView.as_view(),
+        name="library-membership-loans",
+    ),
+    # Şube bazlı üyelik istek listesi (Md. 17/1 — üyelik isteğe bağlıdır)
+    path(
+        "library/membership-requests/",
+        views_uyelik.MembershipRequestsView.as_view(),
+        name="library-membership-requests",
+    ),
+    # --- F6: evrak, kart basımı ve pano (E2, E4, E13, E19, T15) — YALNIZ yönetici
+    # kipi; görevli izin listesinde YOK. PDF uçları kayıt yazmaz; kart basım
+    # işareti (D10) yalnız `confirm-print/` ile yazılır (`views_evrak.py`).
+    path(
+        "library/member-cards/",
+        views_evrak.MemberCardListView.as_view(),
+        name="library-member-card-list",
+    ),
+    path(
+        "library/member-cards/template/",
+        views_evrak.MemberCardTemplateView.as_view(),
+        name="library-member-card-template",
+    ),
+    path(
+        "library/member-cards/pdf/",
+        views_evrak.MemberCardPdfView.as_view(),
+        name="library-member-card-pdf",
+    ),
+    path(
+        "library/member-cards/confirm-print/",
+        views_evrak.MemberCardConfirmPrintView.as_view(),
+        name="library-member-card-confirm-print",
+    ),
+    path(
+        "library/member-cards/revert-print/",
+        views_evrak.MemberCardRevertPrintView.as_view(),
+        name="library-member-card-revert-print",
+    ),
+    path(
+        "library/overdue-loans/",
+        views_evrak.OverdueLoanListView.as_view(),
+        name="library-overdue-loan-list",
+    ),
+    path(
+        "library/overdue-loans/pdf/",
+        views_evrak.OverdueLoanPdfView.as_view(),
+        name="library-overdue-loan-pdf",
+    ),
+    path(
+        "library/overdue-loans/slips/",
+        views_evrak.OverdueSlipPdfView.as_view(),
+        name="library-overdue-slip-pdf",
+    ),
+    path(
+        "library/documents/privacy-notice/",
+        views_evrak.PrivacyNoticePdfView.as_view(),
+        name="library-privacy-notice-pdf",
+    ),
+    path(
+        "library/documents/desk-card/",
+        views_evrak.DeskCardPdfView.as_view(),
+        name="library-desk-card-pdf",
+    ),
+    path(
+        "library/dashboard/circulation/",
+        views_evrak.DashboardCirculationView.as_view(),
+        name="library-dashboard-circulation",
+    ),
+    path(
+        "library/dashboard/recent-transactions/",
+        views_evrak.RecentTransactionsView.as_view(),
+        name="library-dashboard-recent-transactions",
+    ),
+    # --- F6: dolaşım masası (§7.3). Görevli kipi izin listesinde (uç + PARAMETRE
+    # kuralıyla — `apps/okul/kip_izinleri.py`); yanıtlar görevli kipinde daralır.
+    path("library/desk/member/", views_masa.MasaUyeView.as_view(), name="library-desk-member"),
+    # Ödünç ver — OYS adı (`library-checkout`) korunur.
+    path("library/checkout/", views_masa.MasaOduncView.as_view(), name="library-checkout"),
+    # Barkodla iade (D9): boş bağlamda okutulan kitap açık ödünçteyse iade alınır.
+    path("library/return/", views_masa.MasaIadeView.as_view(), name="library-return"),
+    path(
+        "library/desk/copy-status/",
+        views_masa.MasaNushaDurumuView.as_view(),
+        name="library-desk-copy-status",
+    ),
+    # GA-7: art arda geçersiz kart okutmasından sonra yönetici parolasıyla sürdürme.
+    path(
+        "library/desk/card-unlock/",
+        views_masa.MasaKartKilidiView.as_view(),
+        name="library-desk-card-unlock",
     ),
 ]
 

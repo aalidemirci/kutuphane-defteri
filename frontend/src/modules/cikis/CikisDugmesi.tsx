@@ -9,8 +9,12 @@
 // Kip bilgisi yalnız hangi soruyu soracağımızı seçer; karar sunucudadır. Sunucu
 // parola isterse (kip bu arada görevliye inmiş olabilir) diyalog parola alanına
 // geçer. Başarıda program kapanır: pencere birazdan kendiliğinden kaybolur.
+//
+// Parola alanı açılışta odaktadır (`ui/Dialog` `initialFocusRef`; `autoFocus` panel
+// odağına yenilirdi). Alan pencere açıkken sonradan belirirse (sunucu parola istedi)
+// odağı ayrı bir efekt verir.
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import { ApiError } from "../../lib/api";
@@ -33,6 +37,7 @@ interface CikisDiyaloguProps {
 
 export function CikisDiyalogu({ open, onClose, parolaIle }: CikisDiyaloguProps) {
   const formId = useId();
+  const parolaAlani = useRef<HTMLInputElement>(null);
   const [parola, setParola] = useState("");
   const [parolaGerekli, setParolaGerekli] = useState(parolaIle);
   const [hata, setHata] = useState<string | null>(null);
@@ -42,6 +47,13 @@ export function CikisDiyalogu({ open, onClose, parolaIle }: CikisDiyaloguProps) 
   useEffect(() => {
     if (open) setParolaGerekli(parolaIle);
   }, [open, parolaIle]);
+
+  // İlk odak yalnız açılış anında verilir (`initialFocusRef`); parola alanı pencere
+  // açıkken belirirse (kip bu arada görevliye indi) odak burada alana taşınır. Bu
+  // efekt `Dialog`un açılış efektinden SONRA koşar (ebeveyn efekti çocuğunkinden sonra).
+  useEffect(() => {
+    if (open && parolaGerekli) parolaAlani.current?.focus();
+  }, [open, parolaGerekli]);
 
   function kapat() {
     setParola("");
@@ -81,6 +93,7 @@ export function CikisDiyalogu({ open, onClose, parolaIle }: CikisDiyaloguProps) 
       onClose={kapat}
       // Sözlük §3: onay diyaloğunun başlığı sorudur; parola isteyen hâl bir formdur.
       title={parolaGerekli ? "Programdan çık" : "Programdan çıkılsın mı?"}
+      initialFocusRef={parolaAlani}
       actions={
         <>
           <Button variant="text" type="button" onClick={kapat}>
@@ -102,12 +115,12 @@ export function CikisDiyalogu({ open, onClose, parolaIle }: CikisDiyaloguProps) 
           <>
             <p>Görevli kipinde programdan çıkmak için yönetici parolasını girin.</p>
             <TextField
+              ref={parolaAlani}
               label="Yönetici parolası"
               type="password"
               value={parola}
               onChange={(e) => setParola(e.target.value)}
               autoComplete="current-password"
-              autoFocus
               error={hata ?? undefined}
               required
             />

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <title>{{ document_title }}</title>
+  {% comment %}İade hatırlatma pusulası (E4; tasarım §9-13) —
+  apps/kutuphane/dolasim_belgeleri.py::slip_context doldurur.
+
+  Her sayfada üç pusula (210 × 99 mm); aralarında kesikli KESME çizgisi. Her
+  pusula tek kişiliktir: soldaki dar ad bölümü katlanınca açık kalır, sağdaki
+  bölüm noktalı KATLAMA çizgisinden sola, yazılı yüz içe gelecek biçimde
+  katlanınca hatırlatma metnini ve kaynak listesini örter.
+
+  WeasyPrint kuralları (CLAUDE.md §3): bütün ölçüler mm ve MUTLAK konumdur;
+  metin Python'da DejaVu genişlik tablosuyla satırlara bölünür ve sığdırılır,
+  burada yalnız basılır. `text-transform` YOK. Stil başlıktadır, CSS değişkeni
+  yoktur. Sayfalar "önce kır" kuralıyla ayrılır (sonda boş sayfa kalmaz).{% endcomment %}
+  <style>
+    @page { size: 210mm 297mm; margin: 0; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: "DejaVu Sans", sans-serif;
+      color: #000;
+      font-kerning: none;
+      font-variant-ligatures: none;
+      letter-spacing: 0;
+      word-spacing: 0;
+    }
+    .page { position: relative; width: 210mm; height: 297mm; overflow: hidden; }
+    .page + .page { break-before: page; page-break-before: always; }
+    .slip { position: absolute; left: 0; width: 210mm; overflow: hidden; }
+    .cut { position: absolute; left: 0; width: 210mm; height: 0;
+           border-top: 0.25mm dashed #555; }
+    .cut-label { position: absolute; left: 6mm; font-size: 5.5pt; color: #555;
+                 white-space: nowrap; }
+    .fold { position: absolute; top: 3mm; width: 0; border-left: 0.2mm dotted #777; }
+    .t { position: absolute; white-space: nowrap; overflow: hidden; margin: 0; padding: 0; }
+    .t.b { font-weight: bold; }
+    .t.l { text-align: left; }
+    .t.c { text-align: center; }
+    .t.r { text-align: right; }
+  </style>
+</head>
+<body>
+{% for page in pages %}<div class="page">{% for slip in page.slips %}<div class="slip" style="top:{{ slip.top }}mm;height:{{ slip_height }}mm"><div class="fold" style="left:{{ fold_x }}mm;height:93mm"></div>{% for t in slip.texts %}<div class="t {{ t.css }}" style="left:{{ t.left }}mm;top:{{ t.top }}mm;width:{{ t.width }}mm;height:{{ t.height }}mm;line-height:{{ t.height }}mm;font-size:{{ t.size }}pt">{{ t.text }}</div>{% endfor %}</div>{% if not forloop.first %}<div class="cut" style="top:{{ slip.top }}mm"></div><div class="cut-label" style="top:{{ slip.top }}mm">kesme çizgisi</div>{% endif %}{% endfor %}</div>
+{% endfor %}</body>
+</html>

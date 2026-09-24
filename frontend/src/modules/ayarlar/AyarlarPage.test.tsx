@@ -28,6 +28,7 @@ const oapi = vi.hoisted(() => ({
   listClassSections: vi.fn(),
   createClassSection: vi.fn(),
   deleteClassSection: vi.fn(),
+  seedHolidays: vi.fn(),
 }));
 
 vi.mock("../okul/api", async (importOriginal) => {
@@ -100,6 +101,12 @@ function renderPage(yol = "/ayarlar") {
 
 beforeEach(() => {
   oapi.listSchoolYears.mockResolvedValue([AKTIF_YIL, PASIF_YIL]);
+  oapi.seedHolidays.mockResolvedValue({
+    year: 0,
+    created: 0,
+    skipped: 0,
+    religious_available: true,
+  });
   oapi.getSchoolConfig.mockResolvedValue({
     school_name: "Örnek Anadolu Lisesi",
     province: "İstanbul",
@@ -196,6 +203,24 @@ describe("AyarlarPage — ders yılları", () => {
     await user.click(within(onay).getByRole("button", { name: "Aktifleştir" }));
 
     await waitFor(() => expect(oapi.activateSchoolYear).toHaveBeenCalledWith(4));
+  });
+
+  it("aktifleştirilen yılın iki takvim yılına tatiller eklenir; eksik dini bayram söylenir", async () => {
+    // Yıl dönümü (F6 düzeltme turu): tatilsiz takvim yılına düşen iade tarihi kaymaz.
+    oapi.activateSchoolYear.mockResolvedValue(PASIF_YIL);
+    oapi.seedHolidays.mockImplementation((yil: number) =>
+      Promise.resolve({ year: yil, created: 7, skipped: 0, religious_available: yil !== 2028 }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: /Aktifleştir/ }));
+    const onay = await screen.findByRole("dialog", { name: "Ders yılı aktifleştirilsin mi?" });
+    await user.click(within(onay).getByRole("button", { name: "Aktifleştir" }));
+
+    await waitFor(() => expect(oapi.seedHolidays).toHaveBeenCalledTimes(2));
+    expect(oapi.seedHolidays.mock.calls.map((c) => c[0])).toEqual([2027, 2028]);
+    expect(await screen.findByText(/2028 yılının dini bayram tarihleri yok/)).toBeInTheDocument();
   });
 
   it("yeni ders yılı oluşturulur ve dönemleri kaydedilir", async () => {

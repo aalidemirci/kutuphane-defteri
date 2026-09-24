@@ -4,7 +4,7 @@
 // geçer. Tepsideki görevli kipi Çık'ı `kd:cik-iste` olayıyla diyaloğu açar.
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -25,7 +25,7 @@ vi.mock("./api", async (orijinal) => ({
 }));
 vi.mock("../kip/api", () => ({ kipApi: kip }));
 
-import CikisDugmesi, { DogrudanCikisDugmesi } from "./CikisDugmesi";
+import CikisDugmesi, { CikisDiyalogu, DogrudanCikisDugmesi } from "./CikisDugmesi";
 import { CIKIS_ISTEK_OLAYI } from "./api";
 
 function ozet(durum: KipAdi) {
@@ -122,7 +122,30 @@ describe("CikisDugmesi", () => {
     const diyalog = screen.getByRole("dialog");
     await kullanici.click(within(diyalog).getByRole("button", { name: "Çık" }));
 
-    expect(await within(diyalog).findByLabelText(/Yönetici parolası/)).toBeInTheDocument();
+    const alan = await within(diyalog).findByLabelText(/Yönetici parolası/);
+    // Alan pencere açıkken belirdi: odak ona taşınır.
+    await waitFor(() => expect(alan).toHaveFocus());
+  });
+
+  // `autoFocus` ortak Dialog'un panel odağına yeniliyordu; parola alanı
+  // `initialFocusRef` ile odaklanır (tasarım §14.1 F6 ekleri 23).
+  it("görevli kipinde açılışta parola alanı odaktadır", async () => {
+    const kullanici = userEvent.setup();
+    kip.durum.mockResolvedValue(ozet("gorevli"));
+    bas();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await kullanici.click(screen.getByRole("button", { name: "Çık" }));
+    const diyalog = await screen.findByRole("dialog");
+    const alan = await within(diyalog).findByLabelText(/Yönetici parolası/);
+    await waitFor(() => expect(alan).toHaveFocus());
+  });
+
+  it("parola isteyen pencere doğrudan açıldığında alan ilk anda odaktadır", () => {
+    render(<CikisDiyalogu open onClose={vi.fn()} parolaIle />);
+    expect(screen.getByLabelText(/Yönetici parolası/)).toHaveFocus();
   });
 
   it("tepsinin kd:cik-iste olayı diyaloğu açar", async () => {

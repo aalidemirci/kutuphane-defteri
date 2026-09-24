@@ -98,6 +98,10 @@ class LabelTemplateListCreateView(generics.ListCreateAPIView[LabelSheetTemplate]
             if tur not in (LabelKind.BARCODE, LabelKind.SPINE):
                 raise drf_serializers.ValidationError({"kind": "Geçerli bir şablon türü seçin."})
             qs = qs.filter(kind=tur)
+        else:
+            # Üye kartı şablonu (F6, `labels/card.py`) bu ekranda düzenlenmez;
+            # kart basımı ekranı onu `library/member-cards/template/` ile okur.
+            qs = qs.exclude(kind=LabelKind.CARD)
         return qs.order_by("kind", "name_sort_key", "pk")
 
     def list(self, request: Request, *args: Any, **kwargs: Any) -> Any:

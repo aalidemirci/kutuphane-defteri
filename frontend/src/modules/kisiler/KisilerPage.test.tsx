@@ -592,7 +592,7 @@ describe("KisilerPage — öğrenci ayrılışı ve parola uyarısı", () => {
 });
 
 describe("KisilerPage — sekmeler", () => {
-  it("üç sekme vardır: Öğrenciler, Öğretmenler ve Ayrılış Havuzu (BEP ve fotoğraf yok)", async () => {
+  it("sekmeler: sicil, Ayrılış Havuzu ve F6 üyelik sekmeleri (BEP ve fotoğraf yok)", async () => {
     renderPage();
     await screen.findByText("Ayşe Yılmaz");
 
@@ -600,6 +600,9 @@ describe("KisilerPage — sekmeler", () => {
       expect.stringContaining("Öğrenciler"),
       expect.stringContaining("Öğretmenler ve Diğer Personel"),
       expect.stringContaining("Ayrılış Havuzu"),
+      expect.stringContaining("Üyeler"),
+      expect.stringContaining("Üyelik İstek Listesi"),
+      expect.stringContaining("Kart Basımı"),
     ]);
     expect(screen.queryByRole("tab", { name: /BEP/ })).toBeNull();
     expect(screen.queryByText(/fotoğraf/i)).toBeNull();

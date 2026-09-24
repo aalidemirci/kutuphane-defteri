@@ -10,8 +10,10 @@
 // Parola kurulmamışsa (kurulum kapısı bunu zaten sihirbaza yönlendirir) yalnız
 // sihirbaza giden bağlantı gösterilir. Metinler `metinler.ts`'ten gelir ve
 // DÜRÜSTTÜR: bu koruma alan şifrelemesidir, tam disk şifrelemesi değildir.
+// "Parolayı değiştir" penceresi açılınca "Mevcut parola" alanı odaktadır
+// (`ui/Dialog` `initialFocusRef`).
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 
@@ -48,6 +50,7 @@ export default function GuvenlikAyarlari() {
   const snackbar = useSnackbar();
   const [durum, setDurum] = useState<GuvenlikDurumu | null>(null);
   const [degistirAcik, setDegistirAcik] = useState(false);
+  const mevcutParolaAlani = useRef<HTMLInputElement>(null);
   const [parola, setParola] = useState("");
   const [parolaTekrar, setParolaTekrar] = useState("");
   const [yeniParola, setYeniParola] = useState("");
@@ -203,9 +206,15 @@ export default function GuvenlikAyarlari() {
 
       <YedektenGeriYukleme />
 
-      <Dialog open={degistirAcik} onClose={kapat} title="Parolayı değiştir">
+      <Dialog
+        open={degistirAcik}
+        onClose={kapat}
+        title="Parolayı değiştir"
+        initialFocusRef={mevcutParolaAlani}
+      >
         <form onSubmit={gonder} className="flex flex-col gap-4">
           <TextField
+            ref={mevcutParolaAlani}
             label="Mevcut parola"
             type="password"
             value={parola}

@@ -42,6 +42,7 @@ import type { SayfaHatasi } from "../../ui/ErrorBand";
 import Icon from "../../ui/Icon";
 import ModuleHeader from "../../ui/ModuleHeader";
 import Select from "../../ui/Select";
+import BarcodeInput from "../../ui/BarcodeInput";
 import { useSnackbar } from "../../ui/SnackbarProvider";
 import TextField from "../../ui/TextField";
 import { CLASSIFICATION_SOURCE_TR, RESOURCE_TYPE_TR, kutuphaneApi } from "./api";
@@ -522,21 +523,20 @@ export default function HizliKayitPage() {
       <Card elevation={0} className="space-y-3 p-[var(--kd-panel-padding)] shadow-elevation-1">
         <p className="text-title-medium text-on-surface">Kitabın ISBN'ini okutun</p>
         <div className="flex flex-wrap items-end gap-3">
-          <TextField
-            className="min-w-[18rem] flex-1"
-            label="ISBN barkodu"
-            ref={kodRef}
-            value={kod}
-            onChange={(e) => setKod(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                void kodGirildi();
-              }
-            }}
-            placeholder="9789750812345"
-            helperText="Okuyucuyla okutabilir ya da elle yazıp Enter'a basabilirsiniz."
-          />
+          {/* Ortak okutma kutusu (§7.3) `alan` davranışında: ISBN formun parçasıdır,
+              gönderimde kutu boşalmaz; önceki sorgu sürerken gelen Enter yok sayılır. */}
+          <div className="min-w-[18rem] flex-1">
+            <BarcodeInput
+              davranis="alan"
+              label="ISBN barkodu"
+              ref={kodRef}
+              value={kod}
+              onValueChange={setKod}
+              onOkut={() => kodGirildi()}
+              placeholder="9789750812345"
+              helperText="Okuyucuyla okutabilir ya da elle yazıp Enter'a basabilirsiniz."
+            />
+          </div>
           <Button
             variant="tonal"
             icon="search"
@@ -779,13 +779,17 @@ export default function HizliKayitPage() {
         </fieldset>
         {etiketYolu === "etiket" ? (
           <>
-            <TextField
+            <BarcodeInput
+              davranis="alan"
+              kendiliginden={false}
               className="max-w-xl"
               label="Kütüphane etiketi"
               ref={etiketRef}
               value={etiketKodu}
-              autoComplete="off"
-              onChange={(e) => setEtiketKodu(e.target.value)}
+              onValueChange={setEtiketKodu}
+              // Enter kaydı başlatır ("Kaydet"e basmakla aynı; `kaydet` kendi
+              // yeniden giriş kapısını taşır).
+              onOkut={() => kaydet()}
               // Kutu odak alınca kod seçilir: yeniden okutulan etiket eskisinin
               // siler. Fareyle tıklamada tarayıcı fare bırakılınca seçimi
               // kaldırır; o bırakma bir kez yutulur.
@@ -797,12 +801,6 @@ export default function HizliKayitPage() {
                 if (etiketFareyleOdak.current) {
                   e.preventDefault();
                   etiketFareyleOdak.current = false;
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void kaydet();
                 }
               }}
               placeholder="2026-000123"

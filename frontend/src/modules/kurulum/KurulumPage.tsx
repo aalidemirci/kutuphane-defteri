@@ -60,6 +60,7 @@ import { KISA_AD_EN_COK, SCHOOL_LEVEL_TR, SETUP_STEPS, okulApi } from "../okul/a
 import type { SchoolLevel, SchoolYear, SetupStatus, SetupStep } from "../okul/api";
 import { okulBilgileriHatalari } from "../okul/okulBilgileri";
 import KapaliGunlerPaneli from "../takvim/KapaliGunlerPaneli";
+import { eksikDiniBayramIletisi, takvimYillari, tatilleriTohumla } from "../takvim/tatilTohumu";
 
 const ADIMLAR: readonly { key: SetupStep; label: string; icon: string }[] = [
   { key: "password", label: "Yönetici Parolası", icon: "key" },
@@ -627,7 +628,7 @@ function OkulBilgileriAdimi({ form, errors, onChange }: OkulBilgileriProps) {
           onChange={(e) => onChange({ kisaAd: e.target.value })}
           error={errors.kisa_ad}
           placeholder="Örn. Örnek AL"
-          helperText={`Etiketlerde ve üye kartlarında basılır; en çok ${KISA_AD_EN_COK} karakter.`}
+          helperText={`Etiketlerde basılır (üye kartında okulun tam adı yer alır); en çok ${KISA_AD_EN_COK} karakter.`}
         />
         <Select
           label="Kademe"
@@ -703,14 +704,6 @@ function varsayilanDersYili(): {
     birinciDonemBitis: `${yil + 1}-01-16`,
     ikinciDonemBaslangic: `${yil + 1}-02-02`,
   };
-}
-
-function takvimYillari(baslangic: string, bitis: string): number[] {
-  const ilk = Number(baslangic.slice(0, 4));
-  const son = Number(bitis.slice(0, 4));
-  const yillar: number[] = [];
-  for (let y = ilk; y <= son; y += 1) yillar.push(y);
-  return yillar;
 }
 
 function TakvimAdimi({
@@ -797,16 +790,7 @@ function DersYiliAdimi({
    * silinen bir tatil sihirbaz her açıldığında geri gelmesin.
    */
   const tatilleriEkle = async (yil: SchoolYear) => {
-    const eksikDini: number[] = [];
-    for (const takvimYili of takvimYillari(yil.start_date, yil.end_date)) {
-      const sonuc = await okulApi.seedHolidays(takvimYili);
-      if (!sonuc.religious_available) eksikDini.push(takvimYili);
-    }
-    setUyari(
-      eksikDini.length > 0
-        ? `Programda ${eksikDini.join(" ve ")} yılının dini bayram tarihleri yok; Diyanet takvimindeki tarihleri “Dini bayram” türünde elle ekleyin.`
-        : null,
-    );
+    setUyari(eksikDiniBayramIletisi(await tatilleriTohumla(yil)));
   };
 
   const olustur = async () => {

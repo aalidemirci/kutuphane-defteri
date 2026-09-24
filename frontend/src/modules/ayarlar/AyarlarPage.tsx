@@ -43,6 +43,7 @@ import type {
 } from "../okul/api";
 import { okulBilgileriHatalari } from "../okul/okulBilgileri";
 import KapaliGunlerPaneli from "../takvim/KapaliGunlerPaneli";
+import { eksikDiniBayramIletisi, tatilleriTohumla } from "../takvim/tatilTohumu";
 
 // TABS[0] varsayılan sekmedir (useTabParam fallback) — başa yeni anahtar EKLEME.
 const TABS = [
@@ -245,7 +246,13 @@ function SchoolYearRow({ year, onChanged }: { year: SchoolYear; onChanged: () =>
     setErr(null);
     try {
       await okulApi.activateSchoolYear(year.id);
-      snackbar.success(`“${year.name}” aktif ders yılı oldu.`);
+      // Ders yılının iki takvim yılına resmî ve dini tatiller eklenir (sihirbazla aynı
+      // kural): tatilsiz yıla düşen iade tarihi kaydırılmaz, sahte gecikme doğar.
+      const eksikDini = eksikDiniBayramIletisi(await tatilleriTohumla(year));
+      const ileti = `“${year.name}” aktif ders yılı oldu; resmî ve dini tatiller eklendi.`;
+      // Eksik dini bayram elle girilmeli: ileti kapatılana dek kalır.
+      if (eksikDini) snackbar.show(`${ileti} ${eksikDini}`, { duration: null });
+      else snackbar.success(ileti);
       onChanged();
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Ders yılı aktifleştirilemedi.");
@@ -824,7 +831,7 @@ function OkulBilgileriPanel() {
           value={kisaAd}
           onChange={(e) => setKisaAd(e.target.value)}
           error={fieldErrors.kisa_ad}
-          helperText={`Etiketlerde ve üye kartlarında basılır; en çok ${KISA_AD_EN_COK} karakter.`}
+          helperText={`Etiketlerde basılır (üye kartında okulun tam adı yer alır); en çok ${KISA_AD_EN_COK} karakter.`}
         />
         <div className="sm:col-span-2">
           <DemirbasAlanlari

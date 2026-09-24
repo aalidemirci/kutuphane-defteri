@@ -213,9 +213,12 @@ Program içinden indirme yalnız Windows kurulum dosyası içindir.
    Kurulum bitince Genel Bakış'taki **Başlangıç Yol Haritası** sıradaki
    işleri (e-Okul aktarımları, kapalı günler, katalog şablonu, anahtarın
    saklanması, parolanın paylaşılması, BTR görüşmesi) gösterir.
-2. *(Sonraki sürümde.)* Program bir **Kütüphane aydınlatma metni** üretecek; bu
-   metnin e-Okul aktarımından önce duyurulması gerekir. Bugünkü sürümde metin
-   programda yoktur; okulun kendi aydınlatma metnini kullanın.
+2. **Kütüphane aydınlatma metni** e-Okul aktarımından önce duyurulur. Metni
+   **Kişiler → Üyeler** sekmesinin altındaki **Üyelik Belgeleri** bölümünden
+   basarsınız: okul adı, ilçe ve müdür adı **Ayarlar → Okul Bilgileri**'nden
+   gelir; başvuru adresi ve iletişim bilgisi yalnız o basıma yazılır. Aynı
+   bölümdeki **Masa kartı** masada görev yapan öğrenciye göreve başlamadan
+   verilir.
 3. Öğrenci ve personel listelerini e-Okul'un Excel raporlarından aktarırsınız
    (TCKN istenmez ve tutulmaz): öğrenci için *OOG01001R020 — Sınıf/Şube
    Öğrenci Listesi*, personel için *OOK01001R1 — Personel Listesi*. e-Okul
@@ -291,7 +294,9 @@ yenilendiyse: bu bilgisayarda güvenlik dosyası yerindeyken **yeni** anahtar
 eski yedekleri de açar; dosya yoksa (ya da yedek başka bilgisayarda açılıyorsa)
 yedeğin alındığı dönemin anahtarı gerekir (§1.4). Mevcut veritabanı SİLİNMEZ;
 `db-onceki-<tarih>` adıyla `data` klasöründe saklanır. İşlem bitince programı
-normal açın.
+normal açın. `data` klasöründeki `verilmis-kartlar.txt` dosyasını silmeyin: verilmiş
+üye kartı numaralarının (kişisiz) listesidir ve geri yüklenen yedekten sonra
+basılmış kartların numarasının başka bir üyeye yeniden verilmesini önler.
 
 ### 6.2 "Güvenlik dosyası bulunamadı ya da okunamıyor" ekranı
 

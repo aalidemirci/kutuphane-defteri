@@ -45,6 +45,21 @@ KISI_YAZAN_UCLAR = frozenset(
         "import-personnel-preview",
         "import-personnel-commit",
         "leave-pool-resolve",
+        # F6 üyelik: kart no şifreli kişi verisidir; açma, toplu açma (istek
+        # listesi), kartı yenile, sonlandırma ve silme kişi yazar.
+        "library-membership-list",
+        "library-membership-detail",
+        "library-membership-renew-card",
+        "library-membership-terminate",
+        "library-membership-requests",
+        # F6 kart basımı (E2, D10): "Basıldı olarak işaretle" ve geri alma üyelik
+        # satırına yazar.
+        "library-member-card-confirm-print",
+        "library-member-card-revert-print",
+        # F6 dolaşım masası: ödünç ver ve iade al ödünç kaydını (üyeye bağlı kişi
+        # verisi; kartsız ödünç ve istisna gerekçeleri şifreli) yazar.
+        "library-checkout",
+        "library-return",
     }
 )
 
@@ -108,6 +123,27 @@ DIGER_UCLAR = frozenset(
         "library-label-preview",
         "library-label-template-detail",
         "library-label-template-list",
+        # Üyenin ödünç kaydı (F6): yalnız okur (GET); yönetici kipi işidir.
+        "library-membership-loans",
+        # F6 dolaşım masası: kartla üye çözme (POST yalnız kart no URL'ye yazılmasın
+        # diye; okur), nüsha durum sorgusu (GET) ve kart okutma kilidini açma
+        # (yönetici parolasını doğrular) kişi yazmaz. Ödünç ver ve iade üstteki listede.
+        "library-desk-member",
+        "library-desk-copy-status",
+        "library-desk-card-unlock",
+        # F6 evrak ve pano (E2, E4, E13, E19, T15): kuyruk, gecikme listesi ve
+        # son işlemler yalnız okur; PDF uçları kayıt yazmaz; panonun POST'u
+        # yalnız süreç içi "Kontrol ettim" onayıdır. Hepsi yönetici kipi işidir.
+        "library-dashboard-circulation",
+        "library-dashboard-recent-transactions",
+        "library-desk-card-pdf",
+        "library-member-card-list",
+        "library-member-card-pdf",
+        "library-member-card-template",
+        "library-overdue-loan-list",
+        "library-overdue-loan-pdf",
+        "library-overdue-slip-pdf",
+        "library-privacy-notice-pdf",
         "library-donation-intake-cancel",
         "library-donation-intake-decision",
         "library-donation-intake-detail",
@@ -258,7 +294,10 @@ def test_parolasizken_kisi_yazan_her_uc_yazma_yontemiyle_409_doner(parolasiz: Pa
             denenen += 1
     # 2 liste (POST) + 2 ayrıntı (PUT/PATCH/DELETE) + 4 içe aktarma (POST)
     # + 2 ayrılış (POST) + 1 birleştirme (POST) + 1 havuz kararı (POST)
-    assert denenen == 2 + 2 * 3 + 4 + 2 + 1 + 1
+    # + F6 üyelik: liste (POST), ayrıntı (DELETE), kartı yenile, sonlandır, istek listesi (POST)
+    # + F6 kart basım işareti ve geri alma (POST)
+    # + F6 dolaşım masası: ödünç ver ve iade al (POST)
+    assert denenen == 2 + 2 * 3 + 4 + 2 + 1 + 1 + 5 + 2 + 2
     assert not Student.all_objects.exists()
 
 

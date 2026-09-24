@@ -32,6 +32,16 @@
 // adımları ve işaret kuralı, basım sırası, "PDF'i almak basıldı saymaz" ve geri
 // alma, doğrulama okutması, önce etiket yolunun SIRALI adımları, bozulan ve
 // kaybolan etiketin iki ayrı yolu, sırtı dar kitap ve koruyucu bant önerisi.
+// F6 bölümleri: Üyelik, Kart ve Belgeler ile Dolaşım Masası (Etiketler'in ardında).
+// Adlar `modules/dolasim`, `modules/uyelik` ve görevli ekranının sabitlerinden;
+// sunucu iletileri birebir kopyalandı (kaynakları testin yanında; sunucu tarafı
+// `test_dolasim_metinleri.py` aynı iletileri sabitlerden sınar). Kilitlenenler:
+// aydınlatma metni e-Okul aktarımından ÖNCE (bölümün ilk alt başlığı, Kişiler'de
+// ipucu), Md. 18/1 alıntısı ve kaymanın iki ayrı kural olup Yönetmeliğe
+// bağlanmaması, sayı sınırının hiçbir kipte istisna almaması, gecikme engeli ve
+// gerekçeli istisna, iadenin hiçbir durumda kilitlenmemesi, görevlinin gördüğü ve
+// görmediği, kartsız ödünç (Md. 23/1-a alıntısı), pusulanın dağıtım kuralı, masa
+// kartı (KVKK 12/1 alıntısı) ve "sonraki sürümde" sözlerinin kalkması.
 //
 // Üç tür kilit var:
 // 1. Ekran adları DEPODAN gelir: kısayol, kip ekranı başlığı, kapalı gün türleri,
@@ -61,11 +71,34 @@ import {
   KATALOG_DURUMU_TR,
   MADDE_DURUMU_TR,
 } from "../agkatalogu/api";
+import {
+  BAGLAM_SURESI_MS,
+  BASKA_UYEDE_SORUSU,
+  BASKA_UYEDEN_IADE_UYARISI,
+  BITTI_DUGMESI,
+  BU_UYEDE_SORUSU,
+  DURUM_SORGUSU,
+  DURUM_SORGUSU_KAPANDI,
+  IADE_ONERISI,
+  ISTEM_BAGLAM_DEGISTI,
+  KARTSIZ_DUGMESI,
+  OKUTMA_KUTUSU,
+} from "../dolasim/DolasimMasasi";
+import { DOLASIM_MASASI_BASLIGI } from "../dolasim/DolasimMasasiPage";
+import { ISTISNA_GEREKCELERI, KARTSIZ_GEREKCELER } from "../dolasim/api";
+import {
+  ISTISNA_BASLIGI,
+  ISTISNA_YARDIMI,
+  KART_KILIDI_BASLIGI,
+  KARTSIZ_BASLIGI,
+} from "../dolasim/MasaDiyaloglari";
 import { DOSYA_KAYIP_BASLIGI } from "../guvenlik/metinler";
 import {
   GOREVLI_DOGRULAMA_BITIR,
   GOREVLI_DOGRULAMA_DUGMESI,
   GOREVLI_EKRANI_BASLIGI,
+  GOREVLI_KATALOG_DUGMESI,
+  GOREVLI_MASAYA_DON,
 } from "../kip/GorevliEkrani";
 import { GOREVLI_KISAYOLU } from "../kip/KipGostergesi";
 import { EDINIMLER_BASLIGI } from "../kutuphane/EdinimlerPage";
@@ -91,6 +124,9 @@ import {
   WORK_ORDER_TR,
 } from "../kutuphane/api";
 import { HOLIDAY_KIND_TR, MEMBER_KIND_TR, SCHOOL_LEVEL_TR } from "../okul/api";
+import { KAPANIS_KARTI_BASLIGI } from "../uyelik/DolasimKartlari";
+import { GECIKMIS_ODUNCLER_BASLIGI } from "../uyelik/GecikmisOdunclerPage";
+import { LISTE_DIPNOTU } from "../uyelik/api";
 import KilavuzPage, { KILAVUZ_BOLUMLERI } from "./KilavuzPage";
 
 function renderPage() {
@@ -122,6 +158,8 @@ const BEKLENEN_BASLIKLAR = [
   "Katalog",
   "Hızlı Kayıt",
   "Etiketler",
+  "Üyelik, Kart ve Belgeler",
+  "Dolaşım Masası",
   "Katalog Excel Şablonu",
   "İçe Aktarma",
   "Yedek ve Güvenlik Dosyası",
@@ -472,9 +510,12 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     expect(metin).toContain("kayıt engellenmez");
     expect(metin).toContain("“ISBN uyarısı”");
     expect(metin).toContain("978 ya da 979 ile başlar");
-    // İleti GELECEK ZAMANDADIR: dolaşım sonraki fazda gelir, bu sürümde hiçbir
-    // ekran bu iletiyi üretmez (şimdiki zaman kullanıcıyı okuyucusu bozuk sanır).
-    expect(metin).toContain("“Bu ISBN barkodu. Kitabın kütüphane etiketini okutun.” diyecek");
+    // F6'dan beri ileti ŞİMDİKİ ZAMANDADIR: Dolaşım Masası ISBN barkodunda bu iletiyi
+    // verir (barcode.ISBN_SCAN_MESSAGE); F2-F5'teki "diyecek" kalmaz.
+    expect(metin).toContain(
+      "Dolaşım Masası'nda ISBN barkodu okutulursa program “Bu ISBN barkodu. Kitabın kütüphane etiketini okutun.” der",
+    );
+    expect(metin).not.toContain("diyecek");
     expect(metin).toContain("yalnız kütüphane etiketini arar");
     // Barkod / kayıt no: on hane, yıl + sıra, basılı biçim, salt okunur.
     expect(metin).toContain("Barkod on hanedir");
@@ -1267,8 +1308,23 @@ describe("KilavuzPage — sözlük ve kalıntı denetimi", () => {
       /mükerrer/i,
       /pasifleştir/i,
       /emanet/i,
-      /\bceza\b/i,
+      // Dolaşım sözlüğünün "kullanılmaz" sütunu (docs/sozluk.md §1, F6): programda
+      // uzatma, ceza ve harç yoktur; ödünç kaydı okuma bilgisi değildir.
+      /ceza/i,
       /uzatma/i,
+      /harç(?!\p{L})/iu,
+      /son teslim tarihi/i,
+      /okuma geçmişi/i,
+      /okuma karnesi/i,
+      /okuma puanı/i,
+      /okuyucu kartı/i,
+      /kütüphane kartı/i,
+      /\babone/i,
+      /check-?out/i,
+      /kitap çıkışı/i,
+      /kara liste/i,
+      /ihtar/i,
+      /borç listesi/i,
       // Katalog sözlüğünün "kullanılmaz" sütunu (docs/sozluk.md §1).
       /envanter/i,
       /raf kodu/i,
@@ -1370,5 +1426,374 @@ describe("KilavuzPage — F5 düzeltmeleri", () => {
     expect(metin).toContain("Bu bilgisayar öğrenci erişimli ağda");
     expect(metin).toContain("saatte bir kendiliğinden yeniden dener");
     expect(metin).toContain("ayar açık kaldıkça program her açılışta yeniden dener");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F6 — Üyelik, Kart ve Belgeler + Dolaşım Masası
+//
+// Ekran adları ön yüz sabitlerinden okunur (`modules/dolasim`, `modules/uyelik`,
+// `kip/GorevliEkrani`). SUNUCU iletileri (ör. “Üyenin gecikmiş ödüncü var…”, kart
+// iletileri) buradan okunamaz; birebir kopyalandı ve kaynakları yanında yazılı —
+// sunucu tarafında `apps/kutuphane/tests/test_dolasim_metinleri.py` aynı iletilerin
+// kılavuz kaynağında ve sözlükte geçtiğini sabitlerden denetler, mevzuat
+// alıntılarını da docs/mevzuat metniyle karşılaştırır.
+// ---------------------------------------------------------------------------
+
+describe("KilavuzPage — Dolaşım Masası (F6)", () => {
+  it("ekran, kutu, düğme ve pencere adları masa ekranının sabitleriyle aynıdır", () => {
+    renderPage();
+    const metin = bolumMetni("dolasim");
+
+    expect(metin).toContain(`${DOLASIM_MASASI_BASLIGI}'ndan yapılır`);
+    expect(metin).toContain(`“${OKUTMA_KUTUSU}”`);
+    expect(metin).toContain(`“${BITTI_DUGMESI}” düğmesine basın`);
+    expect(metin).toContain(`${BAGLAM_SURESI_MS / 1000} saniye işlem yapmadığınızda`);
+    expect(metin).toContain(`“${DURUM_SORGUSU}” işaretliyken`);
+    expect(metin).toContain(`“${KARTSIZ_DUGMESI}” düğmesine basın`);
+    expect(KARTSIZ_BASLIGI).toBe(KARTSIZ_DUGMESI);
+    expect(metin).toContain(`“${ISTISNA_BASLIGI}” penceresi açılır`);
+    expect(metin).toContain(`“${KART_KILIDI_BASLIGI}” şeridi`);
+    expect(metin).toContain(`“${GOREVLI_KATALOG_DUGMESI}” ile`);
+    expect(metin).toContain(`“${GOREVLI_MASAYA_DON}” masaya getirir`);
+    expect(metin).toContain(BASKA_UYEDE_SORUSU);
+    expect(metin).toContain(BU_UYEDE_SORUSU);
+    expect(metin).toContain(`“${BASKA_UYEDEN_IADE_UYARISI}”`);
+    for (const dugme of [
+      "“İade al ve ödünç ver”",
+      "“İade al”",
+      "“Vazgeç”",
+      "“Kart okutmayı aç”",
+      "“Okul no ya da ad”",
+      "“Ara”",
+      "“Üyeyi aç”",
+      "“Gerekçe”",
+      "“Açıklama”",
+      "“Gerekçeyle ödünç ver”",
+      "“Okuma sesi açık”",
+      "“Kutuya dön”",
+    ]) {
+      expect(metin).toContain(dugme);
+    }
+    for (const { label } of KARTSIZ_GEREKCELER) expect(metin).toContain(`“${label}”`);
+    for (const { label } of ISTISNA_GEREKCELERI) expect(metin).toContain(`“${label}”`);
+    // Bağlamdaki şerit (DolasimMasasi.UyeKarti).
+    expect(metin).toContain("“Kartsız ödünç — gerekçe: …”");
+    // Yardım metni sözlükteki yazımla: "Sağlık ya da aile bilgisi yazmayın."
+    expect(ISTISNA_YARDIMI).toBe("Sağlık ya da aile bilgisi yazmayın.");
+    expect(metin).toContain("Açıklamaya sağlık ya da aile bilgisi yazmayın.");
+    const bolum = document.getElementById("dolasim") as HTMLElement;
+    const baglanti = within(bolum).getByRole("link", { name: DOLASIM_MASASI_BASLIGI });
+    expect(baglanti).toHaveAttribute("href", "/dolasim");
+  });
+
+  it("sunucu iletileri birebir yazılır (kaynakları yanında)", () => {
+    renderPage();
+    const metin = bolumMetni("dolasim");
+
+    for (const ileti of [
+      // services/masa.py
+      "“Ödünç verildi.”",
+      "“İade alındı.”",
+      "“Bu kart tanınmadı — kütüphane yöneticisine yönlendirin.”",
+      "“Kart numarası hatalı. Kartı yeniden okutun.”",
+      // selectors_dolasim.REVOKED_CARD_MESSAGE
+      "“İptal edilmiş kart — kütüphane yöneticisine yönlendirin.”",
+      // barcode.ISBN_SCAN_MESSAGE
+      "“Bu ISBN barkodu. Kitabın kütüphane etiketini okutun.”",
+      // label_queue.STAFF_REFER (görevli kipinde bağlanmamış ya da iptal edilmiş etiket)
+      "“Kitabı ayırın ve kütüphane yöneticisine gösterin.”",
+      // services/circulation.py — COPY_STATE_MESSAGES
+      "“Rafta — ödünç değil.”",
+      "“Kayıp kaydında.”",
+      "“Onarımda.”",
+      "“Sınıf kitaplığında.”",
+      // circulation: üyelik ve gecikme
+      "“Üyelik sonlanmış — ödünç verilemez.”",
+      "“Üye okuldan ayrılmış — ödünç verilemez.”",
+      "“Ödünç verilemiyor — kütüphane yöneticisine yönlendirin.”",
+      "“Üyenin gecikmiş ödüncü var. Önce iade alın ya da gerekçeli istisnayla ödünç verin.”",
+      // circulation: sayı sınırı (f-string, öğrenci sınırıyla) ve dönem sonu uyarısının sonu
+      "“Ödünç sınırı dolu (en çok 3 kitap).”",
+      "“… Süre kısaltılmaz.”",
+      // circulation: ödünç verilmeyen kaynak (Copy.not_loanable_reason)
+      "“Ödünç verilmez — kütüphanede okunur.”",
+    ]) {
+      expect(metin).toContain(ileti);
+    }
+  });
+
+  it("süre sabittir; ödünç sınırı Md. 18/1'den; kayma iki ayrı kuraldır ve Yönetmeliğe bağlanmaz", () => {
+    renderPage();
+    const metin = bolumMetni("dolasim");
+
+    // docs/mevzuat/meb-okul-kutuphaneleri-yonetmeligi.md md. 18/1 — ilk ve son cümle
+    // birebir; aradaki cümleler Bakanlığın sistemini andığı için "…" ile atlanır.
+    expect(metin).toContain(
+      "“Bir kitabı ödünç alma süresi on beş gündür. … Öğrencilere bir defasında en fazla üç, öğretmenlere en fazla beş kitap ödünç verilebilir.”",
+    );
+    expect(metin).toContain("Okul Kütüphaneleri Yönetmeliği, md. 18/1");
+    expect(metin).toContain("Ödünç süresi on beş gündür ve değiştirilemez");
+    // Kayma: iki kural, dayanakları ayrı; hiçbiri Yönetmelik hükmü gibi sunulmaz.
+    expect(metin).toContain("Bu kayma Yönetmelikten gelmez; iki ayrı kuraldır");
+    expect(metin).toContain("Türk Borçlar Kanunu'ndaki genel kuralı kıyasen uygular");
+    expect(metin).toContain(
+      "İdari izin ve diğer kapalı günler de her zaman atlanır; bu programın kuralıdır",
+    );
+    expect(metin).toContain("“İade tarihi öğrenciye kapalı günlerde kaydırılır”");
+    expect(metin).toContain("Bu okulun tercihidir, mevzuatta dayanağı yoktur");
+    // Dönem sonu yalnız uyarıdır; ödünç sınırı ve Md. 16/1 kaynakları istisna almaz.
+    expect(metin).toContain("süre yine on beş gündür");
+    expect(metin).toContain("okul daha düşük tutabilir");
+    expect(metin).toContain(
+      "Ödünç sınırı ve ödünç verilmeyen kaynaklar hiçbir kipte istisna almaz",
+    );
+    expect(metin).toContain("“Yıl sonu son ödünç tarihi” geçtiyse yeni ödünç verilmez");
+    expect(metin).toContain("“Diğer personele ödünç verilir”");
+    expect(metin).not.toMatch(/Md\.? ?18 gereği/i);
+    expect(metin).not.toMatch(/madde 18 gereği/i);
+  });
+
+  it("gecikme engeli okulun tercihidir; istisna yalnız yönetici kipinde ve gerekçeyle", () => {
+    renderPage();
+    const metin = bolumMetni("dolasim");
+
+    expect(metin).toContain(
+      "“Gecikmiş kitabı olana yeni ödünç verilmez” açıksa (okulun tercihidir)",
+    );
+    expect(metin).toContain(
+      "Gerekçeli istisna yalnız gecikme engeli içindir ve yalnız yönetici kipinde yapılır",
+    );
+    expect(metin).toContain("İstisna, gerekçesi ve açıklamasıyla ödünç kaydına geçer.");
+    // Gecikmenin karşılığı: para yok, süre değişmez, pusula (uzatma/ceza sözcükleri yok).
+    expect(metin).toContain("Gecikme için para alınmaz, ödünç süresi değişmez");
+    expect(metin).toContain("kişiye özel pusulayla hatırlatılır");
+  });
+
+  it("iade hiçbir durumda kilitlenmez; başka üyedeki kitap iade + uyarıyla verilir", () => {
+    renderPage();
+    const metin = bolumMetni("dolasim");
+
+    expect(metin).toContain("İade hiçbir durumda kilitlenmez");
+    expect(metin).toContain("kart okutma durdurulmuşken gelen kitap da iade edilir");
+    expect(metin).toContain("Üye bağlamı açıkken iade almak için önce “Bitti” deyin");
+    expect(metin).toContain("önce iadeyi alır, sonra kitabı karttaki üyeye verir");
+    expect(metin).toContain("Görevli kipinde önceki üyenin kim olduğu gösterilmez");
+    expect(metin).toContain("okuttuğunuz sırayla işlenir, hiçbiri kaybolmaz");
+  });
+
+  it("F6 düzeltme turu: iade önerisi, istem yarışı, durum sorgusu, pencere sırası, kilit şeridi", () => {
+    renderPage();
+    const metin = bolumMetni("dolasim");
+
+    expect(metin).toContain(`“${IADE_ONERISI}”`);
+    expect(metin).toContain(`“${ISTEM_BAGLAM_DEGISTI}”`);
+    expect(metin).toContain(`(${DURUM_SORGUSU_KAPANDI})`);
+    expect(metin).toContain("“Yalnız durum sor” ile bakılan kitapta iki kısa ses");
+    expect(metin).toContain("Pencere açıkken okuttuğunuz kitaplar kaybolmaz");
+    expect(metin).toContain("Pencere açıkken üye bağlamının 60 saniyelik süresi işlemez");
+    expect(metin).toContain("on dakika içinde beş tanınmayan veya iptal edilmiş kart");
+    expect(metin).toContain("şerit dururken okutulan kitabın iadesi alınır");
+    expect(metin).toContain("görevli barkod deneyerek üyenin elindeki kitapları öğrenemez");
+    expect(metin).toContain(
+      "“Yıl sonu son ödünç tarihi geçti — yeni ödünç verilmez. İade alınabilir.”",
+    );
+    expect(metin).toContain("iki takvim yılına resmî tatiller ve dini bayramlar");
+  });
+
+  it("görevli kipinde masa: görevlinin gördüğü ve görmediği, gizlilik", () => {
+    renderPage();
+    const metin = bolumMetni("dolasim");
+
+    expect(
+      screen.getByRole("heading", { level: 3, name: "Görevli kipinde masa" }),
+    ).toBeInTheDocument();
+    expect(metin).toContain("Görevli üyenin yalnız adını ve kalan ödünç hakkını görür");
+    expect(metin).toContain("sınıfı ve açık ödünçleri görünmez");
+    expect(metin).toContain("hangi kitabın kaç gün geciktiği görevliye gösterilmez");
+    expect(metin).toContain("kimden geldiği ve gecikip gecikmediği görevli ekranında görünmez");
+    expect(metin).toContain("“Yalnız durum sor” ile bakılan kitabın kimde olduğu da görünmez");
+    expect(metin).toContain("son işlemler listesinde üye adı yazmaz");
+    expect(metin).toContain(
+      "Üye listesi, ödünç geçmişi, gecikmiş ödünçler, gerekçeli istisna ve kartsız ödünç yönetici kipindedir",
+    );
+    expect(metin).toContain("Kişisel olmayan nedenler (ödünç sınırının dolması");
+    expect(metin).toContain("Art arda beş geçersiz kart");
+    expect(metin).toContain("görevli kipinden çıkılmaz");
+    expect(metin).toContain("görevliye göreve başlamadan masa kartını verin");
+    expect(metin).toContain("ekranın fotoğrafını çekmez");
+  });
+
+  it("kartsız ödünç yalnız yönetici kipinde; Md. 23/1-a'dan sapma olarak işaretlenir", () => {
+    renderPage();
+    const metin = bolumMetni("dolasim");
+
+    // docs/mevzuat/meb-okul-kutuphaneleri-yonetmeligi.md md. 23/1-a birebir.
+    expect(metin).toContain("“a) Öğrenci, öğretmen kartını kütüphane görevlisine verir.”");
+    expect(metin).toContain("Okul Kütüphaneleri Yönetmeliği, md. 23/1-a");
+    expect(metin).toContain("Kartı yanında olmayan üyeye yalnız yönetici kipinde ödünç verilir");
+    expect(metin).toContain("ödünç kaydında kartsız ödünç işareti ve gerekçesi durur");
+    expect(metin).toContain("Kartı yanında olmayan üyeyi görevli kütüphane yöneticisine");
+  });
+});
+
+describe("KilavuzPage — Üyelik, Kart ve Belgeler (F6)", () => {
+  it("üyelik isteğe bağlıdır; ekran ve düğme adları ekrandakiyle birebir", () => {
+    renderPage();
+    const metin = bolumMetni("uyelik");
+
+    expect(metin).toContain("üyelik isteğe bağlıdır");
+    expect(metin).toContain("e-Okul listesini aktarmak da üyelik açmaz");
+    // Yönetmelik parçaları birebir (md. 16/1 ve 17/1; geri kalanı Bakanlığın sistemini anar).
+    expect(metin).toContain("“üye olmak koşuluyla”");
+    expect(metin).toContain("“üye olmak isteyen”");
+    for (const ad of [
+      "Kişiler → Üyeler",
+      "Kişiler → Üyelik İstek Listesi",
+      "Kişiler → Kart Basımı",
+      "“Üyelik isteği tarihi”",
+      "“Seçilenleri üye yap”",
+      "“Üyelik aç”",
+      "“Personele üyelik aç”",
+      "“Kart Basımı Bekleyen”",
+      "“Kartı Basılmış”",
+      "“Yazıcı (kalibrasyon)”",
+      "“Önizle”",
+      "“PDF'i indir”",
+      "“Basıldı olarak işaretle”",
+      "“Basım işaretini geri al”",
+      "“Kesim çizgisi bas”",
+      "“Yazıcı kalibrasyonunu göster”",
+      "“Kartı yenile”",
+      "“Kart yenilensin mi?”",
+      "“Üyeliği sonlandır”",
+      "“Üyenin isteği”",
+      "“Yanlış kayıt”",
+      "“Üyeliği sil”",
+      "“Ayrıldı olarak işaretle”",
+      `“${GECIKMIS_ODUNCLER_BASLIGI}”`,
+      "“Şube”",
+      "“Üyelik Belgeleri”",
+      "“Başvuru adresi”",
+      "“E-posta ya da telefon”",
+      `“${KAPANIS_KARTI_BASLIGI}”`,
+      "“Kontrol ettim”",
+      "“Kilitle”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+  });
+
+  it("aydınlatma metni e-Okul aktarımından önce duyurulur (KVKK md. 10/1)", () => {
+    renderPage();
+    const metin = bolumMetni("uyelik");
+
+    expect(
+      screen.getByRole("heading", { level: 3, name: "Önce aydınlatma metni" }),
+    ).toBeInTheDocument();
+    expect(metin).toContain("e-Okul listelerini programa aktarmadan önce öğrencilere ve personele");
+    // docs/mevzuat/6698-kvkk.md md. 10/1'in birebir parçası.
+    expect(metin).toContain("“elde edilmesi sırasında”");
+    expect(metin).toContain("(md. 10/1)");
+    expect(metin).toContain("Listeleri daha önce aktardıysanız metni şimdi duyurun");
+    expect(metin).toContain("programda saklanmaz");
+    expect(metin).toContain("programın kayıtları bugün kendiliğinden silmediğini");
+    // Aydınlatma bölümün İLK alt başlığıdır (işin sırası: önce duyuru, sonra üyelik).
+    const bolum = document.getElementById("uyelik") as HTMLElement;
+    const altBasliklar = within(bolum)
+      .getAllByRole("heading", { level: 3 })
+      .map((h) => h.textContent);
+    expect(altBasliklar[0]).toBe("Önce aydınlatma metni");
+  });
+
+  it("kart sınıf taşımaz; PDF basıldı saymaz; pusula dağıtım kuralı ve dipnot yazılıdır", () => {
+    renderPage();
+    const metin = bolumMetni("uyelik");
+
+    expect(metin).toContain("sınıf yazmaz");
+    // Kartın konum notu (labels/card.POSITION_NOTE; sözlük "Kart" satırı) — Bakanlığın
+    // sistemini adıyla anan ikinci yarısı kılavuza girmez.
+    expect(metin).toContain(
+      "Yönetmeliğin 20. maddesinde öngörülen kullanıcı kartının okulca düzenlenen yerel karşılığı",
+    );
+    expect(metin).toContain("PDF'i almak kartı basılmış saymaz");
+    expect(metin).toContain("hiçbir zaman başka birine yeniden verilmez");
+    expect(metin).toContain(
+      "Pusulayı kütüphane yöneticisi ya da sınıf rehber öğretmeni dağıtır. Sınıfta okunmaz, öğrenci görevliye dağıttırılmaz.",
+    );
+    expect(metin).toContain("İade hatırlatma pusulası tek kişiliktir");
+    expect(metin).toContain("“KİŞİYE ÖZELDİR”");
+    expect(metin).toContain(`“${LISTE_DIPNOTU}”`);
+    expect(metin).toContain("“İptal edilmiş kart — kütüphane yöneticisine yönlendirin.”");
+    expect(metin).toContain("Açık ödüncü olan üyelik sonlandırılamaz");
+    expect(metin).toContain("Program gecikme için para almaz ve ödünç süresini değiştirmez");
+  });
+
+  it("masa kartı görevliye göreve başlamadan verilir; KVKK md. 12/1 birebir", () => {
+    renderPage();
+    const metin = bolumMetni("uyelik");
+
+    expect(metin).toContain("Görevliye göreve başlamadan verin");
+    // docs/mevzuat/6698-kvkk.md md. 12/1 birebir.
+    expect(metin).toContain(
+      "“Veri sorumlusu; a) Kişisel verilerin hukuka aykırı olarak işlenmesini önlemek, b) Kişisel verilere hukuka aykırı olarak erişilmesini önlemek, c) Kişisel verilerin muhafazasını sağlamak, amacıyla uygun güvenlik düzeyini temin etmeye yönelik gerekli her türlü teknik ve idari tedbirleri almak zorundadır.”",
+    );
+    expect(metin).toContain("6698 sayılı Kişisel Verilerin Korunması Kanunu, md. 12/1");
+  });
+
+  it("ekran bağlantıları sekmelere gider", () => {
+    renderPage();
+    const bolum = document.getElementById("uyelik");
+    expect(bolum).not.toBeNull();
+    const adresler = Array.from(bolum?.querySelectorAll("a") ?? []).map((a) =>
+      a.getAttribute("href"),
+    );
+    expect(adresler).toEqual(
+      expect.arrayContaining([
+        "/kisiler?tab=uyeler",
+        "/kisiler?tab=uyelik-istekleri",
+        "/kisiler?tab=kart-basimi",
+        "/ayarlar?tab=okul",
+      ]),
+    );
+  });
+});
+
+describe("KilavuzPage — F6 ile değişen eski bölümler", () => {
+  it("Kişiler: altı sekme anılır, aydınlatma metni aktarımdan önce hatırlatılır", () => {
+    renderPage();
+    const metin = bolumMetni("kisiler");
+
+    expect(metin).toContain("sayfasının ilk üç sekmesi kişi kayıtlarını tutar");
+    expect(metin).toContain("(“Üyeler”, “Üyelik İstek Listesi”, “Kart Basımı”)");
+    expect(metin).not.toContain("sayfasının üç sekmesi vardır");
+    expect(metin).toContain(
+      "e-Okul listelerini aktarmadan önce kütüphane aydınlatma metnini duyurun.",
+    );
+    expect(metin).toContain("hiç kütüphane üyesi olmamış kişinin kaydında yapılabilir");
+    expect(
+      new Set(
+        screen
+          .getAllByRole("link", { name: "Kişiler → Üyeler" })
+          .map((a) => a.getAttribute("href")),
+      ),
+    ).toEqual(new Set(["/kisiler?tab=uyeler"]));
+  });
+
+  it("ödünç artık vardır: 'sonraki sürümde' sözleri kalkar, saklama taraması yok denir", () => {
+    const { container } = renderPage();
+    const metin = sayfaMetni(container);
+
+    // Üye kartı okulun TAM adını basar (labels/card.py); kısa ad kitap etiketlerindedir.
+    expect(bolumMetni("ilk-kurulum")).toContain(
+      "Kısa ad kitap etiketlerinde basılır, en çok 24 karakterdir; üye kartında okulun tam adı yazar.",
+    );
+    expect(metin).not.toContain("Ödünç ve iade ekranları sonraki sürümde");
+    expect(metin).not.toContain("Barkod okuyucuyla ödünç verme sonraki sürümde");
+    expect(metin).not.toContain("ödünç işlemleriyle birlikte sonraki");
+    expect(bolumMetni("katalog")).toContain(
+      "kurallar ödünç verilirken Dolaşım Masası'nda uygulanır",
+    );
+    expect(bolumMetni("katalog")).toContain("o zamana kadar üyelik ve ödünç kayıtları silinmez");
   });
 });

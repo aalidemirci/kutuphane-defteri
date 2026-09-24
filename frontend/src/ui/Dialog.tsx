@@ -3,9 +3,16 @@
 // tıklaması kapatır; açılışta ilk odak panele alınır, Tab odak TUZAĞI panel
 // içinde döner (F29, Tur 247 — WCAG 2.1 klavye tuzağı deseni: Tab son öğeden
 // ilkine, Shift+Tab ilkinden sonuncuya sarar). İçerik token tüketir; ham renk/px yok.
+//
+// İLK ODAK (KD, tasarım §14.1 F6 ekleri 23): pencere açılınca bir alanın odakta olması
+// gerekiyorsa (parola, okutma, arama) o alanın ref'i `initialFocusRef` ile verilir.
+// Çocukta `autoFocus` KULLANILMAZ: React onu bu bileşenin açılış efektinden ÖNCE
+// uygular; efekt ardından odağı panele alır (autoFocus etkisiz kalır) ve açan öğe
+// yerine alanın kendisini "açan" diye kaydeder (kapanışta odak geri verilemez).
+// Prop verilmezse davranış KS'dekiyle aynıdır: odak panele alınır.
 
 import { useEffect, useRef } from "react";
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 
 /** Panel içindeki klavyeyle odaklanabilir öğeler (F29 odak tuzağı).
  *
@@ -30,6 +37,12 @@ interface DialogProps {
   wide?: boolean;
   /** Tam-genişliğe yakın panel (haftalık ızgara gibi büyük tablolar — Tur 671). */
   full?: boolean;
+  /**
+   * Açılışta odaklanacak öğe (parola ya da okutma alanı). Yalnız açılış anında
+   * okunur; öğe o an basılmamışsa (ref boş) odak panele alınır. `useRef` ile
+   * verilen kararlı bir ref olmalıdır.
+   */
+  initialFocusRef?: RefObject<HTMLElement | null>;
 }
 
 export default function Dialog({
@@ -40,6 +53,7 @@ export default function Dialog({
   actions,
   wide = false,
   full = false,
+  initialFocusRef,
 }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const aciciRef = useRef<HTMLElement | null>(null);
@@ -50,12 +64,12 @@ export default function Dialog({
   //
   // Kapanışta odak, dialogu AÇAN öğeye geri verilir (WCAG 2.4.3; B6). Aksi
   // halde odak <body>'ye düşer ve klavye kullanıcısı sekmeye sayfanın başından
-  // başlar. Açan öğe, panel odaklanmadan ÖNCE okunur.
+  // başlar. Açan öğe, panel ya da ilk alan odaklanmadan ÖNCE okunur.
   useEffect(() => {
     if (!open) return;
     const aktif = document.activeElement;
     aciciRef.current = aktif instanceof HTMLElement ? aktif : null;
-    panelRef.current?.focus();
+    (initialFocusRef?.current ?? panelRef.current)?.focus();
     return () => {
       const acici = aciciRef.current;
       aciciRef.current = null;
@@ -63,6 +77,9 @@ export default function Dialog({
       // o durumda odak tarayıcının varsayılanına bırakılır.
       if (acici !== null && acici.isConnected) acici.focus();
     };
+    // `initialFocusRef` bilerek bağımlılık DEĞİL: efekt yalnız açılış geçişinde
+    // koşmalıdır (Tur 650 — yeniden koşarsa yazı yazılan alandan odağı çalar).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {

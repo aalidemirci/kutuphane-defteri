@@ -470,10 +470,33 @@ kaynak sınırlı; açılamayan katalog her yüzeyden kapatılabilir; Inno
 kanıtları F12'ye ertelendi. Açık kullanıcı kararları: güncelleme denetiminin
 hedefi (F5 ekleri 15), Pardus taşınabilir arşivinde Ağ Kataloğu (F5 ekleri 27).
 
-Sıradaki: F6 Üyelik + dolaşım (Membership, kart şeması, dolaşım masası ve
-görevli ekranı, kartsız ödünç, kapalı güne göre iade tarihi, gecikme kartı ve
-pusula; §5.10-4/5 gerçek tablolarla yeniden koşar). Tam tablo: tasarım §14.1.
-Saha hazırlık hattı (S1-S15, kod dışı): §14.2.
+**F6 Üyelik + dolaşım — kod tarafı bitti (24.09.2026, dal `f6-dolasim`).**
+`Membership` (öğrenci XOR personel, kişi başına tek aktif üyelik, kart no şifreli
++ kör indeks, sonlandırma nedeni kapalı listeden ve zorunlu), `IssuedCard`,
+`CardRevocation`, `Loan` (bir nüshada tek açık ödünç; istisna ve kartsız
+gerekçesi şifreli) — tek göç `0005_uyelik_ve_odunc` · kart no `9` + 6 rastgele
+hane + Luhn, asla yeniden verilmez (`IssuedCard` + veri dizinindeki verilmiş kart
+defteri — geri yükleme onu geri sarmaz) · kartı yenile, sonlandır, sil · şube
+bazlı üyelik istek listesi · `services.circulation` §9 kurallarının tek yeri
+(sayılar KİŞİ bazında; görevli kipinde üyeye bağlı retler nüshanın kimde
+olduğundan ÖNCE) · dolaşım masası ve görevli ekranı (`ui/BarcodeInput` sıralı
+kuyruk; kart okutma kilidi pencere değil şerit — iade kilitlenmez; pencere
+açıkken okutmalar tampona alınır) · GA-7 iki kural (art arda 5 geçersiz; 10
+dakikada 5 tanınmayan/iptal edilmiş, geçerli kart sıfırlamaz) · görevli izin
+listesine beş masa ucu + katalog okuma (parametre kuralıyla; gövde yalnız UTF-8
+JSON) · E2 üye kartı, E4 pusula + gecikmiş listesi, E13 aydınlatma metni, E19
+masa kartı · pano: gecikmiş ödünç sayısı ve "Son Oturumu Kontrol Edin" (T15) ·
+kılavuzun Üyelik ve Dolaşım Masası bölümleri, sözlük §4.10-4.11. D8, D9, D12,
+D19, D21 kapandı. Sapmalar, kararlar ve düzeltme turu: tasarım §14.1 **"F6
+ekleri"**; yeni kalan riskler TB32 (son sınıf tarihi), TB33 (veri dizini de
+kaybolursa kart numarası), TB34 (görevli kipinde "bu üyede / başka üyede" ayrımı
+korunur — 25.09.2026 kullanıcı kararı, F6 ekleri 26); `kip_sureleri()` hâlâ A10
+sabitlerinde.
+
+Sıradaki: F7 Teslim, kayıp, ilişik, yıl akışları (toplu teslim U11 + E15,
+kayıp/hasar/onarım D3, ilişik + E5/E6, yıl sonu ve yıl başı akışları; §5.10-4/5
+yeniden koşar). Tam tablo: tasarım §14.1. Saha hazırlık hattı (S1-S15, kod
+dışı): §14.2.
 
 ---
 
