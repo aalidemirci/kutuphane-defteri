@@ -1,0 +1,5 @@
+{% if sayfalama.sayfa_sayisi > 1 %}<nav class="sayfalama" aria-label="Sayfalar">
+<span>{% if sayfalama.onceki %}<a href="{{ sayfalama.onceki }}" rel="prev">‹ Önceki sayfa</a>{% endif %}</span>
+<span>Sayfa {{ sayfalama.sayfa }} / {{ sayfalama.sayfa_sayisi }}</span>
+<span>{% if sayfalama.sonraki %}<a href="{{ sayfalama.sonraki }}" rel="next">Sonraki sayfa ›</a>{% endif %}</span>
+</nav>{% endif %}

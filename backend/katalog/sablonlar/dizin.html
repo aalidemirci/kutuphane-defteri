@@ -1,0 +1,17 @@
+{% extends "taban.html" %}
+{% block icerik %}
+<h1>{{ sayfa_basligi }}</h1>
+<p>{{ dizin_aciklamasi }}</p>
+{% include "_harf_cubugu.html" %}
+{% if sonuc %}
+{% if sonuc.toplam %}
+<p>{{ sonuc.toplam_metni }}</p>
+{% with eserler=sonuc.eserler eksen=eksen %}{% include "_eser_listesi.html" %}{% endwith %}
+{% include "_sayfalama.html" %}
+{% elif not veri_yok %}
+<p class="kart">Bu harfle başlayan kaynak yok.</p>
+{% endif %}
+{% else %}
+<p>Bir harf seçin.</p>
+{% endif %}
+{% endblock %}

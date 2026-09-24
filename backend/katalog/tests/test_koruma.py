@@ -30,7 +30,9 @@ from django.urls.converters import (
 from django.urls.resolvers import RegexPattern, RoutePattern
 
 from katalog import app as katalog_app
-from katalog.app import ROUTES, SIGNATURE_META, application
+from katalog.app import ROUTES, SIGNATURE_META, application, create_app
+from katalog.bakim import BakimKapisi
+from katalog.sinir import HizSiniri
 
 KATALOG_DIR = Path(katalog_app.__file__).resolve().parent
 BACKEND_DIR = KATALOG_DIR.parent
@@ -125,6 +127,13 @@ def _api_desenleri() -> list[tuple[str, str]]:
     return sonuc
 
 
+#: Yol eşleştirmesi kurulumdan bağımsızdır; yüzlerce istek hız sınırına
+#: takılmasın diye koruma testi geniş sınırlı ayrı bir örnek kullanır.
+_KORUMA_UYGULAMASI = create_app(
+    None, bakim_kapisi=BakimKapisi(), hiz_siniri=HizSiniri(kapasite=10**9, dolum_hizi=10**9)
+)
+
+
 def _katalog_durumu(yol: str, yontem: str = "GET") -> tuple[int, bytes]:
     yakalanan: dict[str, str] = {}
 
@@ -139,9 +148,10 @@ def _katalog_durumu(yol: str, yontem: str = "GET") -> tuple[int, bytes]:
         "SERVER_NAME": "127.0.0.1",
         "SERVER_PORT": "8765",
         "SERVER_PROTOCOL": "HTTP/1.1",
+        "REMOTE_ADDR": "10.0.0.1",
         "wsgi.url_scheme": "http",
     }
-    govde = b"".join(application(ortam, start_response))
+    govde = b"".join(_KORUMA_UYGULAMASI(ortam, start_response))
     return int(yakalanan["status"].split(" ", 1)[0]), govde
 
 
@@ -191,8 +201,31 @@ def test_regex_ornegi_cozemedigi_desende_duser() -> None:
 
 
 def test_katalog_yol_tablosu_anlik_goruntuyle_ayni() -> None:
-    """Yeni katalog yolu bilinçli eklenir: bu anlık görüntü de güncellenir."""
-    assert sorted(ROUTES) == ["/", "/saglik"]
+    """Yeni katalog yolu bilinçli eklenir: bu anlık görüntü de güncellenir (F5, §5.4)."""
+    assert sorted(ROUTES) == [
+        "/",
+        "/ara",
+        "/eser/<id>",
+        "/eserler",
+        "/eserler/<harf>",
+        "/hakkinda",
+        "/katalog.css",
+        "/konular",
+        "/konular/<harf>",
+        "/saglik",
+        "/yazarlar",
+        "/yazarlar/<harf>",
+    ]
+
+
+def test_yol_tablosu_eslestirme_tablosuyla_birebir() -> None:
+    """`ROUTES` yalnız belge değildir: her yol gerçekten bir işleyiciye eşlenir, fazlası yok."""
+    from katalog.app import _PARAMETRELI, _SABIT
+
+    uretilen = set(_SABIT) | {
+        f"/{onek}/{'<id>' if onek == 'eser' else '<harf>'}" for onek in _PARAMETRELI
+    }
+    assert uretilen == set(ROUTES)
 
 
 def test_katalog_yolu_yonetim_on_ekleriyle_baslamaz() -> None:
@@ -202,7 +235,23 @@ def test_katalog_yolu_yonetim_on_ekleriyle_baslamaz() -> None:
 
 def test_kok_yol_spa_degil_katalog_imzasini_dondurur() -> None:
     """`/` yönetimde SPA'ya düşer; katalogda katalog sayfasıdır (SPA catch-all test dışı)."""
-    durum, govde = _katalog_durumu("/")
+    yakalanan: dict[str, str] = {}
+
+    def start_response(status: str, headers: list[tuple[str, str]], exc_info: Any = None) -> Any:
+        yakalanan["status"] = status
+        return lambda veri: None
+
+    # Süreç içi GERÇEK örnek (öz sınamanın yokladığı nesne); veritabanı yoksa da
+    # `/` imzalı sayfayı verir.
+    ortam = {
+        "REQUEST_METHOD": "GET",
+        "PATH_INFO": "/",
+        "QUERY_STRING": "",
+        "REMOTE_ADDR": "10.0.0.2",
+        "wsgi.url_scheme": "http",
+    }
+    govde = b"".join(application(ortam, start_response))
+    durum = int(yakalanan["status"].split(" ", 1)[0])
     metin = govde.decode("utf-8")
 
     assert durum == 200
@@ -338,6 +387,79 @@ def test_katalog_ice_aktarilinca_veri_ve_url_katmani_yuklenmez() -> None:
         assert yuklu(yasak) == [], f"{yasak} katalogla birlikte yüklendi"
 
 
+#: Katalog sayfa üretirken `django.template` paketini yükler; paketin kendi
+#: başlangıcı Django'nun sistem denetimi modülünü, o da `django.db` PAKET
+#: başlangıcını (`django.db`, `django.db.utils`) içe aktarır. Bu Django'nun iç
+#: zinciridir: bağlantı, ORM ve veritabanı arka ucu YÜKLENMEZ. Aşağıdaki
+#: çalışma anı denetimi yalnız bu iki modüle izin verir.
+_SABLON_MOTORUNUN_YUKLEDIGI = frozenset({"django.db", "django.db.utils"})
+
+
+@pytest.mark.django_db(transaction=True)
+def test_katalog_sayfa_uretirken_de_orm_ve_url_katmani_yuklenmez() -> None:
+    """Çalışma anı sigortası, sayfa üretimi dahil (şablon motoru tembel yüklenir).
+
+    Taze alt süreçte katalog, test veritabanının kendisine karşı gerçek sayfalar
+    üretir; ardından yüklü modüller denetlenir. Django ayarı yalnız saat dilimi
+    için asgari tutulur (uygulama kaydı, veritabanı ayarı ve URLconf YOK).
+    """
+    from django.db import connection
+
+    from apps.kutuphane.tests.ortak import eser, nusha
+
+    nusha(eser(title="Alt Süreç Eseri", authors="Deneme Yazar", subjects="Deneme"))
+    db = str(connection.settings_dict["NAME"])
+    betik = (
+        "import json, sys\n"
+        "from pathlib import Path\n"
+        "from django.conf import settings\n"
+        "settings.configure(USE_TZ=True, TIME_ZONE='Europe/Istanbul', USE_I18N=False)\n"
+        "from katalog.app import KatalogKurulumu, create_app\n"
+        "from katalog.bakim import BakimKapisi\n"
+        "uyg = create_app(KatalogKurulumu(db_yolu=Path(sys.argv[1]),\n"
+        "    arama_parcalari=lambda q: [q.upper()], siralama_anahtari=lambda h: h),\n"
+        "    bakim_kapisi=BakimKapisi())\n"
+        "kodlar = []\n"
+        "for yol, sorgu in [('/', ''), ('/ara', 'q=ALT'), ('/eserler', ''),\n"
+        "                   ('/konular', ''), ('/hakkinda', '')]:\n"
+        "    durum = []\n"
+        "    govde = b''.join(uyg({'REQUEST_METHOD': 'GET', 'PATH_INFO': yol,\n"
+        "        'QUERY_STRING': sorgu, 'REMOTE_ADDR': '10.0.0.3'},\n"
+        "        lambda s, h, e=None: durum.append(s)))\n"
+        "    kodlar.append((yol, durum[0], 'Alt S' in govde.decode('utf-8')))\n"
+        "print(json.dumps({'kodlar': kodlar, 'moduller': sorted(sys.modules)}))\n"
+    )
+    ortam = {k: v for k, v in os.environ.items() if k != "DJANGO_SETTINGS_MODULE"}
+    sonuc = subprocess.run(  # noqa: S603 — sabit argümanlar, kabuk yok
+        [sys.executable, "-c", betik, db],
+        cwd=BACKEND_DIR,
+        env=ortam,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    assert sonuc.returncode == 0, sonuc.stderr
+    cikti = json.loads(sonuc.stdout.strip().splitlines()[-1])
+
+    assert all(durum.startswith("200") for _, durum, _ in cikti["kodlar"]), cikti["kodlar"]
+    assert {yol: var for yol, _, var in cikti["kodlar"]}["/ara"] is True
+    moduller: list[str] = cikti["moduller"]
+    for yasak in (
+        "django.db.models",
+        "django.db.backends",
+        "django.urls",
+        "django.http",
+        "apps",
+        "config",
+        "rest_framework",
+    ):
+        yuklu = [m for m in moduller if m == yasak or m.startswith(yasak + ".")]
+        assert yuklu == [], f"{yasak} katalog sayfasıyla birlikte yüklendi: {yuklu[:5]}"
+    django_db = {m for m in moduller if m == "django.db" or m.startswith("django.db.")}
+    assert django_db <= _SABLON_MOTORUNUN_YUKLEDIGI, django_db
+
+
 # Şablon kuralı (§4.1): katalog şablonlarında URL çözümleme ve etiket kitaplığı
 # yükleme etiketleri geçmez. Kural bugünden paketteki HER dosyaya (şablon,
 # gömülü HTML metni) uygulanır; şablon dizini F5'te eklendiğinde de kapsamdadır.
@@ -444,3 +566,41 @@ def test_dis_baglanti_tarayicisi_yakalar(kaynak: str) -> None:
 @pytest.mark.parametrize("kaynak", ["import sqlite3", "from django.template import Engine"])
 def test_dis_baglanti_tarayicisi_izinli_importa_takilmaz(kaynak: str) -> None:
     assert _dis_baglanti_importlari(kaynak) == []
+
+
+#: Şablon ve stilde dış kaynağa işaret eden her yazım (tarayıcıyı başka
+#: sunucuya götüren bağlantı, dış yazı tipi, CDN, uzak görsel, betik).
+_DIS_KAYNAK = re.compile(
+    r"(https?:)|(\bsrc\s*=)|(href\s*=\s*\"//)|(@import)|(url\s*\()|(<script)|(<iframe)|(<img)",
+    re.IGNORECASE,
+)
+
+
+def test_katalog_sablonlari_ve_stili_dis_kaynak_icermez() -> None:
+    """Sayfalar yalnız kendi sunucusuna bağlanır: dış font, CDN, betik ve uzak görsel yok."""
+    dosyalar = [dosya for dosya in _katalog_kaynaklari() if dosya.suffix in {".html", ".css"}]
+    assert any(d.suffix == ".html" for d in dosyalar) and any(d.suffix == ".css" for d in dosyalar)
+
+    bulunan = [
+        f"{dosya.relative_to(BACKEND_DIR)}: {eslesme.group(0)}"
+        for dosya in dosyalar
+        for eslesme in [_DIS_KAYNAK.search(dosya.read_text(encoding="utf-8"))]
+        if eslesme is not None
+    ]
+    assert bulunan == []
+
+
+@pytest.mark.parametrize(
+    ("metin", "dis"),
+    [
+        ('<link href="https://cdn.example/x.css">', True),
+        ('<a href="//baska.sunucu/">', True),
+        ("@import 'x.css';", True),
+        ("background: url(x.png)", True),
+        ('<img src="x.png">', True),
+        ('<a href="{{ bag.ara }}">', False),
+        ('<link rel="icon" href="data:,">', False),
+    ],
+)
+def test_dis_kaynak_denetimi_dogru_ayirt_eder(metin: str, dis: bool) -> None:
+    assert bool(_DIS_KAYNAK.search(metin)) is dis

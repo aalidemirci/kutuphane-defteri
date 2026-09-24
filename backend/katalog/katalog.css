@@ -1,0 +1,231 @@
+/* Ağ Kataloğu — gömülü stil (tasarım §5.4).
+   Program paletinden (turkuaz birincil, lacivert ikincil) düz renk değerleriyle
+   türer; CSS değişkeni, ızgara (grid), dış yazı tipi ve betik YOKTUR: eski
+   Chromium ve Firefox ESR tahtalarında da aynı görünsün. Düzen flex'tir.
+   Tahta kipi iki yoldan açılır: `?tahta=1` (gövdede `tahta` sınıfı) ve
+   dokunmatik ekran (`any-pointer: coarse`). İkisinde de dokunma hedefi en az
+   48 px'tir. */
+
+* { box-sizing: border-box; }
+
+html { font-size: 100%; }
+
+body {
+  margin: 0;
+  background: #f6f8fa;
+  color: #142739;
+  font-family: "DejaVu Sans", "Segoe UI", "Noto Sans", Arial, sans-serif;
+  line-height: 1.5;
+}
+
+a { color: #006d70; }
+a:hover, a:focus { color: #004f52; }
+a:focus, button:focus, input:focus, select:focus {
+  outline: 3px solid #008e92;
+  outline-offset: 2px;
+}
+
+.ust {
+  background: #082642;
+  color: #eff8fc;
+  padding: 0.75rem 1rem;
+}
+.ust-ic {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 64rem;
+  margin: 0 auto;
+}
+.marka {
+  color: #eff8fc;
+  font-weight: bold;
+  font-size: 1.15rem;
+  text-decoration: none;
+  margin: 0.25rem 1rem 0.25rem 0;
+}
+.marka:hover, .marka:focus { color: #ffffff; }
+.marka-alt { display: block; font-size: 0.85rem; font-weight: normal; color: #a6c1d3; }
+.gezinme { display: flex; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; }
+.gezinme li { margin: 0.25rem 0.25rem 0.25rem 0; }
+.gezinme a {
+  display: inline-block;
+  color: #eff8fc;
+  text-decoration: none;
+  padding: 0.35rem 0.7rem;
+  border-radius: 0.5rem;
+}
+.gezinme a:hover, .gezinme a:focus { background: #0c3454; color: #ffffff; }
+
+.icerik { max-width: 64rem; margin: 0 auto; padding: 1rem; }
+
+h1 { font-size: 1.6rem; margin: 0.5rem 0 1rem; }
+h2 { font-size: 1.25rem; margin: 1.5rem 0 0.5rem; }
+
+.kart {
+  background: #ffffff;
+  border: 1px solid #d6dfe6;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin: 0 0 1rem;
+}
+
+.uyari {
+  background: #ffedcf;
+  border: 1px solid #b46912;
+  color: #5b3200;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin: 0 0 1rem;
+}
+
+.arama { display: flex; flex-wrap: wrap; align-items: flex-end; }
+.arama-alan { display: flex; flex-direction: column; flex: 1 1 18rem; margin: 0 0.5rem 0.5rem 0; }
+.arama-alan label { font-weight: bold; margin-bottom: 0.25rem; }
+.arama input, .arama select {
+  font: inherit;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #81929f;
+  border-radius: 0.5rem;
+  background: #ffffff;
+  color: #142739;
+}
+.arama-tur { flex: 0 1 14rem; }
+.arama button, .dugme {
+  font: inherit;
+  font-weight: bold;
+  padding: 0.5rem 1.25rem;
+  border: 0;
+  border-radius: 1.5rem;
+  background: #008e92;
+  color: #ffffff;
+  cursor: pointer;
+  margin: 0 0 0.5rem;
+  text-decoration: none;
+  display: inline-block;
+}
+.arama button:hover, .dugme:hover { background: #00797d; color: #ffffff; }
+
+.dizin-baglantilari { display: flex; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; }
+.dizin-baglantilari li { margin: 0 0.5rem 0.5rem 0; }
+.dizin-baglantilari a {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border: 1px solid #008e92;
+  border-radius: 1.5rem;
+  text-decoration: none;
+  background: #ffffff;
+}
+
+.harfler { display: flex; flex-wrap: wrap; margin: 0 0 1rem; padding: 0; list-style: none; }
+.harfler li { margin: 0 0.3rem 0.3rem 0; }
+.harfler a, .harfler span {
+  display: inline-block;
+  min-width: 2.25rem;
+  padding: 0.3rem 0.5rem;
+  text-align: center;
+  border-radius: 0.5rem;
+  border: 1px solid #d6dfe6;
+  background: #ffffff;
+  text-decoration: none;
+}
+.harfler span { color: #81929f; background: #f1f5f8; }
+.harfler .secili { background: #008e92; border-color: #008e92; color: #ffffff; }
+
+.eserler { list-style: none; margin: 0; padding: 0; }
+.eserler li {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid #d6dfe6;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin: 0 0 0.5rem;
+}
+.eser-baslik { font-weight: bold; font-size: 1.05rem; }
+.eser-yazar { color: #142739; }
+.eser-bilgi, .eser-nusha { color: #536576; font-size: 0.95rem; }
+
+.kunye-tablosu { border-collapse: collapse; width: 100%; }
+.kunye-tablosu th, .kunye-tablosu td { text-align: left; vertical-align: top; padding: 0.4rem 0.5rem; border-bottom: 1px solid #e5ebf0; }
+.kunye-tablosu th { width: 30%; color: #536576; font-weight: normal; }
+
+.nushalar { border-collapse: collapse; width: 100%; }
+.nushalar th, .nushalar td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid #e5ebf0; }
+
+.durum {
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  border-radius: 1rem;
+  font-size: 0.9rem;
+  background: #e5ebf0;
+}
+.durum-rafta { background: #ccf6f3; color: #003a3c; }
+.durum-oduncte { background: #daebf9; color: #0d304d; }
+.durum-okunur { background: #ffedcf; color: #5b3200; }
+
+.sayfalama { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; margin: 1rem 0; }
+.sayfalama a { padding: 0.4rem 0.8rem; }
+
+.siniflar { list-style: none; margin: 0; padding: 0; }
+.siniflar li { margin: 0 0 0.5rem; }
+.siniflar a, .siniflar span {
+  display: flex;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #d6dfe6;
+  border-radius: 0.75rem;
+  padding: 0.6rem 1rem;
+  text-decoration: none;
+}
+.siniflar span { color: #81929f; }
+
+.vitrin { display: flex; flex-wrap: wrap; margin: 0 -0.5rem; }
+.vitrin-sutun { flex: 1 1 20rem; padding: 0 0.5rem; }
+
+.alt {
+  max-width: 64rem;
+  margin: 1rem auto 2rem;
+  padding: 0 1rem;
+  color: #536576;
+  font-size: 0.9rem;
+}
+
+/* ---- Tahta kipi ve dokunmatik ekran: büyük düzen, 48 px dokunma hedefi ---- */
+body.tahta { font-size: 1.25rem; }
+body.tahta .icerik, body.tahta .ust-ic, body.tahta .alt { max-width: 80rem; }
+body.tahta h1 { font-size: 2rem; }
+
+body.tahta a,
+body.tahta button,
+body.tahta input,
+body.tahta select {
+  min-height: 48px;
+}
+body.tahta .gezinme a,
+body.tahta .harfler a,
+body.tahta .harfler span,
+body.tahta .dizin-baglantilari a,
+body.tahta .sayfalama a {
+  display: inline-block;
+  min-width: 48px;
+  min-height: 48px;
+  line-height: 2.25rem;
+}
+body.tahta .eserler li { padding: 1rem 1.25rem; }
+body.tahta .eser-baslik { display: inline-block; min-height: 48px; line-height: 2.25rem; }
+
+@media (any-pointer: coarse) {
+  a, button, input, select { min-height: 48px; }
+  .gezinme a, .harfler a, .harfler span, .dizin-baglantilari a, .sayfalama a {
+    min-width: 48px;
+    line-height: 2.25rem;
+  }
+  .eser-baslik { display: inline-block; line-height: 2.25rem; }
+}
+
+@media print {
+  .ust, .arama, .harfler, .sayfalama, .alt { display: none; }
+  body { background: #ffffff; }
+}

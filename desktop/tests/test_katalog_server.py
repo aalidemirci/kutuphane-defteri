@@ -1,10 +1,11 @@
-"""Ağ Kataloğu sunucusu testleri (tasarım §4.1, §4.2-2, §5.2, §5.10-1).
+"""Ağ Kataloğu sunucusu testleri (tasarım §4.1, §4.2-2, §5.2, §5.10-1, §5.10-10).
 
-Bölümler: port ayarı · dinleme soketi (Windows'ta SO_EXCLUSIVEADDRUSE, diğer
-platformlarda SO_REUSEADDR yok) · waitress ayarları · `KatalogServer` · öz
-sınama · `start_catalog` (hata ölümcül değil) · `main.py` bağlaması · koruma
-testleri (§5.10-1: yönetim sunucusu yalnız 127.0.0.1; `0.0.0.0` yalnız
-`katalog_server.py`'de).
+Bölümler: port ayarı · dinleme soketi (Windows'ta SO_EXCLUSIVEADDRUSE, Linux'ta
+SO_REUSEADDR — TB10 kararı) · waitress ayarları · `KatalogServer` (okul ağı
+adresi yalnız güvenlik duvarı izniyle) · IP başına bağlantı sınırı (TB2) ·
+waitress'in Türkçe hata yanıtları (TB11) · öz sınama · `start_catalog` (duman
+testi; hata ölümcül değil) · `main.py` bağlaması · koruma testleri (§5.10-1:
+yönetim sunucusu yalnız 127.0.0.1; `0.0.0.0` yalnız `katalog_server.py`'de).
 
 Katalog uygulaması `backend/katalog/` altındadır; paketli programda `sys.path`'e
 `prepare_django` ile girer, burada fikstür ekler.
@@ -33,17 +34,24 @@ from desktop import main as main_mod
 from desktop.errors import EXIT_OK, EXIT_SERVER_FAILED, StartupError, WebViewUnavailableError
 from desktop.katalog_server import (
     ALL_INTERFACES_HOST,
-    ALLOWED_LISTEN_HOSTS,
     DEFAULT_PORT,
+    DINLEME_SECILI,
+    DINLEME_TUM,
     ENV_PORT,
+    IP_BASINA_BAGLANTI_SINIRI,
     LOOPBACK_HOST,
     THREAD_NAME,
     WAITRESS_SETTINGS,
     CatalogApp,
+    KatalogAdresYokError,
+    KatalogAgIzniYok,
     KatalogPortInUseError,
     KatalogSelfTestError,
     KatalogServer,
     KatalogServerError,
+    dinleme_hostu,
+    dinleyici_ayakta_mi,
+    katalog_sunucu_sinifi,
     load_catalog,
     open_listen_socket,
     resolve_port,
@@ -220,22 +228,59 @@ def test_windows_ozel_kullanim_sabiti_winsock_degeriyle_ayni() -> None:
 
 
 @pytest.mark.parametrize("platform", ["linux", "darwin"])
-def test_diger_platformlarda_so_reuseaddr_konmaz(platform: str) -> None:
+def test_diger_platformlarda_so_reuseaddr_bind_oncesi_konur(platform: str) -> None:
+    """TB10 kararı (F5): Linux'ta SO_REUSEADDR port paylaşımı değildir, TIME_WAIT'i aşar."""
     sahte = _SahteSoket()
 
     _sahte_soket_ac(sahte, platform)
 
-    assert [ad for ad, _ in sahte.cagrilar] == ["bind", "listen"]  # hiç setsockopt yok
+    assert sahte.cagrilar == [
+        ("setsockopt", (socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)),
+        ("bind", (LOOPBACK_HOST, 8765)),
+        ("listen", katalog_server.LISTEN_BACKLOG),
+    ]
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="Windows dalı ayrı sınanır")
-def test_gercek_sokette_so_reuseaddr_kapali_kalir() -> None:
+def test_gercek_sokette_so_reuseaddr_acik_ama_dinleyen_port_ele_gecirilemez() -> None:
     sock = open_listen_socket(LOOPBACK_HOST, 0)
     try:
-        assert sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR) == 0
+        assert sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR) != 0
         assert sock.getsockname()[0] == LOOPBACK_HOST
+        for adres in (LOOPBACK_HOST, TUM_ARAYUZ):
+            with socket.socket() as korsan:
+                korsan.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                with pytest.raises(OSError):
+                    korsan.bind((adres, sock.getsockname()[1]))
     finally:
         sock.close()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="TB10 yalnız Linux kararıdır")
+def test_linuxta_sunucu_kapattigi_baglanti_time_wait_portu_kilitlemez() -> None:
+    """TB10: bağlantıyı sunucu kapatınca portta TIME_WAIT kalır; yeniden açılış yine olur."""
+    dinleyen = open_listen_socket(LOOPBACK_HOST, 0)
+    port = dinleyen.getsockname()[1]
+    istemci = socket.create_connection((LOOPBACK_HOST, port), timeout=2)
+    baglanti, _ = dinleyen.accept()
+    baglanti.close()  # sunucu önce kapatır → sunucu tarafında TIME_WAIT
+    istemci.recv(1)
+    istemci.close()
+    dinleyen.close()
+
+    yeniden = open_listen_socket(LOOPBACK_HOST, port)  # "port kullanımda" DEMEZ
+
+    yeniden.close()
+
+
+def test_adres_bu_bilgisayarda_yoksa_ozel_hata() -> None:
+    sahte = _SahteSoket(bind_hatasi=OSError(errno.EADDRNOTAVAIL, "Cannot assign"))
+
+    with pytest.raises(KatalogAdresYokError) as hata:
+        _sahte_soket_ac(sahte, "linux")
+
+    assert "artık yok" in hata.value.message
+    assert sahte.kapandi
 
 
 def test_port_doluysa_ozel_turkce_hata_verir() -> None:
@@ -281,7 +326,7 @@ def test_port_dolu_hata_kodlari_ozel_hataya_cevrilir(hata: OSError) -> None:
 
 
 def test_diger_soket_hatasi_genel_katalog_hatasina_cevrilir() -> None:
-    sahte = _SahteSoket(bind_hatasi=OSError(errno.EADDRNOTAVAIL, "Cannot assign"))
+    sahte = _SahteSoket(bind_hatasi=OSError(errno.EACCES, "Permission denied"))
 
     with pytest.raises(KatalogServerError) as hata:
         _sahte_soket_ac(sahte, "linux")
@@ -438,15 +483,90 @@ def test_waitress_sonrasi_ikinci_soket_portu_ele_geciremez() -> None:
 # ------------------------------------------------------------- KatalogServer
 
 
-@pytest.mark.parametrize("host", [TUM_ARAYUZ, "", "localhost", "192.168.1.10", "::"])
-def test_katalog_bu_surumde_yalniz_loopback_adresinde_dinler(host: str) -> None:
+class _Izin:
+    """Güvenlik duvarı denetiminin sonucu (`GuvenlikDuvariDenetimi` yüzeyi)."""
+
+    def __init__(self, gecti: bool) -> None:
+        self.dinlemeye_izin = gecti
+
+
+@pytest.mark.parametrize(
+    "host", ["", "localhost", "::", "169.254.1.1", "224.0.0.1", "127.0.0.2", "abc"]
+)
+def test_katalog_gecersiz_dinleme_adresini_reddeder(host: str) -> None:
     with pytest.raises(ValueError, match="127.0.0.1"):
-        KatalogServer(_uygulama({}, ("200 OK", b"")), host=host)
+        KatalogServer(_uygulama({}, ("200 OK", b"")), host=host, ag_izni=_Izin(True))
 
 
-def test_tum_arayuz_adresi_izinli_adreslerde_degil() -> None:
+@pytest.mark.parametrize("host", [TUM_ARAYUZ, "192.168.1.10"])
+@pytest.mark.parametrize("izin", [None, _Izin(False)])
+def test_okul_agi_adresi_guvenlik_duvari_izni_olmadan_kurulmaz(
+    host: str, izin: _Izin | None
+) -> None:
+    """§5.10-10: kural yoksa ya da tutmuyorsa katalog 0.0.0.0'da (ve LAN IP'de) DİNLEMEZ."""
+    with pytest.raises(KatalogAgIzniYok, match="güvenlik duvarı"):
+        KatalogServer(_uygulama({}, ("200 OK", b"")), host=host, ag_izni=izin)
+
+
+def test_loopback_izin_istemez() -> None:
+    sunucu = KatalogServer(_uygulama({}, ("200 OK", b"")), host=LOOPBACK_HOST)
+
+    assert sunucu.baglanti_hostu == LOOPBACK_HOST
+    assert sunucu.tum_arayuzler is False
+
+
+def test_tum_arayuz_dinleyicisine_loopback_uzerinden_baglanilir() -> None:
+    """§5.2 (GA-18): Windows'ta 0.0.0.0'a bağlantı kurulamaz; öz sınama 127.0.0.1'den."""
+    sunucu = KatalogServer(_uygulama({}, ("200 OK", b"")), host=TUM_ARAYUZ, ag_izni=_Izin(True))
+
     assert ALL_INTERFACES_HOST == TUM_ARAYUZ
-    assert frozenset({LOOPBACK_HOST}) == ALLOWED_LISTEN_HOSTS
+    assert sunucu.tum_arayuzler is True
+    assert sunucu.baglanti_hostu == LOOPBACK_HOST
+
+
+def test_dinleme_hostu_ayardaki_kipten_turer() -> None:
+    assert dinleme_hostu(DINLEME_TUM, "") == TUM_ARAYUZ
+    assert dinleme_hostu(DINLEME_SECILI, "192.168.1.10") == "192.168.1.10"
+    for kip, ip in ((DINLEME_SECILI, ""), (DINLEME_SECILI, "127.0.0.1"), ("BASKA", "")):
+        with pytest.raises(ValueError):
+            dinleme_hostu(kip, ip)
+
+
+def test_gercek_tum_arayuz_dinleyicisi_ogrenci_agindan_erisilir_ve_ele_gecirilemez() -> None:
+    """Tüm arayüzlerde özel kullanım: başka bir süreç portun hiçbir adresine bağlanamaz (TB12)."""
+    sunucu = KatalogServer(
+        _uygulama({"/": ("200 OK", IMZA)}, ("404 Not Found", IMZA)),
+        host=TUM_ARAYUZ,
+        port=0,
+        ag_izni=_Izin(True),
+    )
+    sunucu.start()
+    try:
+        sunucu.wait_until_started()
+        self_test(sunucu.baglanti_hostu, sunucu.port, signature=IMZA)
+        for adres in (LOOPBACK_HOST, TUM_ARAYUZ):
+            with socket.socket() as korsan:
+                korsan.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                with pytest.raises(OSError):
+                    korsan.bind((adres, sunucu.port))
+    finally:
+        sunucu.stop()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="yalnız Windows: SO_EXCLUSIVEADDRUSE")
+def test_windows_tum_arayuzde_ozel_kullanim_tb12_acigini_kapatir() -> None:
+    """TB12: katalog 127.0.0.1'deyken 0.0.0.0'a başkası bağlanabiliyordu; artık bağlanamaz."""
+    sunucu = KatalogServer(
+        _uygulama({}, ("200 OK", b"")), host=TUM_ARAYUZ, port=0, ag_izni=_Izin(True)
+    )
+    sunucu.start()
+    try:
+        for adres in (LOOPBACK_HOST, TUM_ARAYUZ):
+            with socket.socket() as korsan:
+                with pytest.raises(OSError):
+                    korsan.bind((adres, sunucu.port))
+    finally:
+        sunucu.stop()
 
 
 @pytest.mark.parametrize("port", [-1, 65536])
@@ -495,7 +615,8 @@ def test_sunucu_kurulamazsa_soket_kapatilir_ve_turkce_hata() -> None:
     with pytest.raises(KatalogServerError) as hata:
         sunucu.start()
 
-    assert "sunucu kurulamadı" in hata.value.message
+    assert "dinleyici kurulamadı" in hata.value.message
+    assert "sunucu" not in hata.value.message  # sözlük: Ağ Kataloğu için "sunucu" yok
     assert acilan[0].fileno() == -1  # soket kapandı, port sızmadı
 
 
@@ -568,6 +689,139 @@ def test_gercek_katalog_uctan_uca(katalog_uygulamasi: CatalogApp) -> None:
 
     with pytest.raises(OSError):  # dinleyici kapandı
         socket.create_connection((LOOPBACK_HOST, port), timeout=1.0).close()
+
+
+# ------------------------------------------- IP başına bağlantı sınırı (TB2)
+
+
+def _istek(baglanti: socket.socket) -> bytes:
+    """Bağlantıdan tek bir GET gönderir, yanıtın ilk parçasını döndürür (RST → b"")."""
+    try:
+        baglanti.sendall(b"GET / HTTP/1.1\r\nHost: katalog\r\nConnection: close\r\n\r\n")
+        return baglanti.recv(4096)
+    except OSError:
+        return b""
+
+
+def test_ip_basina_eszamanli_baglanti_siniri_kabul_aninda_uygulanir(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """TB2 (GA-12): aynı IP'den tavanı aşan bağlantı yanıtsız kapanır; başka IP etkilenmez."""
+    assert IP_BASINA_BAGLANTI_SINIRI == 20
+    monkeypatch.setattr(katalog_sunucu_sinifi(), "ip_basina_sinir", 3)
+    sunucu = KatalogServer(
+        _uygulama({"/": ("200 OK", IMZA)}, ("404 Not Found", IMZA)),
+        host=TUM_ARAYUZ,
+        port=0,
+        ag_izni=_Izin(True),
+    )
+    sunucu.start()
+    bosta: list[socket.socket] = []
+    try:
+        sunucu.wait_until_started()
+        # Yavaş istemci taklidi: üç boşta bağlantı (hiç veri göndermez).
+        bosta = [
+            socket.create_connection((LOOPBACK_HOST, sunucu.port), timeout=3) for _ in range(3)
+        ]
+        _sonra(lambda: _aktif_kanal(sunucu) == 3)
+
+        try:
+            fazla = socket.create_connection((LOOPBACK_HOST, sunucu.port), timeout=3)
+        except ConnectionResetError:
+            pass  # RST bağlanma anında geldi
+        else:
+            with fazla:
+                assert _istek(fazla) == b""  # yanıt yazılmadan kapatıldı
+        _sonra(lambda: sunucu.reddedilen_baglanti >= 1)
+
+        # Başka bir IP (127.0.0.2) sınırdan etkilenmez.
+        baska = socket.create_connection(
+            (LOOPBACK_HOST, sunucu.port), timeout=3, source_address=("127.0.0.2", 0)
+        )
+        with baska:
+            assert _istek(baska).startswith(b"HTTP/1.1 200")
+
+        # Boşta bağlantılar kapanınca aynı IP yeniden hizmet alır.
+        for baglanti in bosta:
+            baglanti.close()
+        bosta = []
+        _sonra(lambda: _aktif_kanal(sunucu) == 0)
+        yeniden = socket.create_connection((LOOPBACK_HOST, sunucu.port), timeout=3)
+        with yeniden:
+            assert _istek(yeniden).startswith(b"HTTP/1.1 200")
+    finally:
+        for baglanti in bosta:
+            baglanti.close()
+        sunucu.stop()
+
+
+def _aktif_kanal(sunucu: KatalogServer) -> int:
+    return len(getattr(sunucu._server, "active_channels", {}))
+
+
+def _sonra(kosul: Callable[[], bool], sure: float = 5.0) -> None:
+    import time
+
+    son = time.monotonic() + sure
+    while not kosul() and time.monotonic() < son:
+        time.sleep(0.02)
+    assert kosul()
+
+
+def test_durdurmak_acik_istemci_kanallarini_da_kapatir() -> None:
+    """Geri yüklemede kanallar kapatılır (§5.3-3): boşta istemci bağlantısı kopar."""
+    sunucu = KatalogServer(_uygulama({}, ("200 OK", b"")), port=0)
+    sunucu.start()
+    sunucu.wait_until_started()
+    istemci = socket.create_connection((LOOPBACK_HOST, sunucu.port), timeout=3)
+    try:
+        _sonra(lambda: _aktif_kanal(sunucu) == 1)
+
+        sunucu.stop()
+
+        istemci.settimeout(3)
+        try:
+            assert istemci.recv(1) == b""  # sunucu kanalı kapattı
+        except ConnectionResetError:
+            pass
+    finally:
+        istemci.close()
+
+
+def test_waitress_kendi_hata_yanitlari_turkce_ve_csp_li(katalog_uygulamasi: CatalogApp) -> None:
+    """TB11: bozuk istek satırı uygulamaya ulaşmaz; yanıtı katalog kanalının görevi üretir."""
+    sunucu = KatalogServer(katalog_uygulamasi.application, port=0)
+    sunucu.start()
+    try:
+        sunucu.wait_until_started()
+        with socket.create_connection((LOOPBACK_HOST, sunucu.port), timeout=3) as baglanti:
+            baglanti.sendall(b"GET / HTTP/1.1\r\nBozuk Baslik Satiri\r\n\r\n")
+            yanit = b""
+            while True:
+                parca = baglanti.recv(65536)
+                if not parca:
+                    break
+                yanit += parca
+    finally:
+        sunucu.stop()
+
+    basliklar, _, govde = yanit.partition(b"\r\n\r\n")
+    assert basliklar.split(b" ", 2)[1] == b"400"
+    assert b"Content-Security-Policy" in basliklar
+    assert b"generated by" not in govde
+    assert b"istek" in govde.lower() or IMZA in govde
+
+
+def test_dinleyici_ayakta_mi_imzayi_arar() -> None:
+    sunucu = _calisan(_uygulama({"/": ("200 OK", IMZA)}, ("404 Not Found", IMZA)))
+    try:
+        assert dinleyici_ayakta_mi(LOOPBACK_HOST, sunucu.port, signature=IMZA) is True
+        assert dinleyici_ayakta_mi(LOOPBACK_HOST, sunucu.port, signature=b"baska") is False
+        port = sunucu.port
+    finally:
+        sunucu.stop()
+
+    assert dinleyici_ayakta_mi(LOOPBACK_HOST, port, signature=IMZA, timeout=1.0) is False
 
 
 # ----------------------------------------------------------------- öz sınama
@@ -768,6 +1022,53 @@ class _SahteTepsi:
         pass
 
 
+class _SahteKontrol:
+    """`KatalogKontrol` yerine geçer (tepsi eylemlerinin istediği yüzey dahil)."""
+
+    def __init__(self, sira: list[str]) -> None:
+        self.sira = sira
+
+    def acilista_baslat(self) -> None:
+        self.sira.append("katalog-ayara-gore")
+
+    def kapanis(self) -> None:
+        self.sira.append("katalog-dur")
+
+    def tepsi_satiri(self) -> str:
+        return "Ağ Kataloğu: kapalı"
+
+    def acik_mi(self) -> bool:
+        return False
+
+    def kapatilabilir_mi(self) -> bool:
+        return False
+
+    def saatlik_denetle(self) -> bool:
+        return True
+
+    def adres(self) -> str | None:
+        return None
+
+    def ac(self) -> dict[str, Any]:
+        return {}
+
+    def kapat(self) -> dict[str, Any]:
+        return {}
+
+
+class _SahteKapi:
+    def __init__(self, sira: list[str]) -> None:
+        self.sira = sira
+
+    def baslat(self, *, ilk_is: Callable[[], None] | None = None) -> None:
+        self.sira.append("kd-gunluk")
+        if ilk_is is not None:
+            ilk_is()
+
+    def durdur(self) -> None:
+        self.sira.append("kd-gunluk-dur")
+
+
 @pytest.fixture
 def sahte_servis(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Any]:
     """`serve()` çevresini izole eder: Django ve pencere sahte, sıra kayıtlı."""
@@ -787,6 +1088,9 @@ def sahte_servis(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, A
     )
     # Tepsi sahte: katalog bağlaması testleri gerçek Qt/pystray aramasın.
     monkeypatch.setattr(main_mod, "start_tray", lambda actions, **_: _SahteTepsi())
+    monkeypatch.setattr(main_mod, "katalog_kontrolu_kur", lambda: _SahteKontrol(sira))
+    monkeypatch.setattr(main_mod, "gun_kapisi_kur", lambda paths, kontrol, **_: _SahteKapi(sira))
+    monkeypatch.setattr(main_mod, "wal_checkpoint", lambda yol: sira.append("wal-checkpoint"))
     return kayit
 
 
@@ -809,9 +1113,10 @@ def _sahte_katalog_baslat(
     return baslat
 
 
-def test_katalog_yonetim_saglik_denetiminden_sonra_kalkar_ve_once_kapanir(
+def test_katalog_yonetim_saglik_denetiminden_sonra_ayara_gore_kalkar_ve_once_kapanir(
     sahte_servis: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Olağan açılış: katalog `kd-gunluk`'ta AYARA göre kalkar (varsayılan kapalı)."""
     _sahte_katalog_baslat(monkeypatch, sahte_servis["sira"])
 
     kod = main_mod.serve(sahte_servis["paths"], "belirtec", False)
@@ -820,14 +1125,19 @@ def test_katalog_yonetim_saglik_denetiminden_sonra_kalkar_ve_once_kapanir(
     assert sahte_servis["sira"] == [
         "yonetim-basla",
         "saglik",
-        "katalog-basla",  # yönetim ayakta ve korumalı olduktan SONRA
+        "kd-gunluk",
+        "katalog-ayara-gore",  # yönetim ayakta ve korumalı olduktan SONRA
         "pencere",
         "katalog-dur",  # çıkışta yönetimden ÖNCE
+        "kd-gunluk-dur",  # uyku engeli iş parçacığında kalkar
         "yonetim-dur",
+        "wal-checkpoint",  # TB14: iki sunucu durduktan SONRA
     ]
+    # Loopback duman yolu olağan açılışta kullanılmaz.
+    assert "katalog-basla" not in sahte_servis["sira"]
 
 
-def test_autotest_kipinde_de_katalog_kalkar_ve_kapanir(
+def test_autotest_kipinde_katalog_loopbackte_kalkar_ve_kapanir(
     sahte_servis: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _sahte_katalog_baslat(monkeypatch, sahte_servis["sira"])
@@ -836,45 +1146,14 @@ def test_autotest_kipinde_de_katalog_kalkar_ve_kapanir(
 
     assert kod == EXIT_OK
     assert "pencere" not in sahte_servis["sira"]
-    assert sahte_servis["sira"][-2:] == ["katalog-dur", "yonetim-dur"]
+    assert "kd-gunluk" not in sahte_servis["sira"]
+    assert sahte_servis["sira"][-3:] == ["katalog-dur", "yonetim-dur", "wal-checkpoint"]
     assert "katalog-basla" in sahte_servis["sira"]
 
 
-def test_katalog_baslatma_hatasi_acilisi_durdurmaz(
+def test_pencere_motoru_yoksa_katalog_hic_kalkmaz(
     sahte_servis: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Gerçek `start_catalog`; katalog yüklenemez → pencere yine açılır."""
-
-    def patla() -> CatalogApp:
-        raise RuntimeError("katalog yüklenemedi")
-
-    monkeypatch.setattr(katalog_server, "load_catalog", patla)
-
-    kod = main_mod.serve(sahte_servis["paths"], "belirtec", False)
-
-    assert kod == EXIT_OK
-    assert "pencere" in sahte_servis["sira"]
-
-
-def test_katalog_portu_doluyken_program_acilir(
-    sahte_servis: dict[str, Any], monkeypatch: pytest.MonkeyPatch, katalog_uygulamasi: CatalogApp
-) -> None:
-    dolu = _dinleyici()
-    monkeypatch.setenv(ENV_PORT, str(dolu.getsockname()[1]))
-    try:
-        kod = main_mod.serve(sahte_servis["paths"], "belirtec", False)
-    finally:
-        dolu.close()
-
-    assert kod == EXIT_OK
-    assert "pencere" in sahte_servis["sira"]
-
-
-def test_pencere_hatasinda_da_katalog_durdurulur(
-    sahte_servis: dict[str, Any], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _sahte_katalog_baslat(monkeypatch, sahte_servis["sira"])
-
     def pencere_yok() -> None:
         raise WebViewUnavailableError("WebView2 yok.")
 
@@ -883,7 +1162,27 @@ def test_pencere_hatasinda_da_katalog_durdurulur(
     with pytest.raises(WebViewUnavailableError):
         main_mod.serve(sahte_servis["paths"], "belirtec", False)
 
-    assert sahte_servis["sira"][-2:] == ["katalog-dur", "yonetim-dur"]
+    assert sahte_servis["sira"][-2:] == ["yonetim-dur", "wal-checkpoint"]
+    assert "katalog-ayara-gore" not in sahte_servis["sira"]
+
+
+def test_pencere_hatasinda_da_katalog_ve_gunluk_durdurulur(
+    sahte_servis: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def pencere_coktu(url: str, storage_path: Path, **_: Any) -> None:
+        raise RuntimeError("pencere motoru çöktü")
+
+    monkeypatch.setattr(main_mod, "open_window", pencere_coktu)
+
+    with pytest.raises(RuntimeError):
+        main_mod.serve(sahte_servis["paths"], "belirtec", False)
+
+    assert sahte_servis["sira"][-4:] == [
+        "katalog-dur",
+        "kd-gunluk-dur",
+        "yonetim-dur",
+        "wal-checkpoint",
+    ]
 
 
 @pytest.mark.slow
@@ -1005,7 +1304,7 @@ def test_tum_arayuz_taramasi_muafiyet_disini_yakalar() -> None:
 
 
 def test_katalog_sunucusunda_tum_arayuz_adresi_yalniz_sabit_olarak_gecer() -> None:
-    """`0.0.0.0` bu sürümde yalnız ileride kullanılacak bir sabittir (F5'te bağlanır)."""
+    """`0.0.0.0` yalnız TEK bir sabitte yazılıdır; kullanım yerleri sabite atıf yapar."""
     kaynak = (DESKTOP_DIR / "katalog_server.py").read_text(encoding="utf-8")
     agac = ast.parse(kaynak)
     sabitler = [
@@ -1025,9 +1324,12 @@ def test_katalog_sunucusunda_tum_arayuz_adresi_yalniz_sabit_olarak_gecer() -> No
     assert len(atama) == 1 and atama[0].value is sabitler[0]
 
 
-def test_tum_arayuz_sabiti_hicbir_yerde_kullanilmaz() -> None:
+def test_tum_arayuz_sabiti_yalniz_katalog_sunucusunda_kullanilir() -> None:
+    """F5: sabit yalnız `katalog_server.py` içinde (`dinleme_hostu`) kullanılır; denetçi dahil
+    başka hiçbir üretim kaynağı tüm arayüz adresini bilmez."""
     kullanim: list[str] = []
     for dosya in _uretim_kaynaklari():
+        goreli = dosya.relative_to(REPO_ROOT).as_posix()
         for dugum in ast.walk(ast.parse(dosya.read_text(encoding="utf-8"))):
             if isinstance(dugum, ast.Name) and isinstance(dugum.ctx, ast.Load):
                 ad = dugum.id
@@ -1036,9 +1338,10 @@ def test_tum_arayuz_sabiti_hicbir_yerde_kullanilmaz() -> None:
             else:
                 continue
             if ad == "ALL_INTERFACES_HOST":
-                kullanim.append(f"{dosya.relative_to(REPO_ROOT).as_posix()}:{dugum.lineno}")
+                kullanim.append(goreli)
 
-    assert kullanim == []
+    assert kullanim, "sabit hiç kullanılmıyor (dinleme kipi bağlanmamış)"
+    assert set(kullanim) == {"desktop/katalog_server.py"}
 
 
 def test_diger_tum_arayuz_bicimleri_uretim_kaynaginda_yok() -> None:
@@ -1066,4 +1369,4 @@ def test_autotest_kipinde_katalog_kalkmazsa_6_doner(
     kod = main_mod.serve(sahte_servis["paths"], "belirtec", True)
 
     assert kod == EXIT_SERVER_FAILED
-    assert sahte_servis["sira"][-1] == "yonetim-dur"  # yönetim yine düzenli kapanır
+    assert sahte_servis["sira"][-2:] == ["yonetim-dur", "wal-checkpoint"]  # düzenli kapanış

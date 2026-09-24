@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from desktop.errors import MigrationError, ServerStartError
@@ -90,6 +91,61 @@ def assert_session_guard_installed() -> None:
             "Program başlatılamadı: yerel erişim koruması yüklenmedi.",
             hint="Kurulum bozuk olabilir; programı yeniden kurun.",
         )
+
+
+def is_parcacigi_baglantisiyla[T](islem: Callable[[], T]) -> T:
+    """ORM'ye istek DIŞI bir iş parçacığından (tepsi, `kd-gunluk`, katalog denetçisi) dokunur.
+
+    Django bağlantıları iş parçacığına özgüdür ve istek dışında kimse onları
+    kapatmaz. Uzun ömürlü bir iş parçacığında açık kalan bağlantı Windows'ta
+    geri yüklemeyi bozar: SQLite dosyayı `FILE_SHARE_DELETE` olmadan açar,
+    `live_restore`'un `connections.close_all()`'u yalnız KENDİ iş parçacığının
+    bağlantılarını kapatır ve takas (`os.replace`) erişim hatasıyla düşerdi.
+    Bu sarmal, çağrının AÇTIĞI bağlantıyı sonunda kapatır; çağrıdan önce açık
+    olan bir bağlantıya (HTTP isteğinin kendisi) dokunmaz.
+    """
+    from django.db import connections
+
+    baglanti = connections["default"]
+    onceden_acik = baglanti.connection is not None
+    try:
+        return islem()
+    finally:
+        if not onceden_acik and not baglanti.in_atomic_block:
+            baglanti.close()
+
+
+def wal_checkpoint(db_path: Path) -> bool:
+    """Düzenli kapanışta WAL'i ana dosyaya yazar ve kırpar (TB14).
+
+    İki sunucu durduktan SONRA çağrılır: `PRAGMA wal_checkpoint(TRUNCATE)`
+    bütün WAL sayfalarını veritabanı dosyasına aktarır ve `-wal` dosyasını
+    sıfırlar. Böylece kurucunun kapatma olayında ya da elektrik kesintisinde
+    geriye tek, tutarlı bir dosya kalır. Başka bir bağlantı hâlâ okuyorsa
+    checkpoint kısmi kalır (sonuç `False`); hata çıkışı durdurmaz.
+    """
+    import sqlite3
+    from contextlib import closing
+
+    if not db_path.exists():
+        return False
+    try:
+        from django.db import connections
+
+        connections.close_all()  # bu iş parçacığının Django bağlantıları
+    except Exception:  # noqa: BLE001 — Django kurulmamış olabilir (açılış hatası)
+        logger.debug("Django bağlantıları kapatılamadı (Django kurulmamış olabilir).")
+    try:
+        with closing(sqlite3.connect(db_path, timeout=5)) as baglanti:
+            mesgul, _, _ = baglanti.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+    except sqlite3.Error:
+        logger.warning("Kapanışta WAL checkpoint yapılamadı.", exc_info=True)
+        return False
+    if mesgul:
+        logger.warning("Kapanışta WAL checkpoint kısmi kaldı (veritabanı meşgul).")
+        return False
+    logger.info("Kapanışta WAL checkpoint yapıldı.")
+    return True
 
 
 def build_wsgi_application() -> object:

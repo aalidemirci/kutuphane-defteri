@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Kutuphane Defteri Ag Katalogu: firewalld servis tanimi (tasarim 5.7).
+  Paket bu tanimi BIRAKIR ama kurali ACMAZ. Okulun BTR'sinin
+  calistiracagi komutu Ag Doktoru gosterir: her kaynak blok (yerel ag, tahta
+  agi) icin ayri zengin kural (rich rule) ve yeniden yukleme. Kaynak
+  siniri olmayan servis ekleme kullanilmaz (katalog MEB WAN'ina da acilirdi). Port programda
+  degistirildiyse servis yerine port yazilir.
+-->
+<service>
+  <short>Kutuphane Defteri</short>
+  <description>Okul kutuphanesinin salt okur Ag Katalogu (yerel ag). Kisisel veri sunmaz.</description>
+  <port protocol="tcp" port="8765"/>
+</service>

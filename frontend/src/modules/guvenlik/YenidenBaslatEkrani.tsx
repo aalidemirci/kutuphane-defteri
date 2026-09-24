@@ -7,12 +7,15 @@
 // programı gerçekten kapatıp yeniden açmaktır.
 //
 // Metin pencerenin çarpısını ÖNERMEZ: çarpı programı kapatmaz, tepsiye gizler
-// (tepsi yoksa küçültür) — `desktop/window.py::on_closing`; program yalnız
-// tepsi menüsündeki "Çık" ile kapanır (`desktop/tray.py`, tasarım §4.2-4/5).
+// (tepsi yoksa küçültür) — `desktop/window.py::on_closing`; program tepsi
+// menüsündeki "Çık" ile ya da bu ekrandaki "Programdan çık" düğmesiyle
+// (`POST app/quit/`, "yeniden başlat" kapısının geçirdiği tek uç) kapanır
+// (`desktop/tray.py`, tasarım §4.2-4/5; tepsisiz Linux'ta tek yol — TB13).
 
 import { useEffect, useState } from "react";
 
 import { YENIDEN_BASLAT_OLAYI } from "../../lib/restart";
+import { DogrudanCikisDugmesi } from "../cikis/CikisDugmesi";
 import { useDurumBasligi } from "../../ui/DurumBasligi";
 import Icon from "../../ui/Icon";
 
@@ -47,10 +50,12 @@ export default function YenidenBaslatEkrani() {
           programın yeniden başlatılması gerekir.
         </p>
         <p className="mt-3 text-body-medium text-on-surface-variant">
-          Pencerenin çarpı düğmesi programı kapatmaz, yalnız gizler: saatin yanındaki simge alanında
-          (tepside) Kütüphane Defteri simgesine sağ tıklayıp “Çık”ı seçin, sonra programı yeniden
-          açın.
+          Pencerenin çarpı düğmesi programı kapatmaz, yalnız gizler: aşağıdaki düğmeyle ya da saatin
+          yanındaki simge alanında (tepside) Kütüphane Defteri simgesine sağ tıklayıp “Çık”ı seçerek
+          programdan çıkın, sonra programı yeniden açın.
         </p>
+        {/* Çık (F5, TB13): tepsisi olmayan masaüstünde tek çıkış yolu; parolasızdır. */}
+        <DogrudanCikisDugmesi />
         <p className="mt-3 text-body-small text-on-surface-variant">
           Önceki veritabanı silinmedi; veri klasöründe{" "}
           <span className="font-mono">db-onceki-…</span> adıyla saklanıyor.

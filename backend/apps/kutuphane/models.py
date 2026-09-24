@@ -1603,3 +1603,191 @@ class MetadataLookupCache(models.Model):
 
     def __str__(self) -> str:
         return f"{self.isbn13} — {self.get_source_display() or 'bulunamadı'}"
+
+
+# ---------------------------------------------------------------------------
+# F5 — Ağ Kataloğu: ayar satırı ve çok okunanlar tablosu (tasarım §5, §6.2)
+# ---------------------------------------------------------------------------
+#: Ağ Kataloğunun varsayılan portu (§5.2). Değişikliği yalnız yönetici kipinde
+#: yapılır; güvenlik duvarı kuralı ve HKLM değeri UAC yardımcısıyla güncellenir.
+KATALOG_VARSAYILAN_PORT = 8765
+#: Kullanılabilir port aralığı. 1024 altı ayrıcalıklı portlardır ve Windows'ta
+#: sistem hizmetleriyle çakışır; üst sınır TCP'nin kendisidir.
+KATALOG_PORT_ALT = 1024
+KATALOG_PORT_UST = 65535
+
+
+class DinlemeKipi(models.TextChoices):
+    """Ağ Kataloğunun dinlediği adres (§5.2).
+
+    ALL: bütün ağ arayüzleri (0.0.0.0) — varsayılan; güvenlik duvarı kuralı
+    `remoteip` ile kapsamı daraltır. SELECTED: yalnız seçili IP (ikinci ağ
+    kartı ya da tahta VLAN'ına bağlı makine — §5.8); IP değişirse dinleyici
+    yeni adreste yeniden açılır ve kullanıcı uyarılır (masaüstü kolu).
+    """
+
+    ALL = "ALL", "Bütün ağ bağlantılarında"
+    SELECTED = "SELECTED", "Yalnız seçili IP adresinde"
+
+
+class KatalogAyari(BaseModel):
+    """Ağ Kataloğu ayarları — tek satır (singleton, pk=1). Kişisel veri taşımaz.
+
+    **Port ve IP'nin tek kaynağı budur** (tasarım §2.3, §6.2): `KD_KATALOG_PORT`
+    ve `KD_KATALOG_HOST` yalnız geliştirme ve test içindir. Katalog varsayılan
+    olarak KAPALIDIR (§5.2): ilk açılışta Ağ Doktoru adım adım yönlendirir.
+
+    Yazma yalnız yönetici kipindedir (`services.katalog_ayari`); uç görevli
+    kipi izin listesinde DEĞİLDİR. `vitrin_acik` ve `konular_acik` Ağ Kataloğu
+    tarafından `kd_katalog_okul` görünümünden okunur; öbür alanlar (port, IP,
+    CIDR) görünüme HİÇ girmez — ağa açılan yüzey dinleme ayrıntısını bilmez.
+
+    `tahta_cidrleri`: BTR'nin doğruladığı tahta ağı blokları (S1). Güvenlik
+    duvarı kuralının `remoteip` güncellemesinde kullanılır (§5.7, UAC adımı);
+    RFC1918'in tamamı bilerek kabul edilmez (GA-6).
+    """
+
+    SINGLETON_PK = 1
+
+    acik = models.BooleanField(
+        "Ağ Kataloğu açık",
+        default=False,
+        help_text="Varsayılan kapalıdır; ilk açılışta Ağ Doktoru yönlendirir (§5.2).",
+    )
+    port = models.PositiveIntegerField(
+        "port",
+        default=KATALOG_VARSAYILAN_PORT,
+        validators=[MinValueValidator(KATALOG_PORT_ALT), MaxValueValidator(KATALOG_PORT_UST)],
+        help_text="Değişikliği güvenlik duvarı kuralını da günceller (yönetici onayı ister).",
+    )
+    dinleme_kipi = models.CharField(
+        "dinleme kipi", max_length=10, choices=DinlemeKipi.choices, default=DinlemeKipi.ALL
+    )
+    secili_ip = models.CharField(
+        "seçili IP adresi",
+        max_length=15,
+        blank=True,
+        default="",
+        help_text="Yalnız 'yalnız seçili IP adresinde' kipinde kullanılır (IPv4).",
+    )
+    son_afis_ip = models.CharField(
+        "son afişteki IP adresi",
+        max_length=15,
+        blank=True,
+        default="",
+        help_text="Katalog afişi basıldığında yazılır; IP değişince uyarı bununla karşılaştırılır.",
+    )
+    uyku_engelleme = models.BooleanField(
+        "katalog açıkken boşta kalma uykusu engellenir",
+        default=True,
+        help_text="Kullanıcının başlattığı uyku ve kapak kapatma engellenmez (§4.5).",
+    )
+    vitrin_acik = models.BooleanField(
+        "vitrin gösterilir",
+        default=True,
+        help_text="Ağ Kataloğu ana sayfasında yeni gelenler ve çok okunanlar.",
+    )
+    konular_acik = models.BooleanField(
+        "konu dizini gösterilir",
+        default=True,
+        help_text="Ağ Kataloğunda DOS ana sınıfları ve konu dizini.",
+    )
+    tahta_cidrleri = models.JSONField(
+        "tahta ağı blokları",
+        default=list,
+        blank=True,
+        help_text="BTR'nin doğruladığı IPv4 blokları (ör. <tahta-ağı>); kural güncellemesinde kullanılır.",
+    )
+
+    class Meta:
+        verbose_name = "Ağ Kataloğu ayarı"
+        verbose_name_plural = "Ağ Kataloğu ayarları"
+        constraints = [
+            models.CheckConstraint(
+                name="ck_katalogayari_dinleme_kipi",
+                condition=models.Q(dinleme_kipi__in=DinlemeKipi.values),
+            ),
+            models.CheckConstraint(
+                name="ck_katalogayari_port_araligi",
+                condition=models.Q(port__gte=KATALOG_PORT_ALT)
+                & models.Q(port__lte=KATALOG_PORT_UST),
+            ),
+            # Seçili IP kipinde adres boş kalamaz (servis Türkçe iletiyle de söyler).
+            models.CheckConstraint(
+                name="ck_katalogayari_secili_ip",
+                condition=~models.Q(dinleme_kipi=DinlemeKipi.SELECTED) | ~models.Q(secili_ip=""),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return "Ağ Kataloğu ayarı"
+
+    @classmethod
+    def load(cls) -> KatalogAyari:
+        """Tek satırı döndürür; yoksa KAYDEDİLMEMİŞ varsayılan örnek (okuma yazmaz)."""
+        return cls.objects.filter(pk=cls.SINGLETON_PK).first() or cls(pk=cls.SINGLETON_PK)
+
+
+class PopulerPencereTuru(models.TextChoices):
+    """Çok okunanlar penceresi (§5.3): ağ vitrini dönem, E12 afişi ay penceresidir."""
+
+    DONEM = "DONEM", "Dönem"
+    AY = "AY", "Ay"
+
+
+class KatalogPopuler(models.Model):
+    """Çok okunanlar — (eser, pencere, sıra); tablo adı `kd_katalog_populer` (§5.3).
+
+    KİŞİSİZDİR ve SAYI TAŞIMAZ: satır yalnız bir eserin o penceredeki SIRASIDIR.
+    Kaç kez ödünç alındığı, kimin aldığı ya da kaç farklı üyenin aldığı burada
+    yoktur (GA-10, KM-11, EK-23; profil yasağı CLAUDE.md §2-5). Eşik (pencere
+    içinde en az k FARKLI üye — `LibraryPolicy.popular_min_members`) hesaplayan
+    tarafın işidir; tabloya eşiği geçmemiş eser yazılmaz.
+
+    Hesap Django tarafında, gün değişimi kapısında günde bir kez yapılır; F5'te
+    yalnız tablo ve yazıcı iskeleti vardır (`services.populer`), gerçek hesap
+    ödünç verisi gelince (F6/F10) bağlanır. Kapanmış pencere DONDURULUR
+    (`dondu`): anonimleştirmeden sonra yeniden hesaplanmaz, çünkü kişi bağı
+    koparılmış ödünçlerle aynı eşik artık ölçülemez.
+
+    Ağ Kataloğu bu tabloyu doğrudan okur (adı `kd_katalog_` ile başlar;
+    authorizer tablosu §5.3, 5. argüman boş satırı) ve silinmiş eseri
+    `kd_katalog_eser` ile birleştirerek süzer. `BaseModel` DEĞİLDİR: satır
+    hesabın çıktısıdır, yumuşak silinmez, pencere yeniden yazılırken değişir.
+    """
+
+    eser = models.ForeignKey(
+        Work, on_delete=models.PROTECT, related_name="populer_siralari", verbose_name="eser"
+    )
+    pencere_turu = models.CharField(
+        "pencere türü", max_length=5, choices=PopulerPencereTuru.choices
+    )
+    pencere = models.CharField(
+        "pencere", max_length=20, help_text="Dönem için '2026-2027/1', ay için '2026-09'."
+    )
+    sira = models.PositiveSmallIntegerField("sıra", validators=[MinValueValidator(1)])
+    hesaplanma = models.DateField("hesaplanma tarihi")
+    dondu = models.BooleanField(
+        "donduruldu", default=False, help_text="Kapanmış pencere yeniden hesaplanmaz."
+    )
+
+    class Meta:
+        db_table = "kd_katalog_populer"
+        verbose_name = "çok okunanlar sırası"
+        verbose_name_plural = "çok okunanlar sıraları"
+        ordering = ["pencere_turu", "-pencere", "sira"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["pencere_turu", "pencere", "sira"], name="uq_katalogpopuler_sira"
+            ),
+            models.UniqueConstraint(
+                fields=["pencere_turu", "pencere", "eser"], name="uq_katalogpopuler_eser"
+            ),
+            models.CheckConstraint(
+                name="ck_katalogpopuler_pencere_turu",
+                condition=models.Q(pencere_turu__in=PopulerPencereTuru.values),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.pencere_turu} {self.pencere} #{self.sira}"

@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 
+import CikisDugmesi from "./modules/cikis/CikisDugmesi";
 import UpdateBanner from "./modules/guncelleme/UpdateBanner";
 import { GOREVLI_EKRANI_BASLIGI } from "./modules/kip/GorevliEkrani";
 import KipGostergesi from "./modules/kip/KipGostergesi";
@@ -43,6 +44,7 @@ const PAGE_TITLES: Array<[prefix: string, title: string]> = [
   ["/katalog/etiketler", "Etiketler"],
   ["/katalog", "Katalog"],
   ["/ayarlar", "Ayarlar"],
+  ["/ag-doktoru", "Ağ Doktoru"],
   ["/kilavuz", "Kullanım Kılavuzu"],
   ["/hakkinda", "Hakkında ve Lisans"],
   ["/kurulum", "Kurulum Sihirbazı"],
@@ -229,8 +231,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
           {/* Kip göstergesi (tasarım §4.4): kip adı, görsel geri sayım,
               "Görevli kipine geç" / "Yönetici kipine geç", "Kilitle". Kilitliyken
               ve kip okunamazsa boştur. */}
-          <div className="ml-auto flex min-w-0 items-center">
+          <div className="ml-auto flex min-w-0 items-center gap-1">
             <KipGostergesi />
+            {/* Çık (tasarım §4.2-4, TB13): her durumda görünür — tepsisi olmayan
+                Linux masaüstünde programın tek çıkış yolu; görevli kipinde
+                yönetici parolası ister. Tepsinin `kd:cik-iste` olayını da dinler. */}
+            <CikisDugmesi />
           </div>
         </header>
 

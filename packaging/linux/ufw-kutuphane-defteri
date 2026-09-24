@@ -1,0 +1,4 @@
+[Kutuphane Defteri]
+title=Kutuphane Defteri Ag Katalogu
+description=Okul kutuphanesinin salt okur Ag Katalogu (yerel ag). Paket kurali acmaz; okulun BTR'si yalniz yerel ag ve tahta agi bloklarina acar: "ufw allow from <blok> to any app 'Kutuphane Defteri'".
+ports=8765/tcp

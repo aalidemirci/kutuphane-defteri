@@ -82,6 +82,18 @@ vi.mock("./modules/kutuphane/api", async (importOriginal) => {
   return { ...actual, kutuphaneApi: { ...actual.kutuphaneApi, ...kutuphaneApiMock } };
 });
 
+// Ağ Doktoru (F5) kendi uçlarına gider; burada yalnız rota ve başlık kablolaması.
+const agKataloguApiMock = vi.hoisted(() => ({
+  durum: vi.fn(),
+  ayar: vi.fn(),
+  arayuzler: vi.fn(),
+}));
+
+vi.mock("./modules/agkatalogu/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./modules/agkatalogu/api")>();
+  return { ...actual, agKataloguApi: { ...actual.agKataloguApi, ...agKataloguApiMock } };
+});
+
 import App from "./App";
 import { denetimSonucunuYayinla } from "./modules/guncelleme/denetimOlayi";
 import type { KipOzeti } from "./modules/kip/api";
@@ -177,6 +189,14 @@ beforeEach(() => {
   okulApiMock.listPersonnel.mockResolvedValue(bosSayfa);
   okulApiMock.getLeavePoolSummary.mockResolvedValue({ student_count: 0, personnel_count: 0 });
   kipApiMock.durum.mockResolvedValue(YONETICI_KIPI);
+  agKataloguApiMock.durum.mockResolvedValue({
+    masaustu: false,
+    platform: "linux",
+    katalog: null,
+    qr: null,
+    sayaclar: { bugun: {}, son_hata: null },
+  });
+  agKataloguApiMock.ayar.mockReturnValue(new Promise(() => undefined));
   for (const liste of [
     kutuphaneApiMock.listWorks,
     kutuphaneApiMock.listCopies,
@@ -417,6 +437,7 @@ describe("App — kabuk gezinmesi", () => {
     ["/katalog/hizli-kayit", "Hızlı Kayıt"],
     ["/katalog/etiketler", "Etiketler"],
     ["/ayarlar", "Ayarlar"],
+    ["/ag-doktoru", "Ağ Doktoru"],
     ["/kilavuz", "Kullanım Kılavuzu"],
     ["/hakkinda", "Hakkında ve Lisans"],
     ["/kurulum", "Kurulum Sihirbazı"],

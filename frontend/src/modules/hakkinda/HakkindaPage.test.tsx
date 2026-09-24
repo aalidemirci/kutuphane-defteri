@@ -55,4 +55,13 @@ describe("HakkindaPage", () => {
     expect(screen.getByText(/varsayılan olarak kapalıdır/)).toBeInTheDocument();
     expect(screen.getByText(/kişisel veri dışarı çıkmaz/)).toBeInTheDocument();
   });
+
+  it("Ağ Kataloğunun kişisel veri göstermediğini söyler (sözlük: bunu Hakkında söyler)", () => {
+    render(<HakkindaPage />);
+
+    expect(screen.getByText(/Ağ Kataloğu \(varsayılan olarak kapalı\)/)).toHaveTextContent(
+      "Kişisel veri göstermez",
+    );
+    expect(screen.getByText(/Ağ Kataloğu ise\s+internete hiç çıkmaz/)).toBeInTheDocument();
+  });
 });

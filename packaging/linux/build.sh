@@ -17,7 +17,7 @@
 #   3. PyInstaller onedir
 #   4. Duman testleri: `--bagimlilik-duman` (hiddenimports) + `--autotest` (çıkış 0)
 #      + `--pdf-duman` (evrak şablonu + Türkçe PDF)
-#   5. .deb sargısı (dpkg-deb)
+#   5. .deb sargısı (dpkg-deb; ufw profili + firewalld servis tanımı dahil)
 #   6. Taşınabilir .tar.gz (+ kur.sh)
 #   7. SHA256SUMS.txt
 #
@@ -173,6 +173,13 @@ mkdir -p "$DEB_AGACI/opt" "$DEB_AGACI/usr/bin" "$DEB_AGACI/usr/share/application
 cp -a "$PAKET_KOKU/kutuphane-defteri" "$DEB_AGACI/opt/kutuphane-defteri"
 ln -sf /opt/kutuphane-defteri/kutuphane-defteri "$DEB_AGACI/usr/bin/kutuphane-defteri"
 cp "$DEPO/packaging/linux/kutuphane-defteri.desktop" "$DEB_AGACI/usr/share/applications/"
+# Ağ Kataloğu (tasarım §5.7): ufw uygulama profili ve firewalld servis tanımı
+# bırakılır, kural AÇILMAZ; komutu Ağ Doktoru gösterir.
+mkdir -p "$DEB_AGACI/etc/ufw/applications.d" "$DEB_AGACI/usr/lib/firewalld/services"
+install -m 0644 "$DEPO/packaging/linux/ufw-kutuphane-defteri" \
+    "$DEB_AGACI/etc/ufw/applications.d/kutuphane-defteri"
+install -m 0644 "$DEPO/packaging/linux/firewalld-kutuphane-defteri.xml" \
+    "$DEB_AGACI/usr/lib/firewalld/services/kutuphane-defteri.xml"
 
 for boyut in 16 24 32 48 64 128 256; do
     hedef="$DEB_AGACI/usr/share/icons/hicolor/${boyut}x${boyut}/apps"

@@ -1,0 +1,29 @@
+{% extends "taban.html" %}
+{% block icerik %}
+<h1>Kütüphane Kataloğu</h1>
+<section class="kart">
+{% include "_arama_formu.html" %}
+</section>
+<section class="kart">
+<h2>Dizinler</h2>
+<p>Aramadan da gezinebilirsiniz: harfe tıklayın, kaynağın sayfasına ulaşın.</p>
+<ul class="dizin-baglantilari">
+<li><a href="{{ bag.eserler }}">Kaynak Adına Göre</a></li>
+<li><a href="{{ bag.yazarlar }}">Yazar Adına Göre</a></li>
+{% if konular_acik %}<li><a href="{{ bag.konular }}">Konuya Göre</a></li>{% endif %}
+<li><a href="{{ bag.ara }}">Bütün Kaynaklar</a></li>
+</ul>
+</section>
+{% if vitrin_acik %}
+<div class="vitrin">
+{% if yeni_gelenler %}<section class="vitrin-sutun">
+<h2>Yeni Gelenler</h2>
+{% with eserler=yeni_gelenler eksen="" %}{% include "_eser_listesi.html" %}{% endwith %}
+</section>{% endif %}
+{% if cok_okunanlar %}<section class="vitrin-sutun">
+<h2>Çok Okunanlar</h2>
+{% with eserler=cok_okunanlar eksen="" %}{% include "_eser_listesi.html" %}{% endwith %}
+</section>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

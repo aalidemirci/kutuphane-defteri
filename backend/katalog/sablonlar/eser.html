@@ -1,0 +1,21 @@
+{% extends "taban.html" %}
+{% block icerik %}
+<h1>{{ eser.baslik }}</h1>
+<section class="kart">
+<h2>Künye</h2>
+<table class="kunye-tablosu">
+{% for satir in kunye_satirlari %}<tr><th scope="row">{{ satir.ad }}</th><td>{{ satir.deger }}</td></tr>
+{% endfor %}</table>
+</section>
+<section class="kart">
+<h2>Nüshalar</h2>
+<p>{{ eser.nusha_ozeti }}</p>
+{% if nushalar %}<table class="nushalar">
+<thead><tr><th scope="col">Bölüm</th><th scope="col">Durum</th></tr></thead>
+<tbody>
+{% for n in nushalar %}<tr><td>{% if n.bolum_adi %}{{ n.bolum_adi }}{% else %}—{% endif %}</td><td><span class="durum {{ n.sinif }}">{{ n.durum_adi }}</span></td></tr>
+{% endfor %}</tbody>
+</table>{% endif %}
+</section>
+<p><a class="dugme" href="{{ bag.ara }}">Kataloğa dön</a></p>
+{% endblock %}

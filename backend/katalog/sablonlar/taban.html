@@ -1,0 +1,41 @@
+{% comment %}
+Ağ Kataloğu taban şablonu (tasarım §5.4). Otomatik kaçırma AÇIKTIR (Engine
+autoescape=True): kaynak adları Excel'den ve yapay zekâ köprüsünden gelir.
+Bu dizinde URL çözümleme ve etiket kitaplığı yükleme etiketleri KULLANILMAZ
+(§4.1); bağlantılar Python tarafında kurulur ve tahta kipini taşır. Betik,
+satır içi stil ve dış kaynak yoktur (CSP). Simge isteği `data:` ile kapatılır.
+{% endcomment %}<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="kd-katalog" content="1">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="{{ css_adresi }}">
+<title>{{ sayfa_basligi }} — Ağ Kataloğu</title>
+</head>
+<body{% if tahta %} class="tahta"{% endif %}>
+<header class="ust">
+<div class="ust-ic">
+<a class="marka" href="{{ bag.ana }}">{% if okul_adi %}{{ okul_adi }}{% else %}Okul Kütüphanesi{% endif %}<span class="marka-alt">Ağ Kataloğu</span></a>
+<nav aria-label="Katalog bölümleri">
+<ul class="gezinme">
+<li><a href="{{ bag.ara }}">Ara</a></li>
+<li><a href="{{ bag.eserler }}">Kaynak Adları</a></li>
+<li><a href="{{ bag.yazarlar }}">Yazarlar</a></li>
+{% if konular_acik %}<li><a href="{{ bag.konular }}">Konular</a></li>{% endif %}
+<li><a href="{{ bag.hakkinda }}">Hakkında</a></li>
+</ul>
+</nav>
+</div>
+</header>
+<main class="icerik">
+{% if veri_yok %}<p class="uyari">Katalog bilgilerine şu an ulaşılamıyor. Biraz sonra yeniden deneyin; sorun sürerse kütüphaneye haber verin.</p>{% endif %}
+{% block icerik %}{% endblock %}
+</main>
+<footer class="alt">
+<p>Ağ Kataloğu kişisel veri göstermez: üye, ödünç kaydı ve iade tarihi bu sayfalarda yer almaz. Ödünç almak için kütüphaneye gelin. <a href="{{ bag.hakkinda }}">Hakkında</a></p>
+</footer>
+</body>
+</html>

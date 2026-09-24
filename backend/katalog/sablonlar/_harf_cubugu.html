@@ -1,0 +1,3 @@
+{% comment %}A-Z harf çubuğu: eseri olmayan harf bağlantı değildir (boş sayfaya götürmez).{% endcomment %}<ul class="harfler" aria-label="Harfler">
+{% for h in harf_cubugu %}<li>{% if h.bag %}<a href="{{ h.bag }}"{% if h.secili %} class="secili" aria-current="page"{% endif %}>{{ h.ad }}</a>{% else %}<span>{{ h.ad }}</span>{% endif %}</li>
+{% endfor %}</ul>

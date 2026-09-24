@@ -54,17 +54,28 @@ kapi "depo sızıntısı (KVKK)" depo_sizinti backend "python packaging/depo_siz
 
 kapi "pytest" pytest backend "pytest"
 
-# Ölçüm kapısı (F3, tasarım §14.1): 10.000 satırlık sentetik dosya + 10.000
-# nüshada liste/arama/sayfalama + tepe bellek. Her koşuda yapılmaz (dakikalar
-# sürer ve 10.000 kayıt yazar), ama "yalnız elle koşulabilen kapı maddesi" de
-# kapı değildir: `KD_YAVAS=1` verildiğinde koşar ve CI'da gecelik iş bunu verir
+# Ölçüm kapısı (tasarım §14.1): F3 — 10.000 satırlık sentetik dosya + 10.000
+# nüshada liste/arama/sayfalama + tepe bellek; F5 — 10.000 eserde Ağ Kataloğu
+# sayfaları. `yavas` işaretli BÜTÜN testler seçilir (dosya adı sayılmaz: yeni bir
+# ölçüm testi kendiliğinden kapıya girer). Her koşuda yapılmaz (dakikalar sürer ve
+# on binlerce kayıt yazar), ama "yalnız elle koşulabilen kapı maddesi" de kapı
+# değildir: `KD_YAVAS=1` verildiğinde koşar ve CI'da gecelik iş bunu verir
 # (.github/workflows/kapilar.yml).
 if [ "${KD_YAVAS:-0}" = "1" ]; then
-  kapi "ölçüm (yavaş)" olcum backend \
-    "pytest apps/kutuphane/tests/test_ice_aktarma_olcum.py -m yavas -q --no-cov -s" \
-    -e KD_YAVAS=1
+  kapi "ölçüm (yavaş)" olcum backend "pytest -m yavas -q --no-cov -s" -e KD_YAVAS=1
+
+  # Ağ provası (F5 kod kapısı): iki kap iki bilgisayar yerine geçer — ikinci
+  # bilgisayardan arama ve 50 istemcili yük (her istemci ayrı IP'den), yük altında
+  # yönetim API'si ölçülür. Kapları betik kendisi kurar; bu yüzden `kapi` ile değil
+  # host'tan koşar. Nöbetçi betiğin SON satırıdır (her adımın kendi nöbetçisi de var).
+  echo "== ağ provası (yavaş): ikinci bilgisayardan arama + 50 istemcili yük =="
+  bash scripts/ag_katalogu_provasi.sh | tee "$KAPI_LOG"
+  if ! grep -q "KAPI_OK_ag_provasi" "$KAPI_LOG"; then
+    echo "HATA: 'ağ provası' nöbetçi kanıtı üretmedi" >&2
+    exit 1
+  fi
 else
-  echo "== ölçüm kapısı atlandı (KD_YAVAS=1 ile koşar) =="
+  echo "== ölçüm kapısı ve ağ provası atlandı (KD_YAVAS=1 ile koşar) =="
 fi
 
 kapi "ruff check" ruff backend "ruff check ."

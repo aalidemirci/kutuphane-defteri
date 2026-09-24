@@ -290,9 +290,18 @@ class WindowController:
     kanalı (`kd-kanal`). Durum bu yüzden kilit altındadır; pywebview çağrıları
     kilit DIŞINDA yapılır (pencere iş parçacığına sıralanıp bloklayabilirler).
 
-    F0'da kip yoktur: "Çık" herkese açıktır. Görevli kipinde parola F1/F5'te
-    (`KipDurumu`, tasarım T16) bu sınıfın `request_quit` kapısına gelir.
+    Görevli kipinde tepsideki "Çık" doğrudan kapatmaz (§4.2-4): `ask_quit_in_spa`
+    pencereyi öne getirir ve arayüze `kd:cik-iste` olayını gönderir; arayüz
+    yönetici parolasını sorar ve `POST app/quit/` ile döner, kapanış yine
+    `request_quit`'ten geçer (masaüstü kancası).
+
+    Pencere tepside GİZLİ başlatılabilir (`--tepside`). Gizli pencerede
+    pywebview'ın `shown` olayı hiç gelmeyebilir; sayfa yüklenince gelen
+    `loaded` olayı da pencereyi "hazır" sayar (göster/kapat komutları işler).
     """
+
+    #: Tepsideki görevli kipi Çık'ının arayüze gönderdiği olay (frontend `lib/cikis.ts`).
+    SPA_QUIT_EVENT = "kd:cik-iste"
 
     def __init__(self, *, platform: str | None = None) -> None:
         self._platform = sys.platform if platform is None else platform
@@ -319,6 +328,9 @@ class WindowController:
         events = window.events
         events.closing += self.on_closing
         events.shown += self._on_shown
+        loaded = getattr(events, "loaded", None)
+        if loaded is not None:
+            events.loaded += self._on_loaded
         events.minimized += self._on_minimized
         events.maximized += self._on_maximized
         events.restored += self._on_restored
@@ -358,6 +370,17 @@ class WindowController:
         if pending_quit:
             self._destroy(window)
 
+    def _on_loaded(self) -> None:
+        """Sayfa yüklendi: gizli başlatılan pencere de artık komut alabilir."""
+        with self._lock:
+            if self._shown:
+                return
+            self._shown = True
+            window = self._window
+            pending_quit = self._quitting
+        if window is not None and pending_quit:
+            self._destroy(window)
+
     def _on_minimized(self) -> None:
         with self._lock:
             self._minimized = True
@@ -388,6 +411,18 @@ class WindowController:
                     window.restore()
         except Exception:  # noqa: BLE001 — tepsi komutu programı düşürmesin
             logger.warning("Pencere gösterilemedi.", exc_info=True)
+
+    def ask_quit_in_spa(self) -> None:
+        """Görevli kipinde tepsideki Çık: pencere öne gelir, arayüz parolayı sorar (§4.2-4)."""
+        self.show()
+        with self._lock:
+            window = self._window if self._shown and not self._quitting else None
+        if window is None:
+            return
+        try:
+            window.evaluate_js(f"window.dispatchEvent(new Event('{self.SPA_QUIT_EVENT}'))")
+        except Exception:  # noqa: BLE001 — pencere hazır değilse kullanıcı Çık'ı arayüzden seçer
+            logger.warning("Çıkış isteği arayüze iletilemedi.", exc_info=True)
 
     def request_quit(self) -> None:
         """Tepsideki "Çık": pencereyi gerçekten kapatır; `webview.start` döner, çıkış sürer.
@@ -459,11 +494,14 @@ def open_window(
     platform: str | None = None,
     importer: Callable[[], Any] | None = None,
     controller: WindowController | None = None,
+    hidden: bool = False,
 ) -> None:
     """Pencereyi açar ve kapanana kadar bloklar (pywebview'ın olay döngüsü).
 
     `controller` verilirse çarpı pencereyi gizler (U3); pencere yalnız
-    `controller.request_quit()` ile kapanır.
+    `controller.request_quit()` ile kapanır. `hidden`: tepside gizli açılış
+    (`--tepside`; yalnız tepsi kurulduysa verilir, aksi hâlde pencereye dönüş
+    yolu kalmazdı).
     """
     system = sys.platform if platform is None else platform
     module = webview
@@ -492,6 +530,7 @@ def open_window(
         min_size=WINDOW_MIN_SIZE,
         text_select=True,
         js_api=titlebar_api,
+        hidden=hidden,
     )
     titlebar_api.bind_window(window)
     if controller is not None:

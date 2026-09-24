@@ -1,10 +1,11 @@
-// Ayarlar sayfası (DD kalıbı) — sekiz sekme: ders yılları (dönemlerle), kapalı
+// Ayarlar sayfası (DD kalıbı) — dokuz sekme: ders yılları (dönemlerle), kapalı
 // günler (resmî/dini tatil, öğrenciye kapalı gün; tasarım §6.1 Holiday), şube
 // kataloğu, kütüphane politikası (ödünç sınırları, yıl sonu, saklama — F2),
 // bölümler (katalogun kontrollü listesi — F2), okul bilgileri (evrak antedi,
 // hazırlık sınıfı, kademe, kısa ad, demirbaş onayı ve no), güvenlik (yönetici
-// parolası, kurtarma anahtarı çıktısı, yedek) ve güncelleme (yalnız elle
-// denetim, tasarım T11).
+// parolası, kurtarma anahtarı çıktısı, yedek), güncelleme (yalnız elle
+// denetim, tasarım T11) ve Ağ Kataloğu (F5: aç/kapa, port, dinleme kipi, IP,
+// vitrin, kütüphane saatleri, ilk açılış adımları — tasarım §5.2).
 
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
@@ -26,6 +27,7 @@ import { useSnackbar } from "../../ui/SnackbarProvider";
 import Tabs, { tabPanelProps } from "../../ui/Tabs";
 import type { TabItem } from "../../ui/Tabs";
 import TextField from "../../ui/TextField";
+import AgKataloguPaneli from "../agkatalogu/AgKataloguPaneli";
 import UpdatePanel from "../guncelleme/UpdatePanel";
 import GuvenlikAyarlari from "../guvenlik/GuvenlikAyarlari";
 import BolumlerPaneli from "../kutuphane/BolumlerPaneli";
@@ -52,6 +54,7 @@ const TABS = [
   "okul",
   "guvenlik",
   "guncelleme",
+  "ag-katalogu",
 ] as const;
 type TabKey = (typeof TABS)[number];
 
@@ -64,6 +67,7 @@ const TAB_ITEMS: TabItem[] = [
   { key: "okul", label: "Okul Bilgileri", icon: "apartment" },
   { key: "guvenlik", label: "Güvenlik", icon: "lock" },
   { key: "guncelleme", label: "Güncelleme", icon: "system_update" },
+  { key: "ag-katalogu", label: "Ağ Kataloğu", icon: "lan" },
 ];
 
 /** Backend hatasını alan-bazlı haritaya VEYA genel hata bandına dağıtır. */
@@ -122,9 +126,9 @@ export default function AyarlarPage() {
         <div>
           <h1 className="kd-page-title">Ayarlar</h1>
           <p className="kd-page-description">
-            Ders yılı, kapalı günler, şube kataloğu, okul künyesi, yönetici parolası, yedekler ve
-            güncelleme burada yönetilir. Okul künyesi programın bastığı evrakın antedinde
-            kullanılır.
+            Ders yılı, kapalı günler, şube kataloğu, okul künyesi, yönetici parolası, yedekler,
+            güncelleme ve Ağ Kataloğu burada yönetilir. Okul künyesi programın bastığı evrakın
+            antedinde kullanılır.
           </p>
         </div>
       </div>
@@ -153,6 +157,7 @@ export default function AyarlarPage() {
         {tab === "okul" && <OkulBilgileriPanel />}
         {tab === "guvenlik" && <GuvenlikAyarlari />}
         {tab === "guncelleme" && <UpdatePanel />}
+        {tab === "ag-katalogu" && <AgKataloguPaneli />}
       </div>
 
       <section className="space-y-3">

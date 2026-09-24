@@ -185,7 +185,7 @@ Düzenindedir; sekme adreste `?tab=` ile tutulur, böylece başka ekranlar ve
 kılavuz doğrudan sekmeye bağlanır. Kılavuzda ekran, sekme ve düğme adları
 buradaki ve ekrandaki metinle birebir yazılır ("Ayarlar → Güvenlik").
 
-*Aşağıdaki tablolar F4 sonundaki durumdur (24.09.2026); kaynak `AppShell.tsx`
+*Aşağıdaki tablolar F5 sonundaki durumdur (24.09.2026); kaynak `AppShell.tsx`
 (`NAV_ITEMS`, `PAGE_TITLES`), sayfaların h1'leri ve sekme tanımlarıdır.*
 
 ### 4.1 Sayfalar
@@ -201,6 +201,7 @@ buradaki ve ekrandaki metinle birebir yazılır ("Ayarlar → Güvenlik").
 | — | Etiketler | `/katalog/etiketler` | Menüde yoktur; Katalog sayfasının sağ üstündeki **Etiketler** bağlantısıyla açılır. Sırt ve barkod etiketi basımı, basım kaydı, boş barkod aralığı, doğrulama okutması, şablon ve kalibrasyon. İçe aktarmanın **"Bu partinin etiketlerini bas"** kısayolu buraya gelir |
 | — | İçe Aktarma | `/katalog/ice-aktarma` | Menüde yoktur; Katalog sayfasının sağ üstündeki **İçe Aktarma** bağlantısıyla açılır. Toplu giriş, yapay zekâ köprüsü, çevrimdışı künye ve aktarım geçmişi |
 | Ayarlar | Ayarlar | `/ayarlar` | |
+| — | Ağ Doktoru | `/ag-doktoru` | Menüde yoktur; **Ayarlar → Ağ Kataloğu** sekmesindeki **Ağ Doktoru** bağlantısıyla açılır. Yalnız yönetici kipinde (görevli kipinde her adreste görevli ekranı durur) |
 | Kılavuz | Kullanım Kılavuzu | `/kilavuz` | |
 | Hakkında ve Lisans | Hakkında ve Lisans | `/hakkinda` | Kenar çubuğunun altında, ana gezinmenin dışında |
 | — | Kurulum Sihirbazı | `/kurulum` | Menüde yoktur. İlk açılışta kurulum kapısı buraya getirir; kurulumdan sonra Ayarlar'ın altındaki "Diğer Ayarlar" bölümünde **Kurulum Sihirbazı** kartıyla açılır |
@@ -236,7 +237,7 @@ kipine geç**, **Kilitle**.
 | Edinimler ve Bağışlar | **Edinim Partileri** (`partiler`) · **Bağış Ön Kayıtları** (`bagislar`) · **Komisyon Kararları** (`kararlar`) |
 | Etiketler | **Basım Kuyruğu** (`kuyruk`) · **Basım Geçmişi** (`gecmis`) · **Boş Barkod Aralığı** (`bos-barkod`) · **Doğrulama Okutması** (`dogrulama`) · **Şablonlar ve Kalibrasyon** (`sablonlar`) |
 | İçe Aktarma | **Excel Aktarımı** (`excel`) · **Yapay Zekâ Köprüsü** (`kopru`) · **Çevrimdışı Künye** (`cevrimdisi`) · **Aktarım Geçmişi** (`gecmis`) |
-| Ayarlar | **Ders Yılları** (`ders-yillari`) · **Kapalı Günler** (`kapali-gunler`) · **Şubeler** (`subeler`) · **Kütüphane Politikası** (`politika`) · **Bölümler** (`bolumler`) · **Okul Bilgileri** (`okul`) · **Güvenlik** (`guvenlik`) · **Güncelleme** (`guncelleme`) |
+| Ayarlar | **Ders Yılları** (`ders-yillari`) · **Kapalı Günler** (`kapali-gunler`) · **Şubeler** (`subeler`) · **Kütüphane Politikası** (`politika`) · **Bölümler** (`bolumler`) · **Okul Bilgileri** (`okul`) · **Güvenlik** (`guvenlik`) · **Güncelleme** (`guncelleme`) · **Ağ Kataloğu** (`ag-katalogu`) |
 
 Katalog ekranlarının pencere başlıkları (Dialog): **Yeni eser** /
 **Künyeyi düzenle** · **Nüsha ekle** / **Nüshayı düzenle** · **Yeni edinim** /
@@ -244,6 +245,8 @@ Katalog ekranlarının pencere başlıkları (Dialog): **Yeni eser** /
 **Komisyon kararını uygula** · **Bağış ön kaydını iptal et** · **Yeni komisyon
 kararı** / **Kararı düzenle** · **Yeni bölüm** / **Bölümü düzenle** · **Yeni etiket
 şablonu** / **Şablonu düzenle** · **Yeni yazıcı kalibrasyonu** / **Kalibrasyonu düzenle**.
+
+Ağ Kataloğu ve Çık pencereleri: **Portu değiştir** · **Güvenlik duvarı kuralı güncellensin mi?** (onay) · **Programdan çıkılsın mı?** (yönetici kipi ve kilitliyken onay) / **Programdan çık** (görevli kipinde, yönetici parolasıyla) · **Program kapanıyor**.
 
 ### 4.4 Kurulum Sihirbazı adımları
 
@@ -376,6 +379,76 @@ kalibrasyonu"**. Kalibrasyon penceresi (**Yeni yazıcı kalibrasyonu** /
 **Kalibrasyonu düzenle**): "Yazıcı adı", "Yatay kayma (mm)", "Dikey kayma (mm)",
 "Cetvelde okuduğunuz değeri ekleyin" bölümünde "Okunan yatay değer", "Okunan
 dikey değer" ve **"Kaymaya ekle"**; "Kaydet".
+
+### 4.9 Ağ Kataloğu ve Ağ Doktoru ekranlarının adları
+
+**Ayarlar → Ağ Kataloğu.** İlk açılışta (katalog kapalı ve afiş hiç basılmamış)
+başta **Ağ Kataloğunu Açmadan Önce** kartı durur; adımları sırasıyla: **BTR'yle
+görüşün** (düğme **"Ağ Hizmeti Bilgi Notu'nu bas"**) · **Güvenlik duvarını
+hazırlayın** (bağlantı **"Ağ Doktoru'nu aç"**) · **Adresi seçin** · **Ağ Kataloğunu
+açın** · **Afişi basın, yer imlerini dağıtın**. Kartlar: **Ağ Kataloğu** (durum
+rozeti, adres, **"Ağ Kataloğunu aç"** / **"Ağ Kataloğunu kapat"**, **Ağ Doktoru**
+bağlantısı) · **Dinleme** (port ve **"Portu değiştir"**; "Katalog hangi ağ
+bağlantısında açılsın?" seçenekleri **"Bu bilgisayarın bütün ağ bağlantılarında"** ve
+**"Yalnız seçili IP adresinde"**; "IP adresi"; "Tahta ağı blokları") · **Katalog
+Sayfaları** ("Vitrin (yeni gelenler ve çok okunanlar) ana sayfada gösterilir",
+"Konu dizini gösterilir", "Kütüphane saatleri") · **Uyku** ("Ağ Kataloğu açıkken
+bilgisayar boşta uykuya geçmesin"). Kaydetme düğmesi **"Kaydet"**. Port penceresi
+(**Portu değiştir**): alan "Yeni port", düğmeler "Vazgeç" · "Portu değiştir".
+
+**Ağ Doktoru.** Kartlar sırasıyla: **Katalog Durumu** · **Güvenlik Duvarı** ·
+**Ağ Bağlantıları** (yalnız masaüstü programında) · **Dinleyici Sınaması** ·
+**Belgeler**. Düğmeler: **"Ağ Kataloğunu aç"** / **"Ağ Kataloğunu kapat"** ·
+**"Yeniden başlat"** · **"Yenile"** · **"Kuralı ekle/güncelle"** · **"Yeniden
+denetle"** · **"Dinleyiciyi sına"** · **"Afişi bas"** · **"Yer imi dosyalarını
+üret"** · **"PYS talep metnini kopyala"** · **"Ağ Hizmeti Bilgi Notu'nu bas"** ·
+**"Kopyala"** (komut kutuları). Seçici: **"Belgelerde kullanılacak adres"**.
+
+| Kavram | Kullanılır | Kullanılmaz | Not |
+|---|---|---|---|
+| Katalog durumu | **Açık** · **Kapalı** · **Güvenlik duvarı izni yok** · **Açılamadı** · **Port bekleniyor** · **Geri yükleme nedeniyle kapalı** | aktif/pasif, online, çalışıyor | Tepsi satırı "Ağ Kataloğu: açık — http://…" biçimindedir |
+| Güvenlik duvarı denetimi | **beş madde**; madde sonuçları **Geçti** · **Geçmedi** · **Uyarı** · **Denetlenemedi** | firewall, kontrol listesi | Windows'ta biri geçmezse katalog okul ağına hiç açılmaz |
+| Öz sınama | **"dinleyici bu arayüzde ayakta"**; yanında her zaman: "Güvenlik duvarını ya da VLAN'ı kanıtlamaz…" | bağlantı testi, ping | Asıl kanıt başka bilgisayardan `Test-NetConnection` |
+| Ağ profili | **Genel** · **Özel** · **Etki alanı** | Public/Private/Domain (kullanıcı metninde) | |
+| DHCP'de sabit adres | **sabit adres**, "DHCP'de sabit adres ayırma" | rezervasyon (kılavuzda; sözcük barkod bağlamında yasaktır) | BTR belgelerinde (`docs/kurulum.md`, `docs/ag-kurulumu.md`) teknik adı yazılabilir. Adresi kütüphane yöneticisi elle değiştirmez (Yönerge 11/6) |
+| Adres uyarısı | **"Bu bilgisayarın IP adresi değişti (… → …). Afişi yeniden basın, yer imlerini güncelleyin."** | "IP çakışması", "ağ hatası" | Gün değişimi denetiminden gelir, Ağ Doktoru'nun **Katalog Durumu** kartında görünür; afiş yeni adresle basılınca kalkar |
+| PYS | **PYS talep metni**, talebin konusu **"yerel ağ VLAN düzenlemesi — tek yön"**; kanal **FATİH PYS** | "internet açma", "site açma" | Açılımı yazılmaz: ad kanalın kendi adıdır |
+| Tahta kipi | **tahta kipi** ("büyük düzen"; yer imi adresinde `?tahta=1`) | kiosk, tahta modu, dokunmatik mod | Tahtalar için üretilen yer imleri bu kiple açar; dokunmatik ekranda büyük düzen kendiliğinden de açılır. Klavyesiz gezinme **Kaynak Adları** · **Yazarlar** · **Konular** dizinleriyledir |
+| Yer imi dağıtımı | belge **Yer imi dosyaları** (§2); ETAP/Pardus için **yer imi politika dosyası**, Windows için **internet kısayolu** | bookmark, favori | ETAP her öğretmene ayrı hesap açar: kullanıcı başına yer imi yetmez, politika dosyası bütün hesaplarda görünür. Dağıtımı BTR yapar |
+| Gün değişimi | **gün değişimi** (denetim açılışta ve program açıkken saatte bir) | zamanlanmış görev, cron, gece işi | Günlük yedek, 14 günden eski yedeklerin silinmesi ve adres denetimi buna bağlıdır; program tepside günlerce açık kalabilir |
+| Programdan çıkış | **Çık** (üst çubuk ve tepsi), onay **"Programdan çıkılsın mı?"**, görevli kipinde **"Programdan çık"** (yönetici parolasıyla) | "Kapat" (programdan çıkmak anlamında), sonlandır, oturumu kapat | "Kapat" salt bilgi diyaloğunu kapatır (§3); pencerenin çarpısı programı kapatmaz, tepsiye gizler. Görevli kipindeki parola kaza önleyicidir, güvenlik sınırı diye sunulmaz |
+
+**Çık, tepsi ve kurucu.** Üst çubukta her durumda **Çık** düğmesi (dar pencerede
+yalnız simge; ipucu "Programdan çık"). Onay penceresi **Programdan çıkılsın mı?**
+("Vazgeç" · "Çık"); görevli kipinde **Programdan çık** ("Yönetici parolası",
+"Vazgeç" · "Çık"); kapanırken **Program kapanıyor** ("Kütüphane Defteri
+kapanıyor…"). **Programı kapatıp yeniden açın** ekranında **"Programdan çık"**
+düğmesi (onay ve parola sormaz). Tepsi menüsü sırasıyla: **Pencereyi aç** · durum
+satırı ("Ağ Kataloğu: açık — http://…", "Ağ Kataloğu: kapalı", "Ağ Kataloğu:
+güvenlik duvarı izni yok", "Ağ Kataloğu: açılamadı", "Ağ Kataloğu: port
+bekleniyor", "Ağ Kataloğu: geri yükleme nedeniyle kapalı") · **Ağ Kataloğunu
+aç** / **Ağ Kataloğunu kapat** · **Görevli kipine geç** · **Kilitle** · **Çık**.
+Windows kurucusunun görevleri: **Yerel ağdan katalog taramasına izin ver
+(güvenlik duvarı kuralı)** · **Oturum açılınca Kütüphane Defteri'ni başlat** ·
+**Pencereyi açmadan tepside başlat** · **Masaüstü kısayolu oluştur**; Başlat
+menüsünde **Kütüphane Defteri — Yedekten Geri Yükle**.
+
+**Ağ Kataloğunun kendi sayfaları** (okul ağından açılan tarayıcı sayfaları;
+pencere başlığı "… — Ağ Kataloğu"). Üst menü: **Ara** · **Kaynak Adları** ·
+**Yazarlar** · **Konular** (konu dizini açıksa) · **Hakkında**. Ana sayfa
+**Kütüphane Kataloğu**: arama kutusu "Katalogda ara" (yer tutucu "Kaynak adı,
+yazar, konu ya da ISBN"), seçici "Kaynak türü" ("Bütün kaynak türleri"), düğme
+"Ara"; **Dizinler** bölümünde **Kaynak Adına Göre** · **Yazar Adına Göre** ·
+**Konuya Göre** · **Bütün Kaynaklar**; vitrinde **Yeni Gelenler** · **Çok
+Okunanlar**. Dizin sayfaları **Kaynak Adı Dizini** · **Yazar Dizini** · **Konu
+Dizini** (harf seçilince "…: A"; harfle başlamayan adlar — rakam, noktalama —
+**Diğer**). Arama
+sayfası **Arama Sonuçları** (arama yoksa **Bütün Kaynaklar**). Konular sayfasında
+**Dewey Onlu Sınıflama (DOS) Ana Sınıfları** ve **Konu Dizini**. Eser sayfasında
+**Künye** ve **Nüshalar** (sütunlar Bölüm · Durum), düğme "Kataloğa dön". Hakkında
+sayfasında **Kütüphane Saatleri** · **Ağ Kataloğu Neyi Gösterir** · **Ağ Kataloğu
+Neyi Göstermez** · **Kütüphane Defteri**. Katalog afişinin başlığı **KÜTÜPHANE
+KATALOĞU** (afiş belge adı §2'de: Katalog afişi).
 
 ## 5. Kişisel veri ve metin
 

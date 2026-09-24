@@ -1,0 +1,30 @@
+{% extends "taban.html" %}
+{% block icerik %}
+<h1>Hakkında</h1>
+<section class="kart">
+<h2>Kütüphane Saatleri</h2>
+{% if saatler %}<p>{{ saatler|linebreaksbr }}</p>{% else %}<p>Kütüphane saatleri henüz girilmedi. Kütüphaneye sorun.</p>{% endif %}
+</section>
+<section class="kart">
+<h2>Ağ Kataloğu Neyi Gösterir</h2>
+<ul>
+<li>Kaynakların künyesi: kaynak adı, yazar, çevirmen, yayınevi, baskı, yayın yılı, ISBN, konu, dil ve kaynak türü.</li>
+<li>Sınıflama kodu ve Dewey Onlu Sınıflama (DOS) ana sınıfı, yer numarası, bölüm.</li>
+<li>Nüshaların durumu: rafta, ödünçte, sınıf kitaplığında ya da onarımda; kütüphanede okunan kaynaklar için “Ödünç verilmez — kütüphanede okunur”.</li>
+<li>Yeni gelenler ve çok okunanlar (çok okunanlarda yalnız sıra gösterilir, sayı gösterilmez).</li>
+</ul>
+</section>
+<section class="kart">
+<h2>Ağ Kataloğu Neyi Göstermez</h2>
+<ul>
+<li>Üyeleri, kimin hangi kaynağı ödünç aldığını, ödünç geçmişini ve iade tarihlerini.</li>
+<li>Hiçbir kişinin adını, sınıfını ya da kart numarasını.</li>
+<li>Bağışçı, fiyat ve taşınır kaydı bilgilerini.</li>
+</ul>
+<p>Ağ Kataloğu kişisel veri göstermez. Yapılan aramalar ve bağlanan bilgisayarların adresleri kaydedilmez. Katalog yalnız okunur; buradan ödünç alınamaz, kayıt değiştirilemez.</p>
+</section>
+<section class="kart">
+<h2>Kütüphane Defteri</h2>
+<p>Bu katalog, okulun kütüphane işlerini yürüttüğü yerel araç olan Kütüphane Defteri tarafından okul ağında sunulur.</p>
+</section>
+{% endblock %}

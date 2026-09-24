@@ -44,6 +44,12 @@
 | W12 | UAC'ye BAŞKA hesabın (BTR) kimliği girildiğinde yükseltilmiş kurucu masa hesabının olay ve mutex'lerini açabilir: nesneler SY/BA/IU/OW'ye açık güvenlik tanımlayıcısıyla kurulur | `desktop/win32_objects.py` (`MUTEX_SDDL`, `EVENT_SDDL`) | varsayılan tanımlayıcıda olduğu gibi erişim reddi: kurucu "program kapalı" sanıp kuruluma geçer (Inno `OpenMutex` reddini "yok" okur); günlükte "Kapatma olayı açılamadı" |
 | W13 | pystray 0.19.5 `run_detached` + `icon.stop()`: "Çık" sonrası süreç tamamen biter; tepsi simgesi (.ico → Pillow) görünür, sol tık pencereyi açar | `desktop/tray.py` | Çık'tan sonra süreç Görev Yöneticisi'nde kalır, mutex'ler bırakılmaz (kurucu 30 sn bekler); simge boş ya da hiç yok |
 | W14 | Windows oturum kapanışı/yeniden başlatma programca engellenmez: pywebview `closing` iptalinin ardından bağlanan .NET `FormClosing` işleyicisi `WindowsShutDown`/`TaskManagerClosing`'de iptali geri alır (pythonnet `+=` ve `str(CloseReason)` adı) | `desktop/window.py` (`install_session_end_passthrough`) | Windows kapanırken "Bu uygulama kapanmayı engelliyor" ekranı; sonraki açılışta günlükte "Önceki oturum beklenmedik biçimde kapandı" |
+| W15 | *(F5)* Güvenlik duvarı denetimi (`Get-NetFirewallApplicationFilter`/`Get-NetFirewallRule -PolicyStore ActiveStore` + port/adres filtreleri, `-EncodedCommand`, JSON) **yönetici olmayan** kütüphane masası hesabında okunabilir; netsh ile eklenen kuralın `Profile`'ı `Domain, Private, Public` ya da `Any`, `RemoteAddress`'i `LocalSubnet` olarak gelir (§5.10-15). Katalog tüm arayüzlerde dinlerken başka bir süreç aynı portun hiçbir adresine bağlanamaz (TB12) | `desktop/guvenlik_duvari.py`, `desktop/katalog_server.py` | Ağ Doktoru beş maddeyi "Denetlenemedi" gösterir ve katalog hiç açılmaz (fail-closed); ya da kural varken "kapsam" maddesi yanlış profille kalır |
+| W16 | *(F5)* Kurucu: `netsh advfirewall firewall show rule name=...` kural VARSA 0, YOKSA 0 dışı döner (çıktı okunmaz); Türkçe karakterli program yolu (`Kütüphane Defteri`) `Exec` üzerinden netsh'e bozulmadan geçer; güncelleme kipinde kurala dokunulmaz, kaldırmada silinir; HKLM `KatalogPortu` güncellemede korunur | `kutuphane-defteri.iss` `[Code]` (`GuvenlikDuvariKuraliniKur`), `[Registry]` | ilk kurulumda kural eklenmez (günlükte "eklenemedi") ya da her güncellemede yeniden yazılır (BTR'nin blokları kaybolur) |
+| W17 | *(F5)* Otomatik başlatma: `gorev-kur.ps1` `runasoriginaluser` ile masa hesabında koşar; standart hesap kendi adına `-AtLogOn -User` tetikli görev yazabilir; kaldırıcı (yükseltilmiş) `schtasks /Delete` ile görevi siler; oturum açılınca program kilit ekranıyla (ya da `--tepside` ile gizli) açılır | `kutuphane-defteri.iss` `[Run]`/`[UninstallRun]`, `gorev-kur.ps1` | görev BTR'nin hesabına yazılır ya da hiç yazılmaz; kaldırmadan sonra görev "dosya bulunamadı" hatasıyla kalır |
+| W18 | *(F5)* UAC yardımcısı: `ShellExecuteExW` "runas" ile `kutuphane-defteri.exe --guvenlik-duvari-kurali --port N [--uzak-adres CIDR]` yükseltilmiş koşar, veri dizini/günlük/kilit açmaz, `New-NetFirewallRule` + HKLM yazar; reddedilen UAC "Yönetici izni verilmedi" iletisine döner | `desktop/guvenlik_duvari.py` (`kural_guncelle_uac`, `yukseltilmis_kip`), `desktop/main.py` | UAC hiç çıkmaz ya da yükseltilmiş kopya olağan açılışa girip "zaten çalışıyor" der |
+| W19 | *(F5)* Uyku: Ağ Kataloğu açıkken `SetThreadExecutionState(ES_CONTINUOUS \| ES_SYSTEM_REQUIRED)` `kd-gunluk`'tan çağrılır; `powercfg /requests` SYSTEM altında `kutuphane-defteri.exe`'yi gösterir; katalog kapanınca ve Çık'ta istek kalkar; kapak kapatma ve kullanıcının başlattığı uyku engellenmez (§4.5) | `desktop/gunluk.py` | makine katalog açıkken boşta uyur ya da program kapandıktan sonra uyku engeli kalır |
+| W20 | *(F5)* pystray 0.19.5 Win32: menü `icon.update_menu()` ile yeniden kurulunca kip matrisine göre değişir (görevli kipinde "Ağ Kataloğunu aç/kapat" ve "Görevli kipine geç" kaybolur); görevli kipinde "Çık" pencereyi öne getirir ve arayüz yönetici parolasını sorar | `desktop/tray.py` (`PystrayTray.yenile`, `kd-tepsi`) | menü kip değişse de eski komutları gösterir (komut yine REDDEDİLİR — `komutu_calistir` — ama kullanıcı kafası karışır) |
 
 ## 2. Bilinen Windows tuzakları (kodda karşılığı var)
 
@@ -104,6 +110,37 @@
     yazıldı." (duman testi; pencere ve tepsi açılmaz).
 13. Defender/AV taraması: onedir olduğu için imzasız da olsa engellenmemeli;
     engellenirse `docs/kurulum.md`'deki istisna adımları güncellenmeli.
+14. **Güvenlik duvarı (F5, W15, W16):** "Yerel ağdan katalog taramasına izin
+    ver" görevi işaretli ilk kurulum → `Get-NetFirewallRule -DisplayName
+    "Kutuphane Defteri Katalog"` kuralı gösterir (port 8765, LocalSubnet, üç
+    profil); program içinde Ağ Kataloğu açılınca beş madde geçer, başka bir
+    bilgisayardan `Test-NetConnection <IP> -Port 8765` başarılı. Kuralı elle
+    devre dışı bırak → katalog "güvenlik duvarı izni yok" der ve port
+    dinlenmez (`netstat -ano | findstr 8765` boş). Aynı sürümü yeniden kur
+    (güncelleme kipi) → kural değişmez. Kaldır → kural silinir.
+15. **Otomatik başlatma (W17):** kurucuyu masa hesabında başlat, UAC'ye BTR
+    kimliğini gir → Görev Zamanlayıcı'da "Kutuphane Defteri" görevi masa
+    hesabına ait; oturumu kapatıp aç → program kilit ekranıyla açılır.
+16. **UAC yardımcısı (W18):** Ağ Doktoru'ndan portu değiştir → UAC çıkar;
+    onaylanınca kural ve `HKLM\SOFTWARE\KutuphaneDefteri\KatalogPortu` yeni
+    portu gösterir; reddedilince kural değişmez.
+17. **Uyku ve tepsi (W19, W20):** katalog açıkken `powercfg /requests`;
+    tepside görevli kipine geç → menü daralır; görevli kipinde "Çık" →
+    pencere öne gelir, parola sorulur; doğru parolayla program kapanır ve
+    `temiz-kapanis.json` yazılır.
+> **Derleme (F5, 24.09.2026):** `kutuphane-defteri.iss` yerel ISCC 6 ile
+> `/O-` (çıktısız) derlendi: `[Tasks]`, `[Registry]`, `[Run]`,
+> `[UninstallRun]` ve `[Code]` (güvenlik duvarı, otomatik başlatma) hatasız.
+> İlk derleme yalnız `#else` dalını (WebView2 kurucusu yok) sınamıştı; o
+> sürümde `[Registry]` WebView2 `Source:` satırının önüne girmişti ve kurucu
+> indirildiğinde ISCC "Unrecognized parameter name Source" ile kırılıyordu.
+> Düzeltmeden sonra İKİ dal da (klasörde `MicrosoftEdgeWebView2Setup.exe`
+> varken ve yokken) hatasız derlendi; bölüm yerleşimini
+> `packaging/tests/test_ag_katalogu_paketi.py::test_iss_her_satir_kendi_bolumunde`
+> sınar.
+> Kurucunun kendisi koşturulmadı (yönetici kurulumu ve güvenlik duvarı
+> değişikliği geliştirme makinesinde yapılmadı): 14-17 CI Windows paketi ve
+> saha provasında (F12) yürütülür.
 
 ## 4. Sonraki sürüm (v2) için
 

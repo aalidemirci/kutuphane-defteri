@@ -1,0 +1,16 @@
+{% comment %}Arama formu: GET /ara (CSP form-action 'self'). Tahta kipi gizli alanla korunur.{% endcomment %}<form class="arama" action="{{ bag.ara_formu }}" method="get" role="search">
+<div class="arama-alan">
+<label for="q">Katalogda ara</label>
+<input id="q" name="q" type="search" maxlength="{{ en_uzun_arama }}" value="{{ arama.q }}" placeholder="Kaynak adı, yazar, konu ya da ISBN">
+</div>
+<div class="arama-alan arama-tur">
+<label for="tur">Kaynak türü</label>
+<select id="tur" name="tur">
+<option value="">Bütün kaynak türleri</option>
+{% for secenek in tur_secenekleri %}<option value="{{ secenek.kod }}"{% if secenek.secili %} selected{% endif %}>{{ secenek.ad }}</option>
+{% endfor %}</select>
+</div>
+{% if arama.konu %}<input type="hidden" name="konu" value="{{ arama.konu }}">{% endif %}
+{% if tahta %}<input type="hidden" name="tahta" value="1">{% endif %}
+<button type="submit">Ara</button>
+</form>

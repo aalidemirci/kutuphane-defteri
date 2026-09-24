@@ -106,6 +106,11 @@ class SchoolConfig(BaseModel):
         "bilgisayarın demirbaş no'su", max_length=64, blank=True, default=""
     )
     yol_haritasi = models.JSONField("başlangıç yol haritası işaretleri", default=dict, blank=True)
+    # F5 (tasarım §6.1, §5.1): Ağ Kataloğunun "Hakkında" sayfasında gösterilir
+    # (`kd_katalog_okul` görünümü). Serbest metin; kişisel veri İÇERMEZ.
+    kutuphane_saatleri = models.TextField(
+        "kütüphane saatleri", max_length=500, blank=True, default=""
+    )
     setup_completed = models.BooleanField("kurulum tamamlandı", default=False)
     app_password_hash = models.CharField(
         "yönetici parolası parmak izi", max_length=255, blank=True, default=""
