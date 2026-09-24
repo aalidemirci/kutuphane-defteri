@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <title>{{ document_title }}</title>
+  {% comment %}Etiket tabakası (E1: sırt etiketi, barkod etiketi; yöntem B'nin boş
+  barkod etiketi) — apps/kutuphane/labels/render.py doldurur.
+
+  WeasyPrint kuralları (CLAUDE.md §3): bütün ölçüler mm ve MUTLAK konumdur;
+  tablo ve akış düzeni yoktur (hücre yüksekliği satırı kısaltmaz, uzatır).
+  Her kutunun konumu ve metni Python'da hesaplanır ve sığdırılır; burada
+  yalnız basılır. `text-transform` YOK (WeasyPrint i→I basar). Çekirdek
+  aralığı ve bitişik harfler kapalıdır: metin genişliği labels/metrics.py'nin
+  ölçtüğüyle birebir aynı kalır. Stil gövdede değil başlıktadır ve CSS
+  değişkeni kullanılmaz (WeasyPrint inline stilde değişkeni yok sayar).
+
+  Her tabaka bir sayfadır; ikinci ve sonraki tabakalar yeni sayfadan başlar
+  (sonda boş sayfa kalmasın diye "önce kır" kuralı). Hücre ve tabaka
+  `overflow: hidden`dır: kalibrasyon kayması bir hücreyi sayfa kenarına
+  iterse taşan kısım yeni sayfa açmaz.{% endcomment %}
+  <style>
+    @page { size: 210mm 297mm; margin: 0; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: "DejaVu Sans", sans-serif;
+      color: #000;
+      font-kerning: none;
+      font-variant-ligatures: none;
+      letter-spacing: 0;
+      word-spacing: 0;
+    }
+    .sheet { position: relative; width: 210mm; height: 297mm; overflow: hidden; }
+    .sheet + .sheet { break-before: page; page-break-before: always; }
+    .cell { position: absolute; overflow: hidden; }
+    .t { position: absolute; white-space: nowrap; overflow: hidden; margin: 0; padding: 0; }
+    .t.b { font-weight: bold; }
+    .t.l { text-align: left; }
+    .t.c { text-align: center; }
+    .t.r { text-align: right; }
+    .g { position: absolute; }
+    .g svg { display: block; }
+  </style>
+</head>
+<body>
+{% for sheet in sheets %}<div class="sheet" data-part="{{ sheet.content }}" data-sheet="{{ sheet.number }}">{% for cell in sheet.cells %}<div class="cell" style="left:{{ cell.left }}mm;top:{{ cell.top }}mm;width:{{ cell.width }}mm;height:{{ cell.height }}mm">{% for g in cell.graphics %}<div class="g" style="left:{{ g.left }}mm;top:{{ g.top }}mm;width:{{ g.width }}mm;height:{{ g.height }}mm">{{ g.svg|safe }}</div>{% endfor %}{% for t in cell.texts %}<div class="t {{ t.css }}" style="left:{{ t.left }}mm;top:{{ t.top }}mm;width:{{ t.width }}mm;height:{{ t.height }}mm;line-height:{{ t.height }}mm;font-size:{{ t.size }}pt">{{ t.text }}</div>{% endfor %}</div>{% endfor %}</div>
+{% endfor %}</body>
+</html>

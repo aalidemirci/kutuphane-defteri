@@ -423,10 +423,29 @@ Edinimler ve Bağışlar ekranları, Ayarlar'a Kütüphane Politikası ve Bölü
 sekmeleri · kılavuzun Katalog bölümü · sözlük §4. D2, D6, D7, D11 kapandı.
 Tasarımdan sapmalar ve F2'de alınan kararlar: tasarım §14.1 **"F2 ekleri"**.
 
-Sıradaki: F3 İçe aktarma (Excel eşleme, önizleme = uygulama, kovalar, AI JSON
-köprüsü · **hızlı kayıt akışı Excel'le eşit öncelikte** ve **ISBN ile künye
-getirme** — U13, tasarım §8.5). Tam tablo: tasarım §14.1. Saha hazırlık hattı
-(S1-S15, kod dışı): §14.2.
+**F3 İçe aktarma — kod tarafı bitti (23.09.2026, PR #4).** Excel içe aktarma
+(önizleme = uygulama, kovalar, içerik özetiyle fikirdeşlik) · AI JSON köprüsü ·
+hızlı kayıt · ISBN ile künye getirme (U13, varsayılan kapalı) ve çevrimdışı künye
+yolu. Sapmalar: tasarım §14.1 **"F3 ekleri"**.
+
+**F4 Etiketler — kod tarafı bitti (24.09.2026).** Etiket motoru
+(`apps/kutuphane/labels/`: sırt, barkod, boş barkod etiketi ve kalibrasyon
+sayfası; Code128-C yazıcı noktasına hizalı, QR isteğe bağlı, 5 mm güvenli kenar
+payı, tek belgede en çok 1.300 etiket) · iki basım işareti (sırt ve barkod ayrı)
+ve basım partisi (D10: PDF basıldı değildir; onay, geri alma, yeniden basım) ·
+basım sırası (D20) · doğrulama okutması · boş barkod aralığı ve Hızlı Kayıt'ta
+etiket bağlama (önce etiket yolu) · Etiketler ekranı (şablon ve kalibrasyon
+Ayarlar'da değil, Etiketler → Şablonlar ve Kalibrasyon'da) · kılavuzun Etiketler
+bölümü. 24.09.2026 kullanıcı kararları: **doğrulama okutması görevli kipine açık
+tek etiket ucudur** (`library-label-verify` POST, yanıt daraltılmış) ve **sırt +
+barkod partisi geri alınınca doğrulanmış nüshanın iki işareti de korunur**.
+Sapmalar ve kararlar: tasarım §14.1 **"F4 ekleri"**; gerçek yazıcı ve okuyucu
+kanıtı F12'ye ertelendi.
+
+Sıradaki: F5 Ağ kataloğu + tepsi (katalog WSGI, `kd_katalog_*` görünümleri ve
+authorizer, tahta kipi, Ağ Doktoru, güvenlik duvarı, `kd-gunluk` + gün değişimi
+kapısı iskeleti, görevli kipinde parolalı Çık). Tam tablo: tasarım §14.1. Saha
+hazırlık hattı (S1-S15, kod dışı): §14.2.
 
 ---
 

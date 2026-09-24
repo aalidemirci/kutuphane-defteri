@@ -48,9 +48,10 @@ import { OduncDurumu, bolumSecenekleri, kodSecenekleri, useBolumler } from "./or
 /** Edinimler ve Bağışlar ekranının adresi (katalogdan girilir). */
 export const EDINIMLER_ADRESI = "/katalog/edinimler";
 
-/** Katalog başlığındaki yan ekranlar: toplu aktarım ve kitap kitap giriş (F3). */
+/** Katalog başlığındaki yan ekranlar: kitap kitap giriş ve toplu aktarım (F3), etiketler (F4). */
 const YAN_EKRANLAR: { to: string; label: string; icon: string }[] = [
   { to: "/katalog/hizli-kayit", label: "Hızlı Kayıt", icon: "bolt" },
+  { to: "/katalog/etiketler", label: "Etiketler", icon: "label" },
   { to: "/katalog/ice-aktarma", label: "İçe Aktarma", icon: "upload_file" },
   { to: EDINIMLER_ADRESI, label: "Edinimler ve Bağışlar", icon: "local_shipping" },
 ];

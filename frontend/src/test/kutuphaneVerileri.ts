@@ -98,6 +98,7 @@ export function nusha(ozel: Partial<Copy> = {}): Copy {
     not_loanable_reason: "",
     label_printed_at: null,
     label_verified_at: null,
+    spine_label_printed_at: null,
     created_at: "2026-09-21T09:00:00+03:00",
     ...ozel,
   };

@@ -10,16 +10,18 @@ böylece API yüzeyi aynı kalır, ad uzayı düz kalır ve `?format=` son ekler
 **Ad teklikliği şarttır** (`test_kip_koruma.py::test_api_uc_adlari_tekildir`):
 bu dosyadaki adlar `apps.okul.urls` ile AYNI düz ad uzayındadır.
 
-Uçların HİÇBİRİ görevli kipi izin listesinde değildir (varsayılan kapalı —
-CLAUDE.md §2-4): katalog düzenlemek, edinim açmak ve bağış kararı işlemek
-yönetici işidir.
+Görevli kipi izin listesinde bu dosyadan YALNIZ `library-label-verify` POST
+vardır (etiket doğrulama okutması; kullanıcı kararı 24.09.2026). Geri kalan
+uçlar kapalıdır (varsayılan kapalı — CLAUDE.md §2-4): katalog düzenlemek,
+edinim açmak, bağış kararı işlemek ve etiket basmak yönetici işidir.
 """
 
 from __future__ import annotations
 
 from django.urls import path
 
-from apps.kutuphane import views, views_import, views_kunye
+from apps.kutuphane import views, views_import, views_kunye, views_kuyruk
+from apps.kutuphane.labels import urls as label_urls
 
 urlpatterns = [
     # Katalog Excel şablonu (tasarım §8.1 — sütun sözlüğü F1'de sabitlenir)
@@ -147,4 +149,107 @@ urlpatterns = [
         views.DonationIntakeCancelView.as_view(),
         name="library-donation-intake-cancel",
     ),
+    # --- F4-Q: etiket basım kuyruğu, basım kaydı (D10), doğrulama okutması ---
+    # PDF uçları işarete DOKUNMAZ; "basıldı" yalnız `confirm/` ile yazılır ve
+    # `revert/` ile geri alınır. Görevli kipinde yalnız `verify/` POST açıktır.
+    path(
+        "library/labels/queue/", views_kuyruk.LabelQueueView.as_view(), name="library-label-queue"
+    ),
+    path(
+        "library/labels/unverified/",
+        views_kuyruk.LabelUnverifiedView.as_view(),
+        name="library-label-unverified",
+    ),
+    path(
+        "library/labels/summary/",
+        views_kuyruk.LabelSummaryView.as_view(),
+        name="library-label-summary",
+    ),
+    path(
+        "library/labels/verify/",
+        views_kuyruk.LabelVerifyView.as_view(),
+        name="library-label-verify",
+    ),
+    path(
+        "library/labels/batches/",
+        views_kuyruk.LabelBatchListCreateView.as_view(),
+        name="library-label-batch-list",
+    ),
+    path(
+        "library/labels/batches/<int:pk>/",
+        views_kuyruk.LabelBatchDetailView.as_view(),
+        name="library-label-batch-detail",
+    ),
+    path(
+        "library/labels/batches/<int:pk>/pdf/",
+        views_kuyruk.LabelBatchPdfView.as_view(),
+        name="library-label-batch-pdf",
+    ),
+    path(
+        "library/labels/batches/<int:pk>/confirm/",
+        views_kuyruk.LabelBatchConfirmView.as_view(),
+        name="library-label-batch-confirm",
+    ),
+    path(
+        "library/labels/batches/<int:pk>/revert/",
+        views_kuyruk.LabelBatchRevertView.as_view(),
+        name="library-label-batch-revert",
+    ),
+    path(
+        "library/labels/batches/<int:pk>/discard/",
+        views_kuyruk.LabelBatchDiscardView.as_view(),
+        name="library-label-batch-discard",
+    ),
+    path(
+        "library/labels/batches/<int:pk>/reprint/",
+        views_kuyruk.LabelBatchReprintView.as_view(),
+        name="library-label-batch-reprint",
+    ),
+    # --- F4-Q: boş barkod aralığı (yöntem B — okulun asıl yolu, §8.1) ---
+    # `check/` sayısal kimlikten ÖNCE yazılır (okuyucu için; `<int:pk>` onu zaten yakalamaz).
+    path(
+        "library/barcode-reservations/",
+        views_kuyruk.BarcodeReservationListCreateView.as_view(),
+        name="library-barcode-reservation-list",
+    ),
+    path(
+        "library/barcode-reservations/check/",
+        views_kuyruk.BarcodeReservationCheckView.as_view(),
+        name="library-barcode-reservation-check",
+    ),
+    path(
+        "library/barcode-reservations/<int:pk>/",
+        views_kuyruk.BarcodeReservationDetailView.as_view(),
+        name="library-barcode-reservation-detail",
+    ),
+    path(
+        "library/barcode-reservations/<int:pk>/pdf/",
+        views_kuyruk.BarcodeReservationPdfView.as_view(),
+        name="library-barcode-reservation-pdf",
+    ),
+    path(
+        "library/barcode-reservations/<int:pk>/confirm-print/",
+        views_kuyruk.BarcodeReservationConfirmPrintView.as_view(),
+        name="library-barcode-reservation-confirm-print",
+    ),
+    path(
+        "library/barcode-reservations/<int:pk>/revert-print/",
+        views_kuyruk.BarcodeReservationRevertPrintView.as_view(),
+        name="library-barcode-reservation-revert-print",
+    ),
+    path(
+        "library/barcode-reservations/<int:pk>/cancel/",
+        views_kuyruk.BarcodeReservationCancelView.as_view(),
+        name="library-barcode-reservation-cancel",
+    ),
+    # Hızlı kayıtta önceden basılmış etiketi bağlama (etiketsiz kitap: `library/copies/`)
+    path(
+        "library/copies/from-label/",
+        views_kuyruk.CopyFromLabelView.as_view(),
+        name="library-copy-from-label",
+    ),
 ]
+
+# --- F4-L: etiket motoru — şablon, yazıcı kalibrasyonu, kalibrasyon sayfası ve
+# PDF önizleme (`apps/kutuphane/labels/urls.py`; düz `path()` girdileri, `include` değil).
+urlpatterns += label_urls.urlpatterns

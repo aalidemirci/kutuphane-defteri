@@ -72,6 +72,10 @@ describe("Eser Ayrıntısı — künye", () => {
     expect(screen.getByText("Deneme Yayınları")).toBeInTheDocument();
     expect(screen.getByText("811 YIL")).toBeInTheDocument();
     expect(await screen.findByText("2026-000123")).toBeInTheDocument();
+    // İki basım işareti ayrı sütundur: barkod ve sırt etiketi ayrı basılır (F4).
+    for (const baslik of ["Barkod etiketi", "Sırt etiketi", "Etiket doğrulaması"]) {
+      expect(screen.getByRole("columnheader", { name: baslik })).toBeInTheDocument();
+    }
   });
 
   it("ISBN uyarısı bant olarak durur (kayıt engellenmez)", async () => {

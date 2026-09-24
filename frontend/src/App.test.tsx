@@ -415,6 +415,7 @@ describe("App — kabuk gezinmesi", () => {
     ["/katalog/edinimler", "Edinimler ve Bağışlar"],
     ["/katalog/ice-aktarma", "İçe Aktarma"],
     ["/katalog/hizli-kayit", "Hızlı Kayıt"],
+    ["/katalog/etiketler", "Etiketler"],
     ["/ayarlar", "Ayarlar"],
     ["/kilavuz", "Kullanım Kılavuzu"],
     ["/hakkinda", "Hakkında ve Lisans"],

@@ -40,6 +40,7 @@ const PAGE_TITLES: Array<[prefix: string, title: string]> = [
   ["/katalog/edinimler", "Edinimler ve Bağışlar"],
   ["/katalog/ice-aktarma", "İçe Aktarma"],
   ["/katalog/hizli-kayit", "Hızlı Kayıt"],
+  ["/katalog/etiketler", "Etiketler"],
   ["/katalog", "Katalog"],
   ["/ayarlar", "Ayarlar"],
   ["/kilavuz", "Kullanım Kılavuzu"],

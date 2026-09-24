@@ -74,6 +74,38 @@ DIGER_UCLAR = frozenset(
         "library-copy-bulk",
         "library-copy-detail",
         "library-copy-list",
+        # Etiket basım kuyruğu ve boş barkod aralığı (F4-Q): nüsha işaretleri,
+        # basım partileri ve ayrılmış numaralar kitap kaydıdır, kişi sicili
+        # değildir; kişisel veri taşımazlar. Doğrulama okutması (`library-label-verify`
+        # POST) görevli kipinde de açıktır (24.09.2026); öbürleri yönetici kipi işidir.
+        "library-barcode-reservation-cancel",
+        "library-barcode-reservation-check",
+        "library-barcode-reservation-confirm-print",
+        "library-barcode-reservation-detail",
+        "library-barcode-reservation-list",
+        "library-barcode-reservation-pdf",
+        "library-barcode-reservation-revert-print",
+        "library-copy-from-label",
+        "library-label-batch-confirm",
+        "library-label-batch-detail",
+        "library-label-batch-discard",
+        "library-label-batch-list",
+        "library-label-batch-pdf",
+        "library-label-batch-reprint",
+        "library-label-batch-revert",
+        "library-label-queue",
+        "library-label-summary",
+        "library-label-unverified",
+        "library-label-verify",
+        # Etiket motoru (F4-L): şablon, yazıcı kalibrasyonu, kalibrasyon sayfası
+        # ve PDF önizleme. Kişisel veri yok (künye, numara, kısa okul adı);
+        # önizleme hiçbir kayıt yazmaz. Hepsi yönetici kipi işidir.
+        "library-label-calibration",
+        "library-label-calibration-detail",
+        "library-label-calibration-list",
+        "library-label-preview",
+        "library-label-template-detail",
+        "library-label-template-list",
         "library-donation-intake-cancel",
         "library-donation-intake-decision",
         "library-donation-intake-detail",

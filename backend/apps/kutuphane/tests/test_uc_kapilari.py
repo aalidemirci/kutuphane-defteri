@@ -8,10 +8,11 @@ dolaşılır, sonra eklenen her uç bu testlere kendiliğinden girer.
    anahtar bellekte değilse bütün `/api/` yüzeyi 423 `locked` döner. Şifreli
    alan taşıyan uçlar (edinim, komisyon kararı, bağış ön kaydı) buraya dahildir.
 2. **Görevli kipi** (`apps.okul.kip_middleware`): izin listesi dışındaki her uç
-   403 `kip_yetkisiz`. Katalog uçlarının HİÇBİRİ izin listesinde değildir —
-   katalog düzenlemek masa işi değildir (CLAUDE.md §2-4). Genel dolaşma
-   `apps/okul/tests/test_kip_koruma.py`'dedir; burada katalog yüzeyi
-   AÇIKÇA sabitlenir ki listeye sessizce uç eklenmesin.
+   403 `kip_yetkisiz`. Katalog yüzeyinden izin listesinde YALNIZ etiket
+   doğrulama okutması (`library-label-verify` POST; kullanıcı kararı
+   24.09.2026) vardır — katalog düzenlemek masa işi değildir (CLAUDE.md §2-4).
+   Genel dolaşma `apps/okul/tests/test_kip_koruma.py`'dedir; burada katalog
+   yüzeyi AÇIKÇA sabitlenir ki listeye sessizce uç eklenmesin.
 3. **Parola kurulmamış** (`shared.crypto` fail-closed, §6.3-3): kişi ADI taşıyan
    şifreli alana yazan istek 409 `parola_gerekli` alır. Katalog uçları
    `RequiresAdminPassword` izin sınıfını TAŞIMAZ (kişi sicili yazmazlar); bu
@@ -36,6 +37,9 @@ pytestmark = pytest.mark.django_db
 
 #: Kilitliyken ve görevli kipinde denenen yöntemler (okuma + bir yazma).
 YONTEMLER = ("get", "post")
+#: Katalog yüzeyinde görevli kipinde açık TEK (uç, yöntem) çifti: etiket doğrulama
+#: okutması (kullanıcı kararı 24.09.2026; `apps/okul/kip_izinleri.py`).
+GOREVLI_ACIK = frozenset({("library-label-verify", "POST")})
 
 
 def _kutuphane_uclari() -> list[tuple[str, str]]:
@@ -108,6 +112,8 @@ def test_gorevli_kipinde_her_katalog_ucu_403_doner() -> None:
 
     for ad, yol in _kutuphane_uclari():
         for yontem in YONTEMLER:
+            if (ad, yontem.upper()) in GOREVLI_ACIK:
+                continue
             yanit = getattr(istemci, yontem)(yol, {}, format="json")
             if yanit.status_code != 403 or yanit.json()["code"] != "kip_yetkisiz":
                 kesilmeyen.append(f"{yontem.upper()} {yol} ({ad}) → {yanit.status_code}")
@@ -116,14 +122,18 @@ def test_gorevli_kipinde_her_katalog_ucu_403_doner() -> None:
     assert KIP.durum() == "gorevli", "dolaşma sırasında kip değişti"
 
 
-def test_katalog_uclarindan_hicbiri_izin_listesinde_degil() -> None:
-    """Testi yeşile çekmek için listeye uç eklemek kusurdur (CLAUDE.md §2-4)."""
+def test_katalog_uclarindan_yalniz_dogrulama_okutmasi_izin_listesinde() -> None:
+    """Testi yeşile çekmek için listeye uç eklemek kusurdur (CLAUDE.md §2-4).
+
+    Tek istisna bilinçli bir kullanıcı kararıdır (24.09.2026): etiket doğrulama
+    okutması, yalnız POST.
+    """
     from apps.okul.kip_izinleri import IZIN_LISTESI
 
-    izinli = {kural.uc for kural in IZIN_LISTESI}
     katalog = {ad for ad, _ in _kutuphane_uclari()}
+    izinli = {(kural.uc, kural.yontem) for kural in IZIN_LISTESI if kural.uc in katalog}
 
-    assert izinli & katalog == set()
+    assert izinli == GOREVLI_ACIK
 
 
 # ============================================================ 3. Parolasız → 409

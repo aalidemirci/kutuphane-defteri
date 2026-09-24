@@ -4,9 +4,11 @@
 // (eser: ad, yazar, ISBN, sınıflama), ALTTA nüshalar (rafta duran fiziksel
 // kitaplar; her birinin barkodu ve kayıt numarası ayrıdır).
 //
-// Salt okunur alanlar: barkod, kayıt no, etiket basım ve doğrulama tarihleri.
-// Numaralar sayaçtan gelir ve ASLA yeniden kullanılmaz; etiket alanlarını
-// etiket basımı (F4) yazar. Ekranda görünürler ama düzenlenemezler.
+// Salt okunur alanlar: barkod, kayıt no, barkod ve sırt etiketinin basım
+// tarihleri, doğrulama tarihi. Numaralar sayaçtan gelir ve ASLA yeniden
+// kullanılmaz; etiket alanlarını Etiketler ekranı (F4) yazar: basım işaretini
+// "Basıldı olarak işaretle", doğrulamayı doğrulama okutması. Ekranda görünürler
+// ama düzenlenemezler.
 
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -263,7 +265,10 @@ function NushalarBolumu({
     { header: "Kayıt no", align: "right", cell: (c) => formatNumber(c.accession_no) },
     { header: "Bölüm", cell: (c) => c.section_name || "—" },
     { header: "Durum", cell: (c) => <OduncDurumu nusha={c} /> },
-    { header: "Etiket basımı", cell: (c) => formatDate(c.label_printed_at) },
+    // İki basım işareti vardır (F4): barkod etiketi ve sırt etiketi ayrı basılır;
+    // doğrulama okutması yalnız barkod etiketindedir.
+    { header: "Barkod etiketi", cell: (c) => formatDate(c.label_printed_at) },
+    { header: "Sırt etiketi", cell: (c) => formatDate(c.spine_label_printed_at) },
     { header: "Etiket doğrulaması", cell: (c) => formatDate(c.label_verified_at) },
   ];
 
@@ -649,10 +654,11 @@ function NushaDuzenlemeFormu({
       <div className="space-y-4">
         {hata && <ErrorBand hata={hata} />}
 
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
           <Satir etiket="Barkod" deger={nusha.barcode_display} />
           <Satir etiket="Kayıt no" deger={formatNumber(nusha.accession_no)} />
-          <Satir etiket="Etiket basımı" deger={formatDate(nusha.label_printed_at)} />
+          <Satir etiket="Barkod etiketi" deger={formatDate(nusha.label_printed_at)} />
+          <Satir etiket="Sırt etiketi" deger={formatDate(nusha.spine_label_printed_at)} />
           <Satir etiket="Etiket doğrulaması" deger={formatDate(nusha.label_verified_at)} />
         </dl>
 

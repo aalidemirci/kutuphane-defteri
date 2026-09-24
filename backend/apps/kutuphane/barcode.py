@@ -23,6 +23,7 @@ C alt kümesi **çift** uzunluk ister, 10 hane bu şartı sağlar (F4).
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from enum import StrEnum
 
 from apps.kutuphane import isbn as isbn_module
@@ -50,9 +51,19 @@ ISBN_SCAN_MESSAGE = "Bu ISBN barkodu. Kitabın kütüphane etiketini okutun."
 
 
 class ScanKind(StrEnum):
-    """Okutulan ya da elle yazılan kodun türü."""
+    """Okutulan ya da elle yazılan kodun türü.
+
+    `RESERVED` (F4, yöntem B): biçimce nüsha barkodudur ama numara bir boş
+    barkod aralığında AYRILMIŞ, henüz hiçbir nüshaya BAĞLANMAMIŞ ve İPTAL
+    EDİLMEMİŞTİR. Dolaşım masası (F6) buna "bu etiket henüz bir kitaba
+    bağlanmadı" der. `CANCELLED`: ayrılmış ama İPTAL EDİLMİŞ numara — bir daha
+    hiçbir kitaba bağlanamaz; etiket kitaptan sökülür. İkisi de salt biçimden
+    anlaşılamaz; `classify_scan`'e verilen sorgu işleviyle ayrılır.
+    """
 
     COPY = "COPY"
+    RESERVED = "RESERVED"
+    CANCELLED = "CANCELLED"
     MEMBER_CARD = "MEMBER_CARD"
     ISBN = "ISBN"
     UNKNOWN = "UNKNOWN"
@@ -113,8 +124,16 @@ def has_scan_year_prefix(digits: str) -> bool:
     return SCAN_YEAR_MIN <= int(digits[:4]) <= SCAN_YEAR_MAX
 
 
-def classify_scan(value: object) -> ScanKind:
+def classify_scan(
+    value: object, *, reservation_kind: Callable[[str], ScanKind | None] | None = None
+) -> ScanKind:
     """Okutulan kodun türünü söyler (§7.1).
+
+    **Ayrılmış numara** (F4): `reservation_kind` verilirse, biçimce nüsha
+    barkodu olan kod ona sorulur; bağlanmamış ayrılmış numarada `RESERVED` ya da
+    `CANCELLED`, değilse `None` döner. İşlev veritabanına bakan çağırandan gelir
+    (`services.barcode_reservations`) — bu modül saf kalır ve ön yüzdeki eşi
+    (`tarama.ts`) gibi yalnız biçime bakar. Verilmezse davranış F2'deki gibidir.
 
     ISBN barkodu ayrımı `apps.kutuphane.isbn` ile yapılır — 978/979 kuralının
     tek kaynağı orasıdır. Tanınmayan kod `UNKNOWN` döner; masa ekranı (F6) buna
@@ -136,7 +155,8 @@ def classify_scan(value: object) -> ScanKind:
     digits = normalize_scan(value)
     if len(digits) == BARCODE_LENGTH:
         if has_scan_year_prefix(digits):
-            return ScanKind.COPY
+            ayrilmis = reservation_kind(digits) if reservation_kind is not None else None
+            return ayrilmis if ayrilmis is not None else ScanKind.COPY
         return ScanKind.ISBN if isbn_module.is_valid_isbn10(digits) else ScanKind.UNKNOWN
     if len(digits) == MEMBER_CARD_LENGTH and digits.startswith(MEMBER_CARD_PREFIX):
         return ScanKind.MEMBER_CARD

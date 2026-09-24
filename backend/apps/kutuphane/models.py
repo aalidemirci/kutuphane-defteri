@@ -28,6 +28,11 @@ Bu fazın kararları (tasarım §6.2, F2 sözleşmesi §1):
   ve Ağ Kataloğu program kilitliyken de çalışmalıdır.
 - **Barkod ve kayıt no asla yeniden kullanılmaz**: teklik kısıtı DÜZ `unique`'tir
   (kısmi değil), yani yumuşak silinmiş nüshanın numarası da tutulur.
+- **F4 (etiketler)**: basım kaydı (`LabelPrintBatch` — PDF üretmek "basıldı"
+  değildir, D10), iki ayrı basım işareti (`Copy.label_printed_at` barkod,
+  `Copy.spine_label_printed_at` sırt) ve boş barkod aralığı
+  (`BarcodeReservation` + `ReservedBarcode`, yöntem B — numaralar AYNI sayaçtan,
+  iptal edilen numara sayaca dönmez).
 
 CLAUDE.md §3 "soft-delete ileri FK'da süzmez": `obj.fk` erişimi silinmiş kaydı
 geri getirir. Evraka ad basan yollar `deleted_at`'i elle denetler; katalog
@@ -632,13 +637,27 @@ class Copy(BaseModel):
         "etiket basım tarihi",
         null=True,
         blank=True,
-        help_text="Boş = etiketlenmemiş kuyruğunda (F4). Onaylı işaret; geri alınabilir.",
+        help_text=(
+            "BARKOD etiketinin basım işareti. Boş = barkod etiketi kuyruğunda (F4). "
+            "Onaylı işarettir (D10): PDF üretmek yazmaz, kullanıcı onaylar; geri alınabilir."
+        ),
     )
     label_verified_at = models.DateTimeField(
         "etiket doğrulama tarihi",
         null=True,
         blank=True,
-        help_text="Yapıştırdıktan sonra etiketi okutunca yazılır (F4).",
+        help_text="Yapıştırdıktan sonra barkod etiketini okutunca yazılır (F4).",
+    )
+    # F4-Q: sırt etiketinin AYRI işareti. Tek işaret yöntem B'de (önce etiket,
+    # §8.1) yetmiyordu: kitaba önceden basılmış BARKOD etiketi yapıştırılır ve
+    # hızlı kayıtta bağlanır, ama sırt etiketi (yer numarası) künye tamamlanınca
+    # basılır. Tek işaretle ya bu nüshalar sırt kuyruğuna hiç girmez ya da
+    # "ikisi birden" basımında kitaba İKİNCİ bir barkod etiketi basılırdı.
+    spine_label_printed_at = models.DateTimeField(
+        "sırt etiketi basım tarihi",
+        null=True,
+        blank=True,
+        help_text="Boş = sırt etiketi kuyruğunda (F4). Onaylı işaret; geri alınabilir.",
     )
 
     class Meta:
@@ -653,6 +672,21 @@ class Copy(BaseModel):
 
     def __str__(self) -> str:
         return self.barcode
+
+    @property
+    def is_labelable(self) -> bool:
+        """Etiket basılabilir mi (F4): nüsha ve eseri canlı, nüsha elden çıkmamış.
+
+        Yumuşak silme ileri FK'da süzülmez (CLAUDE.md §3): eserin canlılığı elle
+        denetlenir. Basım partisinin PDF'inde böyle olmayan nüshanın hücresi boş
+        kalır, onayda işaretine dokunulmaz, yeniden basımda partiye girmez. DB
+        tarafı süzgeç `selectors_kuyruk.labelable_copies`'tir.
+        """
+        return (
+            self.deleted_at is None
+            and self.work.deleted_at is None
+            and self.status not in TERMINAL_COPY_STATUSES
+        )
 
     @property
     def is_loanable(self) -> bool:
@@ -1158,6 +1192,356 @@ class LabelCalibration(BaseModel):
 
     def __str__(self) -> str:
         return f"{self.template_id} — {self.printer_name}"
+
+
+# ---------------------------------------------------------------------------
+# F4-Q — basım kuyruğu, basım kaydı (D10) ve boş barkod aralığı (yöntem B)
+# ---------------------------------------------------------------------------
+#: Bir basım partisine ya da bir boş barkod aralığına giren en çok etiket.
+#: 20 tabaka × 65 (varsayılan 38,1 × 21,2 mm tabaka). Sınır bir basım İŞİNİN
+#: sınırıdır, kuyruğun değil: 10.000 kitaplık bir okul kuyruğu süzgeçle
+#: (bölüm, parti, tarih) böler. Tabaka parası ve yazıcı sıkışması da zaten
+#: tabaka tabaka basmayı gerektirir; tek istekte on binlerce etiketlik PDF
+#: dizmek pencereyi dakikalarca bekletirdi.
+MAX_LABELS_PER_JOB = 1300
+#: Aynı sınırın kullanıcı metnindeki yazımı (binlik ayracı nokta: "1.300").
+MAX_LABELS_PER_JOB_TEXT = f"{MAX_LABELS_PER_JOB:,}".replace(",", ".")
+
+
+class LabelPrintKind(models.TextChoices):
+    """Basım partisinin içeriği (§7.2).
+
+    Şablonun türünden (`LabelKind`) AYRIDIR: şablon tabakanın ölçüsünü, bu
+    seçenek hücreye ne basılacağını söyler. "İkisi birden" TEK şablonla basılır
+    — sırt ve barkod etiketi **aynı sıra ve hücre düzeninde** çıkar (§7.2), yani
+    iki tabakanın N. hücresi aynı kitabındır ve yapıştırma kolaylaşır. Önceden
+    basılmış boş barkod etiketi (yöntem B) bir parti türü DEĞİLDİR: nüshası
+    henüz yoktur, basımı `BarcodeReservation` üzerinden yürür.
+    """
+
+    SPINE = "SPINE", "Sırt etiketi"
+    BARCODE = "BARCODE", "Barkod etiketi"
+    BOTH = "BOTH", "Sırt ve barkod etiketi"
+
+
+#: Barkod etiketi içeren parti türleri (basımı `label_printed_at`'e yazılır).
+BARCODE_PRINT_KINDS: tuple[str, ...] = (LabelPrintKind.BARCODE, LabelPrintKind.BOTH)
+#: Sırt etiketi içeren parti türleri (basımı `spine_label_printed_at`'e yazılır).
+SPINE_PRINT_KINDS: tuple[str, ...] = (LabelPrintKind.SPINE, LabelPrintKind.BOTH)
+
+
+class LabelOrder(models.TextChoices):
+    """Basım sırası — seçilebilir (D20, §7.2).
+
+    OYS kuyruğu yalnız barkod sırasında veriyordu (D20); raf raf yapıştırmada
+    işe yarayan sıra ise yer numarası sırasıdır (varsayılan). "İçe aktarma
+    sırası" nüshaların KAYIT sırasıdır: bir Excel aktarımında satırlar sırayla
+    işlenir ve her nüsha bir öncekinden sonra açılır, yani aktarımın içinde bu
+    sıra dosyanın satır sırasıdır (hızlı kayıtta da kitapların masadan geçiş
+    sırası). Barkod sırası bunlardan ayrılabilir: yöntem B'de önceden ayrılmış
+    numara, kendisinden sonra açılan nüshadan daha küçük olabilir.
+    """
+
+    CALL_NUMBER = "CALL_NUMBER", "Yer numarası"
+    IMPORT_ROW = "IMPORT_ROW", "İçe aktarma sırası"
+    BARCODE = "BARCODE", "Barkod"
+
+
+class LabelPrintBatchStatus(models.TextChoices):
+    """Basım partisinin durumu (türetilir; alan değil — bkz. `LabelPrintBatch.status`)."""
+
+    PENDING = "PENDING", "Basım onayı bekliyor"
+    CONFIRMED = "CONFIRMED", "Basıldı"
+    REVERTED = "REVERTED", "Basım işareti geri alındı"
+    DISCARDED = "DISCARDED", "Vazgeçildi"
+
+
+class LabelPrintBatch(BaseModel):
+    """Etiket basım kaydı — PDF üretmek "basıldı" DEMEK DEĞİLDİR (D10, §7.2).
+
+    OYS "basıldı" işaretini PDF üretilince koyuyordu (D10): yazıcı sıkışsa,
+    kâğıt ters takılsa ya da kullanıcı PDF'i hiç yazdırmasa bile nüshalar
+    kuyruktan düşüyor ve bir daha görünmüyordu. Burada parti önce "basım onayı
+    bekliyor" hâlinde açılır; nüshaların işareti ancak kullanıcı "Basıldı
+    olarak işaretle" deyince yazılır ve **geri alınabilir**. Geri alınan ya da
+    vazgeçilen parti SİLİNMEZ, iz olarak kalır; aynı nüshalar yeni bir partiyle
+    (`reprint_of`) yeniden basılabilir. Partinin PDF'i her hâlinde yeniden
+    üretilebilir — işaretlere dokunmaz. Partideki bir nüsha sonradan silinir ya
+    da elden çıkarsa (`Copy.is_labelable`) PDF'te hücresi boş kalır (sonraki
+    etiketler kaymaz), onay onun işaretine dokunmaz, yeniden basım onu almaz.
+
+    Durum alanı yoktur; üç zaman damgasından türetilir (`status`). Böylece
+    "onaylandı ama zamanı boş" gibi tutarsız bir satır yazılamaz — kısıtlar da
+    aynı şeyi DB'de söyler.
+
+    Kişisel veri taşımaz.
+    """
+
+    kind = models.CharField("içerik", max_length=8, choices=LabelPrintKind.choices)
+    template = models.ForeignKey(
+        LabelSheetTemplate,
+        on_delete=models.PROTECT,
+        related_name="print_batches",
+        verbose_name="etiket şablonu",
+    )
+    calibration = models.ForeignKey(
+        LabelCalibration,
+        on_delete=models.SET_NULL,
+        related_name="print_batches",
+        verbose_name="kalibrasyon",
+        null=True,
+        blank=True,
+        help_text="Boş: kaymasız (kalibrasyonsuz) basım.",
+    )
+    spine_template = models.ForeignKey(
+        LabelSheetTemplate,
+        on_delete=models.PROTECT,
+        related_name="spine_print_batches",
+        verbose_name="sırt etiketi şablonu",
+        null=True,
+        blank=True,
+        help_text=(
+            "Yalnız “sırt ve barkod etiketi” basımında, sırt etiketleri AYRI bir tabakaya "
+            "basılacaksa. Boş: sırt da ana şablona basılır. İki tabaka aynı sıra ve hücre "
+            "planını paylaşır (§7.2)."
+        ),
+    )
+    spine_calibration = models.ForeignKey(
+        LabelCalibration,
+        on_delete=models.SET_NULL,
+        related_name="spine_print_batches",
+        verbose_name="sırt etiketi kalibrasyonu",
+        null=True,
+        blank=True,
+    )
+    include_qr = models.BooleanField(
+        "QR kod",
+        default=False,
+        help_text="Varsayılan kapalı (§7.2). İçerik rakamdır, adres değil; geniş şablon ister.",
+    )
+    order = models.CharField(
+        "basım sırası", max_length=12, choices=LabelOrder.choices, default=LabelOrder.CALL_NUMBER
+    )
+    start_cell = models.PositiveSmallIntegerField(
+        "başlangıç hücresi",
+        default=1,
+        validators=[MinValueValidator(1)],
+        help_text=(
+            "1'den başlar, satır satır sayılır (soldan sağa, yukarıdan aşağı). Kısmen "
+            "kullanılmış tabakanın ilk boş hücresi."
+        ),
+    )
+    copy_count = models.PositiveIntegerField("nüsha sayısı", default=0)
+    confirmed_at = models.DateTimeField("basım onayı", null=True, blank=True)
+    reverted_at = models.DateTimeField("geri alma", null=True, blank=True)
+    discarded_at = models.DateTimeField("vazgeçme", null=True, blank=True)
+    reprint_of = models.ForeignKey(
+        "self",
+        on_delete=models.PROTECT,
+        related_name="reprints",
+        verbose_name="yeniden basılan parti",
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = "etiket basım partisi"
+        verbose_name_plural = "etiket basım partileri"
+        ordering = ["-created_at", "-pk"]
+        constraints = [
+            # Geri alma yalnız onaylanmış partide olur.
+            models.CheckConstraint(
+                name="ck_labelbatch_revert_needs_confirm",
+                condition=models.Q(reverted_at__isnull=True) | models.Q(confirmed_at__isnull=False),
+            ),
+            # Onaylanan partiden vazgeçilmez (geri alınır); vazgeçilen onaylanmaz.
+            models.CheckConstraint(
+                name="ck_labelbatch_confirm_xor_discard",
+                condition=models.Q(confirmed_at__isnull=True) | models.Q(discarded_at__isnull=True),
+            ),
+            # Ayrı sırt tabakası yalnız "sırt ve barkod etiketi" basımında anlamlıdır.
+            models.CheckConstraint(
+                name="ck_labelbatch_spine_template_only_both",
+                condition=models.Q(kind=LabelPrintKind.BOTH)
+                | (
+                    models.Q(spine_template__isnull=True) & models.Q(spine_calibration__isnull=True)
+                ),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Basım partisi #{self.pk} — {self.get_kind_display()}"
+
+    @property
+    def status(self) -> str:
+        """Türetilmiş durum (`LabelPrintBatchStatus`)."""
+        if self.discarded_at is not None:
+            return LabelPrintBatchStatus.DISCARDED
+        if self.reverted_at is not None:
+            return LabelPrintBatchStatus.REVERTED
+        if self.confirmed_at is not None:
+            return LabelPrintBatchStatus.CONFIRMED
+        return LabelPrintBatchStatus.PENDING
+
+    @property
+    def prints_barcode(self) -> bool:
+        return self.kind in BARCODE_PRINT_KINDS
+
+    @property
+    def prints_spine(self) -> bool:
+        return self.kind in SPINE_PRINT_KINDS
+
+
+class LabelPrintBatchItem(models.Model):
+    """Partinin bir nüshası — basım SIRASIYLA (`position`) ve onay öncesi işaretleriyle.
+
+    `previous_*` alanları onay anında nüshanın ESKİ işaretlerini saklar: geri
+    alma işareti "boşa" değil, onaydan önceki değerine döndürür. Aynı nüshanın
+    hasarlı etiketi yeniden basılıp parti geri alınırsa nüsha kuyruğa DÜŞMEZ,
+    ilk basımın tarihine döner.
+
+    `BaseModel` DEĞİLDİR (yumuşak silme yok): kalem partinin değişmez içeriğidir
+    ve silme yolu yoktur.
+    """
+
+    batch = models.ForeignKey(
+        LabelPrintBatch, on_delete=models.CASCADE, related_name="items", verbose_name="parti"
+    )
+    copy = models.ForeignKey(
+        Copy, on_delete=models.PROTECT, related_name="label_batch_items", verbose_name="nüsha"
+    )
+    position = models.PositiveIntegerField("sıra")
+    previous_printed_at = models.DateTimeField("önceki barkod basım işareti", null=True, blank=True)
+    previous_verified_at = models.DateTimeField("önceki doğrulama işareti", null=True, blank=True)
+    previous_spine_printed_at = models.DateTimeField(
+        "önceki sırt basım işareti", null=True, blank=True
+    )
+
+    class Meta:
+        verbose_name = "basım partisi kalemi"
+        verbose_name_plural = "basım partisi kalemleri"
+        ordering = ["batch", "position"]
+        constraints = [
+            models.UniqueConstraint(fields=["batch", "position"], name="uq_labelbatchitem_pos"),
+            models.UniqueConstraint(fields=["batch", "copy"], name="uq_labelbatchitem_copy"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.batch_id}/{self.position}"
+
+
+class BarcodeReservation(BaseModel):
+    """Boş barkod aralığı — önceden basılacak etiketlerin numaraları (yöntem B, §8.1).
+
+    Okulun ASIL yolu (S8, 23.09.2026): hazır liste yoktur; numaralar önce
+    ayrılır ve boş barkod etiketi olarak basılır, kitaplar raf başında
+    etiketlenir, sonra hızlı kayıtta kitap elde künyesi girilirken yapıştırılan
+    etiket okutulur ve nüsha O numarayla açılır.
+
+    **Numaralar nüsha sayacından alınır** (`CopyCounter`, tek sayaç): ayrılmış
+    bir numara hiçbir zaman başka bir nüshaya verilmez, çünkü sayaç onun
+    ötesine geçmiştir. Kullanılmayan numara **iptal edilir**, sayaca geri
+    DÖNMEZ (`ReservedBarcode.cancelled_at`); tanımlayıcı tablosunun "numara asla
+    yeniden kullanılmaz" kuralı (§7.1) ayrılmış numarada da geçerlidir.
+
+    Aralık tek işlemde ayrıldığı için numaralar ardışıktır ve aynı yıla aittir
+    (`first_barcode`…`last_barcode` gösterim içindir; asıl kayıt numara
+    satırlarıdır). `printed_at` onaylı basım işaretidir (D10 ile aynı kural):
+    PDF üretmek yazmaz, kullanıcı onaylar, geri alınabilir.
+
+    Kişisel veri taşımaz; `note` kullanıcının kısa açıklamasıdır ("Tarih rafı").
+    """
+
+    year = models.PositiveSmallIntegerField("yıl")
+    first_barcode = models.CharField("ilk barkod", max_length=10)
+    last_barcode = models.CharField("son barkod", max_length=10)
+    count = models.PositiveIntegerField(
+        "adet", validators=[MinValueValidator(1), MaxValueValidator(MAX_LABELS_PER_JOB)]
+    )
+    note = models.CharField("açıklama", max_length=120, blank=True, default="")
+    printed_at = models.DateTimeField("basım onayı", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "boş barkod aralığı"
+        verbose_name_plural = "boş barkod aralıkları"
+        ordering = ["-created_at", "-pk"]
+
+    def __str__(self) -> str:
+        return f"{self.first_barcode}–{self.last_barcode}"
+
+
+class ReservedBarcodeState(models.TextChoices):
+    """Ayrılmış numaranın durumu (türetilir; bkz. `ReservedBarcode.state`)."""
+
+    OPEN = "OPEN", "Bağlanmadı"
+    BOUND = "BOUND", "Nüshaya bağlandı"
+    CANCELLED = "CANCELLED", "İptal edildi"
+
+
+class ReservedBarcode(models.Model):
+    """Ayrılmış tek numara ve durumu: açık · bağlandı (nüshaya) · iptal edildi.
+
+    `BaseModel` DEĞİLDİR (yumuşak silme yok — `CopyCounter` gibi): satır, bir
+    numaranın dağıtıldığının KALICI kaydıdır. Yumuşak silme bile zararlı olurdu:
+    canlı sorgudan düşen numara okutulduğunda "ayrılmış değil" denir ve iz
+    kaybolur. Silme yolu yoktur; `copy` PROTECT'tir (nüsha katı silinemez).
+
+    Değişmezler (DB kısıtı + servis):
+
+    - Bağlı numara iptal edilemez; iptal edilen numara bağlanamaz.
+    - Bir numara en çok bir nüshaya bağlanır (`OneToOne`), nüshanın `barcode` ve
+      `accession_no` alanları bu satırdan gelir ve düz `unique`'tir.
+    """
+
+    reservation = models.ForeignKey(
+        BarcodeReservation,
+        on_delete=models.PROTECT,
+        related_name="numbers",
+        verbose_name="boş barkod aralığı",
+    )
+    barcode = models.CharField("barkod", max_length=10, unique=True)
+    accession_no = models.PositiveBigIntegerField("kayıt no", unique=True)
+    copy = models.OneToOneField(
+        Copy,
+        on_delete=models.PROTECT,
+        related_name="reserved_barcode",
+        verbose_name="bağlandığı nüsha",
+        null=True,
+        blank=True,
+    )
+    bound_at = models.DateTimeField("bağlanma", null=True, blank=True)
+    cancelled_at = models.DateTimeField("iptal", null=True, blank=True)
+    cancel_reason = models.CharField("iptal gerekçesi", max_length=255, blank=True, default="")
+
+    class Meta:
+        verbose_name = "ayrılmış barkod"
+        verbose_name_plural = "ayrılmış barkodlar"
+        ordering = ["accession_no"]
+        constraints = [
+            # Bağlı numara iptal edilemez; iptal edilen bağlanamaz.
+            models.CheckConstraint(
+                name="ck_reservedbarcode_bound_xor_cancelled",
+                condition=models.Q(copy__isnull=True) | models.Q(cancelled_at__isnull=True),
+            ),
+            # Bağlanma zamanı ile bağlı nüsha birlikte dolar.
+            models.CheckConstraint(
+                name="ck_reservedbarcode_bound_at",
+                condition=(models.Q(copy__isnull=True) & models.Q(bound_at__isnull=True))
+                | (models.Q(copy__isnull=False) & models.Q(bound_at__isnull=False)),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return self.barcode
+
+    @property
+    def state(self) -> str:
+        """Türetilmiş durum (`ReservedBarcodeState`)."""
+        if self.copy_id is not None:
+            return ReservedBarcodeState.BOUND
+        if self.cancelled_at is not None:
+            return ReservedBarcodeState.CANCELLED
+        return ReservedBarcodeState.OPEN
 
 
 class MetadataLookupSource(models.TextChoices):

@@ -289,6 +289,12 @@ describe("İçe Aktarma — Excel", () => {
 
     expect(await screen.findByText("Aktarım tamamlandı")).toBeInTheDocument();
     expect(screen.getByText(/2026-000101 ile 2026-000103 arasında/)).toBeInTheDocument();
+    // "Bu partinin etiketlerini bas" kısayolu (§8.1) Etiketler → Basım Kuyruğu'nu
+    // o edinim partisine süzer; nüsha kimlikleri adrese taşınmaz.
+    expect(screen.getByRole("link", { name: "Bu partinin etiketlerini bas" })).toHaveAttribute(
+      "href",
+      "/katalog/etiketler?edinim=4",
+    );
     // Yarım kalan önizleme koşusu geçmişe çöp bırakmaz.
     expect(kapi.aktarimiIptalEt).toHaveBeenCalledWith(11);
   });

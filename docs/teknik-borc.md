@@ -280,6 +280,29 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   için `/usr/share/doc/kutuphane-defteri/copyright`, Inno için `LicenseFile=` eksiktir.
   Bugün ihlal yoktur (henüz sürüm yayımlanmadı); **ilk sürümden önce kapanmalıdır**.
 
+- **TB29 — İki hazır etiket tabakasının ölçüsü doğrulanmadı (F4, tasarım §7.2; 24.09.2026):**
+  48,5 × 25,4 mm 44'lü tabakanın kenar boşlukları yayımlanmış bir kaynaktan
+  doğrulanamadı. Yerleşim simetrik kabulle hesaplandı (yan 8,0 mm, üst ve alt 8,8 mm)
+  ve şablon adına "yaklaşık ölçü" yazıldı. Ölçü ve adet örneği Tanex TW-2044'tür
+  (44'lü). **Avery Zweckform 3657 aynı etiket ölçüsündedir ama 40'lıdır (4 × 10)**; o
+  tabakayı alan okul 10 satırlı yeni şablon tanımlar, hazır 44'lü şablon ona uymaz.
+  52,5 × 29,7 mm 40'lı tabaka aritmetik olarak kenarsızdır (4 × 52,5 = 210,
+  10 × 29,7 = 297); yazıcının basamadığı kenar payı (yaygın lazerde 4,23 mm, bazılarında
+  5 mm) dış sütun ve satırlara düşer. İlk sürümde bu pay yalnız "kenara yakın yazı ya da
+  sessiz bölge kesilebilir, kalibrasyon sayfasında görürsünüz" diye anlatılıyordu;
+  ölçülen gerçek bundan kötüydü (denetim, 24.09.2026): 4. sütunda QR'ın konum deseni
+  0,47 mm kesiliyor, 5 mm paylı yazıcıda 1. sütunun START barları da kesiliyor,
+  kalibrasyon cetvellerinin hiçbiri basılmıyordu. **Azaltma (uygulandı):** etiket düzeni
+  bar, QR modülü ve yazıyı sayfa kenarından en az 5 mm içeride tutar
+  (`labels/geometry.py::PRINT_SAFE_MARGIN_MM`, `layout.ink_insets`; sessiz bölge paya
+  taşabilir) ve kalibrasyon sayfası cetveli basılamayan dış kenar yerine etiketin iç
+  kenarına koyar (`calibration.measured_edges`); ikisi PDF'in kendisinden ölçülerek
+  sınanır (`test_etiket_pdf.py`). **Kalan risk:** basamadığı kenarı 5 mm'den geniş bir
+  yazıcıda 40'lı tabakanın dış hücreleri yine kesilebilir (kılavuz kenar boşluklu tabaka
+  önerir); kalibrasyon kayması bir hücreyi sayfadan taşıracak kadar büyükse o hücrede
+  olağan düzen basılır. Okul tabakayı S4'te satın alıp ölçene dek 44'lü şablon tahminidir;
+  gerçek basım F12 saha kanıtıdır.
+
 ## Kapanan
 
 - **TB15 — F1'e devreden F0 kalıntıları** *(kapandı: 22.09.2026 — F1 dalga
