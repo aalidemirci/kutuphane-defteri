@@ -82,6 +82,7 @@ describe("kayipApi", () => {
       "Onarıldı",
       "Bedelle aynısı alındı",
       "Bedelle başka eser alındı",
+      "Bulundu (bedel teslim alınmıştı)",
       "Kayıttan düşme önerildi",
       "Kayba dönüştü",
     ]);
@@ -95,6 +96,7 @@ describe("kayipApi", () => {
       "PRICE_RECEIVED",
       "CLOSED_SAME_REPURCHASED",
       "CLOSED_OTHER_REPURCHASED",
+      "FOUND_AFTER_PRICE",
     ]);
     expect(BEDEL_SORULAN).toBe("PRICE_DETERMINED");
     // Dosya açık (okulun açık işi) ≠ kişinin açık işi: "Bedel teslim alındı" (25.09.2026).

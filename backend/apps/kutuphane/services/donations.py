@@ -10,17 +10,39 @@ kayıtta kalır — okul bağışçıya ne olduğunu söyleyebilsin.
 
 Karar TÜRÜ denetlenir (D7): bağış ancak "bağış değerlendirme" kararıyla
 kataloglanır.
+
+**F8 — komisyon kararıyla bütünleşme** (tasarım §14.1 F8 "bağış kararı → toplu
+katalog"):
+
+- **Edinim tarihi kabul tarihidir.** TMY 10/1-a Varlık İşlem Fişini "ilgili
+  mevzuatı çerçevesinde kabul edilerek teslim alınan" taşınırın girişine bağlar
+  ve fişin "dayanağını oluşturan belgenin tarihinden önceki bir tarihi"
+  taşıyamayacağını söyler. Bağış komisyonca değerlendirilir (Md. 10/3) ve uygun
+  bulunan kitap kütüphaneye kazandırılır (Uygulama Kılavuzu 2.3.3): edinim
+  tarihi verilmezse karar tarihi ile geliş tarihinin geç olanıdır; verilen tarih
+  bunlardan önce ve bugünden sonra olamaz. (F2'de varsayılan geliş tarihiydi —
+  kararın tarihinden önce bir giriş tarihi doğabiliyordu.)
+- **Var olan esere bağlama.** Kabul edilen kalem katalogda zaten bulunan bir
+  kitapsa yeni eser AÇILMAZ, nüshalar o esere eklenir: eşleşme ölçütü F3 içe
+  aktarımıyla aynıdır (ISBN-13 + aynı ad ya da aynı ad + aynı yazar, TR
+  katlamalı — `item_matches`). Kullanıcı `work_links` ile kalemi başka bir esere
+  bağlayabilir ya da (`None`) yeni eser açtırabilir. F2'de her kabul edilen
+  kalem yeni eser açıyor, katalogda aynı kitabın ikinci kaydı doğuyordu.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass, field
+from datetime import date
 from typing import Any
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
+from apps.kutuphane import isbn as isbn_module
+from apps.kutuphane import keys
 from apps.kutuphane.models import (
     Acquisition,
     AcquisitionMethod,
@@ -137,6 +159,104 @@ def cancel_intake(intake: DonationIntake, *, reason: str = "") -> DonationIntake
     return intake
 
 
+ACQUISITION_BEFORE_DECISION_MESSAGE = (
+    "Edinim tarihi komisyon kararının tarihinden önce olamaz: bağış komisyonca değerlendirilir "
+    "(Md. 10/3), uygun bulunan kitap kütüphaneye kazandırılır (Uygulama Kılavuzu 2.3.3) ve "
+    "giriş kaydı dayanağından önceki tarihi taşıyamaz (TMY 10/1-a)."
+)
+ACQUISITION_BEFORE_RECEIVED_MESSAGE = "Edinim tarihi bağışın geliş tarihinden önce olamaz."
+ACQUISITION_IN_FUTURE_MESSAGE = "Edinim tarihi bugünden sonra olamaz."
+LINK_NOT_ACCEPTED_MESSAGE = "Esere bağlanan kalem kabul edilenler arasında olmalıdır."
+LINK_WORK_MISSING_MESSAGE = "Bağlanacak eser bulunamadı."
+
+
+def acquisition_date_for(
+    intake: DonationIntake, decision: CommissionDecision, requested: date | None = None
+) -> date:
+    """Bağış ediniminin tarihi (modül belgesi, "Edinim tarihi kabul tarihidir").
+
+    Verilmezse karar tarihi ile geliş tarihinin geç olanı. Verilen tarih ikisinden
+    önce ve bugünden sonra olamaz.
+    """
+    en_erken = max(decision.decision_date, intake.received_date)
+    if requested is None:
+        return en_erken
+    if requested < decision.decision_date:
+        raise ValidationError({"acquisition_date": ACQUISITION_BEFORE_DECISION_MESSAGE})
+    if requested < intake.received_date:
+        raise ValidationError({"acquisition_date": ACQUISITION_BEFORE_RECEIVED_MESSAGE})
+    if requested > timezone.localdate():
+        raise ValidationError({"acquisition_date": ACQUISITION_IN_FUTURE_MESSAGE})
+    return requested
+
+
+@dataclass
+class ItemMatch:
+    """Bağış kaleminin katalogdaki karşılığı (F3 içe aktarımıyla aynı ölçüt).
+
+    `exact`: kalemin nüshaları bu esere eklenir (ISBN-13 + aynı ad, ya da aynı ad +
+    aynı yazar; TR katlamalı; birden çoksa en eski kayıt). `suspects`: aynı
+    ISBN'li ama adı farklı ya da aynı adlı ama yazarı farklı eserler — program
+    bunlara KENDİLİĞİNDEN bağlamaz, kullanıcı `work_links` ile seçer.
+    """
+
+    exact: Work | None = None
+    suspects: list[Work] = field(default_factory=list)
+
+
+def item_matches(item: DonationIntakeItem) -> ItemMatch:
+    """Kalemin katalogdaki eşleşmesi (salt okur)."""
+    ad = keys.fold_search(item.title)
+    yazar = keys.fold_search(item.authors)
+    isbn13 = isbn_module.to_isbn13(item.isbn)
+    sonuc = ItemMatch()
+    adaylar: list[Work] = []
+    if isbn13:
+        adaylar.extend(Work.objects.filter(isbn13=isbn13).order_by("pk"))
+    if ad:
+        gorulen = {w.pk for w in adaylar}
+        # Ad katlaması arama anahtarının parçasıdır; kaba süzgeç DB'de, kesin karar Python'da.
+        for work in Work.objects.filter(search_key__contains=ad).order_by("pk"):
+            if work.pk not in gorulen:
+                adaylar.append(work)
+    for work in adaylar:
+        ayni_ad = keys.fold_search(work.title) == ad
+        ayni_isbn = bool(isbn13) and work.isbn13 == isbn13
+        if (ayni_isbn and ayni_ad) or (ayni_ad and keys.fold_search(work.authors) == yazar):
+            if sonuc.exact is None:
+                sonuc.exact = work
+            continue
+        if ayni_isbn or ayni_ad:
+            sonuc.suspects.append(work)
+    return sonuc
+
+
+def _hedef_eser(
+    item: DonationIntakeItem, links: Mapping[int, int | None], section: Section | None
+) -> tuple[Work, bool]:
+    """Kalemin nüshalarının ekleneceği eser ve yeni açılıp açılmadığı."""
+    if item.pk in links:
+        hedef = links[item.pk]
+        if hedef is not None:
+            work: Work | None = Work.objects.filter(pk=hedef).first()
+            if work is None:
+                raise ValidationError({"work_links": LINK_WORK_MISSING_MESSAGE})
+            return work, False
+    else:
+        eslesme = item_matches(item).exact
+        if eslesme is not None:
+            return eslesme, False
+    yeni = catalog.create_work(
+        title=item.title,
+        authors=item.authors,
+        publisher=item.publisher,
+        publish_year=item.publish_year,
+        isbn=item.isbn,
+        section=section,
+    )
+    return yeni, True
+
+
 @transaction.atomic
 def apply_decision(
     intake: DonationIntake,
@@ -144,9 +264,10 @@ def apply_decision(
     commission_decision: CommissionDecision,
     accepted_ids: Iterable[int] = (),
     rejected: Mapping[int, str] | None = None,
-    acquisition_date: Any = None,
+    acquisition_date: date | None = None,
     section: Section | None = None,
     unit_price: Any = None,
+    work_links: Mapping[int, int | None] | None = None,
 ) -> dict[str, Any]:
     """Komisyon kararını uygular: kabul edilenleri kataloglar, reddedilenleri işaretler.
 
@@ -154,7 +275,14 @@ def apply_decision(
     fazla karar bütün işlemi reddeder — yarım kararlanmış bir liste, hangi
     kitabın kayda girdiği sorusunu cevapsız bırakır. Ret gerekçesi zorunludur.
 
-    Döner: `{"acquisition", "works", "copies", "accepted", "rejected"}`.
+    Edinim tarihi kabul tarihidir (`acquisition_date_for`). Kabul edilen kalem
+    katalogdaki bir eserle birebir eşleşiyorsa nüshaları o esere eklenir
+    (`item_matches`); `work_links` (kalem kimliği → eser kimliği ya da `None` =
+    yeni eser aç) bu seçimi kalem kalem değiştirir.
+
+    Döner: `{"acquisition", "works", "copies", "accepted", "rejected",
+    "linked_works"}` — `works` bu kararla YENİ açılan eserlerdir, `linked_works`
+    nüshaları var olan esere eklenen kalemlerin eserleri.
     """
     _require_pending(intake)
     commissions.require_decision_type(commission_decision, CommissionDecisionType.DONATION_REVIEW)
@@ -162,17 +290,24 @@ def apply_decision(
     ret_kararlari: dict[int, str] = {int(k): str(v or "") for k, v in (rejected or {}).items()}
     kabul_edilenler = [int(pk) for pk in accepted_ids]
     _ensure_full_coverage(intake, kabul_edilenler, ret_kararlari)
+    baglar: dict[int, int | None] = {
+        int(k): (int(v) if v is not None else None) for k, v in (work_links or {}).items()
+    }
+    if set(baglar) - set(kabul_edilenler):
+        raise ValidationError({"work_links": LINK_NOT_ACCEPTED_MESSAGE})
+    tarih = acquisition_date_for(intake, commission_decision, acquisition_date)
 
     kalemler = {item.pk: item for item in intake.items.all()}
     acquisition: Acquisition | None = None
     works: list[Work] = []
+    linked: list[Work] = []
     copies: list[Copy] = []
     if kabul_edilenler:
         # Edinim YALNIZ kabul varsa açılır: hepsi reddedilmiş bir bağışın
         # kütüphaneye girmiş bir partisi yoktur.
         acquisition = catalog.create_acquisition(
             method=AcquisitionMethod.DONATION,
-            date=acquisition_date or intake.received_date,
+            date=tarih,
             source_note=intake.donor_name,
             commission_decision=commission_decision,
             unit_price=unit_price,
@@ -180,14 +315,7 @@ def apply_decision(
         )
         for pk in kabul_edilenler:
             item = kalemler[pk]
-            work = catalog.create_work(
-                title=item.title,
-                authors=item.authors,
-                publisher=item.publisher,
-                publish_year=item.publish_year,
-                isbn=item.isbn,
-                section=section,
-            )
+            work, yeni = _hedef_eser(item, baglar, section)
             copies.extend(
                 catalog.create_copies(
                     work=work, acquisition=acquisition, count=item.copies, section=section
@@ -196,7 +324,7 @@ def apply_decision(
             item.decision = DonationItemDecision.ACCEPTED
             item.work = work
             item.save(update_fields=["decision", "work", "updated_at"])
-            works.append(work)
+            (works if yeni else linked).append(work)
 
     for pk, gerekce in ret_kararlari.items():
         item = kalemler[pk]
@@ -214,6 +342,7 @@ def apply_decision(
     return {
         "acquisition": acquisition,
         "works": works,
+        "linked_works": linked,
         "copies": copies,
         "accepted": len(kabul_edilenler),
         "rejected": len(ret_kararlari),

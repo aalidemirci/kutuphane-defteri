@@ -125,6 +125,12 @@ export interface YilSonuOzeti {
   graduating_clear_students: number;
   counts: IlisikSayilari;
   steps: Record<YilSonuAdimi, boolean>;
+  /**
+   * F8: etkin ders yılının yıl sonu kütüphane raporu (Md. 12/1, E9) — kişisiz durum;
+   * henüz hazırlanmadıysa `null`. Sunucunun adım işaretlerine (`steps`) girmez; Yıl
+   * Sonu ekranının beşinci adımı ve Genel Bakış kartı buradan okur.
+   */
+  annual_review: { id: number; is_finalized: boolean } | null;
 }
 
 export interface YilBasiOzeti {

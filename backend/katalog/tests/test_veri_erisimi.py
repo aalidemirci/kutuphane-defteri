@@ -16,6 +16,14 @@ F7 (§5.10-4 yeniden koşar): `kutuphane_delivery`, `kutuphane_lossdamagecase` v
 `kutuphane_copyrepair` aynı biçimde sınanır; `_genis_kurgu` teslim (şube ve
 öğretmen), kayıp ve hasar dosyası ve onarım kaydı da kurar ve okunan küme yine
 DEĞİŞMEZ — katalog yalnız nüsha durumunu okur ("Sınıf kitaplığında").
+
+F8 (§5.10-4 yeniden koşar): ayıklama teklifi ve kalemleri (harcama yetkilisi ve
+TMY komisyonu adları şifreli; devralacak kurum), nadir eserler listesi ve yıl
+sonu raporu tabloları aynı biçimde sınanır; `_genis_kurgu` bunları SERVİS
+YOLUYLA kurar (uygulanmış teklif: nüshalar "Ayıklandı (kayıttan düşüldü)" ve
+"Devredildi") ve okunan küme yine DEĞİŞMEZ. Kayıttan düşülmüş ve devredilmiş
+nüsha görünümlerde ve sayaçlarda yoktur
+(`test_ayiklamayla_dusulen_ve_devredilen_nusha_gorunmez`).
 """
 
 from __future__ import annotations
@@ -31,6 +39,7 @@ import pytest
 from django.core.management import call_command
 from django.db import connection
 from django.db.models.signals import post_migrate, pre_migrate
+from django.utils import timezone
 
 from apps.kutuphane import katalog_gorunumleri, selectors
 from apps.kutuphane.apps import KutuphaneConfig
@@ -114,6 +123,14 @@ def _db_yolu() -> Path:
         (OKUMA, "kutuphane_lossdamagecase", "responsible_note", "kd_katalog_eser", DENY),
         (OKUMA, "kutuphane_lossdamagecase", "market_price", None, DENY),
         (OKUMA, "kutuphane_copyrepair", "copy_id", "kd_katalog_nusha", DENY),
+        # F8: ayıklama, nadir eser listesi ve yıl sonu raporu da okunamaz.
+        (OKUMA, "kutuphane_weedingbatch", "approved_by_name", "kd_katalog_eser", DENY),
+        (OKUMA, "kutuphane_weedingbatch", "tmy_commission_members", None, DENY),
+        (OKUMA, "kutuphane_weedingitem", "transfer_target", "kd_katalog_nusha", DENY),
+        (OKUMA, "kutuphane_weedingitem", "copy_id", None, DENY),
+        (OKUMA, "kutuphane_rareworkssubmission", "sent_document_no", None, DENY),
+        (OKUMA, "kutuphane_rareworkssubmissionitem", "copy_id", "kd_katalog_nusha", DENY),
+        (OKUMA, "kutuphane_annuallibraryreview", "stats", "kd_katalog_eser", DENY),
         (OKUMA, "sqlite_master", "sql", None, DENY),
         # Geri kalan her şey → RED
         (sqlite3.SQLITE_PRAGMA, "query_only", "OFF", None, DENY),
@@ -362,6 +379,35 @@ def _teslim_ve_dosya_kurgusu() -> None:
     loss_damage.open_damage_case(copy=nusha(eser(title="Hasarlı")), send_to_repair=True)
 
 
+def _ayiklama_kurgusu() -> dict[str, Any]:
+    """F8 tablolarını SERVİS YOLUYLA doldurur: uygulanmış ayıklama teklifi (kayıttan düşme +
+    devir), gönderilmiş nadir eserler listesi, sonlandırılmış yıl sonu raporu."""
+    from apps.kutuphane.services import annual_review, rare_works, weeding
+    from apps.kutuphane.tests.ayiklama_ortak import (
+        DEVRALAN_OKUL,
+        ayiklama_karari,
+        kalem_ekle,
+        onaya_kadar,
+        teklif,
+    )
+
+    dusulen_eser = eser(title="Ayıklanan Eser")
+    dusulen = nusha(dusulen_eser)
+    devredilen = nusha(eser(title="Devredilen Eser"))
+    batch = teklif()
+    kalem_ekle(batch, dusulen, "OBSOLETE")
+    kalem_ekle(batch, devredilen, "LEVEL_MISMATCH", transfer_target=DEVRALAN_OKUL)
+    onaya_kadar(batch, approved_by_name="Harcamakatalogdeneme")
+    weeding.apply_batch(batch)
+    liste = rare_works.create_submission(commission_decision=ayiklama_karari())
+    rare_works.add_copies(
+        liste, copy_ids=[nusha(eser(title="Yazma Eser"), is_rare_or_manuscript=True).pk]
+    )
+    rare_works.send_submission(liste, sent_on=timezone.localdate())
+    annual_review.finalize_review(annual_review.create_review())
+    return {"dusulen": dusulen, "devredilen": devredilen, "dusulen_eser": dusulen_eser}
+
+
 @pytest.mark.parametrize(
     "sql",
     [
@@ -382,20 +428,32 @@ def _teslim_ve_dosya_kurgusu() -> None:
         "SELECT market_price FROM kutuphane_lossdamagecase",
         "SELECT * FROM kutuphane_copyrepair",
         "SELECT n.durum FROM kd_katalog_nusha n JOIN kutuphane_delivery d ON d.copy_id = n.id",
+        # F8 (§5.10-4 yeniden koşar): ayıklama, nadir eser listesi, yıl sonu raporu.
+        "SELECT * FROM kutuphane_weedingbatch",
+        "SELECT approved_by_name, tmy_commission_members FROM kutuphane_weedingbatch",
+        "SELECT transfer_target, copy_id FROM kutuphane_weedingitem",
+        "SELECT count(*) FROM kutuphane_weedingitem",
+        "SELECT * FROM kutuphane_rareworkssubmission",
+        "SELECT copy_id FROM kutuphane_rareworkssubmissionitem",
+        "SELECT stats FROM kutuphane_annuallibraryreview",
+        "SELECT n.durum FROM kd_katalog_nusha n JOIN kutuphane_weedingitem w ON w.copy_id = n.id",
     ],
 )
 def test_gercek_uyelik_odunc_teslim_ve_dosya_tablolari_katalog_baglantisindan_okunamaz(
     sql: str,
 ) -> None:
-    """F6/F7: tablolar gerçek ve doludur; katalog bağlantısı yine okuyamaz."""
+    """F6/F7/F8: tablolar gerçek ve doludur; katalog bağlantısı yine okuyamaz."""
     _uye_ve_odunc_kurgusu()
     _teslim_ve_dosya_kurgusu()
+    _ayiklama_kurgusu()
     with connection.cursor() as imlec:  # kurgu gerçekten doldu (Django bağlantısı)
         imlec.execute("SELECT count(*) FROM kutuphane_loan")
         assert imlec.fetchone()[0] == 3
         imlec.execute("SELECT count(*) FROM kutuphane_delivery")
         assert imlec.fetchone()[0] == 2
         imlec.execute("SELECT count(*) FROM kutuphane_lossdamagecase")
+        assert imlec.fetchone()[0] == 2
+        imlec.execute("SELECT count(*) FROM kutuphane_weedingitem")
         assert imlec.fetchone()[0] == 2
 
     with pytest.raises(veri.VeriHatasi), veri.baglan(_db_yolu()) as conn:
@@ -494,6 +552,9 @@ def _genis_kurgu() -> list[int]:
     # F7: teslim, kayıp/hasar dosyası ve onarım kaydı DOLUYKEN de küme değişmez
     # (görünümler yalnız nüsha durumunu okur: "Sınıf kitaplığında", "Onarımda").
     _teslim_ve_dosya_kurgusu()
+    # F8: uygulanmış ayıklama, nadir eser listesi ve yıl sonu raporu DOLUYKEN de küme
+    # değişmez (kayıttan düşülen eserin sayfası 404'tür — ayrı testte).
+    _ayiklama_kurgusu()
     return [w.pk for w in (w1, w2, w3, w4, w5)]
 
 
@@ -573,6 +634,15 @@ def test_izin_listesi_yalniz_katalog_tablolarini_ve_kisisiz_sutunlari_kapsar() -
         "responsible",
         "market_price",
         "copyrepair",
+        # F8: ayıklama teklifi ve kalemi, onaylayan, TMY komisyonu, devralan kurum,
+        # nadir eser listesi ve yıl sonu raporu.
+        "weeding",
+        "approved_by",
+        "commission_members",
+        "transfer_target",
+        "rareworks",
+        "annuallibraryreview",
+        "is_rare",
     ],
 )
 def test_gorunum_tanimlari_kisi_ve_tanimlayici_tablolarina_uzanmaz(kelime: str) -> None:
@@ -845,6 +915,65 @@ def test_silinmis_eser_ve_butun_nushasi_elden_cikmis_kitap_gorunmez() -> None:
     assert ayiklanan.pk not in idler
     assert nushasiz_kitap.pk not in idler
     assert {dijital.pk, dergi.pk} <= idler
+
+
+def test_ayiklamayla_dusulen_ve_devredilen_nusha_gorunmez(katalog: KatalogIstemcisi) -> None:
+    """F8 (§5.10-4/5 yeniden): SERVİS YOLUYLA uygulanan ayıklamadan sonra kayıttan
+    düşülmüş ve devredilmiş nüsha görünümde, sayaçta ve sayfada yoktur; bütün nüshası
+    elden çıkmış kitap katalogda hiç görünmez. Onaylayanın adı, TMY komisyonu ve
+    devralacak kurum hiçbir sayfada geçmez."""
+    from apps.kutuphane.services import weeding
+    from apps.kutuphane.tests.ayiklama_ortak import kalem_ekle, onaya_kadar, teklif
+
+    karma = eser(title="Karma Madonna", authors="Deneme Yazar")
+    kalan = nusha(karma)
+    dusulen = nusha(karma)
+    devredilen = nusha(karma)
+    tamami = eser(title="Tamamı Ayıklanan Madonna", authors="Deneme Yazar")
+    tek = nusha(tamami)
+    batch = teklif()
+    kalem_ekle(batch, dusulen, "WORN")
+    kalem_ekle(batch, tek, "CRITERIA_MISMATCH", criterion="10_4")
+    kalem_ekle(batch, devredilen, "LEVEL_MISMATCH", transfer_target="Devralankatalogdeneme")
+    onaya_kadar(
+        batch,
+        approved_by_name="Onaylayankatalogdeneme",
+        tmy_commission_members="Komisyonkatalogdeneme A\nKomisyonkatalogdeneme B\nKomisyonkatalogdeneme C",
+    )
+    weeding.apply_batch(batch)
+    assert {
+        c.status for c in Copy.all_objects.filter(pk__in=[dusulen.pk, devredilen.pk, tek.pk])
+    } == {CopyStatus.WITHDRAWN_WEEDED, CopyStatus.TRANSFERRED}
+
+    with veri.baglan(_db_yolu()) as conn:
+        satir = _eser_satiri(conn, karma.pk)
+        nushalar = {
+            int(r["id"])
+            for r in conn.execute("SELECT id FROM kd_katalog_nusha WHERE eser_id = ?", (karma.pk,))
+        }
+        idler = {int(r["id"]) for r in conn.execute("SELECT id FROM kd_katalog_eser")}
+
+    assert (satir["nusha_sayisi"], satir["rafta"]) == (1, 1)
+    assert nushalar == {kalan.pk}
+    assert tamami.pk not in idler
+    assert katalog.get(f"/eser/{tamami.pk}").code == 404
+    sayfalar = [
+        katalog.get(adres).text
+        for adres in (
+            "/ara?q=madonna",
+            "/eserler/K",
+            "/eserler/T",
+            "/yazarlar/Y",
+            f"/eser/{karma.pk}",
+        )
+    ]
+    assert "Tamamı Ayıklanan" not in " ".join(sayfalar)
+    assert "1 nüsha" in sayfalar[-1]
+    for metin in sayfalar:
+        for yasak in ("Onaylayankatalogdeneme", "Komisyonkatalogdeneme", "Devralankatalogdeneme"):
+            assert yasak not in metin
+        for durum in ("Ayıklandı", "Devredildi", "kayıttan düşüldü"):
+            assert durum not in metin
 
 
 def test_silinmis_eser_aramada_dizinde_ve_sayfasinda_yok(katalog: KatalogIstemcisi) -> None:

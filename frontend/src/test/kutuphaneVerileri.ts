@@ -132,6 +132,7 @@ export function komisyonKarari(ozel: Partial<CommissionDecision> = {}): Commissi
     participants_text: "",
     notes: "",
     in_use: false,
+    usage: { acquisitions: 0, donation_intakes: 0, weeding_batches: 0, rare_works_submissions: 0 },
     created_at: "2026-09-15T09:00:00+03:00",
     ...ozel,
   };

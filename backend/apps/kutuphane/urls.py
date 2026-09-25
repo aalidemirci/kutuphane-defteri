@@ -30,10 +30,12 @@ from django.urls import path
 from apps.kutuphane import (
     views,
     views_ag_doktoru,
+    views_ayiklama,
     views_evrak,
     views_ilisik,
     views_import,
     views_katalog,
+    views_komisyon_belgeleri,
     views_kunye,
     views_kuyruk,
     views_masa,
@@ -227,10 +229,28 @@ urlpatterns = [
         views.DonationIntakeDecisionView.as_view(),
         name="library-donation-intake-decision",
     ),
+    # F8: kalemlerin katalogdaki karşılığı (karar uygulanmadan önce; kayıt yazmaz).
+    path(
+        "library/donation-intakes/<int:pk>/matches/",
+        views.DonationIntakeMatchesView.as_view(),
+        name="library-donation-intake-matches",
+    ),
     path(
         "library/donation-intakes/<int:pk>/cancel/",
         views.DonationIntakeCancelView.as_view(),
         name="library-donation-intake-cancel",
+    ),
+    # F8: bağış ön kayıt listesi (E16; komisyona sunulur) — kayıt yazmaz.
+    path(
+        "library/donation-intakes/<int:pk>/pdf/",
+        views_komisyon_belgeleri.DonationIntakePdfView.as_view(),
+        name="library-donation-intake-pdf",
+    ),
+    # Bağış değerlendirme sonucu (karar uygulandıktan sonra; F8 ekleri 13) — kayıt yazmaz.
+    path(
+        "library/donation-intakes/<int:pk>/result-pdf/",
+        views_komisyon_belgeleri.DonationIntakeResultPdfView.as_view(),
+        name="library-donation-intake-result-pdf",
     ),
     # --- F4-Q: etiket basım kuyruğu, basım kaydı (D10), doğrulama okutması ---
     # PDF uçları işarete DOKUNMAZ; "basıldı" yalnız `confirm/` ile yazılır ve
@@ -528,6 +548,141 @@ urlpatterns = [
         "library/deliveries/take-back-report/",
         views_ilisik.DeliveryTakeBackReportView.as_view(),
         name="library-delivery-take-back-report",
+    ),
+    # --- F8: ayıklama (Md. 12/1; E7 yolu), nadir eserler (Md. 12/2), yıl sonu raporu
+    # (Md. 12/1, E9) — YALNIZ yönetici kipi (§4.4); hiçbiri izin listesinde değil.
+    path(
+        "library/weeding/rules/",
+        views_ayiklama.WeedingRulesView.as_view(),
+        name="library-weeding-rules",
+    ),
+    path(
+        "library/weeding/candidates/",
+        views_ayiklama.WeedingCandidatesView.as_view(),
+        name="library-weeding-candidates",
+    ),
+    path(
+        "library/weeding-batches/",
+        views_ayiklama.WeedingBatchListCreateView.as_view(),
+        name="library-weeding-batch-list",
+    ),
+    path(
+        "library/weeding-batches/<int:pk>/",
+        views_ayiklama.WeedingBatchDetailView.as_view(),
+        name="library-weeding-batch-detail",
+    ),
+    path(
+        "library/weeding-batches/<int:pk>/items/",
+        views_ayiklama.WeedingBatchItemsView.as_view(),
+        name="library-weeding-batch-items",
+    ),
+    path(
+        "library/weeding-batches/<int:pk>/items/<int:item_pk>/",
+        views_ayiklama.WeedingBatchItemDetailView.as_view(),
+        name="library-weeding-batch-item-detail",
+    ),
+    path(
+        "library/weeding-batches/<int:pk>/submit/",
+        views_ayiklama.WeedingBatchSubmitView.as_view(),
+        name="library-weeding-batch-submit",
+    ),
+    path(
+        "library/weeding-batches/<int:pk>/withdraw/",
+        views_ayiklama.WeedingBatchWithdrawView.as_view(),
+        name="library-weeding-batch-withdraw",
+    ),
+    path(
+        "library/weeding-batches/<int:pk>/decision/",
+        views_ayiklama.WeedingBatchDecisionView.as_view(),
+        name="library-weeding-batch-decision",
+    ),
+    path(
+        "library/weeding-batches/<int:pk>/approve/",
+        views_ayiklama.WeedingBatchApproveView.as_view(),
+        name="library-weeding-batch-approve",
+    ),
+    path(
+        "library/weeding-batches/<int:pk>/apply/",
+        views_ayiklama.WeedingBatchApplyView.as_view(),
+        name="library-weeding-batch-apply",
+    ),
+    path(
+        "library/weeding-batches/<int:pk>/cancel/",
+        views_ayiklama.WeedingBatchCancelView.as_view(),
+        name="library-weeding-batch-cancel",
+    ),
+    # E7 ayıklama belgeleri (TMY yoluna göre) — kayıt YAZMAZ.
+    path(
+        "library/weeding-batches/<int:pk>/documents/",
+        views_komisyon_belgeleri.WeedingBatchDocumentsView.as_view(),
+        name="library-weeding-batch-documents",
+    ),
+    path(
+        "library/weeding-batches/<int:pk>/documents/<slug:belge>/",
+        views_komisyon_belgeleri.WeedingBatchDocumentView.as_view(),
+        name="library-weeding-batch-document",
+    ),
+    path(
+        "library/rare-copies/",
+        views_ayiklama.RareCopyListView.as_view(),
+        name="library-rare-copy-list",
+    ),
+    path(
+        "library/rare-works-submissions/",
+        views_ayiklama.RareWorksSubmissionListCreateView.as_view(),
+        name="library-rare-works-submission-list",
+    ),
+    path(
+        "library/rare-works-submissions/<int:pk>/",
+        views_ayiklama.RareWorksSubmissionDetailView.as_view(),
+        name="library-rare-works-submission-detail",
+    ),
+    path(
+        "library/rare-works-submissions/<int:pk>/items/",
+        views_ayiklama.RareWorksSubmissionItemsView.as_view(),
+        name="library-rare-works-submission-items",
+    ),
+    path(
+        "library/rare-works-submissions/<int:pk>/items/<int:item_pk>/",
+        views_ayiklama.RareWorksSubmissionItemDetailView.as_view(),
+        name="library-rare-works-submission-item-detail",
+    ),
+    path(
+        "library/rare-works-submissions/<int:pk>/send/",
+        views_ayiklama.RareWorksSubmissionSendView.as_view(),
+        name="library-rare-works-submission-send",
+    ),
+    # E8 el yazması ve nadir eserler listesi — kayıt YAZMAZ.
+    path(
+        "library/rare-works-submissions/<int:pk>/pdf/",
+        views_komisyon_belgeleri.RareWorksSubmissionPdfView.as_view(),
+        name="library-rare-works-submission-pdf",
+    ),
+    path(
+        "library/annual-reviews/",
+        views_ayiklama.AnnualLibraryReviewListCreateView.as_view(),
+        name="library-annual-review-list",
+    ),
+    path(
+        "library/annual-reviews/<int:pk>/",
+        views_ayiklama.AnnualLibraryReviewDetailView.as_view(),
+        name="library-annual-review-detail",
+    ),
+    path(
+        "library/annual-reviews/<int:pk>/finalize/",
+        views_ayiklama.AnnualLibraryReviewFinalizeView.as_view(),
+        name="library-annual-review-finalize",
+    ),
+    path(
+        "library/annual-reviews/<int:pk>/reopen/",
+        views_ayiklama.AnnualLibraryReviewReopenView.as_view(),
+        name="library-annual-review-reopen",
+    ),
+    # E9 yıl sonu kütüphane raporu — kişisel veri yok; kayıt YAZMAZ.
+    path(
+        "library/annual-reviews/<int:pk>/pdf/",
+        views_komisyon_belgeleri.AnnualLibraryReviewPdfView.as_view(),
+        name="library-annual-review-pdf",
     ),
 ]
 

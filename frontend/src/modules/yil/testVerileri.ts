@@ -95,6 +95,7 @@ export function akislar(
         open_cases: 1,
       },
       steps: { dates: false, collection: false, graduating: false, clearance: false },
+      annual_review: null,
       ...ek.yilSonu,
     },
     year_start: {

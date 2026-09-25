@@ -65,11 +65,11 @@ Mal Yönetmeliği · **OKY** Ortaöğretim Kurumları Yönetmeliği. Bölüm num
 | §4.4 kartsız ödünç (U12) | Yön. 23/1-a | Kartın görevliye verilmesi; kartsız ödünç bundan sapma olarak kayda geçer |
 | §9-10 sayım | Yön. 23/1-c | İade otomasyon üzerinden alınır; iade hiçbir durumda kilitlenmez |
 | §10 E2, E5 konum kalıbı | Yön. 20 | Kullanıcı kartı; programın kartı onun "yerel karşılığı"dır |
-| §10 E7 ayıklama | Yön. 12/1 a-ç · 10/1 · 10/4 | Ayıklama gerekçeleri; 10/1-b'ye uymayan kaynak **devredilir** |
-| §10 E8 | Yön. 12/2 | El yazmaları ve nadir eserler listesi Genel Müdürlüğe |
-| §10 E9 | Yön. 12/1 · Kılavuz 2.4 | Ders yılı sonu raporu |
+| §10 E7 ayıklama (kılavuzun Ayıklama ve Nadir Eserler bölümü) | Yön. 12/1 a-ç · 10/1 · 10/4 · 4/1-ı | Ayıklama gerekçeleri; 10/1-b'ye uymayan kaynak **devredilir** (düzeye uygunsuzluğun — 12/1-c — da devre bağlanması ve devrin "yalnız" bu gerekçeyle yapılması programın kuralıdır, Yönetmeliğe yüklenmez); 10/4'e aykırı kitap okul kütüphanelerinde bulundurulamaz; komisyonun başkanı (10/1) ve bileşimi (4/1-ı) |
+| §10 E8 (aynı bölüm) | Yön. 12/2 · 4/1-c | El yazmaları ve nadir eserler listesi Genel Müdürlüğe (Destek Hizmetleri Genel Müdürlüğü). Nadir eserin ayıklanamaması programın kuralıdır (D14); 12/2 yalnız listenin gönderilmesini düzenler |
+| §10 E9 (kılavuzun Yıl Sonu Raporu bölümü) | Yön. 12/1 · 10/5 · Kılavuz 2.4 | Ders yılı sonu raporu; "kazandırılan" yalnız 10/5 yollarıdır (programa aktarım ve sayım fazlası kayıt içi giriş). "Kazandırılan, ayıklanan … raporlanır" cümlesi Kılavuz 2.4'ündür, Md. 12/1'e atfedilmez |
 | §10 E12 | Yön. 15/1-ğ · Kılavuz 6.2 | Çok okunan kitaplar listesinin ilanı |
-| §10 E16, §6.2 bağış | Yön. 10/3 | Bağış komisyonca değerlendirilir |
+| §10 E16, §6.2 bağış | Yön. 10/3 · Kılavuz 2.3.3 | Bağış komisyonca **değerlendirilir** (10/3); uygun bulunan kitabın kütüphaneye kazandırılması Kılavuz 2.3.3'tür |
 | §10 E20, §3 profil yasağı | Kılavuz 7 | Okuma ödülü **önerisi**; bağlayıcı değil, iç çıktı |
 | F10 istatistik | Yön. 7/1 | 10.000 kitap eşiği |
 
@@ -83,7 +83,11 @@ Mal Yönetmeliği · **OKY** Ortaöğretim Kurumları Yönetmeliği. Bölüm num
 | §9-10, E10 | TMY 32/3 | Giriş ve çıkışların durdurulması **isteğe bağlıdır** (kurul talebi + harcama yetkilisi), "hizmetin aksamaması" kaydıyla |
 | §9-11, E15 (kılavuzun Sınıf Kitaplığına ve Öğretmene Teslim bölümü) | TMY 32/5 · 23/6 | Ortak kullanım alanı sayımı ve Dayanıklı Taşınırlar Listesi; kişilere verilen miktar (kıyasen) |
 | E10 | TMY 32/7 · 32/8 · 32/9 · 10/1-g | Noksan düşüm teklifi, belgelerin muhasebe birimine gidişi, Sayım ve Döküm Cetveli |
-| E7 | TMY 5/8 · 10/1-e · 24/2 · 27/1 · 27/3 · 28 (1, 3, 4, 5, 7) · 31 | Kayıttan düşme, komisyon, imha tutanağı, devir |
+| E7 (kılavuzun Ayıklama ve Nadir Eserler bölümü) | TMY 5/8 · 10/1-a · 10/1-e · 24/1 · 24/2 · 27/1 · 27/3 · 28 (1, 3, 4, 5, 7, 8) · 31 | Kayıttan düşme, komisyon (28/1: biri işin uzmanı), imha tutanağı (kalem düzeyinde), ekonomik değeri olan hurda (28/8), devir. 10/1-e: "durumu belgeleyen tutanak" varsa komisyonsuz onay — Ayıklama tutanağının bu belge sayılması yorumdur, metinler harcama yetkilisinin takdiri olarak yazar. 10/1-a: VİF dayanağından önceki tarihi taşıyamaz (onay, gönderim ve bağış edinimi karardan önce olamaz; karar tarihi sonradan onlardan sonraya alınamaz) |
+| §6.2 bağış, Bağış değerlendirme sonucu (kılavuzun Katalog ve Ayıklama bölümleri; tasarım F8 ekleri 13) | TMY 16/1 · 13/2-c · 10/1 | Bağış taşınır kayıt yetkilisince Varlık İşlem Fişiyle kayda alınır, bir nüshası bağışçıya verilir (16/1); programın kataloglaması taşınır kaydı değildir. Kayda esas değer bağışçının belgeyle belirttiği değer, yoksa değer tespit komisyonunun belirlediği değerdir (13/2-c — "Birim fiyat" yardımı ve sonucun notu). 10/1'in belge listesinde "bağış kabul tutanağı" yoktur |
+| §9-9 bulunan kitap (tasarım F8 ekleri 14) | Yön. 19/1 · TMY 17 | Md. 19/1 bedelden sonra bulunmayı düzenlemez; "kaydı silinerek" kayıttan düşmeyle yerine gelir. Kayıttan düşülmüş nüshanın bulunması sayım fazlası gibi girişe kıyasen yapılır (TMY 17) |
+| Kayıp ve hasar önerisinin kayıttan düşülmesi (F9; tasarım F8 ekleri 34) | TMY 27/1 · 10/1-e · Yön. 12/1 | Md. 12/1'in bentleri kaybı ve hasarı saymaz; yok olan ya da kullanılamaz hâle gelen taşınır durumu belgeleyen tutanakla (E6) komisyonsuz, harcama yetkilisi onayıyla düşülür (10/1-e) |
+| A8 kararı (tasarım F8 ekleri 13 — kullanıcı kararı 25.09.2026: cetvel üretilmez, E10 ekinde 34/1 büyüklükleri) | TMY 4/1-b · 10/1-ğ · 10/2 · 32/4 · 32/6 · 32/9 · 34/1 · 34/2-b · 34/3-a | "Bakanlık" TMY'de Hazine ve Maliye Bakanlığıdır (4/1-b); cetvel biçimi onundur (10/2). Sayım Tutanağı sütunları (32/4, 32/6) ile cetvelin büyüklükleri (34/1: önceki yıldan devir, yıl içinde giren, çıkan, ertesi yıla devir) ayrıdır; "Gelecek Yıla Devir" = "Sayımda Bulunan Miktar" (10/1-ğ) |
 
 ### 3.3 Bilgi ve Sistem Güvenliği Yönergesi
 

@@ -44,6 +44,8 @@ const PAGE_TITLES: Array<[prefix: string, title: string]> = [
   ["/gecikmis-oduncler", "Gecikmiş Ödünçler"],
   // F7 (İ kolu): menüde yok; Genel Bakış kartlarından ve birbirlerinin bağlantılarından açılır.
   ["/ilisik-listesi", "İlişik Listesi"],
+  // F8: "/yil-sonu-raporu" "/yil-sonu" önekine de uyar; önce gelir.
+  ["/yil-sonu-raporu", "Yıl Sonu Raporu"],
   ["/yil-sonu", "Yıl Sonu"],
   ["/yil-basi", "Yıl Başı"],
   // Sıra anlamlıdır: alt sayfalar köke göre ÖNCE gelir ("/katalog/eser/3"
@@ -53,6 +55,8 @@ const PAGE_TITLES: Array<[prefix: string, title: string]> = [
   ["/katalog/ice-aktarma", "İçe Aktarma"],
   ["/katalog/hizli-kayit", "Hızlı Kayıt"],
   ["/katalog/etiketler", "Etiketler"],
+  ["/katalog/ayiklama", "Ayıklama"],
+  ["/katalog/nadir-eserler", "Nadir Eserler"],
   ["/katalog", "Katalog"],
   ["/ayarlar", "Ayarlar"],
   ["/ag-doktoru", "Ağ Doktoru"],

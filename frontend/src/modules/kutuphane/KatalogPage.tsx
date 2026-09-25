@@ -54,6 +54,9 @@ const YAN_EKRANLAR: { to: string; label: string; icon: string }[] = [
   { to: "/katalog/etiketler", label: "Etiketler", icon: "label" },
   { to: "/katalog/ice-aktarma", label: "İçe Aktarma", icon: "upload_file" },
   { to: EDINIMLER_ADRESI, label: "Edinimler ve Bağışlar", icon: "local_shipping" },
+  // F8: ayıklama (Md. 12/1) ve nadir eserler (Md. 12/2) — yönetici işi.
+  { to: "/katalog/ayiklama", label: "Ayıklama", icon: "inventory" },
+  { to: "/katalog/nadir-eserler", label: "Nadir Eserler", icon: "history_edu" },
 ];
 
 /** Bir eserin ayrıntı adresi. */

@@ -8,6 +8,14 @@
 // Karar geri alınamaz: uygulama onay diyaloğundan geçer. Her kalem tam olarak bir
 // kez kararlanmalıdır; eksik karar bütün işlemi reddeder (sunucu kuralı, burada
 // tekrarlanmaz — form yalnız kullanıcıya kalan kalemi gösterir).
+//
+// F8: (1) Bağış ön kayıt listesi (E16) komisyona sunulmak üzere ayrıntı penceresinden
+// basılır. (2) Edinim tarihi verilmezse komisyon kararının tarihi ile geliş tarihinin
+// geç olanıdır; karardan ve gelişten önce, bugünden sonra olamaz (TMY 10/1-a, Md. 10/3 —
+// kural sunucuda). (3) Kabul edilen kalem katalogda zaten varsa yeni eser açılmaz,
+// nüshalar o esere eklenir: birebir eşleşme kendiliğinden bağlanır ("Yeni eser aç" ile
+// ayrılabilir), şüpheli aday kendiliğinden bağlanmaz ("… eserine nüsha ekle" ile seçilir;
+// sözlük §1 "Eşleşme kovası").
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -29,13 +37,21 @@ import Select from "../../ui/Select";
 import { SkeletonList } from "../../ui/Skeleton";
 import { useSnackbar } from "../../ui/SnackbarProvider";
 import TextField from "../../ui/TextField";
+import {
+  BAGIS_LISTESI_BELGESI,
+  BAGIS_SONUCU_BELGESI,
+  ayiklamaApi,
+  belgeDosyaAdi,
+} from "../ayiklama/api";
 import { DONATION_STATUS_TR, KATALOG_SAYFA_BOYUTU, kutuphaneApi } from "./api";
 import type {
+  BagisEslesmesi,
   CommissionDecision,
   DonationIntake,
   DonationIntakeItem,
   DonationIntakeStatus,
 } from "./api";
+import { PdfDugmeleri } from "./etiketOrtak";
 import {
   MetinAlani,
   SECICI_SINIRI,
@@ -46,6 +62,20 @@ import {
   secimKesildiMi,
   useBolumler,
 } from "./ortak";
+
+/**
+ * Bağış değerlendirme sonucunun açıklaması (25.09.2026 kullanıcı kararı, tasarım F8 ekleri 13).
+ * TMY'de "bağış kabul tutanağı" diye bir belge yoktur; çıktı resmî belge değildir.
+ */
+export const BAGIS_SONUCU_ACIKLAMASI =
+  "Komisyon kararının dökümü: kabul ve ret edilen kaynaklar, ret gerekçeleri, kararın tarih ve " +
+  "sayısı. Taşınır kayıt yetkilisinin Varlık İşlem Fişine dayanak ve bağışçıya bilgi içindir; " +
+  "resmî giriş kaydı TKYS'de yapılır.";
+
+/** Bağış ediniminin birim fiyatının yardımı (Taşınır Mal Yönetmeliği md. 13/2-c). */
+export const BAGIS_BIRIM_FIYAT_YARDIMI =
+  "İsteğe bağlı; ondalık ayracı nokta ile yazılır. Bağışçının belgesindeki değer ya da değer " +
+  "tespit komisyonunun belirlediği değerdir (Taşınır Mal Yönetmeliği md. 13/2-c).";
 
 /** Ayrıntı penceresinin başlığı kipe göre değişir (sözlük §4: başlık = ekranın adı). */
 const KIP_BASLIKLARI: Record<"liste" | "karar" | "iptal", string> = {
@@ -364,6 +394,43 @@ function OnKayitAyrintisi({
           />
         )}
 
+        {kip === "liste" && kayit.items.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-shape-md bg-surface-container px-3 py-2">
+            <div className="min-w-0">
+              <p className="text-label-large text-on-surface">{BAGIS_LISTESI_BELGESI}</p>
+              <p className="text-body-small text-on-surface-variant">
+                Seçim ve Ayıklama Komisyonuna sunulur (Yönetmelik Md. 10/3); “Kabul / Ret” sütunu
+                komisyonda doldurulur.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <PdfDugmeleri
+                pdfAl={() => ayiklamaApi.bagisListesiPdf(kayit.id)}
+                dosyaAdi={() => belgeDosyaAdi(BAGIS_LISTESI_BELGESI)}
+                onizlemeBasligi={BAGIS_LISTESI_BELGESI}
+                onHata={setHata}
+              />
+            </div>
+          </div>
+        )}
+
+        {kip === "liste" && kayit.status === "DECIDED" && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-shape-md bg-surface-container px-3 py-2">
+            <div className="min-w-0">
+              <p className="text-label-large text-on-surface">{BAGIS_SONUCU_BELGESI}</p>
+              <p className="text-body-small text-on-surface-variant">{BAGIS_SONUCU_ACIKLAMASI}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <PdfDugmeleri
+                pdfAl={() => ayiklamaApi.bagisSonucuPdf(kayit.id)}
+                dosyaAdi={() => belgeDosyaAdi(BAGIS_SONUCU_BELGESI)}
+                onizlemeBasligi={BAGIS_SONUCU_BELGESI}
+                onHata={setHata}
+              />
+            </div>
+          </div>
+        )}
+
         {kip === "karar" && (
           <KararFormu
             kayit={kayit}
@@ -544,11 +611,27 @@ function KararFormu({
     Object.fromEntries(kayit.items.map((k) => [k.id, true])),
   );
   const [gerekceler, setGerekceler] = useState<Record<number, string>>({});
+  const [eslesmeler, setEslesmeler] = useState<Record<number, BagisEslesmesi>>({});
+  /** Kalem → seçim: "" varsayılan (birebir eşleşme bağlanır), "yeni" ya da eser kimliği. */
+  const [baglar, setBaglar] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
   const [hata, setHata] = useState<SayfaHatasi | null>(null);
   const { errors, setFieldError, clearErrors, applyApiError } = useFormErrors();
   const snackbar = useSnackbar();
   const confirm = useConfirm();
+
+  useEffect(() => {
+    let iptal = false;
+    kutuphaneApi
+      .donationMatches(kayit.id)
+      .then((yanit) => {
+        if (!iptal) setEslesmeler(Object.fromEntries(yanit.results.map((e) => [e.item, e])));
+      })
+      .catch(() => undefined);
+    return () => {
+      iptal = true;
+    };
+  }, [kayit.id]);
 
   useEffect(() => {
     let iptal = false;
@@ -591,6 +674,12 @@ function KararFormu({
       confirmLabel: "Uygula",
     });
     if (!onay) return;
+    const workLinks: Record<string, number | null> = {};
+    for (const id of kabulEdilen) {
+      const secim = baglar[id] ?? "";
+      if (secim === "yeni") workLinks[String(id)] = null;
+      else if (secim) workLinks[String(id)] = Number(secim);
+    }
     setBusy(true);
     try {
       const sonuc = await kutuphaneApi.applyDonationDecision(kayit.id, {
@@ -600,9 +689,13 @@ function KararFormu({
         acquisition_date: edinimTarihi || null,
         section: bolum ? Number(bolum) : null,
         unit_price: fiyat.trim() ? fiyat.trim() : null,
+        work_links: workLinks,
       });
+      const bagli = sonuc.linked_work_count ?? 0;
       snackbar.success(
-        `Karar işlendi: ${formatNumber(sonuc.work_count)} eser, ${formatNumber(sonuc.copy_count)} nüsha kataloglandı.`,
+        `Karar işlendi: ${formatNumber(sonuc.work_count)} eser, ${formatNumber(sonuc.copy_count)} nüsha kataloglandı.${
+          bagli > 0 ? ` ${formatNumber(bagli)} kalemin nüshaları katalogdaki esere eklendi.` : ""
+        }`,
       );
       onUygulandi(sonuc.intake);
     } catch (e) {
@@ -640,7 +733,7 @@ function KararFormu({
           value={edinimTarihi}
           onChange={(e) => setEdinimTarihi(e.target.value)}
           error={errors.acquisition_date}
-          helperText="Boş bırakılırsa bağışın geliş tarihi kullanılır."
+          helperText="Boş bırakılırsa komisyon kararının tarihi ile bağışın geliş tarihinden geç olanı kullanılır. Karardan ve gelişten önce, bugünden sonra olamaz."
         />
         <Select
           label="Bölüm"
@@ -656,7 +749,7 @@ function KararFormu({
           value={fiyat}
           onChange={(e) => setFiyat(e.target.value)}
           error={errors.unit_price}
-          helperText="İsteğe bağlı; ondalık ayracı nokta ile yazılır."
+          helperText={BAGIS_BIRIM_FIYAT_YARDIMI}
         />
       </div>
 
@@ -696,6 +789,13 @@ function KararFormu({
                   }
                 />
               )}
+              {kabuller[kalem.id] && (
+                <KatalogKarsiligi
+                  eslesme={eslesmeler[kalem.id]}
+                  secim={baglar[kalem.id] ?? ""}
+                  onSecim={(deger) => setBaglar((onceki) => ({ ...onceki, [kalem.id]: deger }))}
+                />
+              )}
             </li>
           ))}
         </ul>
@@ -710,5 +810,53 @@ function KararFormu({
         </Button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Kabul edilen kalemin katalogdaki karşılığı (F8). Birebir eşleşme varsayılan olarak
+ * bağlanır; şüpheli aday yalnız seçilirse bağlanır. Eşleşme yoksa hiçbir şey gösterilmez
+ * (yeni eser açılır).
+ */
+function KatalogKarsiligi({
+  eslesme,
+  secim,
+  onSecim,
+}: {
+  eslesme: BagisEslesmesi | undefined;
+  secim: string;
+  onSecim: (deger: string) => void;
+}) {
+  if (!eslesme || (eslesme.exact === null && eslesme.suspects.length === 0)) return null;
+  const eserAdi = (e: { title: string; authors: string }) =>
+    e.authors ? `${e.title} · ${e.authors}` : e.title;
+  if (eslesme.exact !== null) {
+    return (
+      <Select
+        label="Katalogdaki karşılığı"
+        value={secim === "yeni" ? "yeni" : ""}
+        onChange={(e) => onSecim(e.target.value)}
+        options={[
+          { value: "", label: `“${eserAdi(eslesme.exact)}” eserine nüsha ekle` },
+          { value: "yeni", label: "Yeni eser aç" },
+        ]}
+        helperText="Bu kitap katalogda var; nüshalar var olan esere eklenir."
+      />
+    );
+  }
+  return (
+    <Select
+      label="Katalogdaki karşılığı"
+      value={secim}
+      onChange={(e) => onSecim(e.target.value)}
+      options={[
+        { value: "", label: "Yeni eser aç" },
+        ...eslesme.suspects.map((w) => ({
+          value: String(w.id),
+          label: `“${eserAdi(w)}” eserine nüsha ekle`,
+        })),
+      ]}
+      helperText="Katalogda benzeyen eser var ama tam eşleşmiyor; aynı kitapsa seçin."
+    />
   );
 }

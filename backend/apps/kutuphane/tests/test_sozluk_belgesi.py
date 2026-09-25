@@ -17,8 +17,9 @@ from pathlib import Path
 import pytest
 from django.db import models
 
-from apps.kutuphane import views_teslim
+from apps.kutuphane import komisyon_belgeleri, views_teslim
 from apps.kutuphane.models import (
+    CRITERIA_MISMATCH_CRITERIA,
     CaseResolution,
     CaseType,
     CopyStatus,
@@ -26,7 +27,13 @@ from apps.kutuphane.models import (
     LabelOrder,
     LabelPrintBatchStatus,
     LabelPrintKind,
+    RareWorksSubmissionStatus,
     ReservedBarcodeState,
+    WeedingBatchStatus,
+    WeedingCriterion,
+    WeedingItemState,
+    WeedingReason,
+    WeedingTmyPath,
 )
 from apps.kutuphane.services import deliveries, loss_damage
 from apps.kutuphane.services.barcode_reservations import NEW_NUMBER_HINT
@@ -212,3 +219,80 @@ def test_teslim_dosya_ve_onarim_iletileri_sozlukte_birebir(ileti: str) -> None:
     (yer tutucular "(…)" ve "N" diye yazılır; sabit parçası aranır)."""
     hucre = _satir("| Teslim, dosya ve onarım iletileri").split("|")[2]
     assert ileti.strip() in hucre, ileti
+
+
+# ---------------------------------------------------------------------------
+# Ayıklama, nadir eser ve yıl sonu raporu (F8): durum, gerekçe, yol ve ölçüt adları
+# kodla birebir (sözlük §4.14); belge adları §2'de; "imha" yalnız 28/5 bağlamında
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    ("baslangic", "secenekler"),
+    [
+        ("| Teklif durumları", WeedingBatchStatus),
+        ("| Ayıklama gerekçesi", WeedingReason),
+        ("| TMY yolu", WeedingTmyPath),
+        ("| Kalem durumu", WeedingItemState),
+        ("| Nadir eser listesi durumu", RareWorksSubmissionStatus),
+    ],
+)
+def test_ayiklama_satirlari_kodun_secenekleriyle_birebir(
+    baslangic: str, secenekler: type[models.TextChoices]
+) -> None:
+    """Teklif ve kalem durumları, gerekçeler, TMY yolları ve liste durumları SIRASIYLA."""
+    hucre = _satir(baslangic).split("|")[2]
+    assert _kalin_dizi([etiket for _kod, etiket in secenekler.choices]) in hucre
+
+
+def test_uyulmayan_olcut_satiri_10_1_b_haric_birebir() -> None:
+    """Ekranın ölçüt listesi 10/1-b'yi TAŞIMAZ (Md. 12/1: o kaynak devredilir)."""
+    hucre = _satir("| Uyulmayan ölçüt").split("|")[2]
+    etiketler = [
+        etiket for kod, etiket in WeedingCriterion.choices if kod in CRITERIA_MISMATCH_CRITERIA
+    ]
+    assert _kalin_dizi(etiketler) in hucre
+    assert WeedingCriterion.AGE_LEVEL.label not in hucre
+
+
+def test_ayiklama_belgelerinin_adlari_sozlukte() -> None:
+    """E7 belgelerinin adları sözlük §2'de, sunucunun belge tanımlarıyla aynı sırada."""
+    hucre = _satir("| E7 ").split("|")[2]
+    adlar = [b.ad for b in komisyon_belgeleri.AYIKLAMA_BELGELERI]
+    assert " · ".join(adlar) in hucre
+
+
+@pytest.mark.parametrize(
+    ("baslangic", "yasaklar"),
+    [
+        ("| `WeedingBatch`", ("imha", "silme")),
+        ("| TMY yolu", ("imha", "hurdaya çıkarma")),
+        ("| Bağış durumları", ("bağış kabul tutanağı",)),
+    ],
+)
+def test_f8_yasak_sozcukler_kullanilmaz_sutununda(
+    baslangic: str, yasaklar: tuple[str, ...]
+) -> None:
+    hucreler = _satir(baslangic).split("|")
+    for yasak in yasaklar:
+        assert yasak in hucreler[3], f"{baslangic}: {yasak}"
+
+
+def test_ayiklama_ekranlarinda_imha_yalniz_28_5_baglaminda() -> None:
+    """Sözlük: "imha" yalnız imha tutanağı (TMY 28/5) bağlamında. Ekranın kullanıcı
+    metninde geçen her "imha" satırı imha kararı ya da İmha tutanağıyla ilgilidir."""
+    kok = _depo_kok() / "frontend" / "src" / "modules" / "ayiklama"
+    izinli = re.compile(r"İmha kararı|imha kararı|İmha tutanağı|imha edilmesi|28/5")
+    # Kullanıcıya görünen metin: tırnak ve ters tırnak içi dizgiler ile JSX metni
+    # (değişken adları taranmaz).
+    metin_parcasi = re.compile(r'"[^"\n]*"|`[^`]*`|>[^<>{}]+<')
+    taranan = 0
+    bulunan = 0
+    for yol in sorted(kok.glob("*.tsx")):
+        if ".test." in yol.name:
+            continue
+        taranan += 1
+        for parca in metin_parcasi.findall(_yorumsuz(yol)):
+            if "imha" in parca.casefold():
+                bulunan += 1
+                assert izinli.search(" ".join(parca.split())), f"{yol.name}: {parca.strip()}"
+    assert taranan >= 5
+    assert bulunan > 0

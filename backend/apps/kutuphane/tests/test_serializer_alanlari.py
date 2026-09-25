@@ -146,6 +146,8 @@ ALANLAR: dict[str, list[str]] = {
         "participants_text",
         "notes",
         "in_use",
+        # F8: karara bağlı kayıtların sayıları (edinim, bağış, ayıklama, nadir eser).
+        "usage",
         "created_at",
     ],
     "AcquisitionSerializer": [
@@ -196,6 +198,8 @@ ALANLAR: dict[str, list[str]] = {
         "acquisition_date",
         "section",
         "unit_price",
+        # F8: kabul edilen kalemin nüshalarının ekleneceği eser (null = yeni eser).
+        "work_links",
     ],
     # Toplu katalog aktarımı (F3, §8.1): önizleme ve uygulama AYNI gövdeyi alır;
     # uygulama yalnız edinim alanlarını ekler. Ekranda toplanan kararlar iki
@@ -347,6 +351,7 @@ YAZILABILIR: dict[str, set[str]] = {
         "acquisition_date",
         "section",
         "unit_price",
+        "work_links",
     },
     "CatalogImportPreviewSerializer": {
         "file",

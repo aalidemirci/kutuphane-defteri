@@ -1,0 +1,109 @@
+{% extends "documents/base.html" %}
+{% comment %}Komisyon belgelerinin ORTAK şablonu (F8; tasarım §10 E7, E8, E16) — bağlam
+apps/kutuphane/komisyon_belgeleri.py'den gelir: ayıklama teklif listesi, ayıklama
+tutanağı, kayıttan düşme teklif listesi, imha tutanağı, devir listesi, el yazması ve
+nadir eserler listesi, bağış ön kayıt listesi.
+
+Bölümler, sırasıyla: başlık (+ alt başlık), künye ızgarası (`info`), açıklama
+paragrafları, bir ya da birkaç tablo, KAPANIŞ (notlar, imza başlığı, imza ızgarası,
+tekil imza ve harcama yetkilisinin OLUR bloğu). Kapanış tek bölünmez kutudur: imzalar
+tek başına sonraki sayfaya düşmez, notlarıyla birlikte geçer.
+
+WeasyPrint kuralları: tablolar `table-layout: fixed` + `box-sizing: border-box`
+(yüzde + dolgu content-box'ta sayfayı taşırır); hücreye blok kutu konmaz, satır sayfa
+arasında bölünmez; başlık satırı her sayfada yinelenir. `text-transform` YOK: büyük
+harfli başlıklar bağlamda doğrudan büyük harfle (ya da `tr_upper` ile) gelir.{% endcomment %}
+{% block extra_style %}
+<style>
+  body { font-size: 9.5pt; }
+  .doc-title { margin: 10pt 0 2pt; }
+  .doc-subtitle { margin-bottom: 4pt; }
+  .info { margin: 6pt 0 6pt; }
+  .info td { padding: 3pt 8pt; font-size: 9pt; }
+  .info td.label { width: 32%; }
+  .para { margin: 4pt 0; font-size: 9pt; line-height: 1.35; text-align: justify; }
+  .tablo-basligi { font-size: 9pt; font-weight: bold; color: var(--pr-ink); margin: 8pt 0 3pt;
+    padding: 0 0 2pt 2pt; border-bottom: 1.2pt solid var(--pr-ink); break-after: avoid;
+    page-break-after: avoid; }
+  table.liste { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 8.6pt;
+    margin-bottom: 4pt; }
+  table.liste th, table.liste td { box-sizing: border-box; border: 0.5pt solid var(--pr-line);
+    padding: 3pt 4pt; vertical-align: top; overflow-wrap: break-word; }
+  table.liste th { background: var(--pr-fill-head); color: var(--pr-ink); text-align: left;
+    font-weight: bold; font-size: 8.3pt; }
+  table.liste tr { break-inside: avoid; page-break-inside: avoid; }
+  table.liste td.sayi, table.liste th.sayi { text-align: right; }
+  table.liste td.tek { white-space: nowrap; }
+  table.liste td.bos { color: var(--pr-muted); font-style: italic; }
+  .kapanis { break-inside: avoid; page-break-inside: avoid; }
+  .not { margin-top: 6pt; font-size: 8.4pt; color: var(--pr-secondary); text-align: justify; }
+  .imza-basligi { margin-top: 8pt; font-size: 9pt; font-weight: bold; color: var(--pr-ink);
+    text-align: center; }
+  .sig-grid { table-layout: fixed; margin-top: 8pt; }
+  .sig-grid td { vertical-align: top; padding-bottom: 4pt; }
+  .sig-grid .space { height: 20pt; }
+  .sig-grid .name { font-size: 8.6pt; }
+  .sig-grid .role { font-size: 8pt; }
+  .olur { margin-top: 6pt; width: 46%; margin-left: auto; text-align: center; break-inside: avoid;
+    page-break-inside: avoid; }
+  .olur .baslik { font-size: 10pt; font-weight: bold; letter-spacing: 1pt; }
+  .olur .tarih { font-size: 9pt; color: var(--pr-label); margin: 2pt 0 16pt; }
+  .olur .cizgi { border-top: 0.75pt solid var(--pr-secondary); width: 75%; margin: 0 auto 3pt; }
+  .olur .ad { font-size: 9.5pt; font-weight: bold; }
+  .olur .rol { font-size: 8.5pt; color: var(--pr-secondary); }
+  .dipnot { margin-top: 8pt; font-size: 7.8pt; color: var(--pr-muted); text-align: justify; }
+</style>
+{% endblock %}
+{% block content %}
+  <div class="doc-title">{{ document_title }}</div>
+  {% if subtitle %}<div class="doc-subtitle">{{ subtitle }}</div>{% endif %}
+  <table class="info">
+    <tr><td class="label">Düzenlenme tarihi</td><td>{{ issued_on }}</td></tr>
+    {% for r in info %}<tr><td class="label">{{ r.label }}</td><td>{{ r.value }}</td></tr>
+    {% endfor %}
+  </table>
+  {% for p in paragraphs %}<p class="para">{{ p }}</p>
+  {% endfor %}
+  {% for t in tables %}
+    {% if t.title %}<div class="tablo-basligi">{{ t.title }}</div>{% endif %}
+    <table class="liste">
+      <colgroup>{% for c in t.columns %}<col style="width:{{ c.width }}%">{% endfor %}</colgroup>
+      <thead><tr>{% for c in t.columns %}<th{% if c.cls %} class="{{ c.cls }}"{% endif %}>{{ c.header }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for r in t.rows %}<tr>{% for h in r %}<td{% if h.c %} class="{{ h.c }}"{% endif %}>{{ h.v }}</td>{% endfor %}</tr>
+        {% empty %}<tr><td class="bos" colspan="{{ t.columns|length }}">{{ t.empty }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endfor %}
+  <div class="kapanis">
+    {% for n in notes %}<p class="not">{{ n }}</p>
+    {% endfor %}
+    {% if signature_title %}<div class="imza-basligi">{{ signature_title }}</div>{% endif %}
+    {% if signature_rows %}
+    <table class="sig-grid">
+      {% for satir in signature_rows %}<tr>
+        {% for k in satir %}<td><div class="space"></div><div class="line"></div><div class="name">{% if k.name %}{{ k.name }}{% else %}&nbsp;{% endif %}</div><div class="role">{{ k.role }}</div></td>{% endfor %}
+      </tr>{% endfor %}
+    </table>
+    {% endif %}
+    {% if single_signature %}
+    <div class="signature">
+      <div class="date">{{ single_signature.date }}</div>
+      <div class="sig-line"></div>
+      <div class="name">{% if single_signature.name %}{{ single_signature.name }}{% else %}&nbsp;{% endif %}</div>
+      <div class="role">{{ single_signature.role }}</div>
+    </div>
+    {% endif %}
+    {% if approval %}
+    <div class="olur">
+      <div class="baslik">{{ approval.heading }}</div>
+      <div class="tarih">{{ approval.date }}</div>
+      <div class="cizgi"></div>
+      <div class="ad">{% if approval.name %}{{ approval.name }}{% else %}&nbsp;{% endif %}</div>
+      <div class="rol">{{ approval.role }}</div>
+    </div>
+    {% endif %}
+    {% if footnote %}<p class="dipnot">{{ footnote }}</p>{% endif %}
+  </div>
+{% endblock %}

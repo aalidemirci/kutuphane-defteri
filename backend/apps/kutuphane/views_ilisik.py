@@ -215,6 +215,8 @@ def _yil_sonu(ozet: yil_akislari.YearEndSummary) -> dict[str, Any]:
         "graduating_clear_students": ozet.graduating_clear_students,
         "counts": asdict(ozet.counts),
         "steps": ozet.steps,
+        # F8: yıl sonu kütüphane raporu (E9) — `{id, is_finalized}` ya da null.
+        "annual_review": ozet.annual_review,
     }
 
 

@@ -518,10 +518,39 @@ sapması — "Kayba dönüştü" ve TMY 32/3'ün daraltılmış kapsamı — ona
 sınırlar (a)-(i). Okuyucuyla toplu teslim, görevli kipinde geri alma ve F7
 belgelerinin gerçek yazıcı çıktısı F12'ye ertelendi.
 
-Sıradaki: F8 Komisyon + ayıklama (komisyon, ayıklama D7/D15 ve TMY yolu, devir,
-nadir eser D14, bağış kararı → toplu katalog, E7/E8/E9/E16, A8 kararı; F7'den devreden:
-kayıttan düşme önerileri kuyruğu ve "Bedelle başka eser alındı" nüshaları). Tam tablo:
-tasarım §14.1. Saha hazırlık hattı (S1-S15, kod dışı): §14.2.
+**F8 Komisyon + ayıklama — kod tarafı bitti (25.09.2026, dal `f8-ayiklama`).**
+`WeedingBatch` + `WeedingItem`, `RareWorksSubmission` + satırı, `AnnualLibraryReview` —
+tek göç `0007_ayiklama_nadir_eser_yil_raporu` · ayıklama iki karardır: Seçim ve Ayıklama
+Komisyonu kararı (Md. 12/1) ile harcama yetkilisi onayı (TMY 10/1-e, 28/4); durum
+makinesi taslak → sunuldu → karar → onay → uygulandı, geri çekme ve iptal (D15) · **E7
+tablosu tek kaynak** (`models.WEEDING_PATHS`; DB kısıtı + servis + `weeding/rules/`):
+10/1-b gerekçeli kalem 28'e gidemez, devir yalnız düzeye uygunsuzlukla · yalnız raftaki
+nüsha ayıklanır, nadir eser ayıklanamaz (D14), TMY 32/3 kapısı uygulamada · nüsha durumu
+yalnız "Uygulandı"da değişir (terminal, yumuşak silme değil) · nadir eserler listesi
+karara bağlı (D14); gönderilmiş ya da kararı bağlanmış listedeki işaret kaldırılamaz ·
+bağış kararı → toplu katalog (edinim tarihi kabul tarihidir, katalogdaki esere bağlanır) ·
+karar kullanımı (D7) · E7 (beş belge TMY yoluna göre, imha kalem düzeyinde), E8, E9
+(kişisiz; eşik + tamamlayıcı gizleme; kazandırılan yalnız Md. 10/5), E16 · Ayıklama,
+Nadir Eserler, Yıl Sonu Raporu ekranları, kılavuz ve sözlük §4.14. D7, D14, D15 kapandı.
+Sapmalar, kararlar ve düzeltme turu: tasarım §14.1 **"F8 ekleri"** (madde 22-33: teklife ya
+da nadir listesine girmiş nüsha silinemez, kararın tarihi ona dayanan kayıttan sonraya
+alınamaz, geri çekilen teklife aynı karar yalnız kapsamındaki kalemlerle bağlanır, E9
+tamamlayıcı gizleme). **25.09.2026 kullanıcı kararları** (F8 ekleri 13, 14, 34, 35; hepsi
+uygulandı, açık karar yok): A8 kabul — cetvel üretilmez, karardan sonra **"Bağış
+değerlendirme sonucu"** basılır (TMY'de "bağış kabul tutanağı" yoktur) · bedeli teslim
+alınmış kayıp dosyasında ve "Bedelle başka eser alındı"dan sonra (nüsha kayıttan
+düşülmemişse) **"Bulundu (bedel teslim alınmıştı)"**; bedelin iadesi okul yönetiminin
+kararıdır, program para tutmaz · kayıp ve **hasar** dosyasının kayıttan düşme önerisi
+ayıklamaya konmaz (ara belge düzeltmesi ve kalemin dosya bağı kalktı) · rapor dönemi
+kuralı kalır, Yıl Sonu Raporu ekranı uyarır. E7-E9, E16'nın gerçek yazıcı çıktısı F12'ye
+ertelendi.
+
+Sıradaki: F9 Sayım (anlık görüntü, TMY 32/3 durdurması ve "hizmet arası" iki ayrı seçenek,
+LOST uzlaştırma ve kayıp nüshanın kayıttan düşülmesi, D1/D4/D16/D17/D18, E10). F9, A8
+kararının ekini (E10 ekinde TMY 34/1 büyüklükleri; cetvel TKYS'de) ve kayıp/hasar
+önerilerinin TMY 27/1 + 10/1-e yolundan kayıp/hasar tutanağıyla komisyonsuz düşülmesini
+üstlenir (F8 ekleri 13, 34). Tam tablo: tasarım §14.1. Saha hazırlık hattı (S1-S15, kod
+dışı): §14.2.
 
 ---
 

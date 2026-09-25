@@ -35,6 +35,7 @@ export type Cozum =
   | "REPAIRED"
   | "CLOSED_SAME_REPURCHASED"
   | "CLOSED_OTHER_REPURCHASED"
+  | "FOUND_AFTER_PRICE"
   | "WRITE_OFF_PROPOSED"
   | "CONVERTED_TO_LOSS";
 
@@ -47,6 +48,9 @@ export const COZUM_TR: Record<Cozum, string> = {
   REPAIRED: "Onarıldı",
   CLOSED_SAME_REPURCHASED: "Bedelle aynısı alındı",
   CLOSED_OTHER_REPURCHASED: "Bedelle başka eser alındı",
+  // Bedeli teslim alınmış KAYIP dosyasında kitabın bulunması (25.09.2026 kullanıcı kararı):
+  // nüsha rafa döner, bedel kaydı kalır; bedelin iadesi okul yönetiminin kararıdır.
+  FOUND_AFTER_PRICE: "Bulundu (bedel teslim alınmıştı)",
   WRITE_OFF_PROPOSED: "Kayıttan düşme önerildi",
   // Kullanıcının seçtiği bir çözüm DEĞİLDİR: açık hasar dosyalı nüsha kaybolunca kayıp
   // bildirimi hasar dosyasını bununla kapatır (yalnız hasarda).
@@ -59,6 +63,7 @@ export const BEDEL_YOLLARI: ReadonlySet<Cozum> = new Set<Cozum>([
   "PRICE_RECEIVED",
   "CLOSED_SAME_REPURCHASED",
   "CLOSED_OTHER_REPURCHASED",
+  "FOUND_AFTER_PRICE",
 ]);
 
 /** Piyasa bedeli YALNIZ bu adımda sorulur (teslim alınan bedel sonradan değişmez). */
@@ -221,9 +226,10 @@ export const kayipApi = {
 
   /**
    * Çözüm işler. Bedel yolları ilkokul ve ortaokulda 400 alır (Md. 19). Kapanmış
-   * dosyada yalnız öneri geri alınır ("Kayıttan düşme önerildi" ile kapanmış kayıp
-   * dosyasında "Bulundu" — `allowed_resolutions` söyler). "Bedel teslim alındı"
-   * dosyası yalnız "Bedelle aynısı alındı" ya da "Bedelle başka eser alındı" ile kapanır.
+   * dosyada yalnız öneri geri alınır (öneriyle kapanmış kayıp dosyasında nüsha hâlâ
+   * "Kayıp"sa "Bulundu" ya da "Bulundu (bedel teslim alınmıştı)" — `allowed_resolutions`
+   * söyler). "Bedel teslim alındı" dosyası "Bedelle aynısı alındı", "Bedelle başka eser
+   * alındı" ya da (kayıpta) "Bulundu (bedel teslim alınmıştı)" ile kapanır.
    */
   coz: (id: number, govde: CozumGovdesi): Promise<Dosya> =>
     api.post<Dosya>(`/library/loss-damage-cases/${id}/resolve/`, govde),

@@ -5,7 +5,9 @@ talebi + harcama yetkilisinin adı ve tarihi) yalnız TMY anlamında giriş ve �
 olan işlemleri kapsar: edinim ve yeni nüsha, kayıttan düşme, devir ve **kayıp
 dosyası çözümü** (§9-10). OYS'nin sayım kilidi `report_lost` ile `resolve_case`'i
 kapsamıyordu (D4); bu projede o iki yol F7'den başlayarak bu kapıdan geçer ki F9
-kilidi tek yerden bağlasın.
+kilidi tek yerden bağlasın. F8'den beri ayıklama teklifinin uygulanması da
+buradan geçer: kayıttan düşme (`KAYITTAN_DUSME`) ve devir (`DEVIR`) ayrı ayrı
+sorulur (`services.weeding.apply_batch`).
 
 Dosya çözümlerinden hangisinin kapıdan geçeceğini `dosya_cozumu_kapsamda_mi`
 söyler (F7 düzeltme turu): nüshanın envanterdeki yerini değiştiren ya da
@@ -31,6 +33,10 @@ from apps.kutuphane.models import WRITE_OFF_RESOLUTIONS, CaseResolution, CaseTyp
 #: Kapıdan geçen işlemlerin adları (F9 tutanağı ve iletisi bunlara göre yazılır).
 KAYIP_BILDIRIMI: Final = "kayip_bildirimi"
 DOSYA_COZUMU: Final = "kayip_hasar_dosyasi_cozumu"
+#: F8 — ayıklama teklifinin uygulanması: kayıttan düşme (TMY 27/1, 28) ve devir
+#: (24/2, 31) TMY anlamında çıkıştır; ikisi de kapıdan geçer (`services.weeding`).
+KAYITTAN_DUSME: Final = "kayittan_dusme"
+DEVIR: Final = "devir"
 
 #: Md. 19 bedel ADIMLARI — dosyayı kapatmaz, nüshanın kaydına dokunmaz (kapsam dışı).
 BEDEL_ADIMLARI: Final[tuple[str, ...]] = (
@@ -43,8 +49,9 @@ def dosya_cozumu_kapsamda_mi(case_type: str, resolution: str) -> bool:
     """Bu dosya çözümü TMY 32/3 durdurmasının kapsamında mı? (§9-10 "kayıp dosyası çözümü")
 
     - Kayıp dosyası: iki bedel adımı ("Bedel belirlendi", "Bedel teslim alındı")
-      DIŞINDAKİ bütün çözümler — nüsha "Kayıp"tan rafa döner ("Bulundu", "Aynısı
-      temin edildi", "Bedelle aynısı alındı") ya da kayıttan düşme önerilir.
+      DIŞINDAKİ bütün çözümler — nüsha "Kayıp"tan rafa döner ("Bulundu", "Bulundu
+      (bedel teslim alınmıştı)", "Aynısı temin edildi", "Bedelle aynısı alındı")
+      ya da kayıttan düşme önerilir.
     - Hasar dosyası: yalnız kayıttan düşme önerisi yazan çözümler. "Onarıldı",
       "Aynısı temin edildi", "Bedelle aynısı alındı" ve bedel adımları nüshanın
       kaydını değiştirmez (onarım kapsam dışıdır).

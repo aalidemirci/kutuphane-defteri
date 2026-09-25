@@ -33,7 +33,10 @@ vi.mock("../../lib/download", async (importOriginal) => ({
 }));
 
 import DosyaAyrintisi, {
+  BEDELLI_ONERI_GERI_ALMA_NOTU,
+  BEDEL_IADESI_NOTU,
   BEDEL_YOK_NOTU,
+  KAYITTAN_DUSULMUS_NOTU,
   OKULUN_ACIK_ISI_NOTU,
   ONERI_GERI_ALMA_NOTU,
   bedelMetni,
@@ -212,6 +215,122 @@ describe("DosyaAyrintisi — Md. 19 kademe kapısı", () => {
   });
 });
 
+describe("DosyaAyrintisi — bedelden sonra bulunan kitap (25.09.2026 kullanıcı kararı)", () => {
+  const BEDELLI_BULUNMA: Dosya["allowed_resolutions"][number] = {
+    value: "FOUND_AFTER_PRICE",
+    label: "Bulundu (bedel teslim alınmıştı)",
+  };
+
+  it("“Bedel teslim alındı” dosyasında bulunma rafa döndürür; bedelin iadesi okulun kararıdır", async () => {
+    const user = userEvent.setup();
+    ciz(
+      dosyaVerisi({
+        resolution: "PRICE_RECEIVED",
+        resolution_display: "Bedel teslim alındı",
+        market_price: "80.00",
+        price_determined_at: "2026-09-23T10:00:00+03:00",
+        price_received_at: "2026-09-25T10:00:00+03:00",
+        is_person_open_work: false,
+        price_options_available: true,
+        allowed_resolutions: [
+          { value: "CLOSED_SAME_REPURCHASED", label: "Bedelle aynısı alındı" },
+          { value: "CLOSED_OTHER_REPURCHASED", label: "Bedelle başka eser alındı" },
+          BEDELLI_BULUNMA,
+        ],
+      }),
+    );
+    const cozum = screen.getByRole("region", { name: "Çözüm" });
+    expect(within(cozum).getByText(BEDEL_IADESI_NOTU)).toBeInTheDocument();
+    expect(BEDEL_IADESI_NOTU).toMatch(/okul yönetiminin kararıdır; program para tutmaz\.$/u);
+
+    await user.click(
+      within(cozum).getByRole("button", { name: "Bulundu (bedel teslim alınmıştı)" }),
+    );
+    const onay = screen.getByRole("dialog", {
+      name: "“Bulundu (bedel teslim alınmıştı)” işlensin mi?",
+    });
+    expect(onay).toHaveTextContent("nüsha rafa döner ve dosya kapanır");
+    expect(onay).toHaveTextContent(BEDEL_IADESI_NOTU);
+    expect(screen.queryByLabelText("O günkü piyasa bedeli (TL)")).not.toBeInTheDocument();
+    await user.click(within(onay).getByRole("button", { name: "İşle" }));
+    await waitFor(() =>
+      expect(kayip.coz).toHaveBeenCalledWith(5, { resolution: "FOUND_AFTER_PRICE" }),
+    );
+  });
+
+  it("“Bedelle başka eser alındı” ile kapanmış dosyada kitap bulunursa öneri geri alınır", async () => {
+    const user = userEvent.setup();
+    ciz(
+      dosyaVerisi({
+        is_open: false,
+        resolution: "CLOSED_OTHER_REPURCHASED",
+        resolution_display: "Bedelle başka eser alındı",
+        market_price: "80.00",
+        price_determined_at: "2026-09-23T10:00:00+03:00",
+        price_received_at: "2026-09-24T10:00:00+03:00",
+        resolved_at: "2026-09-25T10:00:00+03:00",
+        write_off_proposed_at: "2026-09-25T10:00:00+03:00",
+        allowed_resolutions: [BEDELLI_BULUNMA],
+      }),
+    );
+    const cozum = screen.getByRole("region", { name: "Çözüm" });
+    expect(within(cozum).getByText(BEDELLI_ONERI_GERI_ALMA_NOTU)).toBeInTheDocument();
+    expect(within(cozum).queryByText(ONERI_GERI_ALMA_NOTU)).not.toBeInTheDocument();
+    expect(within(cozum).getByText(BEDEL_IADESI_NOTU)).toBeInTheDocument();
+
+    await user.click(
+      within(cozum).getByRole("button", { name: "Bulundu (bedel teslim alınmıştı)" }),
+    );
+    const onay = screen.getByRole("dialog", {
+      name: "“Bulundu (bedel teslim alınmıştı)” işlensin mi?",
+    });
+    expect(onay).toHaveTextContent("Kayıttan düşme önerisi geri alınır");
+    expect(onay).toHaveTextContent("Bedelle alınan eser kayıtta kalır");
+    await user.click(within(onay).getByRole("button", { name: "İşle" }));
+    await waitFor(() =>
+      expect(kayip.coz).toHaveBeenCalledWith(5, { resolution: "FOUND_AFTER_PRICE" }),
+    );
+  });
+
+  it("nüsha kayıttan düşülmüşse bulunan kitabın yolu “Sayım fazlası” edinimidir", () => {
+    ciz(
+      dosyaVerisi({
+        is_open: false,
+        copy_status: "WITHDRAWN_LOST",
+        copy_status_display: "Kayıp (kayıttan düşüldü)",
+        resolution: "CLOSED_OTHER_REPURCHASED",
+        resolution_display: "Bedelle başka eser alındı",
+        resolved_at: "2026-09-25T10:00:00+03:00",
+        write_off_proposed_at: "2026-09-25T10:00:00+03:00",
+        allowed_resolutions: [],
+      }),
+    );
+    expect(screen.queryByRole("region", { name: "Çözüm" })).not.toBeInTheDocument();
+    const bolum = screen.getByRole("region", { name: "Bulunan kitap" });
+    expect(within(bolum).getByText(KAYITTAN_DUSULMUS_NOTU)).toBeInTheDocument();
+    expect(KAYITTAN_DUSULMUS_NOTU).toContain("“Sayım fazlası (kayda giriş)”");
+    expect(within(bolum).getByText(BEDEL_IADESI_NOTU)).toBeInTheDocument();
+  });
+
+  it("bedelden sonra bulunmuş dosya bedelin iadesinin okulun kararı olduğunu söyler", () => {
+    ciz(
+      dosyaVerisi({
+        is_open: false,
+        copy_status: "AVAILABLE",
+        copy_status_display: "Rafta",
+        resolution: "FOUND_AFTER_PRICE",
+        resolution_display: "Bulundu (bedel teslim alınmıştı)",
+        market_price: "80.00",
+        price_received_at: "2026-09-24T10:00:00+03:00",
+        resolved_at: "2026-09-25T10:00:00+03:00",
+        allowed_resolutions: [],
+      }),
+    );
+    expect(screen.getByText(BEDEL_IADESI_NOTU)).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Bulunan kitap" })).not.toBeInTheDocument();
+  });
+});
+
 describe("DosyaAyrintisi — sorumlu notu, onarım ve tutanak", () => {
   it("açık dosyada sorumlu notu kaydedilir", async () => {
     const user = userEvent.setup();
@@ -346,6 +465,7 @@ describe("yardımcılar", () => {
       "REPAIRED",
       "CLOSED_SAME_REPURCHASED",
       "CLOSED_OTHER_REPURCHASED",
+      "FOUND_AFTER_PRICE",
       "WRITE_OFF_PROPOSED",
     ];
     for (const tur of ["LOST", "DAMAGED"] as const) {
@@ -358,18 +478,31 @@ describe("yardımcılar", () => {
     expect(cozumSonucu("PENDING", { case_type: "LOST" })).toBe("");
   });
 
-  it("öneri sonucunda “Bulundu” yolunun açık ya da kapalı olduğu yazar", () => {
+  it("öneri sonucunda bulunma yolunun hangi düğmeyle açık kaldığı yazar", () => {
     expect(cozumSonucu("WRITE_OFF_PROPOSED", { case_type: "LOST" })).toContain(
       "“Bulundu” seçilir; öneri geri alınır",
     );
+    // 25.09.2026 kullanıcı kararı (F8 ekleri 14): "Bedelle başka eser alındı"dan sonra da
+    // nüsha kayıttan düşülmemişse kitap rafa döner.
     expect(cozumSonucu("CLOSED_OTHER_REPURCHASED", { case_type: "LOST" })).toContain(
-      "“Bulundu” seçilemez",
+      "henüz kayıttan düşülmemişse bu dosyada “Bulundu (bedel teslim alınmıştı)” seçilir",
+    );
+    expect(cozumSonucu("CLOSED_OTHER_REPURCHASED", { case_type: "LOST" })).not.toContain(
+      "seçilemez",
     );
     expect(cozumSonucu("CLOSED_OTHER_REPURCHASED", { case_type: "DAMAGED" })).not.toContain(
       "Bulundu",
     );
+    expect(cozumSonucu("PRICE_RECEIVED", { case_type: "LOST" })).toContain(
+      "kitap bulunursa “Bulundu (bedel teslim alınmıştı)”",
+    );
+    expect(cozumSonucu("PRICE_RECEIVED", { case_type: "DAMAGED" })).not.toContain("Bulundu");
     expect(cozumSonucu("FOUND_RETURNED", { case_type: "LOST", is_open: false })).toContain(
       "önerisi geri alınır",
     );
+    expect(cozumSonucu("FOUND_AFTER_PRICE", { case_type: "LOST", is_open: false })).toContain(
+      "önerisi geri alınır",
+    );
+    expect(cozumSonucu("FOUND_AFTER_PRICE", { case_type: "LOST" })).toContain(BEDEL_IADESI_NOTU);
   });
 });

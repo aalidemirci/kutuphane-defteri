@@ -1,0 +1,80 @@
+{% extends "documents/base.html" %}
+{% comment %}Yıl sonu kütüphane raporu (E9; tasarım §10, F8 ekleri 8) — bağlam
+apps/kutuphane/yil_raporu_belgesi.py::annual_review_context'ten gelir.
+
+Okul Kütüphaneleri Yönetmeliği Md. 12/1: ders yılı sonunda kaynaklar gözden geçirilir ve
+tespit edilen hususlar raporla okul müdürlüğüne bildirilir. Resmî yazı düzeni: sayı ve
+tarih üstte, konu, "OKUL MÜDÜRLÜĞÜNE", gövde, "Bilgilerinize arz ederim." ve imza.
+
+KİŞİSEL VERİ YOK (kod kapısı): bölümler kişisiz sayılardır; imza satırında ad basılmaz
+(kütüphane yöneticisi elle imzalar). Serbest metin (tespit edilen hususlar) kullanıcının
+yazdığıdır; ekran kişi adı yazılmamasını ister.
+
+WeasyPrint: sayı tabloları `table-layout: fixed` + `box-sizing: border-box`; satır
+bölünmez; kapanış (arz cümlesi + imza) tek bölünmez kutudur. `text-transform` YOK.{% endcomment %}
+{% block extra_style %}
+<style>
+  body { font-size: 9.5pt; }
+  table.ust { width: 100%; border-collapse: collapse; margin-top: 8pt; font-size: 9.5pt; }
+  table.ust td { padding: 1pt 0; vertical-align: top; }
+  table.ust td.sag { text-align: right; }
+  .konu { margin-top: 2pt; font-size: 9.5pt; }
+  .taslak { margin-top: 6pt; text-align: center; font-size: 8.5pt; font-weight: bold;
+    color: var(--pr-secondary); border: 0.75pt dashed var(--pr-faint); padding: 3pt; }
+  .muhatap { margin: 12pt 0 6pt; text-align: center; font-size: 10.5pt; font-weight: bold;
+    letter-spacing: 0.5pt; }
+  .para { margin: 5pt 0; font-size: 9.5pt; line-height: 1.4; text-indent: 1.2cm; }
+  .bolum-basligi { margin-top: 9pt; font-size: 9.5pt; font-weight: bold; color: var(--pr-ink);
+    padding: 0 0 2pt 2pt; border-bottom: 1.5pt solid var(--pr-ink); break-after: avoid;
+    page-break-after: avoid; }
+  table.sayilar { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 9pt;
+    border: 0.75pt solid var(--pr-line-soft); border-top: none; }
+  table.sayilar td { box-sizing: border-box; padding: 3pt 8pt; vertical-align: top;
+    border-bottom: 0.5pt solid var(--pr-line-soft); overflow-wrap: break-word; }
+  table.sayilar tr { break-inside: avoid; page-break-inside: avoid; }
+  table.sayilar td.etiket { width: 44%; color: var(--pr-label); background: var(--pr-fill);
+    border-right: 0.5pt solid var(--pr-line-soft); }
+  table.sayilar td.alt { font-weight: bold; color: var(--pr-ink); background: #ffffff; }
+  .tespit { border: 0.75pt solid var(--pr-line-soft); border-top: none; padding: 5pt 8pt;
+    font-size: 9.5pt; white-space: pre-wrap; min-height: 1.2cm; }
+  .not { margin-top: 4pt; font-size: 8.3pt; color: var(--pr-secondary); text-align: justify; }
+  .bolum.butun { break-inside: avoid; page-break-inside: avoid; }
+  .kapanis { break-inside: avoid; page-break-inside: avoid; margin-top: 10pt; }
+  .kapanis .para { text-indent: 1.2cm; }
+</style>
+{% endblock %}
+{% block content %}
+  <table class="ust">
+    <tr><td>Sayı : {{ document_no }}</td><td class="sag">{{ document_date }}</td></tr>
+  </table>
+  <div class="konu">Konu : {{ subject }}</div>
+  {% if draft_note %}<div class="taslak">{{ draft_note }}</div>{% endif %}
+  <div class="muhatap">{{ addressee }}</div>
+  {% for p in intro %}<p class="para">{{ p }}</p>
+  {% endfor %}
+
+  {% for b in sections %}
+  <div class="bolum{% if b.keep %} butun{% endif %}">
+    <div class="bolum-basligi">{{ b.title }}</div>
+    {% if b.text is not None %}<div class="tespit">{{ b.text }}</div>{% endif %}
+    {% if b.rows %}
+    <table class="sayilar">
+      {% for r in b.rows %}<tr><td class="etiket{% if r.sub %} alt{% endif %}">{{ r.label }}</td><td>{{ r.value }}</td></tr>
+      {% endfor %}
+    </table>
+    {% endif %}
+    {% for n in b.notes %}<p class="not">{{ n }}</p>
+    {% endfor %}
+  </div>
+  {% endfor %}
+
+  <div class="kapanis">
+    <p class="para">Bilgilerinize arz ederim.</p>
+    <div class="signature">
+      <div class="date">{{ signature_date }}</div>
+      <div class="sig-line"></div>
+      <div class="name">&nbsp;</div>
+      <div class="role">{{ signer_role }}</div>
+    </div>
+  </div>
+{% endblock %}

@@ -14,7 +14,10 @@ Alt modüller (OYS'nin tek `services.py` dosyası bölündü — tasarım §12):
 - `memberships` (F6): üyelik, kart no (asla yeniden kullanılmaz), kartı yenile,
   sonlandırma ve kişi kayıt defterlerine kaydolan kancalar;
 - `circulation` (F6): ödünç ve iade — §9 dolaşım kurallarının tek yeri;
-- `yonetici_kipi` (F6): "yalnız yönetici kipinde" işlerin servis katmanı kapısı.
+- `yonetici_kipi` (F6): "yalnız yönetici kipinde" işlerin servis katmanı kapısı;
+- `weeding` (F8): ayıklama teklifi — E7 yolu, komisyon kararı, harcama yetkilisi onayı;
+- `rare_works` (F8): el yazması ve nadir eserler listesi (Md. 12/2);
+- `annual_review` (F8): yıl sonu kütüphane raporu (Md. 12/1, E9 — kişisiz).
 
 Hatalar `django.core.exceptions.ValidationError` ile yükseltilir; DRF katmanında
 `shared.exceptions.kd_exception_handler` bunu 400'e ve `{code, message, fields}`

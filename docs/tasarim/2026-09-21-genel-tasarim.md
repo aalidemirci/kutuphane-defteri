@@ -1423,13 +1423,13 @@ Bütün PDF'ler KS'nin evrak şablon sistemi ve `shared/pdf.py` tek kapısı üz
 | E7 | Ayıklama: TMY yol eşlemesiyle belgeler (aşağıda) | Md. 12/1 · TMY 24/2, 27, 28, 31 | F8 |
 | E8 | El yazması ve nadir eserler listesi (komisyon kararına bağlı) | Md. 12/2 | F8 |
 | E9 | Yıl sonu kütüphane raporu, "Okul Müdürlüğüne", tarih/sayı, imza · bölümler: tespitler (+ onarım, hasar, kayıp sayıları), yıl içinde kazandırılanlar (yönteme göre), ayıklanan ve devredilen, koleksiyon özeti, kişisiz ödünç istatistiği · kişisel veri yok (test) | Md. 12/1, Kılavuz 2.4 | F8 |
-| E10 | Sayım tutanağı + XLSX. **Ödünç alanın kimliği basılmaz**, çünkü fazla/noksan sayfaları VİF'e bağlanıp muhasebe birimine gider (10/1-g, 32/8) · TMY 32/3 durdurma kararı ve "hizmet arası" okul kararı **ayrı satırlarda** · noksan düşüm teklifi (**32/7**) · ödünçteki nüsha "32/5'e kıyasen; 23/4" · Taşınır Sayım ve Döküm Cetveli (32/9) kararı A8 | TMY 32 | F9 |
+| E10 | Sayım tutanağı + XLSX. **Ödünç alanın kimliği basılmaz**, çünkü fazla/noksan sayfaları VİF'e bağlanıp muhasebe birimine gider (10/1-g, 32/8) · TMY 32/3 durdurma kararı ve "hizmet arası" okul kararı **ayrı satırlarda** · noksan düşüm teklifi (**32/7**) · ödünçteki nüsha "32/5'e kıyasen; 23/4" · Taşınır Sayım ve Döküm Cetveli (32/9) ÜRETİLMEZ (TKYS'nindir); tutanağın ekinde TMY 34/1 büyüklükleri ve "Bu döküm Taşınır Sayım ve Döküm Cetveli değildir" ibaresi (A8 kararı, 25.09.2026 — §14.1 F8 ekleri 13) | TMY 32, 34/1 | F9 |
 | E11 | Taşınır Kütüphane Defteri dökümü: **ciltsiz süreli yayın girmez** (TMY 10/1-a-4, 15/4; F10 testi) · Yönetim Hesabı Cetveli hazırlığı. Not: "Sayım kurulunca onaylanan Taşınır Sayım ve Döküm Cetveline dayanır; resmî cetveller TKYS'dedir" | TMY 9/1-ç, 10/1, 15/4, 34/2-c, 34/3-a | F10 |
 | E12 | "Ayın Kitapları" afişi: eser bazlı, eşikli, sayısız | Md. 15/1-ğ; Kılavuz 6.2 | F10 |
 | E13 | Kütüphane aydınlatma metni (§3 asgari içerik) | KVKK md. 10 | F6 (duyuru F1'den önce, S7) |
 | E14 | Kurtarma anahtarı çıktısı (yazdır / PDF / elle; doğrulamalı) | — | F1 |
 | E15 | **Teslim listesi** (şube ya da öğretmen) + geri alma dökümü. Şube tesliminde Dayanıklı Taşınırlar Listesi işlevini görür | U11; TMY 32/5 ve 23/6'ya kıyasen, 23/4 (§9-11) | F7 |
-| E16 | Bağış ön kayıt listesi (komisyona sunulur) | Md. 10/3 | F8 |
+| E16 | Bağış ön kayıt listesi (komisyona sunulur) · karardan sonra **Bağış değerlendirme sonucu** (kabul/ret, gerekçeler, karar tarih/sayısı; VİF'e dayanak ve bağışçıya bilgi — "bağış kabul tutanağı" TMY'de yoktur; F8 ekleri 13) | Md. 10/3 · TMY 16/1, 13/2-c | F8 |
 | E17 | Alfabetik katalog dökümü (yazar / eser / konu) | Md. 8/1-a, 11/1 | F10 |
 | E18 | Görev devri notu | — | F11 |
 | E19 | **Masa kartı**: görevli öğrenci için tek sayfa kullanım ve gizlilik uyarısı | KVKK 12/1 | F6 |
@@ -1440,11 +1440,20 @@ Bütün PDF'ler KS'nin evrak şablon sistemi ve `shared/pdf.py` tek kapısı üz
 | Gerekçe (Md. 12/1) | TMY yolu | Belgeler |
 |---|---|---|
 | Yıpranma (WORN, 12/1-a) | 27/1 ya da ekonomik ömrü bittiyse 28 | KDTOT (10/1-e: komisyon imzası + harcama yetkilisi onayı) + VİF · 27/3: harcama yetkilisinin kusur değerlendirmesi (olağan yıpranmada 5/8) |
-| Bilimsel değer kaybı (OBSOLETE, 12/1-b) · 10. madde ölçütlerine aykırılık (CRITERIA_MISMATCH, 12/1-ç; **10/1-b hariç**, 10/1'in diğer bentleri ve 10/4) | 28 | Seçim ve Ayıklama Komisyonu bildirimi → 28/1 komisyonu değerlendirmesi → 28/3 tutanak → 28/4 onay → imha kararıysa **28/5 imha tutanağı** → 28/7 VİF eki. *Çıkarım:* 10/4'e aykırı kitap hiçbir kütüphanede bulundurulamaz, bu yüzden devredilmez |
-| Düzeye uygunsuzluk (LEVEL_MISMATCH: 12/1-c ve **10/1-b** yaş/gelişim uyumsuzluğu) | **Devir zorunlu** (12/1): 24/2 (MEB okulları arası) ya da 31 (başka idare) | Devir listesi (PDF + XLSX) |
+| Bilimsel değer kaybı (OBSOLETE, 12/1-b) · 10. madde ölçütlerine aykırılık (CRITERIA_MISMATCH, 12/1-ç; **10/1-b hariç**, 10/1'in diğer bentleri ve 10/4) | 28 | Seçim ve Ayıklama Komisyonu bildirimi → 28/1 komisyonu değerlendirmesi → 28/3 tutanak → 28/4 onay → imha kararıysa **28/5 imha tutanağı** → 28/7 VİF eki. *Çıkarım:* 10/4'e aykırı kitap okul kütüphanelerinde ve sınıf kitaplıklarında bulundurulamaz; program bu gerekçeyi devir yoluna bağlamaz (10/4 başka idareyi bağlamaz — F8 ekleri, düzeltme turu 28) |
+| Düzeye uygunsuzluk (LEVEL_MISMATCH: 12/1-c ve **10/1-b** yaş/gelişim uyumsuzluğu) | **Devir zorunlu**: 12/1, 10/1-b'ye uygun olmayan kaynağın devrini ister; 12/1-c'yi de devre bağlamak programın kararıdır. 24/2 (MEB okulları arası) ya da 31 (başka idare) | Devir listesi (PDF + XLSX) |
 
 F8 kapısı bu eşlemeyi test eder: **10/1-b gerekçeli bir kalem 28 yoluna gidemez**.
 Madde metinleri tam TMY'den doğrulanır (AT-5).
+
+*Sapma notu (F8 ekleri 4, düzeltme turu 27):* yıpranma satırındaki "komisyon imzası"
+27/1 yolunda **isteğe bağlıdır**: 10/1-e, durumu belgeleyen tutanak, rapor ve benzeri
+belge varsa tutanağın komisyon kurulmadan harcama yetkilisince onaylanmasını öngörür.
+Ayıklama tutanağının bu belge sayılması bir yorumdur; belgeler ve ekran bunu harcama
+yetkilisinin takdiri olarak yazar ("onaylanabilir"). Kayıp ve hasar dosyasının kayıttan
+düşme önerisi bu tabloya girmez: sayımda 27/1 yolundan, kayıp/hasar tutanağıyla düşülür
+(F8 ekleri 34 — kullanıcı kararı 25.09.2026). 28 yolunda komisyon zorunludur (28/1: en az üç kişi, biri işin uzmanı);
+imha kararı kalem düzeyindedir (28/5), ekonomik değeri olan hurdada 28/8.
 
 ---
 
@@ -1582,15 +1591,15 @@ ifadeleri ters çevrilir: `settings.py:3-7`, `server.py:8`, `docs/kurulum.md:83-
 | D4 | Sayım kilidi `report_lost` ve `resolve_case`'i kapsamıyor | Kilit seçildiyse bunlar da kapsanır | F9 |
 | D5 | İçe aktarım: `shelf_location` kayboluyor, idempotency yok, önizleme uygulamayla eşleşmiyor | §8.1 | F3 |
 | D6 | Yıl UTC'den alınıyor | `localdate()` | F2 |
-| D7 | Karar türü denetlenmiyor | Tür denetimi | F2, F8 |
+| D7 | Karar türü denetlenmiyor | Tür denetimi | F2, F8 — kapandı (§14.1 F8 ekleri 10; düzeltme turu 24) |
 | D8 | Kartta okul adı boş, kartlar tekli basılıyor | §7.2 | F6 — kapandı (§14.1 F6 ekleri 12) |
 | D9 | Sayfalama yok, 26. ödünç iade edilemiyor | Sayfalama + barkodla iade | F2, F6 — kapandı (§14.1 F6 ekleri 12) |
 | D10 | "Basıldı" işareti PDF üretilince konuyor | Onaylı işaret | F4 |
 | D11 | `.upper()` Türkçe değil, soyad sezgisi yanlış | `tr_upper` + yazar biçimi kuralı | F2 |
 | D12 | İstisna gerekçesi boş kalabiliyor, sonlandırma nedeni doğrulanmıyor | Zorunlu alan + serializer | F6 — kapandı (§14.1 F6 ekleri 12) |
 | D13 | Anonimleştirme eksik (üyelik satırı, not metinleri) | §6.4 | F11 |
-| D14 | Nadir eser denetimi ve komisyon bağı yok | §6.2 | F8 |
-| D15 | Ayıklamada kalem silme ve teklif geri çekme yok | §6.2 | F8 |
+| D14 | Nadir eser denetimi ve komisyon bağı yok | §6.2 | F8 — kapandı (§14.1 F8 ekleri 5, 7; düzeltme turu 22, 23, 26) |
+| D15 | Ayıklamada kalem silme ve teklif geri çekme yok | §6.2 | F8 — kapandı (§14.1 F8 ekleri 2; düzeltme turu 25) |
 | D16 | Sayım fazlası eski barkodu raf alanına yazıyor | `surplus_barcode` | F9 |
 | D17 | Sayımda COMPLETED ile APPROVED arasında kilit boşluğu var (EK-12) | Kilit onaya kadar + onayda yeniden doğrulama | F9 |
 | D18 | TMY 32/3 zorunlu bir kilit gibi okunmuş, iade de kilitleniyor | §9-10 | F9 |
@@ -1627,7 +1636,7 @@ ifadeleri ters çevrilir: `settings.py:3-7`, `server.py:8`, `docs/kurulum.md:83-
 | **F6 Üyelik + dolaşım** | Membership (istek listesi) · kart şeması + kartı yenile · **dolaşım masası** (§7.3) · görevli ekranı · kartsız ödünç (yönetici) · iade tarihi (kapalı gün) · gecikme kartı + pusula · E2, E4, E13, E19 · D8, D9, D12, D19, D21 | §9-1…8, 12, 13 testleri · görevli kipinde yalnız izinliler (§5.10-8 dolu) · hızlı okutmada okuma kaybı yok · §5.10-4/5 yeniden koşar |
 | **F7 Teslim, kayıp, ilişik, yıl akışları** | Toplu teslim (U11) + E15 · kayıp/hasar/onarım (D3) · ilişik + E5, E6 · yıl sonu ve yıl başı akışları | Md. 19 kademe kapısı · teslimde sayı sınırı yok, ödünçte var · yıl sonu akışı sentetik veriyle uçtan uca · §5.10-4/5 yeniden koşar |
 | **F8 Komisyon + ayıklama** | Komisyon · ayıklama (D7, D15, TMY yolu) · devir · nadir eser (D14) · bağış kararı → toplu katalog · E7, E8, E9, E16 · A8 kararı | Nadir eser ayıklanamaz · devir yalnız düzeye uygunsuzlukla · TMY yol eşlemesi testi · E9'da kişisel veri yok |
-| **F9 Sayım** | Anlık görüntü · iki ayrı seçenek: TMY 32/3 durdurması ve "hizmet arası" · iade her zaman açık · kuyruk · iptal · LOST uzlaştırma · teslimdeki nüsha için kurul seçimi · D1, D4, D16, D17, D18 · E10 | 32/3 durdurması açıkken edinim, kayıttan düşme, devir ve dosya çözümü kapalı, ödünç açık · hizmet arası açıkken yalnız yeni ödünç kapalı · iki seçenek tutanakta ayrı satırda · iade hiçbir durumda kapanmaz · onayda durumu değişen kalem düşülmez · tutanakta ödünç alan kimliği yok · 32/7 |
+| **F9 Sayım** | Anlık görüntü · iki ayrı seçenek: TMY 32/3 durdurması ve "hizmet arası" · iade her zaman açık · kuyruk · iptal · LOST uzlaştırma · **kayıp ve hasar dosyasının kayıttan düşme önerisinin düşülmesi** (TMY 27/1 + 10/1-e, kayıp/hasar tutanağıyla, komisyonsuz — F8 ekleri 34) · teslimdeki nüsha için kurul seçimi · D1, D4, D16, D17, D18 · E10 + **ekinde TMY 34/1 büyüklükleri** (A8; cetvel TKYS'de — F8 ekleri 13) | 32/3 durdurması açıkken edinim, kayıttan düşme, devir ve dosya çözümü kapalı, ödünç açık · hizmet arası açıkken yalnız yeni ödünç kapalı · iki seçenek tutanakta ayrı satırda · iade hiçbir durumda kapanmaz · onayda durumu değişen kalem düşülmez · tutanakta ödünç alan kimliği yok · 32/7 |
 | **F10 Raporlar + dışa aktarım** | İstatistik (kişisiz, eşikli kırılımlar) · 10.000 eşiği (Md. 7) · çok okunanlar (k farklı üye; gün değişimi kapısına eklenir) + E12 · E11 (ciltsiz süreli yayın hariç), E17, E20 · dışa aktarım şeması + gidiş-dönüş · kişi dökümü · "Bakanlık sistemi kullanımda" hatırlatma ayarı | Gidiş-dönüş aynı kataloğu verir · §5.10-12 · profil yasağı testleri (§3) · ciltsiz süreli yayın E11'e girmez |
 | **F11 Bakım** | Dış yedek hatırlatması · saklama/anonimleştirme (gün değişimi kapısına eklenir; azami gecikme, `pre-anonim` rotasyonu, tetikte eski `pre-migrate` silme, BelgeIzi, kapanmış teslim) · görev devri (E18) · güncelleme (manifest, düğmeyle) | Eski exe yeni DB'yi açmaz · anonimleştirme sonrası yeniden basımda ibare var · açık yükümlülük varken kişi silinmez · temiz makinede geri yükleme provası |
 | **F12 Paketleme + saha kabulü** | Inno (yeni GUID, WebView2, iki mutex, kapatma olayı, güncelleme kipinde kural korunur) · `.deb` (ufw/firewalld) · `veri_sizintisi` ×2 · belgeler (kurulum, ağ kurulumu, yeni bilgisayara taşıma, kılavuz, masa kartı) · okulapp.org alanı (§17) · **ertelenen saha kapıları** | Temiz Windows 11'de uçtan uca: kurulum → sihirbaz → e-Okul → Excel katalog → etiket → dolaşım → ağdan arama → yedek/geri yükleme · Pardus'ta aynı zincir · tahtadan arama (S2'ye bağlı) · gerçek okuyucu |
@@ -2771,8 +2780,455 @@ yolu yoktur (Basım Geçmişi'ndeki "Yeniden bas" bütün partiyi basar). (g) 60
 teslim listesinde son sayfaya yalnız not ve imza düşebilir. (h) "Bedelle başka eser
 alındı" ile kapanan kayıp dosyasında kitap sonradan bulunursa rafa dönüş yolu yoktur (Md.
 19 bu yolda kaybedilenin kaydının silinmesini ister); nüsha F8 ayıklamasında ele alınır.
+*KAPANDI (25.09.2026 kullanıcı kararı, F8 ekleri 14):* nüsha kayıttan düşülmemişse
+"Bulundu (bedel teslim alınmıştı)" ile rafa döner; kayıp nüsha ayıklanmaz, kaydı sayımda
+kapanır.
 (i) Kayıp/hasar tutanağı alan sınırındaki veride (500 karakterlik kaynak adı ve yazar)
 iki sayfa olur; ÇÖZÜM, Md. 19 alıntısı ve imzalar birlikte ikinci sayfaya geçer.
+
+**F8 ekleri (25.09.2026).** F8'de tasarımdan bilinçli sapmalar ve tasarımda yazmayan
+kararlar. Üç iş kolunda (model, servis ve uçlar — madde 1-12; evrak ve ekranlar — madde
+15-20; kılavuz ve sözlük — madde 21) yapıldı, ardından bütünleştirildi; bütünleştirme
+sonrası denetimin (mevzuat, veri bütünlüğü ve KVKK, arayüz mercekleri) bulguları
+**düzeltme turunda** (madde 22-35) kapatıldı. Kullanıcıya sunulan dört öneri (madde 13,
+14, 34, 35) **25.09.2026'da kullanıcı kararına bağlandı** ve uygulandı (F9'a bırakılan
+kısımlar KARAR olarak yazıldı; açık karar kalmadı). Kod kapısı (§14.1 F8 satırı;
+karşılıkları madde 3, 5, 7, 8 ve 12, düzeltme turunda 22-26) ve `bash scripts/gates.sh`
+yeşildir (25.09.2026). **D7, D14 ve D15 kapandı** (§13; madde 10, 5 ve 7, 2). Her madde
+atfı `docs/mevzuat/` metninden doğrulandı. E7, E8, E9 ve E16'nın gerçek yazıcıdan çıktısı
+saha denemesidir (F12).
+
+1. **§6.2 — modeller ve tek göç** (`0007_ayiklama_nadir_eser_yil_raporu`):
+   `WeedingBatch` + `WeedingItem`, `RareWorksSubmission` + `RareWorksSubmissionItem`,
+   `AnnualLibraryReview`. Şifreli: harcama yetkilisinin adı (`approved_by_name`) ve
+   TMY komisyonu üyeleri (`tmy_commission_members` — 10/1-e ve 28/1 komisyonu).
+   Kalem, nadir eser satırı ve yıl sonu raporu kişisizdir.
+2. **D15 — durum makinesi.** Taslak → Komisyona sunuldu → Komisyon kararı bağlandı →
+   Harcama yetkilisi onayladı → Uygulandı; uygulanmamış teklif her adımda iptal edilir.
+   Kalem silme yalnız taslakta (yumuşak silme). **Teklifi geri çekmek** sunulmuş,
+   kararı bağlanmış ya da onaylanmış teklifi taslağa döndürür ve sonraki adımların
+   bütün kayıtlarını (karar bağı, onay, şifreli adlar, imha kararı, dışarıda bırakma
+   işaretleri) temizler. OYS'nin tek "onay" adımı ikiye ayrıldı: ayıklamaya Seçim ve
+   Ayıklama Komisyonu karar verir (Md. 12/1), kayıttan düşmeyi ve devri harcama
+   yetkilisi onaylar (TMY 10/1-e, 28/4; 24, 31). Komisyonun ayıklanmasına karar
+   vermediği ve harcama yetkilisinin onaylamadığı kalem (28/2) SİLİNMEZ, gerekçesiyle
+   işaretlenir — tutanak teklif edileni ve ayıklananı birlikte gösterir. Nüsha durumu
+   yalnız "Uygulandı"da değişir (teklif ≠ onay; teklif sürerken kitap rafta ve ödünç
+   verilebilir kalır, uygulama her kalemi yeniden denetler).
+3. **E7 tablosu üç katmanda.** `models.WEEDING_PATHS` tek kaynaktır; DB kısıtı
+   (`ck_weedingitem_e7_path`), servis iletisi ve `library/weeding/rules/` ucu
+   ondan kurulur (ekran gerekçeyi seçince yolu buradan koyar). Yıpranma 27/1'e
+   (varsayılan) ya da 28'e; bilimsel değer kaybı ve 12/1-ç 28'e; düzeye uygunsuzluk
+   24/2'ye (varsayılan) ya da 31'e. **10/1-b gerekçeli kalem 28'e gidemez** iki yoldan
+   kilitlidir: `LEVEL_MISMATCH` devir dışında yol almaz; 12/1-ç kaleminde uyulmayan
+   ölçüt zorunludur ve 10/1-b seçilemez (`ck_weedingitem_criterion`; ileti kullanıcıyı
+   "Kurumun düzeyine uygun değil" gerekçesine yönlendirir).
+4. **Onay kuralları (TMY).** Harcama yetkilisinin adı ve onay tarihi zorunludur;
+   tarih bugünden sonra ve komisyon kararından önce olamaz (10/1-a: VİF "dayanağını
+   oluşturan belgenin tarihinden önceki bir tarihi taşıyamaz"). 28 yolunda kalem varsa
+   TMY komisyonu zorunludur ve en az üç kişidir (28/1); 27/1 yolunda isteğe bağlıdır
+   (10/1-e: durumu belgeleyen tutanak varsa komisyon kurulmadan harcama yetkilisi
+   onaylar; Md. 12/1'in ayıklama tutanağının bu belge sayılması yorumdur ve harcama
+   yetkilisinin takdiridir — düzeltme turu 27). İmha kararı yalnız 28 yolunda ve kalem
+   düzeyindedir (28/5 imha tutanağı E7'de — düzeltme turu 29). Devir kaleminde devralacak kurum onaydan önce
+   yazılır; komisyon "devredilsin" dedikten sonra okul bulunabileceği için kurum
+   sunulmuş ve kararı bağlanmış teklifte de düzeltilir.
+5. **Engeller.** Ayıklamaya yalnız RAFTAKİ nüsha konur: ödünçte, teslimde, onarımda,
+   kayıp, kayıttan düşülmüş ya da devredilmiş nüsha, çözülmemiş kayıp/hasar dosyası
+   olan nüsha, nadir/el yazması eser ve süren başka bir teklifteki nüsha konamaz.
+   *Sapma:* OYS onarımdaki nüshayı kabul ediyordu; burada önce "Onarımdan dön"
+   işlenir (açık onarım kaydı sessizce kapanmasın, E9 onarım sayısı bozulmasın).
+6. **Kayıp nüsha ayıklanmaz** (hasar önerisi de — madde 34, kullanıcı kararı 25.09.2026).
+   *İlk kurulum (değişti):* hasar dosyasının önerisi aday listesinin başındaydı ve kalem
+   o dosyaya bağlanıyordu. *Bugün:* F7'nin kayıttan düşme önerilerinin hiçbiri aday
+   değildir; KAYIP nüshanın önerisi yanıtın `lost_proposals`, HASAR dosyasının önerisi
+   `damage_proposals` bölümünde gerekçesiyle gösterilir ve teklife eklenemez. Gerekçe:
+   Md. 12/1'in a-ç bentleri kaybı saymaz; kaybolan taşınır TMY 27/1'le, kayıp tutanağı
+   (E6) varsa komisyon kurulmadan harcama yetkilisi onayıyla düşülür (10/1-e) — bu bir
+   Seçim ve Ayıklama Komisyonu kararı değildir. Kayıp nüshanın kayıttan düşülmesi
+   (`WITHDRAWN_LOST`) F9 sayımının kayıp nüsha uzlaştırmasına bırakıldı (§14.1 F9
+   "LOST uzlaştırma"). F9'dan önce ayrı bir "kayıp nüshanın kayıttan düşülmesi"
+   teklifi istenirse F9 sözleşmesine yazılır.
+7. **D14 — nadir eser.** Liste bir komisyon kararına bağlıdır (gönderimden önce; DB
+   kısıtı); karar türü "Ayıklama"dır (Md. 12 "Bakım, onarım ve ayıklama" başlığı;
+   ayrı bir karar türü AÇILMADI — istenirse `CommissionDecisionType`'a eklenir).
+   Gönderim tarihi bugünden sonra ve karardan önce olamaz; gönderilmiş liste
+   değişmez ve içindeki nüshanın nadir eser işareti kaldırılamaz
+   (`catalog.ensure_rare_flag_change`). Karar bağlanmış (henüz gönderilmemiş) listedeki
+   işaret de kaldırılamaz — Md. 12/2 listeyi "komisyon tarafından tespit edilen" diye
+   tanımlar (düzeltme turu 23); hiçbir listede ya da kararı bağlanmamış listede olan
+   işaret veri hatası olarak düzeltilebilir.
+8. **E9 verisi — yıl sonu raporu.** Ders yılı başına tek rapor (DB kısıtı). Dönem:
+   ders yılının başlangıcından sonraki ders yılının başlangıcına dek (yoksa bugüne ya
+   da yıl sonuna) — kılavuzun takvimi ayıklamayı Ağustos'a koyar, yaz aylarındaki iş
+   iki yılın arasında kaybolmasın (rapor sonraki ders yılı tanımlanmadan sonlandırılırsa
+   yaz ayıklaması hiçbir rapora girmez — kural kalır, ekran uyarır: madde 35, kullanıcı
+   kararı 25.09.2026). Bölümler: koleksiyon özeti, yıl
+   içinde kazandırılanlar (yalnız Md. 10/5 yolları; kayıt içi girişler ayrı — düzeltme
+   turu 31), ayıklanan ve devredilen (gerekçe ve TMY yoluna göre), tespitler (onarım,
+   hasar, kayıp, çözümler, kayıttan düşme önerileri), kişisiz ödünç istatistiği.
+   **Profil yasağı:** üye türü ve sınıf düzeyi kırılımında grupta k farklı üyeden azı
+   varsa sayı gösterilmez (k = çok okunanlar eşiği, `popular_min_members`) ve toplamdan
+   geri hesaplanamasın diye tamamlayıcı gizleme yapılır (düzeltme turu 30); üye bazında
+   alan, şube × konu kırılımı ve adlı sıralama yoktur (kod kapısı testi sentetik adlarla
+   bütün çıktıyı tarar ve türetmeyi sınar). "Raporu sonlandır" sayıları dondurur
+   (yeniden basım aynı sayıları taşır); sonlandırma geri alınabilir.
+9. **Bağış kararı → toplu katalog (F2 davranışı değişti).** (a) Edinim tarihi kabul
+   tarihidir: verilmezse komisyon kararı ile geliş tarihinin geç olanı; verilen tarih
+   karardan (10/1-a, Md. 10/3), gelişten önce ve bugünden sonra olamaz. F2'de varsayılan
+   geliş tarihiydi. (b) Kabul edilen kalem katalogda zaten varsa (F3 içe aktarımının
+   ölçütü: ISBN-13 + aynı ad ya da aynı ad + aynı yazar, TR katlamalı) yeni eser
+   açılmaz, nüshalar o esere eklenir; şüpheli aday kendiliğinden bağlanmaz. Karar
+   gövdesine `work_links` (kalem → eser; `null` = yeni eser aç), yanıta
+   `linked_work_count` eklendi; kararı uygulamadan önce `library/donation-intakes/<pk>/matches/`
+   eşleşmeleri gösterir (kayıt yazmaz).
+10. **D7 — karar kullanımı.** Ayıklama teklifi ve nadir eserler listesi de kararı
+    "kullanımda" yapar (tür değişmez, kayıt silinmez); karar serileştiricisine
+    kişisiz sayılar (`usage`) eklendi.
+11. **TMY 32/3 kapısı.** Uygulama `tmy_kapisi.ensure_open`'ı kayıttan düşme
+    (`KAYITTAN_DUSME`) ve devir (`DEVIR`) için ayrı ayrı sorar; kapı kapalıysa
+    hiçbir nüshaya dokunulmaz. Edinimin (bağış kataloglaması dahil) kapıya bağlanması
+    F9'un işidir.
+12. **§5.10-4/5 yeniden koştu.** Ayıklama, nadir eser ve yıl sonu raporu tabloları
+    katalog authorizer'ında reddedilir; uygulanmış ayıklama (servis yoluyla) doluyken
+    görünümlerin okuduğu küme değişmez; kayıttan düşülmüş ve devredilmiş nüsha
+    görünümde, sayaçta ve sayfada yoktur, bütün nüshası elden çıkmış kitabın sayfası
+    404'tür; onaylayan, TMY komisyonu ve devralacak kurum hiçbir sayfada geçmez. Yeni
+    uçların hiçbiri görevli kipi izin listesinde değildir.
+
+**Kullanıcıya sunulan öneriler — KULLANICI KARARI (25.09.2026): madde 13 ve 14'te öneri
+kabul edildi, uygulandı.**
+
+13. **A8: Taşınır Sayım ve Döküm Cetveli (32/9) ve "bağış kabul tutanağı". KULLANICI
+    KARARI (25.09.2026): ÖNERİ KABUL.** *Karar.* (1) Program Taşınır Sayım ve Döküm
+    Cetveli'ni **üretmez** (TKYS'nindir). **F9 sözleşmesi:** sayım tutanağının (E10)
+    ekinde, aşağıdaki *Öneri* paragrafındaki TMY 34/1 büyüklükleri kütüphane materyali
+    için nüsha sayısıyla verilir (önceki yıldan devir · yıl içinde giren — Md. 10/5 yolları
+    ve sayım fazlası, programa aktarım ayrı satırda · yıl içinde çıkan · gelecek yıla
+    devir = sayımda bulunan · sayım fazlası ve noksanı · ödünçteki ve teslimdeki nüshanın
+    sayılışı ayrı satırda) ve ek "Bu döküm Taşınır Sayım ve Döküm Cetveli değildir; resmî
+    cetvel TKYS'de düzenlenir." ibaresini taşır. *Seçenek* ("Sayım tutanağı özeti")
+    seçilmedi. (2) Bağış tarafı F8'de uygulandı: komisyon kararı uygulanmış ön kayıttan
+    **"Bağış değerlendirme sonucu"** basılır (`komisyon_belgeleri.donation_result_pdf`,
+    uç `library/donation-intakes/<pk>/result-pdf/` — yalnız yönetici kipi, karar
+    uygulanmadan 400 "Komisyon kararı uygulandıktan sonra basılır."; `shared.pdf`
+    kapısından). İçerik: geliş tarihi, bağışçı (şifreli alandan, yalnız belgeye), Seçim
+    ve Ayıklama Komisyonu kararının tarih ve sayısı, edinim tarihi, sonuç sayıları,
+    "KABUL EDİLEN KAYNAKLAR" ve "REDDEDİLEN KAYNAKLAR" (ret gerekçesiyle) tabloları, Md.
+    10/3 alıntısı, TMY 16/1 ve 13/2-c notu, "Hazırlayan — Kütüphane yöneticisi" imzası,
+    TKYS dipnotu; bir kabul ve bir retle gerçek uzunlukta tek sayfa (test). Ad bilinçle
+    "tutanak" değildir. Bağış ön kaydı penceresinde E16'nın altında ayrı satırdır;
+    bağışın "Birim fiyat" yardımı 13/2-c'yi söyler; kılavuz TMY'de "bağış kabul
+    tutanağı" olmadığını TEK olumsuz cümleyle yazar (kılavuzun yasak sözcük testi yalnız
+    bu cümleye izin verir). Program VİF, Taşınır Geçici Alındısı ve değer tespit
+    komisyonu tutanağı üretmez. Aşağıdaki metin kararın dayanağıdır.
+    (Düzeltme turunda denetime göre düzeltildi: önceki metin Sayım Tutanağının
+    sütunlarını cetvelin sayıları diye sunuyordu.)
+    *Metin.* TMY 32/9: "Kayıtların sayım sonuçlarıyla uygunluğu sağlandıktan sonra
+    sayım kurulu tarafından Taşınır Sayım ve Döküm Cetveli düzenlenir. Cetvel, sayım
+    kurulu ile taşınır kayıt yetkilisi tarafından imzalanır." Cetvel sayım tutanağı
+    ve giriş-çıkış belgeleriyle taşınır kayıt yetkilisinin yıl sonu hesabını oluşturur
+    (32/9), taşınır mal yönetim hesabının parçasıdır (34/2-b) ve Kütüphane Yönetim
+    Hesabı Cetveli ona dayanır (34/3-a). 10/1-ğ: cetvel "Taşınır I. Düzey Detay
+    Kodunda gösterilen her bir taşınır grubu için" düzenlenir, taşınırlar II. düzey
+    detay kodu düzeyinde kaydedilir; "Gelecek Yıla Devir" sütunu sayım tutanaklarının
+    "Sayımda Bulunan Miktar"ına eşit olmalıdır. Yönetim hesabında "önceki yıldan
+    devredilen, yılı içinde giren, çıkan ve ertesi yıla devredilen taşınırlar ile yıl
+    sonu sayımında bulunan fazla ve noksanlar gösterilir" (34/1). Cetvelin biçimi Hazine
+    ve Maliye Bakanlığınındır (TMY 4/1-b: "Bakanlık" Hazine ve Maliye Bakanlığıdır;
+    10/2); onay taşınır bilişim sisteminde yapılabilir (10/3). Cetvelin sütun adları
+    Bakanlığın örneğindedir, depodaki metinde yoktur. Sayım Tutanağının sütunları
+    ("Kayıtlara Göre Ambardaki Miktar", "Ambarda Bulunan Miktar", "Fazla", "Noksan" —
+    32/4, 32/6) ayrı bir belgedir ve E10'dur.
+    *Öneri.* Program cetveli **üretmez**: cetvel taşınır kodu (grup) düzeyinde, biçimi
+    belirlenmiş, muhasebe kaydına bağlanan bir hesap belgesidir ve TKYS'de düzenlenir;
+    programın nüsha kaydı taşınır koduna eşlenmiş değildir (TKYS kodu isteğe bağlıdır;
+    S8: okullar TKYS'de nüsha bazında kayıt tutmuyor). Program E10'un ekinde, taşınır
+    kayıt yetkilisinin cetvele aktaracağı **34/1 büyüklüklerini** kütüphane materyali
+    için nüsha sayısıyla verir: **önceki yıldan devir** (dönem başında kayıtta olan) ·
+    **yıl içinde giren** (Md. 10/5 yolları ve sayım fazlası; programa aktarım ayrı
+    satırda) · **yıl içinde çıkan** (kayıttan düşme, devir, sayım noksanı) · **gelecek
+    yıla devir** (= sayımda bulunan, 10/1-ğ) · sayım fazlası ve noksanı; ödünçteki ve
+    teslimdeki nüshanın nasıl sayıldığı ayrı satırda (§9-10/11). Çıktı "Bu döküm Taşınır
+    Sayım ve Döküm Cetveli değildir; resmî cetvel TKYS'de düzenlenir." ibaresini taşır
+    (E11 notuyla aynı dil). *Seçenek:* cetvel iddiası hiç kurulmaz, ek yalnız "Sayım
+    tutanağı özeti" adıyla E10'un sütunlarını toplar.
+    *Bağış.* TMY'nin 10/1 belge listesinde **"bağış kabul tutanağı" diye bir belge
+    yoktur.** TMY'nin bağış yolu: bağış teslim alındığında taşınır kayıt yetkilisi VİF
+    düzenler ve bir nüshası bağışçıya verilir (16/1); değer, bağışçının belgeyle
+    belirttiği değer, yoksa değer tespit komisyonunun belirlediği değerdir (13/2-c,
+    13/3); muayene ve kabul hemen yapılamıyorsa Taşınır Geçici Alındısı düzenlenir,
+    kabul edilmeyenlerde geri alınır (10/1-d). Yönetmelik Md. 10/3 ve Kılavuz 2.3.3
+    bağışı Seçim ve Ayıklama Komisyonunun değerlendirmesine bağlar. *Öneri:* program
+    TMY belgesi (VİF, Taşınır Geçici Alındısı) üretmez; iki hazırlık çıktısı verir —
+    (1) E16 bağış ön kayıt listesi (komisyona sunulur) ve (2) kararın ardından
+    **"Bağış değerlendirme sonucu"** (kabul ve ret edilen kalemler, ret gerekçeleri,
+    karar tarih/sayısı, edinim tarihi): taşınır kayıt yetkilisinin VİF'ine dayanak ve
+    bağışçıya bilgi. "Bağış kabul tutanağı" adı kullanılmaz (TMY'de yoktur; resmî
+    belge sanısı doğurur). Bağış ediniminin birim fiyatı ekranda "bağışçının
+    belgesindeki değer ya da değer tespit komisyonunun belirlediği değer (TMY 13/2-c)"
+    diye açıklanır; program değer tespit komisyonu tutanağı üretmez. F9 bu kararla
+    başlar.
+14. **F7'den devreden iki kenar durum (bulunan kitap). KULLANICI KARARI (25.09.2026):
+    ÖNERİ KABUL, UYGULANDI.** *Uygulama.* Yeni çözüm `CaseResolution.FOUND_AFTER_PRICE`
+    **"Bulundu (bedel teslim alınmıştı)"** (yalnız kayıp dosyasında — DB kısıtı
+    `ck_lossdamagecase_found_lost`; bedel yoludur ve bedel teslim kaydını taşır —
+    `PRICE_RESOLUTIONS`, `PRICE_RECEIVED_RESOLUTIONS`; göç 0007'ye eklendi, 0006'nın dört
+    kısıtı yeni çözümle yeniden kuruldu). (a) "Bedel teslim alındı" adımındaki açık kayıp
+    dosyasında üçüncü kapanış yoludur: nüsha "Kayıp"tan rafa döner, dosya kapanır, bedel
+    ve iki adımın tarihleri kalır. (b) "Bedelle başka eser alındı" ile kapanmış kayıp
+    dosyasında nüsha hâlâ "Kayıp"sa (`loss_damage.ONERIDEN_BULUNMA`) bulunma yine bu
+    çözümle işlenir: öneri kalkar, nüsha rafa döner; dosyanın çözümü "Bedelle başka eser
+    alındı"dan "Bulundu (bedel teslim alınmıştı)"ya geçer ("Kayıttan düşme önerildi" →
+    "Bulundu" ile aynı kalıp; alınan eser kendi edinim kaydıyla katalogda kalır). Düz
+    "Bulundu" bedel teslim kaydıyla bir arada duramadığı (DB kısıtı) için (b)'de de bedelli
+    biçim kullanılır. İki yol da kademeden bağımsızdır (bedel alınmıştır) ve TMY 32/3
+    kapısından geçer (`dosya_cozumu_kapsamda_mi`: kayıpta bedel adımları dışındaki bütün
+    çözümler). Nüsha kayıttan düşülmüşse (F9, `WITHDRAWN_LOST`) dosya yolu kapalıdır; dosya
+    penceresinin "Bulunan kitap" bölümü kitabın "Sayım fazlası (kayda giriş)" edinimiyle
+    yeni nüsha olarak alınacağını söyler (TMY 17'ye kıyasen). Ekran (onay gövdesi, dosya
+    penceresinin bilgi satırı) ve kılavuz "Teslim alınan bedelin kişiye iadesi ya da başka
+    kaynak alımında kullanılması okul yönetiminin kararıdır; program para tutmaz." der.
+    F7 durum makinesi, kademe kapısı, ilişik (kişinin açık işi değişmedi: yalnız "Çözüm
+    bekliyor" ve "Bedel belirlendi"), E6 (durum yeni adla, bedel iki tarihiyle) ve E9
+    (çözüm kırılımına kendiliğinden girer) tutarlıdır; testler
+    `test_kayip_hasar.py::TestBedeldenSonraBulunma`. Aşağıdaki metin kararın dayanağıdır.
+    (Düzeltme turunda denetime göre düzeltildi.) Md. 19/1: "…temin
+    edilememesi hâlinde o günkü piyasa bedeli, hasara uğratan veya kaybeden kişiden
+    alınır. Kaynak bedeli ile mevcudu varsa aynısı yoksa kaybedilenin kaydı silinerek
+    başka eser satın alınır." Madde, bedelden sonra kitabın bulunmasını düzenlemez; iki
+    durumda da teslim alınmış bir bedel vardır ve **bedelin kişiye iadesinin Md. 19'da
+    dayanağı yoktur** — (a) ile (b) arasında bedel bakımından bir ayrım yapılamaz.
+    (a) *"Bedel teslim alındı"da (dosya okul için açık) kitap bulunursa.* Bedelin
+    alınma sebebi (kaynağın temin edilememesi) ortadan kalkmıştır. Öneri: yalnız KAYIP
+    dosyasında ve bu adımdan seçilen yeni kapanış çözümü **"Bulundu (bedel teslim
+    alınmıştı)"** — nüsha "Kayıp"tan rafa döner, dosya kapanır, bedel kaydı dosyada
+    kalır. Kayıp nüsha TMY kaydından hiç çıkmamıştır (asıl kayıttan düşme `WITHDRAWN_LOST`
+    F9'dadır — madde 6); geri dönüş yalnız dolaşım durumudur. Geri dönüşün TMY 32/3
+    durdurmasına bağlanması TMY'nin değil, projenin §9-10 kararıdır.
+    (b) *"Bedelle başka eser alındı" ile kapanmış dosyada kitap bulunursa (F7 bilinen
+    sınır h).* Md. 19'un "kaydı silinerek" hükmü kaybı varsayar; asıl kayıttan düşme
+    yapılmadan (nüsha hâlâ "Kayıp") kitap bulunursa kayıt henüz silinmemiştir. Öneri:
+    "Kayıttan düşme önerildi"deki gibi **"Bulundu"** seçilebilsin — öneri kalkar, nüsha
+    "Kayıp"tan rafa döner; bedelle alınan eser ayrıca kayıtta kalır. Kayıttan düşme
+    yapılmışsa (F9, "Kayıp (kayıttan düşüldü)") bulunan kitap TMY 17'deki sayım fazlası
+    gibi "Sayım fazlası (kayda giriş)" edinim yoluyla yeni nüsha olarak alınır; eski
+    kayıt terminal kalır. Bu öneri F7 ekleri 14'teki "bu yol yoktur" kuralını değiştirir.
+    İki durumda da ekran ve kılavuz aynı notu taşır: "Teslim alınan bedelin kişiye
+    iadesi ya da başka kaynak alımında kullanılması okul yönetiminin kararıdır; program
+    para tutmaz." Bulunan kitabı bağış gibi YENİ nüsha açarak almak (kayıttan düşülmemiş
+    nüshada) önerilmez: aynı kitaba ikinci barkod ve ikinci defter kaydı açılır, eski
+    kayıt "Kayıp"ta asılı kalır.
+
+**Belge ve ekran kolu (25.09.2026).** E7, E8, E9, E16, ekranlar, kılavuz ve sözlük. Her
+madde atfı `docs/mevzuat/` metninden doğrulandı; alıntılar testle depodaki metinle
+karşılaştırılır (`test_komisyon_belgeleri.py`, `test_yil_raporu_belgesi.py`).
+
+15. **E7 — ayıklama belgeleri TMY yoluna göre** (`komisyon_belgeleri.py`, ortak şablon
+    `documents/komisyon_listesi.html`). Beş belge: **ayıklama teklif listesi** (kalem
+    varsa her durumda); **ayıklama tutanağı** (Md. 12/1'in "bir tutanakla tespit"i; karar
+    bağlandıktan sonra; komisyonun ayıklamadığı kalemler gerekçesiyle ayrı tabloda; imza
+    karardaki başkan ve üyeler — şifreli alandan); **kayıttan düşme teklif listesi**
+    (Kayıttan Düşme Teklif ve Onay Tutanağına ESAS HAZIRLIK: 27/1 ve 28 yolu ayrı tabloda,
+    onaylanmayanlar ayrı; 28 yolunda TMY komisyonu yoksa üç boş imza satırı (28/1), yalnız
+    27/1 varsa komisyonsuz onay notu (10/1-e); harcama yetkilisinin "OLUR"u onaydan önce
+    boştur); **imha tutanağı** (28/5 şablonu — yalnız onaylı teklifte imha kararı ve etkin
+    28 kalemi varsa; imha tarihi, yeri ve yöntemi elle yazılır); **devir listesi** (PDF +
+    XLSX; 24/2 ve 31 notları; birden çok devralanda "Devralacak" sütunu). Basılabilirlik
+    sunucudadır (`weeding_document_blocker`; uç `library/weeding-batches/<pk>/documents/`
+    listeyi, `…/documents/<belge>/?kind=pdf|xlsx` belgeyi verir; basılamayan belge 400 +
+    gerekçe). Programın çıktısına "Kayıttan Düşme Teklif ve Onay Tutanağı" adı bilinçle
+    VERİLMEDİ: resmî tutanak ve VİF TKYS'dedir, dipnot bunu söyler (madde 13'teki ilke).
+    "İmha" yalnız imha tutanağında geçer (testli; ekranda yalnız 28/5 kutusunda).
+16. **E8, E16.** El yazması ve nadir eserler listesi: Md. 12/2 alıntısı, karar bağlanmamışsa
+    boş imza satırları, gönderim tarihi ve yazı sayısı. Bağış ön kayıt listesi: Md. 10/3
+    alıntısı, "Kabul / Ret" sütunu BOŞ basılır (komisyonda doldurulur); kararın sonucu bu
+    listeye yazılmaz; onu karardan sonra "Bağış değerlendirme sonucu" verir (madde 13,
+    kullanıcı kararı 25.09.2026). Bağışçı adı (şifreli) yalnız belgenin kendisine çözülür.
+17. **E9 — resmî yazı düzeni** (`yil_raporu_belgesi.py`). Sayı ve tarih (boşsa elle
+    doldurulacak yer tutucu), konu, "OKUL MÜDÜRLÜĞÜNE", beş bölüm, "Bilgilerinize arz
+    ederim.", imza "Kütüphane yöneticisi" — AD BASILMAZ. Sonlandırılmamış rapor "TASLAK"
+    ibaresi taşır; sonlandırılmış rapor dondurulmuş sayıları basar. Eşik altındaki grup "—".
+    Kişisel veri kapısı basılı PDF metni üzerinde de koşar (sentinel adlar
+    `test_yil_sonu_raporu._dolu_yil`'den; müdürün adı da rapora girmez).
+18. **Sayfa bütçesi** gerçek uzunlukta veriyle (255 karakterlik okul adı, sekiz kişilik
+    komisyon, çeviri künyeli yazar, 64 karakterlik TKYS kodu): tek kalemli ayıklama
+    tutanağı, kayıttan düşme teklif listesi (beş kişilik komisyon + OLUR) ve imha tutanağı
+    tek sayfa; nadir eser ve bağış listesi tek kalemde tek sayfa; kapanış (notlar, imzalar,
+    OLUR) bölünmez; uzun listede başlık satırı her sayfada yinelenir. Yıl sonu raporu
+    5.000 karakterlik tespit ve yirmi uzun adlı bölümle kapanışı son sayfada birlikte tutar.
+19. **Ekranlar.** Ayıklama (`/katalog/ayiklama`, teklif `?teklif=` ile), Nadir Eserler
+    (`/katalog/nadir-eserler`), Yıl Sonu Raporu (`/yil-sonu-raporu`); Katalog'un sağ üstüne
+    iki bağlantı. Kural ekranda kopyalanmaz: TMY yolu `weeding/rules/`, belge düğmeleri
+    `…/documents/` yanıtından. "Uygula" onayı ikinci doğrulama kutusu ister (TB18 kalıbı);
+    geri çekme, iptal, gönderim ve sonlandırma onaylıdır. Yıl Sonu ekranına beşinci adım
+    "Yıl Sonu Raporu" eklendi (tamam işareti `year_end.annual_review.is_finalized`'dan;
+    sunucunun `steps`'i değişmedi) ve Genel Bakış'a yıl sonu penceresinde, rapor
+    sonlandırılana dek "Yıl Sonu Raporu" kartı. Komisyon Kararları'nda kararı kullanan
+    kayıtların sayısı (`usage`); bağış kararında "Katalogdaki karşılığı" seçimi
+    (`work_links`), yeni edinim tarihi kuralının yardım metni ve E16 basımı.
+20. **Belge adları cümle düzenindedir** (sözlük §2-3): "Ayıklama teklif listesi",
+    "Ayıklama tutanağı", "Kayıttan düşme teklif listesi", "İmha tutanağı", "Devir listesi",
+    "El yazması ve nadir eserler listesi", "Yıl sonu kütüphane raporu", "Bağış ön kayıt
+    listesi", "Bağış değerlendirme sonucu" (madde 13, 25.09.2026); ekran satırları ve indirme adları bu adlardan kurulur. Kılavuzun iki yeni
+    bölümü ("Ayıklama ve Nadir Eserler", "Yıl Sonu Raporu") ve sözlük §4.14 eklendi;
+    kılavuzun katalog ve kayıp/hasar bölümlerindeki "sonraki sürüm" sözleri kalktı.
+21. **Kılavuz ve sözlük kolu (25.09.2026).** "Ayıklama ve Nadir Eserler" bölümüne iki alt
+    başlık: **"Ayıklama kayıttan düşme değildir"** (komisyon kararı ile harcama yetkilisinin
+    onayı iki ayrı adım; TMY 10/1-e, 28/4) ve **"Seçim ve Ayıklama Komisyonu ve kararları"**
+    (Md. 10/1'in ilk iki cümlesi; bileşim yalnız Md. 4/1-ı'ya gönderilir, çünkü bentteki bir
+    sözcük kılavuzun kalıntı taramasına takılır; üç karar türü ve neye bağlandıkları; bağış
+    kararı ve toplu kataloglama özetle — adımlar Katalog bölümünde; "kataloglama taşınır kaydı
+    değildir", TMY 16/1; hurdaya ayırmayı değerlendiren 28/1 komisyonu Seçim ve Ayıklama
+    Komisyonu değildir). TMY yolları sade dille ve fıkra atfıyla anlatılır (27/1 · 5/8 · 27/3,
+    28/1 · 28/4, 24 · 24/2 · 31); "Ayıklanan kitap kendiliğinden imha edilmez" cümlesi 28/5
+    bağlamındadır. Nadir eserler dört adımda, ekrandaki adlarla. Yıl Sonu Raporu'na Uygulama
+    Kılavuzu 2.4 alıntısı ve kişisel veri cümlesi. Kayıp nüshanın kaydını sayım kapatır (madde
+    6); sayım ekranı henüz olmadığı için kılavuzun iki cümlesi "sonraki bir sürümde gelecek"
+    der. Sözlük §1'e üç satır (harcama yetkilisi ve TMY komisyonu · el yazması ve nadir eser ·
+    yıl sonu kütüphane raporu), komisyon satırına başkanlık ve alan adları, §5'e iki madde.
+    Kılavuzun alıntıları ve alıntısız atıflarının dayandığı ifadeler **atıf yapılan fıkranın
+    metninde** sınanır (`test_ayiklama_kilavuz_metinleri.py`); kılavuzun başka hiçbir bölümü
+    "imha" demez (testli). Atıf haritası `docs/mevzuat/BENIOKU.md` §3 güncellendi.
+
+**Düzeltme turu (25.09.2026).** Bütünleştirme sonrası denetimin bulguları ana oturumca
+(kullanıcı adına) iletildi; her biri yeniden doğrulandı (denetimin sondaları düzeltmeden
+sonra yeniden koşturuldu: bozukluğu doğrulayan sondaların hepsi artık düşer). Kök
+nedenden düzeltildi ve kilitleyen test eklendi; tasarım kararı gerektirenler öneri olarak
+yazıldı (madde 34-35).
+
+22. **Silme yolu F8 ilişkilerini sayıyor** (`catalog.delete_copy`). Genel Müdürlüğe
+    bildirilmiş nadir eser ve onaylı teklifteki nüsha "yanlış açılmış kayıt" yoluyla
+    yumuşak silinebiliyordu (kayıttan düşme yapılmadan defterden ve E9'dan düşüyor,
+    uygulama "Nüsha bulunamadı" diye duruyordu). Artık bir ayıklama teklifine (süren,
+    uygulanmış ya da iptal edilmiş) ya da canlı bir nadir eserler listesine girmiş nüsha
+    silinemez; taslaktaki kalem ve hazırlanan listedeki satır önce çıkarılır. Test:
+    `test_ayiklama.py::TestTeklifKaydininKorunmasi`, `test_nadir_eser.py::test_listedeki_nadir_eser_silinemez`.
+23. **Komisyonca tespit edilen nadir eserin işareti kilitli** (madde 7). Kararı bağlanmış
+    taslak listedeki nüshanın işareti kaldırılıp nüsha ayıklanabiliyordu. Kilit gönderilmiş
+    VE kararı bağlanmış listeyi kapsar; yol listeden çıkarmaktır (listede görünen,
+    bilinçli adım). `selectors_ayiklama.decided_rare_items_for_copy`.
+24. **Kullanımdaki kararın tarihi, ona dayanan kaydın tarihinden sonraya alınamaz**
+    (`commissions.update_commission_decision`, D7'nin tarih yüzü). "Karardan önce olamaz"
+    kuralı (onay, gönderim, bağış edinimi — 10/1-a) yalnız bağlı kayıt yazılırken
+    sınanıyordu; kararın tarihi sonradan ileri alınınca geriye dönük bozuluyordu. Tarih
+    ileri alınırken onaylanmış/uygulanmış teklifin onay tarihi, gönderilmiş listenin
+    gönderim tarihi ve bağış ediniminin tarihi yeniden sınanır; geri almak ve sayıyı
+    düzeltmek serbesttir (kararın sayısı ve adları kilitlenmedi: yazım hatası
+    düzeltilebilmeli; imzalı kâğıt zaten vardır). Aynı kuralın öbür yüzü: bağış ediniminin
+    tarihi elle karardan önceye çekilemez (`catalog.update_acquisition`).
+25. **Geri çekilen teklife aynı karar yalnız kapsamındaki kalemlerle bağlanır** (D15).
+    Devir için verilmiş karar, gerekçesi değiştirilen kaleme yeniden bağlanıp kalem
+    hurdaya ayrılabiliyordu. Geri çekmede kararın ayıklanmasına karar verdiği kalemlerin
+    kişisiz izi ([nüsha, gerekçe, ölçüt, TMY yolu]) saklanır (`WeedingBatch.withdrawn_decision`,
+    `withdrawn_items`); aynı karar yeniden bağlanırken kalemler bu izin içinde kalmalıdır.
+    Alt küme (teklifi bölmek) ve devralacak kurum düzeltmesi serbesttir; yeni kalem,
+    değişen gerekçe ya da yol ve komisyonun ayıklamadığı kalem yeni karar ister. Program
+    kararın içeriğini bilemez; aynı kararın BAŞKA bir teklife bağlanması denetlenmez.
+26. **Süren teklifte nadir eser.** Teklif sürerken nadir işaretlenen nüsha ancak onayda
+    yakalanıyordu. Artık komisyon kararı bağlanırken de reddedilir (komisyon kalemi
+    "ayıklanmasına karar vermedi" diye işaretler); kalem yanıtı `copy_is_rare` taşır ve
+    tabloda "Nadir eser — ayıklanamaz" rozeti çıkar. Engelin tam listesi (ödünç vb.)
+    kalem yanıtına eklenmedi: teklif sürerken kitap ödünç verilebilir (madde 2).
+27. **10/1-e yorumu takdir olarak yazılır** (madde 4, §10 E7 sapma notu). Kayıttan düşme
+    teklif listesinin notu "onaylanabilir … bu belge sayılıp sayılmayacağını harcama
+    yetkilisi değerlendirir" der; ekran, kılavuz ve sözlük aynı dilde.
+28. **Mevzuata metinde olmayan hüküm yüklenmez.** Md. 12/1 devri 10/1-b için ister;
+    düzeye uygunsuzluğun (12/1-c) devre bağlanması ve devrin "yalnız" bu gerekçeyle
+    yapılması programındır (iletiler, yardım metni ve teklif listesi notu böyle der; belge
+    gerekçesi "(Md. 12/1-c; 10/1-b)"). Md. 12/2 ayıklama yasağı koymaz ("…ayıklanamaz;
+    listesi Genel Müdürlüğe gönderilir (Md. 12/2)"). Bağışın "kabulü" Kılavuz 2.3.3'tür,
+    10/3 "değerlendirilir" der. 10/4 okul kütüphanelerini bağlar ("hiçbir kütüphanede"
+    kalktı). Genel Bakış kartı Kılavuz 2.4'ün cümlesini Md. 12/1'e atfediyordu; kart artık
+    Md. 12/1'in söylediğini yazar. İletilerdeki ayar sekmesi adı "Ders Yılları" (sözlük §4.3).
+29. **Hurdaya ayırma: imha kalem düzeyinde, 28/8, işin uzmanı.** İmha kararı teklif
+    düzeyinde tek bayraktı; bütün 28 kalemleri İmha tutanağına giriyordu. `WeedingItem.destruction_decided`
+    (DB kısıtı: yalnız 28 yolunda) ve onayda `destruction_items` (verilmezse onaylanan
+    bütün 28 kalemleri; ekranda "İmha kararının kapsadığı kalemler" listesi); İmha
+    tutanağı yalnız bu kalemleri basar, geri çekme işaretleri temizler. Kılavuz 28/8'i
+    (ekonomik değeri olan hurda — 7330 sayılı Kanun) anar. 28/1'in "biri işin uzmanı"
+    şartı: işin uzmanı "Komisyon üyeleri"nin ilk satırına yazılır ve belgede
+    "Komisyon üyesi (işin uzmanı)" diye basılır (boş imza satırlarında da ilk satır).
+30. **E9 tamamlayıcı gizleme** (madde 8; CLAUDE.md §2-5). Eşik altındaki grup basılan
+    toplamdan çıkarılarak bulunabiliyordu (ör. toplam − öğrenci = tek öğretmenin ödünç
+    sayısı). `selectors_yil_raporu._gizlenenler` iki eşitliği (toplam = türler; öğrenci =
+    sınıf düzeyleri + düzeysiz öğrenciler) korur: türetilebilen her gizli toplam ya sıfır
+    ya da en az k farklı üyeye aittir; eksik kalırsa farklı üyesi en az olan görünür
+    hücre de gizlenir. Farklı üye sayıları veritabanında sayılır, kimlik Python'a gelmez.
+    Rapor anındaki aktif üye sayısı da k'nın altında "—". Şema sürümü 2. Türetme testi:
+    `test_yil_sonu_raporu.py::TestTamamlayiciGizleme`. Küçük bir okulda bu, kırılımın
+    tamamen "—" olması demektir; bilinçlidir.
+31. **E9 "kazandırılan" yalnız Md. 10/5 yolları.** Mevcut koleksiyonun programa aktarımı
+    (programın ilk yılında binlerce nüsha) "yıl içinde kazandırılan" diye raporlanıyordu.
+    Toplam ve eser sayısı dört yoldan; programa aktarım ve sayım fazlası ayrı alt başlıkta
+    ("Kayıt içi girişler (kazandırılan sayılmaz)"), ekranda "Kayıt içi giriş" kartı.
+32. **Ekran ve belge kusurları.** Yıl Sonu Raporu'nda kaydedilmemiş "Tespit edilen
+    hususlar" "Raporu sonlandır" ile sessizce kayboluyordu: kaydedilmemiş değişiklik önce
+    kaydedilir, onay penceresi bunu ve raporun dönemini yazar, belge satırı kaydedilmemiş
+    değişikliğin belgeye girmediğini söyler. Devir listesi XLSX'inde başlık biçimi boş
+    satıra, bölme başlığın üstüne düşüyordu (openpyxl boş `append` hücre açmaz):
+    başlık satırı eklendikten sonra okunur, test biçimi ve bölmeyi sınar. Kurumu
+    yazılmamış devir kaleminde "Devralan — —" basılıyordu: künye "Yazılmadı", imza
+    "Devralan okul ya da kurum". "TMY yolu" seçicisinin yer tutucusu "Seçin" (sözlük §3),
+    yönlendirme yardım metninde.
+33. **Hasar dosyasından gelen kalem belgede ayrılır — madde 34 kararıyla TEMİZLENDİ.**
+    Kayıttan düşme teklif listesi hasar önerisinden gelen kalemi "Aşırı kullanımdan
+    yıpranmış (Md. 12/1-a)" ve 5/8'in "olağan yıpranmada sorumluluk aranmaz" cümlesiyle
+    basıyordu; hasar olağan yıpranma değildir. Ara düzeltme ("— hasar dosyasından"
+    işareti, o kalem varken 5/8'in basılmaması, dayanağa Kayıp/hasar tutanağı) madde 34'ün
+    (a) kararıyla gereksiz kaldı ve kaldırıldı (25.09.2026): hasar önerisi artık teklife
+    girmez, kalemin kayıp/hasar dosyası bağı (`WeedingItem.loss_damage_case`, göç 0007'de)
+    kalktı; aday ucunun `proposals` süzgeci, `write_off_proposed` alanları ve ekrandaki
+    "Kayıttan düşme önerisi" rozeti de kalktı. Kalan: 27/1 paragrafı TMY 27/1'in lafzıyla
+    ("yıpranma, kırılma veya bozulma gibi nedenlerle") yazılır ve 27/3 ile 5/8'i basar.
+
+**Kullanıcıya sunulan öneriler — düzeltme turu — KULLANICI KARARI (25.09.2026).**
+
+34. **Hasar dosyasının kayıttan düşme önerisi ayıklamada mı? KULLANICI KARARI
+    (25.09.2026): SEÇENEK (a), UYGULANDI.** *Karar.* Hasar önerileri ayıklama adaylarından
+    çıkarılır: kayıp önerileri gibi aday ucunun ayrı bölümünde (`damage_proposals`;
+    `selectors_ayiklama.damage_write_off_proposals` — nüsha rafta, ödünçte, teslimde ya da
+    onarımda olabilir) gerekçesiyle gösterilir ve teklife eklenemez (ileti
+    `weeding.DAMAGE_PROPOSAL_MESSAGE`: "Hasar dosyasında kayıttan düşme önerilen nüsha
+    ayıklamaya konmaz (Md. 12/1 gerekçelerinden değildir); sayımda kayıttan düşülür.").
+    Engel yalnız EKLEMEDEDİR: teklif sürerken yazılan hasar önerisi komisyonun Md. 12/1
+    gerekçesiyle verdiği kararı düşürmez (uygulanırsa nüsha ayıklamayla çıkar). Ekranda
+    "Kalem ekle" penceresinin altında iki bilgi kutusu ("Kayıp nüshaların kayıttan düşme
+    önerileri", "Hasar dosyalarının kayıttan düşme önerileri"). **F9 sözleşmesi:** kayıp
+    ve hasar dosyasının kayıttan düşme önerisi sayımda **TMY 27/1 ve 10/1-e yolundan,
+    kayıp/hasar tutanağıyla (E6), komisyonsuz — harcama yetkilisinin onayıyla** düşülür
+    (kayıpta `WITHDRAWN_LOST`; hasarda F9 uygun terminal durumu belirler). Madde 33'ün ara
+    belge düzeltmesi temizlendi. Aşağıdaki metin kararın dayanağıdır. Md. 12/1-a
+    "aşırı kullanımdan dolayı yıpranan" der; bir kişinin hasara uğrattığı kaynak (Md. 19)
+    ayrı bir olgudur ve Md. 12/1'in bentlerinde hasar yoktur. Madde 6'nın kayıp için kurduğu
+    gerekçe (a-ç bentleri kaybı saymaz; kayıp tutanağıyla 10/1-e'nin komisyonsuz onayı)
+    hasara da uyar. *(a)* Hasar önerisi kayıptaki gibi ayıklama dışında tutulur ve TMY
+    27/1 + 10/1-e yolundan (E6 Kayıp/hasar tutanağıyla komisyonsuz onay) F9 ile birlikte
+    düşülür; aday listesindeki "Kayıttan düşme önerisi" hasar kalemleri ayrı bölüme geçer
+    (F7 ekleri (a) ve bu belgenin madde 6'sı birlikte güncellenir). *(b)* Ayıklamada kalır;
+    hasar kaleminde belge gerekçeyi "Hasar — Kayıp/hasar tutanağı (Md. 19)" diye basar
+    (Md. 12/1 bendi yerine), 5/8'i basmaz, 27/3'ü korur ve dayanağa tutanağı ekler — madde
+    33 bunun belge kısmını zaten yapar. *Öneri:* (a) — kayıp ve hasar aynı TMY yolundan
+    düşülür, Seçim ve Ayıklama Komisyonuna mevzuatta olmayan bir gerekçe sunulmaz.
+35. **Yaz ayıklaması ve raporun dönemi. KULLANICI KARARI (25.09.2026): SEÇENEK (a) —
+    bugünkü kural KALIR.** *Karar.* Dönem kuralı değişmez (`selectors_yil_raporu.report_period`);
+    onay penceresi dönemi yazar, kılavuz düzeltildi ve Yıl Sonu Raporu ekranı her zaman
+    şu uyarıyı gösterir (`YilSonuRaporuPage.YAZ_DONEMI_UYARISI`): "Raporu yeni ders yılı
+    tanımlandıktan sonra sonlandırmanız önerilir; Haziran'da sonlandırırsanız yaz
+    aylarındaki işler (ör. Ağustos'taki ayıklama) bu rapora girmez. Gerekirse
+    sonlandırmayı geri alıp yeni ders yılı tanımlandıktan sonra yeniden sonlandırın."
+    Kılavuz uyarının ilk iki cümlesini birebir yazar (testli). Öneri (b) seçilmedi.
+    Aşağıdaki metin kararın dayanağıdır. Dönem ders yılının başından sonraki
+    ders yılının başına dektir; sonraki ders yılı tanımlanmadan (Haziran'da) sonlandırılan
+    rapor ders yılı sonunda kapanır ve Ağustos ayıklaması hiçbir sonlandırılmış rapora
+    girmez (sonraki yılın dönemi Eylül'de başlar). Ekranlar (Yıl Sonu 5. adımı, Genel
+    Bakış kartı) sonlandırmayı Haziran'a yönlendirir. Düzeltme turunda kılavuz gerçeğe
+    çekildi ("yeni ders yılı tanımlandıktan sonra sonlandırın ya da geri alıp yeniden
+    sonlandırın") ve onay penceresi dönemi yazar. *(a)* Bu kalır; ekran da aynı uyarıyı
+    verir. *(b)* Dönem sınırı değişir: bir yılın dönemi önceki ders yılının bitişinden
+    sonraki günden başlar (Haziran'da sonlandırılan rapor eksiksizdir, yaz işi sonraki
+    yılın raporuna girer). *Öneri:* (b) — okul müdürlüğüne yazı Haziran'da gider;
+    rapora sonradan dönmeyi gerektirmeyen dönem kuralı daha güvenlidir.
 
 ### 14.2 Saha hazırlık hattı (kod dışı — F0 ile başlar)
 
@@ -2807,7 +3263,7 @@ iki sayfa olur; ÇÖZÜM, Md. 19 alıntısı ve imzalar birlikte ikinci sayfaya 
 | A5 | Katalog portu | 8765 (gerekçesi BTR notunda) |
 | A6 | Pardus | KS gibi `.deb` (bullseye tabanı, KS TB13 riski) |
 | A7 | Kütüphane nöbeti | Alınmaz |
-| A8 | Taşınır Sayım ve Döküm Cetveli (32/9) · bağış kabul tutanağı | F9'dan önce tam metinden karar |
+| A8 | Taşınır Sayım ve Döküm Cetveli (32/9) · bağış kabul tutanağı | **KARAR (25.09.2026, öneri kabul — §14.1 F8 ekleri 13):** cetvel üretilmez (TKYS'nindir); F9'da E10'un ekinde TMY 34/1 büyüklükleri verilir. "Bağış kabul tutanağı" TMY'de yoktur; kararın ardından "Bağış değerlendirme sonucu" hazırlık çıktısı basılır (F8'de uygulandı) |
 | A9 | Depo | GitHub `aalidemirci/kutuphane-defteri` (herkese açık, kardeşler gibi). Yerel klasör `apps/kutuphane`. Açmadan önce keşif ve denetim belgeleri yayın denetiminden geçer |
 | A10 | Kip süreleri | Boşta 3 dk, mutlak 30 dk |
 | A11 | Gecikme listesi | Yalnız yönetici kipinde, dipnotlu |

@@ -5,6 +5,8 @@
 //   sonrasına dek) görünür; yalnız SAYI yazar.
 // - **Yıl Başı**: 15 Ağustos - 31 Ekim (ya da ders yılı başlangıcının çevresi) görünür;
 //   bütün adımlar tamamsa görünmez.
+// - **Yıl Sonu Raporu** (F8; Md. 12/1, E9): yıl sonu penceresinde, etkin yılın raporu
+//   sonlandırılmadıkça görünür (hazırlanmadı / taslak).
 //
 // Pencere ve sayılar sunucudan gelir (`GET library/year-flows/`, kişisiz). Sorgu kullanıcı
 // eylemi değildir (`X-KD-Etkinlik` gitmez). Okunamazsa kart gösterilmez.
@@ -15,6 +17,7 @@ import { Link } from "react-router-dom";
 import { formatNumber } from "../../lib/format";
 import Card from "../../ui/Card";
 import Icon from "../../ui/Icon";
+import { YIL_SONU_RAPORU_ADRESI, YIL_SONU_RAPORU_BASLIGI } from "../ayiklama/api";
 import {
   YIL_BASI_ADRESI,
   YIL_BASI_BASLIGI,
@@ -106,6 +109,21 @@ export default function YilAkisiKartlari() {
           aciklama="Son ödünç tarihi, kitap toplama, son sınıflar ve ilişik belgeleri adım adım."
           to={YIL_SONU_ADRESI}
           baglanti="Yıl Sonu'nu aç"
+        />
+      )}
+      {sonu.in_window && !(sonu.annual_review?.is_finalized ?? false) && (
+        <AkisKarti
+          id="yil-sonu-raporu-karti"
+          icon="summarize"
+          baslik={YIL_SONU_RAPORU_BASLIGI}
+          metin={
+            !sonu.annual_review
+              ? "Bu ders yılının raporu henüz hazırlanmadı."
+              : "Rapor taslak; sonlandırılmadı."
+          }
+          aciklama="Kaynaklar gözden geçirilir ve tespit edilen hususlar raporla okul müdürlüğüne bildirilir (Yönetmelik Md. 12/1)."
+          to={YIL_SONU_RAPORU_ADRESI}
+          baglanti="Yıl Sonu Raporu'nu aç"
         />
       )}
       {basi.in_window && !basiTamam && (
