@@ -28,7 +28,9 @@ KURALLAR (§9; her biri testle kilitli — `tests/test_dolasim_kurallari.py`):
 6. Uzatma, ceza ve harç YOKTUR. Gecikme engeli (`block_loan_if_overdue`) bir
    politika kuralıdır; istisnası YALNIZ yönetici kipinde ve gerekçeyle
    (kapalı liste + açıklama) tanınır ve kayda şifreli olarak geçer.
-7. Bir nüsha aynı anda tek açık ödünçte olur (DB kısıtı + servis denetimi).
+7. Bir nüsha aynı anda tek açık ödünçte YA DA tek açık teslimde olur (DB kısıtı +
+   servis denetimi; ödünç ile teslim arasında nüsha durumunun koşullu geçişi —
+   `services.nusha_durumu`, F7).
 8. Sonlanmış üye iade yapabilir; ayrılışta üyelik sonlanır (`services.memberships`).
 12. Kartsız ödünç YALNIZ yönetici kipinde ve kapalı listeden gerekçeyle; kayıt
    işaretlidir (Md. 23/1-a'dan sapma).
@@ -80,6 +82,8 @@ from apps.kutuphane.models import (
     CardlessReason,
     Copy,
     CopyStatus,
+    Delivery,
+    DeliveryStatus,
     LibraryPolicy,
     Loan,
     LoanStatus,
@@ -87,6 +91,7 @@ from apps.kutuphane.models import (
     MemberType,
     OverrideReason,
 )
+from apps.kutuphane.services import nusha_durumu
 from apps.kutuphane.services.policy import LOAN_PERIOD_DAYS
 from apps.kutuphane.services.yonetici_kipi import gorevli_kipinde_mi, require_admin_mode
 from apps.okul.models import SchoolConfig, SchoolLevel
@@ -117,6 +122,8 @@ STAFF_LOANS_OFF_MESSAGE = "Diğer personele ödünç verilmiyor (Kütüphane Pol
 COPY_NOT_FOUND_MESSAGE = "Nüsha bulunamadı."
 COPY_WITH_THIS_MEMBER_MESSAGE = "Bu kitap zaten bu üyede."
 COPY_WITH_OTHER_MEMBER_MESSAGE = "Bu kitap başka bir üyede."
+#: Açık teslimdeki nüsha (F7): nüsha durumunun iletisiyle aynı ("Sınıf kitaplığında").
+DELIVERED_COPY_MESSAGE = f"{CopyStatus.DELIVERED.label} — ödünç verilemez."
 #: Görevli kipinde gecikmesi olan üye için TEK ileti (eser adı ve gün YOK — §4.4).
 OVERDUE_STAFF_MESSAGE = "Ödünç verilemiyor — kütüphane yöneticisine yönlendirin."
 OVERDUE_ADMIN_MESSAGE = (
@@ -366,7 +373,8 @@ def _ensure_before_last_loan_date(
 
 
 def _ensure_copy_loanable(copy: Copy, membership: Membership) -> None:
-    """§9-7 ve §9-3: açık ödünçteki nüsha ve `is_loanable` dışı kaynak verilmez."""
+    """§9-7 ve §9-3: açık ödünçte ya da açık teslimdeki nüsha ve `is_loanable` dışı kaynak
+    verilmez."""
     acik = Loan.objects.filter(copy_id=copy.pk, status=LoanStatus.OPEN).first()
     if acik is not None:
         ayni_kisi = acik.membership is not None and selectors_dolasim.person_key(
@@ -375,6 +383,10 @@ def _ensure_copy_loanable(copy: Copy, membership: Membership) -> None:
         if ayni_kisi:
             raise DolasimReddi(COPY_WITH_THIS_MEMBER_MESSAGE, code=RED_BU_UYEDE)
         raise DolasimReddi(COPY_WITH_OTHER_MEMBER_MESSAGE, code=RED_BASKA_UYEDE)
+    if Delivery.objects.filter(copy_id=copy.pk, status=DeliveryStatus.OPEN).exists():
+        # F7 tek açık kayıt: teslimdeki nüsha ödünç verilmez (durumu zaten "Sınıf
+        # kitaplığında"dır; bu denetim tutarsız bir satıra karşı savunmadır).
+        raise DolasimReddi(DELIVERED_COPY_MESSAGE, code=RED_ODUNC_VERILMEZ)
     if not copy.is_loanable:
         raise DolasimReddi(copy.not_loanable_reason, code=RED_ODUNC_VERILMEZ)
 
@@ -484,8 +496,15 @@ def checkout(
     except IntegrityError as exc:
         # Yarış: aynı nüsha arada başka bir işlemde ödünç verildi (§9-7 DB kısıtı).
         raise DolasimReddi(COPY_WITH_OTHER_MEMBER_MESSAGE, code=RED_BASKA_UYEDE) from exc
+    # §9-7 (F7): ödünç ile teslim arasındaki tek açık kayıt kuralının güvencesi —
+    # "Rafta"dan çıkışı yalnız bir işlem kazanır (`services.nusha_durumu`). Kaybeden
+    # ödünç, bu işlemle birlikte geri sarılır (hata `transaction.atomic`'ten çıkar).
+    if not nusha_durumu.gecir(nusha.pk, eski=CopyStatus.AVAILABLE, yeni=CopyStatus.ON_LOAN):
+        guncel = Copy.all_objects.select_related("work").get(pk=nusha.pk)
+        raise DolasimReddi(
+            guncel.not_loanable_reason or COPY_WITH_OTHER_MEMBER_MESSAGE, code=RED_ODUNC_VERILMEZ
+        )
     nusha.status = CopyStatus.ON_LOAN
-    nusha.save(update_fields=["status", "updated_at"])
 
     if istisna_kullanildi:
         logger.info("Gecikme engeline gerekçeli istisnayla ödünç verildi.")

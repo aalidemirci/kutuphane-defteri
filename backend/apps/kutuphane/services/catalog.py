@@ -410,6 +410,18 @@ def delete_copy(copy: Copy) -> None:
                 )
             }
         )
+    if copy.loss_damage_cases.exists() or copy.deliveries.exists() or copy.repairs.exists():
+        # F7: hasar dosyası rafta duran nüshada da açılabilir; teslim ve onarım kaydı
+        # kapanmış olsa da belgededir (E6, E15). Kayıtlı geçmişi olan nüsha yanlış
+        # açılmış bir kayıt değildir.
+        raise ValidationError(
+            {
+                "status": (
+                    "Kayıp/hasar dosyası, teslim ya da onarım kaydı olan nüsha silinemez; "
+                    "kayıttan düşülecekse kayıttan düşme yolunu kullanın."
+                )
+            }
+        )
     copy.delete()
 
 

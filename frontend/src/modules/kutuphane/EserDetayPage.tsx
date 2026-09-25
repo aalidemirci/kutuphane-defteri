@@ -9,6 +9,11 @@
 // kullanılmaz; etiket alanlarını Etiketler ekranı (F4) yazar: basım işaretini
 // "Basıldı olarak işaretle", doğrulamayı doğrulama okutması. Ekranda görünürler
 // ama düzenlenemezler.
+//
+// F7: nüsha penceresinde "Kayıp, Hasar ve Onarım" bölümü durur (`kayip/NushaIslemleri`):
+// nüshanın açık teslimi ve çözülmemiş dosyası görünür; onarıma gönderilir, onarımdan
+// döner, hasar dosyası açılır ya da kayıp bildirilir. Dosya penceresi nüsha
+// penceresinin ÜSTÜNE açılmaz: nüsha penceresi kapanır, dosya penceresi açılır.
 
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -33,6 +38,9 @@ import { SkeletonList } from "../../ui/Skeleton";
 import { useSnackbar } from "../../ui/SnackbarProvider";
 import TextField from "../../ui/TextField";
 import UyariBandi from "../../ui/UyariBandi";
+import type { DosyaTuru } from "../kayip/api";
+import DosyaAcDiyalogu, { dosyaAcildiIletisi } from "../kayip/DosyaAcDiyalogu";
+import NushaIslemleri from "../kayip/NushaIslemleri";
 import { ACQUISITION_METHOD_TR, KATALOG_SAYFA_BOYUTU, kutuphaneApi } from "./api";
 import type { Acquisition, Copy, CopyBody, Section, Work } from "./api";
 import EserFormu from "./EserFormu";
@@ -226,6 +234,9 @@ function NushalarBolumu({
   const [tazeleme, setTazeleme] = useState(0);
   const [ekleniyor, setEkleniyor] = useState(false);
   const [duzenlenen, setDuzenlenen] = useState<Copy | null>(null);
+  // F7: kayıp bildirimi ya da hasar dosyası penceresi (nüsha penceresinin yerine açılır).
+  const [dosyaAc, setDosyaAc] = useState<{ tur: DosyaTuru; nusha: Copy } | null>(null);
+  const snackbar = useSnackbar();
 
   const tazele = useCallback(() => {
     setTazeleme((k) => k + 1);
@@ -340,8 +351,24 @@ function NushalarBolumu({
             setDuzenlenen(null);
             tazele();
           }}
+          onDosyaAc={(tur) => {
+            setDosyaAc({ tur, nusha: duzenlenen });
+            setDuzenlenen(null);
+          }}
         />
       )}
+
+      <DosyaAcDiyalogu
+        open={dosyaAc !== null}
+        tur={dosyaAc?.tur ?? "LOST"}
+        nusha={dosyaAc?.nusha ?? null}
+        onClose={() => setDosyaAc(null)}
+        onAcildi={(d) => {
+          snackbar.success(dosyaAcildiIletisi(d.case_type));
+          setDosyaAc(null);
+          tazele();
+        }}
+      />
     </div>
   );
 }
@@ -569,11 +596,14 @@ function NushaDuzenlemeFormu({
   bolumler,
   onClose,
   onSaved,
+  onDosyaAc,
 }: {
   nusha: Copy;
   bolumler: Section[];
   onClose: () => void;
   onSaved: () => void;
+  /** F7: kayıp bildirimi ya da hasar dosyası (ebeveyn bu pencereyi kapatır). */
+  onDosyaAc: (tur: DosyaTuru) => void;
 }) {
   const [bolum, setBolum] = useState(nusha.section === null ? "" : String(nusha.section));
   const [eskiKayitNo, setEskiKayitNo] = useState(nusha.old_register_no);
@@ -660,7 +690,10 @@ function NushaDuzenlemeFormu({
           <Satir etiket="Barkod etiketi" deger={formatDate(nusha.label_printed_at)} />
           <Satir etiket="Sırt etiketi" deger={formatDate(nusha.spine_label_printed_at)} />
           <Satir etiket="Etiket doğrulaması" deger={formatDate(nusha.label_verified_at)} />
+          <Satir etiket="Durum" deger={nusha.status_display} />
         </dl>
+
+        <NushaIslemleri nusha={nusha} onDosyaAc={onDosyaAc} onDegisti={onSaved} />
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Select

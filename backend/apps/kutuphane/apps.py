@@ -9,8 +9,9 @@ F6: üyelik, kart ve ödünç modelleri. Kişi kayıt defterlerine (açık yük�
 "hiç üye olmuş mu", ayrılış, personel birleştirme) buradan kaydolunur
 (`services.memberships.register_person_hooks`) ve bu sürecin başlangıcı
 işaretlenir (beklenmedik kapanıştan sonra "son oturumdaki işlemler" listesinin
-sınırı — T15). Teslim, ayıklama ve sayım modelleri kendi fazlarında (F7-F9)
-eklenir.
+sınırı — T15). F7: teslim ve kayıp/hasar dosyasının kişi ve şube kayıt
+defterlerine kancaları; yönetici kipi sürelerinin kaynağı (`LibraryPolicy`).
+Ayıklama ve sayım modelleri kendi fazlarında (F8-F9) eklenir.
 
 F5: Ağ Kataloğu görünümlerinin (`kd_katalog_*`) yaşam döngüsü kancaları burada
 bağlanır — göçten önce düşürülür, bütün göçler bitince yeniden kurulur
@@ -31,12 +32,26 @@ class KutuphaneConfig(AppConfig):
 
     def ready(self) -> None:
         from apps.kutuphane import ag_katalogu, katalog_gorunumleri, selectors_dolasim
-        from apps.kutuphane.services import memberships, populer
-        from apps.okul import masaustu_kanca
+        from apps.kutuphane.services import (
+            deliveries,
+            loss_damage,
+            memberships,
+            policy,
+            populer,
+        )
+        from apps.okul import kip, masaustu_kanca
 
         # F6: kişi kayıt defterleri (bağımlılık yönü kütüphane → okul; kayıt
         # fikirdeştir, `ready()` iki kez koşsa da kanca bir kez çağrılır).
         memberships.register_person_hooks()
+        # F7: açık teslim ve çözülmemiş kayıp/hasar dosyası açık yükümlülüktür;
+        # kapanmış teslim kişi silmesini, açık teslim şube silmesini engeller;
+        # birleştirmede teslimler taşınır.
+        deliveries.register_hooks()
+        loss_damage.register_hooks()
+        # F7 ("Devreden"): yönetici kipi süreleri Kütüphane Politikası'ndan okunur
+        # (kip önbelleğe alır; ayar yazılınca boşaltılır — sıcak yolda sorgu yok).
+        kip.sure_kaynagini_kaydet(policy.kip_sure_dakikalari)
         # T15: bu oturumun başlangıcı — "son oturumdaki işlemler" bundan öncekilerdir.
         selectors_dolasim.mark_process_start()
 

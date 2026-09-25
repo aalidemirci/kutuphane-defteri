@@ -201,6 +201,16 @@ IZIN_LISTESI: tuple[IzinKurali, ...] = (
         "POST",
         gerekce="GA-7 kart okutma kilidini açma; gövdede yönetici parolası (görünüm denetler)",
     ),
+    # --- F7: teslimden geri alma okutması (§4.4 tablosu "Açık" sütunu, U11). Teslim
+    # VERME, teslim listesi, kayıp/hasar dosyaları ve onarım kapalıdır.
+    IzinKurali(
+        "library-delivery-take-back",
+        "POST",
+        gerekce=(
+            "teslimden geri alma okutması (§4.4, U11); yanıt görevli kipinde yalnız sonuç, "
+            "ileti, barkod ve eser adı — teslim alanın kimliği, belge no ve tarih YOK"
+        ),
+    ),
     # Katalog okuma: works/copies GET, Ağ Kataloğunun alan listesine denk serializer
     # (görevli kipinde `GorevliEserSerializer`/`GorevliNushaSerializer`). Edinim,
     # komisyon kararı, bağış, fiyat ve TKYS alanları kapalı; süzgeçler sınırlı.

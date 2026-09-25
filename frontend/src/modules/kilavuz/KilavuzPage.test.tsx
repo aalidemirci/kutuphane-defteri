@@ -42,6 +42,19 @@
 // gerekçeli istisna, iadenin hiçbir durumda kilitlenmemesi, görevlinin gördüğü ve
 // görmediği, kartsız ödünç (Md. 23/1-a alıntısı), pusulanın dağıtım kuralı, masa
 // kartı (KVKK 12/1 alıntısı) ve "sonraki sürümde" sözlerinin kalkması.
+// F7 bölümleri: Sınıf Kitaplığına ve Öğretmene Teslim, Kayıp, Hasar ve Onarım, İlişik
+// Listesi, Yıl Sonu ve Yıl Başı (dördü de Dolaşım Masası'nın ardında). Adlar
+// `modules/teslim`, `modules/kayip`, `modules/yil`, masanın ve görevli ekranının
+// sabitlerinden; sunucu iletileri birebir kopyalandı (sunucu tarafı
+// `test_teslim_ilisik_kilavuz_metinleri.py` aynı iletileri ve Md. 18/1, 19/1
+// alıntılarını sabitlerden ve docs/mevzuat'tan sınar). Kilitlenenler: teslim ödünç
+// değildir (sayı sınırı, süre ve "kalan hak" dili yok), teslim tek işlemdir, beklenen
+// dönüşün geçmesi gecikme değildir, geri alma görevli kipinde de açıktır, şube
+// listesinde TMY 23/6'ya kıyasen notu ve sayımdaki yer; kayıp bildirimi ödüncü/teslimi
+// "Kayba dönüştü" ile kapatır ve "Bulundu" yeniden açmaz, bedel yolları YALNIZ
+// ortaöğretimde, program tahsilat yapmaz ve disiplin sürecini başlatmaz; ilişik
+// belgesi karne ya da diploma ön koşulu DEĞİLDİR (iki sözcük yalnız o olumsuz cümlede
+// geçer); yıl sonu ve yıl başının dörder adımı; kip sürelerinin ayarı (Kipler).
 //
 // Üç tür kilit var:
 // 1. Ekran adları DEPODAN gelir: kısayol, kip ekranı başlığı, kapalı gün türleri,
@@ -82,7 +95,11 @@ import {
   IADE_ONERISI,
   ISTEM_BAGLAM_DEGISTI,
   KARTSIZ_DUGMESI,
+  KAYIP_BILDIRILDI,
   OKUTMA_KUTUSU,
+  SINIF_KITAPLIGINDA,
+  TESLIM_GERI_ALMA_ONERISI,
+  TESLIMDEN_GERI_AL,
 } from "../dolasim/DolasimMasasi";
 import { DOLASIM_MASASI_BASLIGI } from "../dolasim/DolasimMasasiPage";
 import { ISTISNA_GEREKCELERI, KARTSIZ_GEREKCELER } from "../dolasim/api";
@@ -93,10 +110,26 @@ import {
   KARTSIZ_BASLIGI,
 } from "../dolasim/MasaDiyaloglari";
 import { DOSYA_KAYIP_BASLIGI } from "../guvenlik/metinler";
+import { COZUM_TR, DOSYA_TURU_TR, SORUMLU_NOTU_YARDIMI, TUTANAK_ADI } from "../kayip/api";
+import {
+  HASAR_BASLIGI,
+  HASAR_DUGMESI,
+  KAYIP_BASLIGI,
+  KAYIP_DUGMESI,
+} from "../kayip/DosyaAcDiyalogu";
+import { BEDEL_YOK_NOTU } from "../kayip/DosyaAyrintisi";
+import {
+  KAYIP_HASAR_ADRESI,
+  KAYIP_HASAR_BASLIGI,
+  OKULUN_ACIK_ISI_ETIKETI,
+} from "../kayip/KayipHasarPage";
+import { NUSHA_ISLEMLERI_BASLIGI } from "../kayip/NushaIslemleri";
 import {
   GOREVLI_DOGRULAMA_BITIR,
   GOREVLI_DOGRULAMA_DUGMESI,
   GOREVLI_EKRANI_BASLIGI,
+  GOREVLI_GERI_ALMA_BASLIGI,
+  GOREVLI_GERI_ALMA_DUGMESI,
   GOREVLI_KATALOG_DUGMESI,
   GOREVLI_MASAYA_DON,
 } from "../kip/GorevliEkrani";
@@ -124,9 +157,38 @@ import {
   WORK_ORDER_TR,
 } from "../kutuphane/api";
 import { HOLIDAY_KIND_TR, MEMBER_KIND_TR, SCHOOL_LEVEL_TR } from "../okul/api";
+import { GERI_ALMA_BASLIGI, GERI_ALMA_KUTUSU } from "../teslim/GeriAlmaOkutmasi";
+import { BEKLENEN_DONUS_GECTI } from "../teslim/TeslimKayitlari";
+import { TESLIMLER_ADRESI, TESLIMLER_BASLIGI } from "../teslim/TeslimlerPage";
+import {
+  DIGER_PERSONEL_GEREKCESI,
+  LISTEYE_GIRMEYENLER,
+  TESLIM_ET_DUGMESI,
+  TESLIM_KUTUSU,
+  ZATEN_LISTEDE,
+} from "../teslim/YeniTeslim";
+import {
+  GERI_ALMA_DOKUMU_ADI,
+  TESLIM_ALAN_TURU_TR,
+  TESLIM_DURUMU_TR,
+  TESLIM_LISTESI_ADI,
+} from "../teslim/api";
 import { KAPANIS_KARTI_BASLIGI } from "../uyelik/DolasimKartlari";
 import { GECIKMIS_ODUNCLER_BASLIGI } from "../uyelik/GecikmisOdunclerPage";
 import { LISTE_DIPNOTU } from "../uyelik/api";
+import {
+  ILISIK_BELGESI_ADI,
+  ILISIK_LISTESI_ADI,
+  ILISIK_LISTESI_ADRESI,
+  ILISIK_LISTESI_BASLIGI,
+  KAPSAM_SECENEKLERI,
+  LISTE_DIPNOTU as ILISIK_DIPNOTU,
+  PUSULA_ADI,
+  YIL_BASI_ADRESI,
+  YIL_BASI_BASLIGI,
+  YIL_SONU_ADRESI,
+  YIL_SONU_BASLIGI,
+} from "../yil/api";
 import KilavuzPage, { KILAVUZ_BOLUMLERI } from "./KilavuzPage";
 
 function renderPage() {
@@ -160,6 +222,10 @@ const BEKLENEN_BASLIKLAR = [
   "Etiketler",
   "Üyelik, Kart ve Belgeler",
   "Dolaşım Masası",
+  "Sınıf Kitaplığına ve Öğretmene Teslim",
+  "Kayıp, Hasar ve Onarım",
+  "İlişik Listesi",
+  "Yıl Sonu ve Yıl Başı",
   "Katalog Excel Şablonu",
   "İçe Aktarma",
   "Yedek ve Güvenlik Dosyası",
@@ -372,6 +438,15 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     }
     expect(metin).toContain("3 dakika işlem yapılmazsa");
     expect(metin).toContain("en geç 30 dakika sonra");
+    // F7: iki süre Kütüphane Politikası'ndan ayarlanır; alan adları ve sınırlar panelin
+    // metniyle aynı (sınırlar backend `test_on_yuz_sabitleri.py` ile modele kilitli).
+    expect(metin).toContain("“Yönetici Kipi Süreleri” bölümünden değiştirilir");
+    expect(metin).toContain("“İşlem yapılmazsa kapanma süresi (dakika)” 1 ile 15");
+    expect(metin).toContain("“En uzun açık kalma süresi (dakika)” 5 ile 120 dakika");
+    expect(metin).toContain("ilki ikincisini aşamaz");
+    expect(metin).toContain("Değişiklik bir sonraki işlemden itibaren geçerlidir");
+    // Görevliye açık teslim işi yalnız geri almadır (§4.4).
+    expect(metin).toContain(`“${GOREVLI_GERI_ALMA_DUGMESI}” düğmesiyle`);
     expect(metin).toContain("“Kilitle” her kipte parolasızdır");
     // Kurtarmayla parola yenileme anahtarı değiştirmez; anahtar yalnız istenirse yenilenir.
     expect(metin).toContain("kurtarma anahtarını DEĞİŞTİRMEZ");
@@ -1356,9 +1431,38 @@ describe("KilavuzPage — sözlük ve kalıntı denetimi", () => {
       /yazdırma kuyruğu/i,
       /barkod stoğu/i,
       /yöntem [AB]\b/,
+      // Teslim, kayıp/hasar ve ilişik sözlüğünün "kullanılmaz" sütunu (docs/sozluk.md §1,
+      // §4.12, §4.13; F7). "Borç" yalnız Türk Borçlar Kanunu'nun adında geçer; "telef"
+      // sözcüğü "telefon"dan ayrılır.
+      /zayi/i,
+      /(^|[^\p{L}])telef(?!on)/iu,
+      /borç(?!lar Kanunu)/iu,
+      /ilişi\p{L}* kes/iu,
+      /tahsil edil/i,
+      /tazminat/i,
+      // Teslimin geri alınması "teslim alındı" değildir. TEK istisna Md. 19'un bedel adımı
+      // (25.09.2026 kullanıcı kararı): "Bedel teslim alındı", "bedelin teslim alındığı".
+      /(?<!bedel\p{L}* )teslim alındı/iu,
+      /kayıp ödünç/i,
+      /son uyarı/i,
+      /yıl devri/i,
+      /yıl kapanışı/i,
+      /mezun listesi/i,
     ]) {
       expect(metin).not.toMatch(yasak);
     }
+  });
+
+  it("'Kütüphaneden ilişiği yoktur' belgesi karne ya da diploma ön koşulu diye sunulmaz", () => {
+    const { container } = renderPage();
+    const metin = sayfaMetni(container);
+
+    // İki sözcük kılavuzda YALNIZ olumsuz cümlede ve birer kez geçer (tasarım §8.3,
+    // docs/mevzuat/BENIOKU.md §4: dayanağı yok, Md. 18 yalnız "iadesi sağlanır" der).
+    expect(metin.match(/karne/giu) ?? []).toHaveLength(1);
+    expect(metin.match(/diploma/giu) ?? []).toHaveLength(1);
+    expect(metin).toContain("Bu belge karne ya da diploma almanın ön koşulu değildir");
+    expect(metin).not.toMatch(/ön koşul(u|udur)(?! değildir)/u);
   });
 
   it("DOS ve TKYS ilk geçişte açılır", () => {
@@ -1795,5 +1899,478 @@ describe("KilavuzPage — F6 ile değişen eski bölümler", () => {
       "kurallar ödünç verilirken Dolaşım Masası'nda uygulanır",
     );
     expect(bolumMetni("katalog")).toContain("o zamana kadar üyelik ve ödünç kayıtları silinmez");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F7 — Teslim, Kayıp/Hasar/Onarım, İlişik ve Yıl Akışları
+//
+// Ekran adları `modules/teslim`, `modules/kayip`, `modules/yil`, masanın
+// (`dolasim/DolasimMasasi`) ve görevli ekranının sabitlerinden okunur. Sabiti olmayan
+// sekme ve adım adları ekranın kaynağından (TeslimlerPage TABS, YilSonuPage /
+// YilBasiPage ADIMLAR) birebir kopyalandı. SUNUCU iletileri ve mevzuat alıntıları
+// `apps/kutuphane/tests/test_teslim_ilisik_kilavuz_metinleri.py` ile sunucu
+// sabitlerine ve docs/mevzuat metnine kilitlidir.
+// ---------------------------------------------------------------------------
+
+describe("KilavuzPage — Sınıf Kitaplığına ve Öğretmene Teslim (F7)", () => {
+  it("teslim ödünç değildir: sayı sınırı, süre ve üyelik yok; 'kalan hak' dili kullanılmaz", () => {
+    renderPage();
+    const metin = bolumMetni("teslim");
+
+    expect(metin).toContain("teslimdir, ödünç değildir");
+    expect(metin).toContain("ödünç sınırı ve on beş günlük süre uygulanmaz, üyelik gerekmez");
+    expect(metin).toContain("teslim alanın ödünç hakkından düşmez");
+    expect(metin).not.toMatch(/kalan (ödünç )?hak/iu);
+    expect(metin).toContain(`(“${DIGER_PERSONEL_GEREKCESI}”)`);
+    expect(metin).toContain("Teslim yalnız etkin ders yılının bir şubesine ya da bir öğretmene");
+    // Ödünç verilmeyen kaynaklar teslim edilebilir (services/deliveries.delivery_obstacle).
+    expect(metin).toContain("Ödünç verilmeyen kaynaklar da teslim edilebilir");
+  });
+
+  it("ekran, sekme, kutu ve düğme adları teslim ekranlarının sabitleriyle aynıdır", () => {
+    renderPage();
+    const metin = bolumMetni("teslim");
+
+    expect(metin).toContain(`Dolaşım Masası → ${TESLIMLER_BASLIGI}`);
+    // TeslimlerPage TABS (sabit dışa açılmaz; kaynaktan birebir).
+    expect(metin).toContain("“Teslim Kayıtları”, “Yeni Teslim” ve “Geri Alma”");
+    for (const alan of Object.values(TESLIM_ALAN_TURU_TR)) expect(metin).toContain(`“${alan}”`);
+    expect(metin).toContain("“Teslim Alan” kartında");
+    expect(metin).toContain("“Teslim Edilecek Kitaplar” kartında");
+    expect(metin).toContain(`“${TESLIM_KUTUSU}” kutusuna okutun`);
+    expect(metin).toContain(`“${ZATEN_LISTEDE}”`);
+    expect(metin).toContain(`“${TESLIM_ET_DUGMESI}”e basın`);
+    expect(metin).toContain(`“${GERI_ALMA_BASLIGI}” kartındaki “${GERI_ALMA_KUTUSU}” kutusuna`);
+    expect(metin).toContain(`“${BEKLENEN_DONUS_GECTI}” rozeti`);
+    expect(metin).toContain(`“${GERI_ALMA_DOKUMU_ADI}” kartından`);
+    // Belge adı (sözlük §2) cümle içinde küçük harfle.
+    expect(metin).toContain(TESLIM_LISTESI_ADI.toLocaleLowerCase("tr"));
+    expect(metin).toContain(`“${TESLIM_DURUMU_TR.LOST_CONVERTED}” olarak kapanır`);
+    for (const ad of [
+      "“Teslim tarihi”",
+      "“Beklenen dönüş (isteğe bağlı)”",
+      "“Belge no (isteğe bağlı)”",
+      "“Şube”",
+      "“Çıkar”",
+      "“Listeyi boşalt”",
+      "“Önizle”",
+      "“PDF'i indir”",
+      "“Yeni teslim”",
+      "“Durum”",
+      "“Teslim alan”",
+      "“Belge no”",
+      "“Kayıp bildir”",
+      "“12 kitap 9/A sınıf kitaplığına teslim edilsin mi?”",
+      "“Teslim eden — Kütüphane yöneticisi”",
+      "“Teslim alan — Sınıf kitaplığı sorumlusu”",
+      "“Teslim alan — Öğretmen”",
+      "“Sınıf Kitaplıkları”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+  });
+
+  it("sunucu iletileri birebir yazılır; teslim tek işlemdir", () => {
+    renderPage();
+    const metin = bolumMetni("teslim");
+
+    for (const ileti of [
+      // services/deliveries.py — delivery_obstacle (CopyStatus.ON_LOAN etiketiyle)
+      "“Ödünçte — teslim edilemez.”",
+      // YeniTeslim (toplu ret)
+      "“Listedeki bazı kitaplar teslim edilemiyor; hiçbir teslim yapılmadı.”",
+      // services/deliveries.py — TAKE_BACK_DONE_MESSAGE, NOT_DELIVERED_*, SECTION_DELETE
+      "“Geri alındı.”",
+      "“Bu kitap teslimde değil (…).”",
+      "“Bu kitap teslimde değil (Ödünçte). İade için dolaşım masasını kullanın.”",
+      "“Bu şubede … açık teslim var; önce geri alın.”",
+    ]) {
+      expect(metin).toContain(ileti);
+    }
+    expect(metin).toContain("Teslim tek işlemdir");
+    expect(metin).toContain("hiçbir teslim yapılmaz");
+    expect(metin).toContain("Tek teslimde en çok 500 kitap olur");
+  });
+
+  it("teslimdeki kitap 'Sınıf kitaplığında' görünür; beklenen dönüşün geçmesi gecikme değildir", () => {
+    renderPage();
+    const metin = bolumMetni("teslim");
+
+    expect(metin).toContain(`“${COPY_STATUS_TR.DELIVERED}” görünür`);
+    expect(metin).toContain("Kime teslim edildiği Ağ Kataloğunda ve görevli ekranında görünmez");
+    expect(metin).toContain("bir kitap aynı anda ya bir üyede ödünçtedir ya da teslimdedir");
+    expect(metin).toContain("Bu bir gecikme değildir");
+    expect(metin).toContain("teslimde hatırlatma pusulası da engel de yoktur");
+    expect(metin).toContain("Geri alma, iade gibi, hiçbir durumda kilitlenmez");
+    // Ağ Kataloğu bölümü de teslimin kimde olduğunu göstermediğini söyler.
+    expect(bolumMetni("ag-katalogu")).toContain(
+      "hangi şubede ya da hangi öğretmende olduğu da görünmez",
+    );
+  });
+
+  it("geri alma: masadaki öneri ve görevli kipi; teslim vermek yönetici kipindedir", () => {
+    renderPage();
+    const metin = bolumMetni("teslim");
+
+    // Masa (DolasimMasasi): ileti + öneri + düğme; öneri kime teslim edildiğini söylemez.
+    expect(SINIF_KITAPLIGINDA).toBe(`${COPY_STATUS_TR.DELIVERED}.`);
+    expect(metin).toContain(
+      `“${SINIF_KITAPLIGINDA}” iletisinin altında “${TESLIM_GERI_ALMA_ONERISI}”`,
+    );
+    expect(metin).toContain(`“${TESLIMDEN_GERI_AL}” düğmesi kitabı geri alır`);
+    expect(metin).toContain("Öneri kitabın kime teslim edildiğini söylemez");
+    // Görevli ekranı (GorevliEkrani): düğme, bölüm başlığı ve çıkış düğmesi.
+    expect(GOREVLI_GERI_ALMA_DUGMESI).toBe(TESLIMDEN_GERI_AL);
+    expect(metin).toContain(
+      `“${GOREVLI_GERI_ALMA_DUGMESI}” düğmesiyle açılan “${GOREVLI_GERI_ALMA_BASLIGI}” bölümünde`,
+    );
+    expect(metin).toContain(`“${GOREVLI_DOGRULAMA_BITIR}” masaya döndürür`);
+    expect(metin).toContain("teslim alanın kim olduğu ve belgeler görünmez");
+    expect(metin).toContain(
+      "Teslim vermek, teslim kayıtları ve teslim listeleri yönetici kipindedir",
+    );
+    // Dolaşım bölümü de öneriyi anar.
+    expect(bolumMetni("dolasim")).toContain(`“${TESLIMDEN_GERI_AL}” düğmesi çıkar`);
+  });
+
+  it("teslim listesi TMY 23/6'ya kıyasen; sayımdaki yeri 32/5'e kıyasen ve sayım kurulunun kararı", () => {
+    renderPage();
+    const metin = bolumMetni("teslim");
+
+    expect(metin).toContain("Dayanıklı Taşınırlar Listesinin işlevini gördüğü notu basılır");
+    expect(metin).toContain("(Taşınır Mal Yönetmeliği md. 23/6'ya kıyasen)");
+    expect(screen.getByRole("heading", { level: 3, name: "Sayımdaki yeri" })).toBeInTheDocument();
+    expect(metin).toContain("Sayım ekranı sonraki bir sürümde gelecek");
+    expect(metin).toContain("sayım kurulu karar verir");
+    expect(metin).toContain("(Taşınır Mal Yönetmeliği md. 32/5'e kıyasen)");
+    expect(metin).toContain("TKYS'de Taşınır Teslim Belgesi düzenlendiyse");
+  });
+});
+
+describe("KilavuzPage — Kayıp, Hasar ve Onarım (F7)", () => {
+  it("ekran, pencere ve düğme adları kayıp ekranlarının sabitleriyle aynıdır", () => {
+    renderPage();
+    const metin = bolumMetni("kayip-hasar");
+
+    expect(metin).toContain(`Dolaşım Masası → ${KAYIP_HASAR_BASLIGI}`);
+    expect(metin).toContain(`“${KAYIP_BASLIGI}” diye sorar`);
+    expect(metin).toContain(`“${HASAR_BASLIGI}” diye sorar`);
+    expect(metin).toContain(`“${KAYIP_DUGMESI}”e basın`);
+    expect(metin).toContain(`“${HASAR_DUGMESI}” deyin`);
+    for (const tur of Object.values(DOSYA_TURU_TR)) {
+      expect(metin).toContain(`“${tur} dosyası”`);
+    }
+    // Sorumlu notunun yardımı cümle içinde (SORUMLU_NOTU_YARDIMI'nın ikinci cümlesi).
+    expect(SORUMLU_NOTU_YARDIMI).toContain("Sağlık ya da aile bilgisi yazmayın.");
+    expect(metin).toContain("sağlık ya da aile bilgisi yazmayın");
+    expect(metin).toContain(`“${TUTANAK_ADI}” bölümünden tutanak basılır`);
+    expect(metin).toContain(`“${NUSHA_ISLEMLERI_BASLIGI}” bölümünde “Onarıma gönder” deyin`);
+    expect(metin).toContain(`“${KAYIP_BILDIRILDI}”`);
+    for (const ad of [
+      "“Görünüm”",
+      "“Tür”",
+      "“Tespit tarihi”",
+      "“Sorumlu üye (isteğe bağlı)”",
+      "“Sorumlu notu (isteğe bağlı)”",
+      "“Nüshayı onarıma da gönder”",
+      "“Notu kaydet”",
+      "“Çözüm”",
+      "““…” işlensin mi?”",
+      "“İşle”",
+      "“Vazgeç”",
+      "“O günkü piyasa bedeli (TL)”",
+      "“Onarımdan dön”",
+      "“Nüsha onarıma gönderilsin mi?”",
+      "“Nüsha onarımdan dönsün mü?”",
+      "“Nüshayı düzenle”",
+      "“Dosyayı göster”",
+      "“Bu tutanak bir ödeme ya da tahsilat belgesi değildir.”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+  });
+
+  it("çözümlerin adları CaseResolution etiketleriyle birebir; bekleyen durum düğme değildir", () => {
+    renderPage();
+    const metin = bolumMetni("kayip-hasar");
+
+    for (const [kod, etiket] of Object.entries(COZUM_TR)) {
+      if (kod === "PENDING") continue;
+      expect(metin).toContain(`“${etiket}”`);
+    }
+  });
+
+  it("kayıp bildirimi ödüncü ya da teslimi kapatır; 'Bulundu' yeniden açmaz", () => {
+    renderPage();
+    const metin = bolumMetni("kayip-hasar");
+
+    expect(metin).toContain(`Nüsha “${COPY_STATUS_TR.LOST}” olur ve kayıp dosyası açılır`);
+    expect(metin).toContain("teslimdeyse teslim “Kayba dönüştü” olarak kapanır");
+    expect(metin).toContain("Kayba dönüşen ödünç artık ödünç sınırına ve gecikmeye sayılmaz");
+    expect(metin).toContain("kapanan ödünç ya da teslim yeniden açılmaz");
+    expect(metin).toContain("Kayıp bildirimi geri alınmaz");
+    expect(metin).toContain(
+      "ödünçteki kitabın önce iadesini alın, teslimdeki kitabı önce geri alın",
+    );
+    expect(metin).toContain("Hasar dosyası kitabı dolaşımdan çıkarmaz");
+    expect(metin).toContain("Onarımdan dönüş hasar dosyasını kendiliğinden kapatmaz");
+    expect(metin).toContain("Kapanan dosya yeniden açılmaz");
+  });
+
+  it("bedel yalnız ortaöğretimde (Md. 19/1 birebir); program tahsilat yapmaz, disiplin başlatmaz", () => {
+    renderPage();
+    const metin = bolumMetni("kayip-hasar");
+
+    // docs/mevzuat/meb-okul-kutuphaneleri-yonetmeligi.md md. 19/1 birebir.
+    expect(metin).toContain(
+      "“Ortaöğretim okul kütüphanelerinde hasara uğratılan veya kaybedilen kaynak ilgili kişiden temin edilir, temin edilememesi hâlinde o günkü piyasa bedeli, hasara uğratan veya kaybeden kişiden alınır. Kaynak bedeli ile mevcudu varsa aynısı yoksa kaybedilenin kaydı silinerek başka eser satın alınır.”",
+    );
+    expect(metin).toContain("Okul Kütüphaneleri Yönetmeliği, md. 19/1");
+    expect(metin).toContain(`“${SCHOOL_LEVEL_TR.ORTAOGRETIM}” seçiliyse görünür`);
+    // Dosya penceresindeki not (DosyaAyrintisi.BEDEL_YOK_NOTU) — ilk cümlesi birebir
+    // ("Md. 19)." içindeki nokta cümle sonu değildir; cümle ")." ile biter).
+    const notunIlkCumlesi = BEDEL_YOK_NOTU.slice(0, BEDEL_YOK_NOTU.indexOf("). ") + 2);
+    expect(notunIlkCumlesi).toMatch(/\(Yönetmelik Md\. 19\)\.$/u);
+    expect(metin).toContain(`“${notunIlkCumlesi} …”`);
+    expect(metin).toContain("dosya açık kalır");
+    expect(metin).toContain("son ikisi bedel teslim alındıktan sonra");
+    expect(metin).toContain("Program tahsilat yapmaz.");
+    expect(metin).toContain("Program disiplin sürecini de başlatmaz");
+    expect(metin).toContain("Ortaöğretim Kurumları Yönetmeliği'nde (md. 164/1-g)");
+  });
+
+  it("bedel iki adımdır: belirlenince açık iş sürer, teslim alınınca kişinin işi biter (25.09.2026)", () => {
+    renderPage();
+    const kayip = bolumMetni("kayip-hasar");
+    const ilisik = bolumMetni("ilisik");
+
+    expect(kayip).toContain("Ortaöğretimde dört çözüm daha vardır; ilk ikisi bedelin iki adımıdır");
+    expect(kayip).toContain(`“${COZUM_TR.PRICE_DETERMINED}”: pencere “O günkü piyasa bedeli (TL)”`);
+    expect(kayip).toContain("kişinin kütüphaneyle açık işi sürer");
+    expect(kayip).toContain(`“${COZUM_TR.PRICE_RECEIVED}”: kişiden bedelin teslim alındığı`);
+    expect(kayip).toContain("Kişinin kütüphaneyle açık işi biter");
+    expect(kayip).toContain("“Kütüphaneden ilişiği yoktur” belgesi basılabilir");
+    expect(kayip).toContain(`satırın altında “${OKULUN_ACIK_ISI_ETIKETI}” yazar`);
+    expect(kayip).toContain("Bu adım geri alınmaz");
+    expect(kayip).toContain(`“${COZUM_TR.PRICE_RECEIVED}” da yalnız bir kayıttır`);
+    expect(kayip).toContain(
+      `piyasa bedeli iki adımın tarihleriyle (“${COZUM_TR.PRICE_DETERMINED}”, “${COZUM_TR.PRICE_RECEIVED}”)`,
+    );
+    expect(ilisik).toContain(
+      `“${COZUM_TR.PRICE_RECEIVED}” durumundaki dosya ise kişinin açık işi değildir`,
+    );
+    expect(ilisik).toContain("kayıp ya da hasar nedeniyle kendisinden beklenen bir işlem");
+    for (const yasak of [/borç/i, /ceza/i, /tahsil edil/i]) {
+      expect(kayip).not.toMatch(yasak);
+    }
+  });
+
+  it("F7 düzeltme turu: öneri sonrası bulunma, hasarın kayba dönüşmesi, teslim ve döküm", () => {
+    renderPage();
+    const kayip = bolumMetni("kayip-hasar");
+    const teslim = bolumMetni("teslim");
+
+    // Öneri kayıttan düşme değildir: kayıp dosyasında "Bulundu" kalır.
+    expect(kayip).toContain("Öneri kayıttan düşme değildir");
+    expect(kayip).toContain(`“${COZUM_TR.FOUND_RETURNED}” düğmesi durur`);
+    expect(kayip).toContain(`“${COZUM_TR.FOUND_RETURNED}” seçilemez`);
+    // Açık hasar dosyalı kitap kaybolunca hasar dosyası "Kayba dönüştü" ile kapanır.
+    expect(kayip).toContain(`hasar dosyası “${COZUM_TR.CONVERTED_TO_LOSS}” olarak kapanır`);
+    expect(kayip).toContain("bu bir düğme değildir");
+    // Kişi bağı tek kuraldır.
+    expect(kayip).toContain("Teslimdeki kitapta üye seçerseniz dosya o üyeye bağlanır");
+    // "Bedel belirlendi"nin kişi açısından sonucu açıkça yazar.
+    expect(kayip).toContain("“Kütüphaneden ilişiği yoktur” belgesi basılmaz");
+
+    expect(teslim).toContain(`“${LISTEYE_GIRMEYENLER}”`);
+    expect(teslim).toContain("“Kutuya dön”");
+    expect(teslim).toContain(
+      "“Bu şubenin tesliminden doğan … çözülmemiş kayıp/hasar dosyası var; önce dosyayı çözün.”",
+    );
+    expect(teslim).toContain("yalnız üye türü “Öğretmen” olan kayda birleştirilir");
+    expect(teslim).toContain(
+      `belge no'ya tıklayınca çıkan kartın “${GERI_ALMA_DOKUMU_ADI}” bölümü`,
+    );
+    expect(document.body).not.toHaveTextContent(/yükümlülü/i);
+  });
+
+  it("masadaki kısayol ve Eser Ayrıntısı bölümü anlatılır", () => {
+    renderPage();
+
+    expect(bolumMetni("dolasim")).toContain(
+      "Açık ödünçlerin her satırında “Kayıp bildir” kısayolu durur",
+    );
+    expect(bolumMetni("kayip-hasar")).toContain("(yalnız yönetici kipinde)");
+    expect(bolumMetni("katalog")).toContain("kaybolan kitap için kayıp bildirilir");
+  });
+});
+
+describe("KilavuzPage — İlişik Listesi (F7)", () => {
+  it("açık iş tanımı, sıra ve süzgeçler ekrandaki adlarla", () => {
+    renderPage();
+    const metin = bolumMetni("ilisik");
+
+    expect(metin).toContain(
+      "iade edilmemiş ödüncü, geri alınmamış teslimi ya da çözülmemiş kayıp/hasar dosyası",
+    );
+    expect(metin).toContain("Okuldan ayrılmış kişiler de listededir");
+    expect(metin).toContain(
+      "önce son sınıflar, sonra okuldan ayrılanlar (ayrılmış ya da Ayrılış Havuzu'nda karar bekleyen), sonra diğerleri",
+    );
+    // circulation.GRADUATING_LEVEL (4 · 8 · 12).
+    expect(metin).toContain("ilkokulda 4, ortaokulda 8, ortaöğretimde 12. sınıf");
+    expect(metin).toContain(
+      `“Kapsam” (${KAPSAM_SECENEKLERI.map((s) => `“${s.label}”`).join(", ")})`,
+    );
+    for (const rozet of ["“Son sınıf”", "“Ayrıldı · gg.aa.yyyy”", "“Ayrılış kararı bekliyor”"]) {
+      expect(metin).toContain(rozet);
+    }
+    expect(metin).toContain(`“${COZUM_TR.PRICE_DETERMINED}” durumundaki dosya da açık iştir`);
+    expect(metin).toContain("“Sınıf Kitaplıkları” kartında");
+    expect(metin).toContain("“önceki ders yılı”");
+  });
+
+  it("basılı liste kaynak adı taşımaz ve dipnotludur; belge kartı ekrandaki adla", () => {
+    renderPage();
+    const metin = bolumMetni("ilisik");
+
+    expect(metin).toContain(`“${ILISIK_LISTESI_ADI}” kartı`);
+    expect(metin).toContain("Basılı listede kaynak adı ve okul numarası yoktur");
+    expect(ILISIK_DIPNOTU).toBe(LISTE_DIPNOTU);
+    expect(metin).toContain(`“${ILISIK_DIPNOTU}” dipnotu`);
+    expect(metin).toContain("liste panoya asılmaz");
+    expect(metin).toContain(`“${ILISIK_BELGESI_ADI}” kartında “Kişi” alanına`);
+    expect(metin).toContain("yalnız açık işi olmayan kişiler seçilebilir");
+    expect(metin).toContain("her kişiye bir sayfa basılır");
+    // ilisik_belgeleri.NOT_CLEAR_MESSAGE ({sayi} → N); ileti kişi adı yazmaz.
+    expect(metin).toContain(
+      "“Seçilenlerden N kişinin iade edilmemiş kaynağı, geri alınmamış teslimi ya da çözülmemiş kayıp/hasar dosyası var; belge basılmadı. İlişik listesine bakın.”",
+    );
+    expect(metin).toContain("ileti kimsenin adını yazmaz");
+  });
+
+  it("belge ön koşul değildir; Md. 18/1 alıntısı depodaki metinle birebir", () => {
+    renderPage();
+    const metin = bolumMetni("ilisik");
+
+    expect(metin).toContain("Bu belge karne ya da diploma almanın ön koşulu değildir");
+    expect(metin).toContain("buna dayanak yoktur");
+    // docs/mevzuat md. 18/1'in ikinci cümlesi ve üçüncü cümlenin baş ve son parçası;
+    // ortası Bakanlığın sistemini andığı için "…" ile atlanır.
+    expect(metin).toContain(
+      "“Kütüphaneye iadesi yapılmayan kitapların takibi kütüphaneci veya kütüphaneden sorumlu öğretmen tarafından yapılır. Öğrencilerin ve öğretmenlerin okuldan ayrılması sebebiyle … alınan ödünç kitabın kütüphaneye iadesi sağlanır.”",
+    );
+    expect(metin).toContain("Okul Kütüphaneleri Yönetmeliği, md. 18/1");
+    // Belgenin konumu: yerel araç.
+    expect(metin).toContain("okulun kütüphane işlerini yürüttüğü yerel araçtaki kayıtlara göre");
+  });
+});
+
+describe("KilavuzPage — Yıl Sonu ve Yıl Başı (F7)", () => {
+  /** Bölümdeki n. numaralı listenin adım adları (kalın başlıklar). */
+  function adimAdlari(n: number): Array<string | null> {
+    const listeler = document.querySelectorAll("#yil-akislari ol");
+    return Array.from(listeler[n]?.querySelectorAll(":scope > li > strong") ?? []).map(
+      (s) => s.textContent,
+    );
+  }
+
+  it("Genel Bakış kartlarının pencereleri ve ekranların adları", () => {
+    renderPage();
+    const metin = bolumMetni("yil-akislari");
+
+    expect(metin).toContain(`${YIL_SONU_BASLIGI} (Mayıs-Haziran)`);
+    expect(metin).toContain(`${YIL_BASI_BASLIGI} (Ağustos-Ekim)`);
+    // services/yil_akislari.py: YEAR_END_* ve YEAR_START_* pencereleri.
+    expect(metin).toContain(
+      "“Yıl Sonu” kartı 1 Mayıs'tan 30 Haziran'a kadar (ders yılı daha geç biterse bitişten iki hafta sonrasına dek)",
+    );
+    expect(metin).toContain("“Yıl Başı” kartı 15 Ağustos'tan 31 Ekim'e kadar");
+    expect(metin).toContain("“Geri” ve “Devam”");
+  });
+
+  it("yıl sonunun dört adımı adım rayındaki adlarla; pusula ve belgeler", () => {
+    renderPage();
+    const metin = bolumMetni("yil-akislari");
+
+    // YilSonuPage ADIMLAR (kaynaktan birebir).
+    expect(adimAdlari(0)).toEqual([
+      "Son Ödünç Tarihleri.",
+      "Kitap Toplama.",
+      "Son Sınıflar ve Ayrılanlar.",
+      "İlişik ve Belgeler.",
+    ]);
+    for (const ad of [
+      "“Yıl sonu son ödünç tarihi”",
+      "“Son sınıflar için son ödünç tarihi”",
+      "“Kaydet”",
+      "“… önceki ders yılına ait; bu yıl uygulanmaz.”",
+      "“Toplanacak kitaplar”",
+      `“${PUSULA_ADI}” kartından`,
+      "“Son getirme günü”",
+      "“en geç … tarihine kadar”",
+      "“Son sınıf şubesi”",
+      "“Bütün son sınıflar”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+    expect(metin).toContain("yeni ödünç verilmez, iade alınmaya devam eder");
+    expect(metin).toContain("Yıl sonu pusulası kişinin bütün açık ödünçlerini yazar");
+    expect(metin).toContain("tarih kaydedilmez");
+    expect(metin).toContain("Tek seferde en çok 150 belge basılır");
+  });
+
+  it("yıl başının dört adımı; ekran kayıt yazmaz, ayrı bir yıl geçişi işlemi yoktur", () => {
+    renderPage();
+    const metin = bolumMetni("yil-akislari");
+
+    // YilBasiPage ADIMLAR (kaynaktan birebir).
+    expect(adimAdlari(1)).toEqual([
+      "Ders Yılı.",
+      "e-Okul Listeleri.",
+      "Ayrılış Havuzu.",
+      "Kapalı Günler.",
+    ]);
+    for (const ad of [
+      "“Ders Yılları'nı aç”",
+      "“Öğrencileri aç”",
+      "“Öğretmenler ve Diğer Personel'i aç”",
+      "“Ayrılış Havuzu'nu aç”",
+      "“Kapalı Günler'i aç”",
+      "“Ayrıldı olarak işaretle”",
+      "“Aktif kalsın”",
+      `“${HOLIDAY_KIND_TR.SCHOOL_BREAK}”`,
+      "“Resmî ve dini tatilleri ekle”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+    expect(metin).toContain("Yıl Başı ekranı kayıt yazmaz");
+    expect(metin).toContain("Programda yeni yıla geçiş için ayrı bir işlem yoktur");
+    expect(metin).toContain("Aktarım kimseyi ayırmaz ve kimsenin kaydını silmez");
+    // Yeni yılda sınıf kitaplıkları: teslim yalnız etkin yılın şubesine.
+    expect(metin).toContain("“önceki ders yılı” notuyla görünür");
+    expect(metin).toContain("yeni şubeye yeniden teslim edin");
+  });
+});
+
+describe("KilavuzPage — F7 ekran bağlantıları", () => {
+  it("teslim, kayıp, ilişik ve yıl akışı ekranlarına sabit adreslerle bağlanılır", () => {
+    renderPage();
+
+    const hedef = (ad: string) =>
+      screen.getAllByRole("link", { name: ad }).map((a) => a.getAttribute("href"));
+
+    expect(hedef(`Dolaşım Masası → ${TESLIMLER_BASLIGI}`)).toEqual([TESLIMLER_ADRESI]);
+    // TeslimlerPage TAB_KEYS ("yeni", "geri-alma").
+    expect(hedef("Teslimler → Yeni Teslim")).toEqual([`${TESLIMLER_ADRESI}?tab=yeni`]);
+    expect(hedef("Teslimler → Geri Alma")).toEqual([`${TESLIMLER_ADRESI}?tab=geri-alma`]);
+    expect(hedef(`Dolaşım Masası → ${KAYIP_HASAR_BASLIGI}`)).toEqual([KAYIP_HASAR_ADRESI]);
+    // "İlişik Listesi" iki bağlantıdır: "Bu kılavuzda" çapası ve ekran bağlantısı.
+    expect(new Set(hedef(ILISIK_LISTESI_BASLIGI))).toEqual(
+      new Set(["#ilisik", ILISIK_LISTESI_ADRESI]),
+    );
+    expect(hedef(YIL_SONU_BASLIGI)).toEqual([YIL_SONU_ADRESI]);
+    expect(hedef(YIL_BASI_BASLIGI)).toEqual([YIL_BASI_ADRESI]);
   });
 });

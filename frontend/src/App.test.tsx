@@ -82,6 +82,29 @@ vi.mock("./modules/kutuphane/api", async (importOriginal) => {
   return { ...actual, kutuphaneApi: { ...actual.kutuphaneApi, ...kutuphaneApiMock } };
 });
 
+// Teslimler ve Kayıp ve Hasar (F7) kendi uçlarına gider; burada yalnız rota ve başlık.
+const teslimApiMock = vi.hoisted(() => ({ listele: vi.fn() }));
+vi.mock("./modules/teslim/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./modules/teslim/api")>();
+  return { ...actual, teslimApi: { ...actual.teslimApi, ...teslimApiMock } };
+});
+const kayipApiMock = vi.hoisted(() => ({ listele: vi.fn() }));
+vi.mock("./modules/kayip/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./modules/kayip/api")>();
+  return { ...actual, kayipApi: { ...actual.kayipApi, ...kayipApiMock } };
+});
+
+// İlişik ve yıl akışları (F7) kendi uçlarına gider; burada yalnız rota ve başlık.
+const yilApiMock = vi.hoisted(() => ({
+  akislar: vi.fn(),
+  ilisikListesi: vi.fn(),
+  sinifKitapliklari: vi.fn(),
+}));
+vi.mock("./modules/yil/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./modules/yil/api")>();
+  return { ...actual, yilApi: { ...actual.yilApi, ...yilApiMock } };
+});
+
 // Ağ Doktoru (F5) kendi uçlarına gider; burada yalnız rota ve başlık kablolaması.
 const agKataloguApiMock = vi.hoisted(() => ({
   durum: vi.fn(),
@@ -197,6 +220,11 @@ beforeEach(() => {
     sayaclar: { bugun: {}, son_hata: null },
   });
   agKataloguApiMock.ayar.mockReturnValue(new Promise(() => undefined));
+  // F7 İ kolu: yıl akışı özeti beklemede kalır (Genel Bakış kartı çizilmez, akış
+  // sayfaları iskelet gösterir); ilişik listesi ve sınıf kitaplıkları boştur.
+  yilApiMock.akislar.mockReturnValue(new Promise(() => undefined));
+  yilApiMock.ilisikListesi.mockResolvedValue(bosSayfa);
+  yilApiMock.sinifKitapliklari.mockResolvedValue([]);
   for (const liste of [
     kutuphaneApiMock.listWorks,
     kutuphaneApiMock.listCopies,
@@ -205,6 +233,8 @@ beforeEach(() => {
     kutuphaneApiMock.listCommissionDecisions,
     kutuphaneApiMock.listDonationIntakes,
     kutuphaneApiMock.aktarimGecmisi,
+    teslimApiMock.listele,
+    kayipApiMock.listele,
   ]) {
     liste.mockResolvedValue(bosSayfa);
   }
@@ -431,9 +461,16 @@ describe("App — kabuk gezinmesi", () => {
   it.each([
     ["/", "Genel Bakış"],
     ["/dolasim", "Dolaşım Masası"],
+    // F7: menüde yok, Dolaşım Masası'nın sağ üstündeki bağlantılarla açılır.
+    ["/dolasim/teslimler", "Teslimler"],
+    ["/dolasim/kayip-hasar", "Kayıp ve Hasar"],
     ["/kisiler", "Kişiler"],
     // F6 (E kolu): menüde yok, Genel Bakış'taki gecikme kartından açılır.
     ["/gecikmis-oduncler", "Gecikmiş Ödünçler"],
+    // F7 (İ kolu): menüde yok; Genel Bakış kartlarından açılır.
+    ["/ilisik-listesi", "İlişik Listesi"],
+    ["/yil-sonu", "Yıl Sonu"],
+    ["/yil-basi", "Yıl Başı"],
     ["/katalog", "Katalog"],
     // Alt sayfaların başlığı kökünkinden ÖNCE eşleşir (AppShell sıralaması).
     ["/katalog/eser/3", "Eser Ayrıntısı"],

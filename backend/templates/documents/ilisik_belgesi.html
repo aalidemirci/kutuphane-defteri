@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <title>Kütüphaneden İlişiği Yoktur Belgesi</title>
+  {% comment %}"Kütüphaneden ilişiği yoktur" belgesi (E5; tasarım §3, §8.3, §10) —
+  bağlam apps/kutuphane/ilisik_belgeleri.py::certificate_context'ten gelir.
+
+  Kişi başına BİR SAYFA; her sayfa kendi resmî antedini taşır (bu yüzden
+  documents/base.html genişletilmez: base anteti belgenin başına bir kez basar).
+  Antet ve künye biçimi base.html ile aynıdır.
+
+  Madde atfı yalnız KONUM KALIBIYLA yapılır (`position_note`): belge okulun yerel
+  kayıtlarına dayanır, Bakanlık otomasyon sistemindeki kaydın yerine geçmez.
+  Belge karne ya da diplomanın ön koşulu diye SUNULMAZ; o sözcükler burada geçmez.
+
+  text-transform YOK (başlık doğrudan büyük harfle). Sayfa bütçesi: kişi başına tam
+  bir sayfa, en uzun veriyle de (test_ilisik_belgeleri.py).{% endcomment %}
+  <style>
+    {% include "print/_design.css" %}
+    @page {
+      size: A4 portrait;
+      margin: 1.4cm 1.8cm 1.5cm 1.8cm;
+    }
+    body { font-family: "DejaVu Sans", sans-serif; font-size: 10pt; color: var(--pr-text);
+           line-height: 1.35; margin: 0; }
+    .belge + .belge { break-before: page; page-break-before: always; }
+    .letterhead { text-align: center; }
+    .letterhead .tc { font-weight: bold; font-size: 10pt; letter-spacing: 3pt; }
+    .letterhead .authority { font-weight: bold; font-size: 10.5pt; margin-top: 1pt; }
+    .letterhead .school { font-weight: bold; font-size: 12.5pt; color: var(--pr-ink); margin-top: 1pt; }
+    .rule { height: 2pt; background: var(--pr-ink); margin: 6pt 0 2pt; }
+    .rule-thin { height: 0.6pt; background: var(--pr-faint); }
+    .doc-title { text-align: center; font-size: 12.5pt; font-weight: bold; letter-spacing: 0.5pt;
+                 color: var(--pr-ink); margin: 18pt 0 4pt; }
+    .tarih { text-align: right; font-size: 9.5pt; color: var(--pr-label); margin: 10pt 0 2pt; }
+    .info { width: 100%; border-collapse: collapse; margin: 8pt 0 2pt;
+            border: 0.75pt solid var(--pr-line-soft); }
+    .info td { padding: 5pt 9pt; font-size: 10pt; border-bottom: 0.75pt solid var(--pr-line-soft);
+               vertical-align: top; }
+    .info tr:last-child td { border-bottom: none; }
+    .info td.label { width: 32%; color: var(--pr-label); font-weight: bold; background: var(--pr-fill);
+                     border-right: 0.75pt solid var(--pr-line-soft); }
+    .para { margin: 14pt 0 8pt; font-size: 10.5pt; text-align: justify; line-height: 1.5; }
+    .konum { margin-top: 10pt; font-size: 8.5pt; color: var(--pr-secondary); text-align: justify;
+             line-height: 1.4; border-top: 0.6pt solid var(--pr-faint); padding-top: 5pt; }
+    .sig-grid { width: 100%; border-collapse: collapse; margin-top: 34pt;
+                break-inside: avoid; page-break-inside: avoid; table-layout: fixed; }
+    .sig-grid td { text-align: center; vertical-align: top; padding: 0 10pt; font-size: 9.5pt; }
+    .sig-grid .space { height: 34pt; }
+    .sig-grid .line { border-top: 0.75pt solid var(--pr-secondary); margin: 0 6pt 3pt; }
+    .sig-grid .name { font-weight: bold; }
+    .sig-grid .role { color: var(--pr-secondary); font-size: 9pt; }
+  </style>
+</head>
+<body>
+{% for c in certificates %}<div class="belge">
+  <div class="letterhead">
+    <div class="tc">{{ tc }}</div>
+    <div class="authority">{{ authority }}</div>
+    <div class="school">{{ unit_line }}</div>
+  </div>
+  <div class="rule"></div>
+  <div class="rule-thin"></div>
+  <div class="tarih">Tarih: {{ issued_on }}</div>
+  <div class="doc-title">{{ document_title }}</div>
+  <table class="info">
+    {% for r in c.rows %}<tr><td class="label">{{ r.label }}</td><td>{{ r.value }}</td></tr>
+    {% endfor %}
+  </table>
+  <p class="para">{{ c.statement }}</p>
+  <table class="sig-grid">
+    <tr>
+      <td><div class="space"></div><div class="line"></div><div class="name">&nbsp;</div><div class="role">Kütüphane yöneticisi</div></td>
+      <td><div class="space"></div><div class="line"></div><div class="name">{% if principal_name %}{{ principal_name }}{% else %}&nbsp;{% endif %}</div><div class="role">Okul müdürü</div></td>
+    </tr>
+  </table>
+  <p class="konum">{{ position_note }}</p>
+</div>
+{% endfor %}</body>
+</html>

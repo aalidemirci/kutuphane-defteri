@@ -9,7 +9,8 @@ kancalarla okul dışı veriyi hemen siliyordu. Kütüphanede kişinin açık ö
 dosyası ya da teslimi olabilir; bu yüzden düzen dört kayıt defterine ayrıldı.
 Bağımlılık yönü <uygulama> → okul'dur: okul diğer uygulamaları import etmez,
 her uygulama kendi denetimini `AppConfig.ready` içinde buraya kaydeder (F6
-üyelik ve ödünç, F7 teslim ve kayıp dosyası):
+üyelik ve ödünç; F7 açık teslim ve çözülmemiş kayıp/hasar dosyası yükümlülük,
+kapanmış teslim silme engeli, teslimlerin birleştirmede taşınması):
 
 - `register_obligation_check(fn)` → `fn(kişi) -> list[str]`: kişinin AÇIK
   yükümlülüklerinin Türkçe gerekçeleri ("Açık ödünç var."). Gerekçe KİŞİ ADI
@@ -18,7 +19,10 @@ her uygulama kendi denetimini `AppConfig.ready` içinde buraya kaydeder (F6
 - `register_leave_hook(fn)` → `fn(kişi)`: ayrılışta çağrılır (F6: üyeliği
   sonlandırır).
 - `register_merge_hook(fn)` → `fn(kaynak, hedef)`: personel birleştirmede
-  kaynağın bağlarını hedefe taşır (F6: üyelik ve ödünçler).
+  kaynağın bağlarını hedefe taşır (F6: üyelik ve ödünçler; F7: teslimler).
+- `register_deletion_block(fn)` → `fn(kişi) -> list[str]` (F7): açık yükümlülük
+  olmasa da kişiye bağlı kalıcı kaydı (kapanmış teslim) olan kişinin
+  kullanıcı silmesini gerekçeyle reddeder.
 
 Kancalar AYNI veritabanı işleminde koşar: hata verirlerse durum değişikliği de
 geri sarılır. Kancalar yalnız veritabanına yazmalıdır (dosya, ağ yan etkisi yok).
@@ -78,11 +82,13 @@ type ObligationCheck = Callable[[Person], Iterable[str]]
 type MembershipCheck = Callable[[Person], bool]
 type LeaveHook = Callable[[Person], None]
 type MergeHook = Callable[[Personnel, Personnel], None]
+type DeletionBlock = Callable[[Person], Iterable[str]]
 
 _obligation_checks: list[ObligationCheck] = []
 _membership_checks: list[MembershipCheck] = []
 _leave_hooks: list[LeaveHook] = []
 _merge_hooks: list[MergeHook] = []
+_deletion_blocks: list[DeletionBlock] = []
 
 #: Ayrılış havuzu alanları (öğrenci ve personelde aynı adlar).
 POOL_FIELDS: tuple[str, str] = ("leave_candidate_since", "leave_candidate_run")
@@ -133,6 +139,24 @@ def register_merge_hook(fn: MergeHook) -> None:
     _register(_merge_hooks, fn)
 
 
+def register_deletion_block(fn: DeletionBlock) -> None:
+    """Silme engeli (F7): `fn(kişi)` kapanmış da olsa kişiye bağlı kayıt varsa gerekçe döner.
+
+    Açık yükümlülükten AYRIDIR: kapanmış bir teslim kişinin yükümlülüğü değildir
+    (ilişik listesine girmez) ama teslim satırı kişiyi PROTECT ile tutar; bağı
+    saklama taraması koparır (§6.4, F11), kullanıcının "Sil"i değil.
+    """
+    _register(_deletion_blocks, fn)
+
+
+def deletion_blocks(person: Person) -> list[str]:
+    """Kişinin silinmesini engelleyen (yükümlülük dışı) kayıtların gerekçeleri."""
+    gerekceler: list[str] = []
+    for check in _deletion_blocks:
+        gerekceler.extend(check(person))
+    return list(dict.fromkeys(g for g in gerekceler if g))
+
+
 def open_obligations(person: Person) -> list[str]:
     """Kişinin açık yükümlülük gerekçeleri (tekilleştirilmiş, kayıt sırasıyla)."""
     gerekceler: list[str] = []
@@ -165,6 +189,9 @@ def _ensure_deletable(person: Person) -> None:
     gerekceler = open_obligations(person)
     if gerekceler:
         raise ValidationError("Kayıt silinemez: " + " ".join(gerekceler))
+    engeller = deletion_blocks(person)
+    if engeller:
+        raise ValidationError(" ".join(engeller))
     if was_ever_member(person):
         raise ValidationError(MEMBER_DELETE_MESSAGE)
 

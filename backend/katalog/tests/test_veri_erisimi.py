@@ -11,6 +11,11 @@ veritabanının kendisinde, VERİ DOLUYKEN bu tabloların katalog bağlantısın
 okunamadığı ayrıca sınanır ve kaydedici authorizer anlık görüntüsü
 (`_genis_kurgu` artık üye ve ödünç de kurar) DEĞİŞMEDEN geçer: görünümler
 üyelik ve ödünç tablolarına hiç uzanmaz.
+
+F7 (§5.10-4 yeniden koşar): `kutuphane_delivery`, `kutuphane_lossdamagecase` ve
+`kutuphane_copyrepair` aynı biçimde sınanır; `_genis_kurgu` teslim (şube ve
+öğretmen), kayıp ve hasar dosyası ve onarım kaydı da kurar ve okunan küme yine
+DEĞİŞMEZ — katalog yalnız nüsha durumunu okur ("Sınıf kitaplığında").
 """
 
 from __future__ import annotations
@@ -103,6 +108,12 @@ def _db_yolu() -> Path:
         (OKUMA, "kutuphane_issuedcard", "card_no_index", None, DENY),
         (OKUMA, "kutuphane_cardrevocation", "card_no_index", "kd_katalog_nusha", DENY),
         (OKUMA, "kutuphane_loan", "due_date", "kd_katalog_nusha", DENY),
+        # F7: teslim, kayıp/hasar dosyası ve onarım kaydı da okunamaz (görünümden bile).
+        (OKUMA, "kutuphane_delivery", "section_id", "kd_katalog_nusha", DENY),
+        (OKUMA, "kutuphane_delivery", "personnel_id", None, DENY),
+        (OKUMA, "kutuphane_lossdamagecase", "responsible_note", "kd_katalog_eser", DENY),
+        (OKUMA, "kutuphane_lossdamagecase", "market_price", None, DENY),
+        (OKUMA, "kutuphane_copyrepair", "copy_id", "kd_katalog_nusha", DENY),
         (OKUMA, "sqlite_master", "sql", None, DENY),
         # Geri kalan her şey → RED
         (sqlite3.SQLITE_PRAGMA, "query_only", "OFF", None, DENY),
@@ -337,6 +348,20 @@ def _uye_ve_odunc_kurgusu() -> None:
     circulation.return_copy(copy=iade.copy)
 
 
+def _teslim_ve_dosya_kurgusu() -> None:
+    """F7 tablolarını doldurur: şube ve öğretmen teslimi (biri geri alınmış), kayıp
+    dosyası (ödünçten), hasar dosyası ve onarım kaydı."""
+    from apps.kutuphane.services import deliveries, loss_damage
+    from apps.kutuphane.tests.teslim_ortak import ogretmen, sube, teslim_et
+
+    teslim_et([nusha(eser(title="Sınıftaki Eser"))], section=sube(11, "F"))
+    geri = teslim_et([nusha(eser(title="Geri Alınan"))], personnel=ogretmen()).deliveries[0]
+    deliveries.take_back(geri.copy)
+    kayip = odunc_ver(uye(ogrenci(first_name="Kayipdenemeuye")))
+    loss_damage.report_lost(copy=kayip.copy, responsible_note="Denemesorumlunotu")
+    loss_damage.open_damage_case(copy=nusha(eser(title="Hasarlı")), send_to_repair=True)
+
+
 @pytest.mark.parametrize(
     "sql",
     [
@@ -349,13 +374,28 @@ def _uye_ve_odunc_kurgusu() -> None:
         "SELECT * FROM kutuphane_issuedcard",
         "SELECT * FROM kutuphane_cardrevocation",
         "SELECT e.baslik FROM kd_katalog_eser e JOIN kutuphane_loan l ON l.id = e.id",
+        # F7 (§5.10-4 yeniden koşar): teslim, kayıp/hasar dosyası ve onarım kaydı.
+        "SELECT * FROM kutuphane_delivery",
+        "SELECT section_id, personnel_id FROM kutuphane_delivery",
+        "SELECT count(*) FROM kutuphane_delivery",
+        "SELECT responsible_note FROM kutuphane_lossdamagecase",
+        "SELECT market_price FROM kutuphane_lossdamagecase",
+        "SELECT * FROM kutuphane_copyrepair",
+        "SELECT n.durum FROM kd_katalog_nusha n JOIN kutuphane_delivery d ON d.copy_id = n.id",
     ],
 )
-def test_gercek_uyelik_ve_odunc_tablolari_katalog_baglantisindan_okunamaz(sql: str) -> None:
-    """F6: tablolar artık gerçek ve doludur; katalog bağlantısı yine okuyamaz."""
+def test_gercek_uyelik_odunc_teslim_ve_dosya_tablolari_katalog_baglantisindan_okunamaz(
+    sql: str,
+) -> None:
+    """F6/F7: tablolar gerçek ve doludur; katalog bağlantısı yine okuyamaz."""
     _uye_ve_odunc_kurgusu()
+    _teslim_ve_dosya_kurgusu()
     with connection.cursor() as imlec:  # kurgu gerçekten doldu (Django bağlantısı)
         imlec.execute("SELECT count(*) FROM kutuphane_loan")
+        assert imlec.fetchone()[0] == 3
+        imlec.execute("SELECT count(*) FROM kutuphane_delivery")
+        assert imlec.fetchone()[0] == 2
+        imlec.execute("SELECT count(*) FROM kutuphane_lossdamagecase")
         assert imlec.fetchone()[0] == 2
 
     with pytest.raises(veri.VeriHatasi), veri.baglan(_db_yolu()) as conn:
@@ -451,6 +491,9 @@ def _genis_kurgu() -> list[int]:
     uyelik = uye(ogrenci())
     odunc_ver(uyelik, nusha(w1))
     circulation.return_copy(copy=odunc_ver(uyelik, nusha(w3)).copy)
+    # F7: teslim, kayıp/hasar dosyası ve onarım kaydı DOLUYKEN de küme değişmez
+    # (görünümler yalnız nüsha durumunu okur: "Sınıf kitaplığında", "Onarımda").
+    _teslim_ve_dosya_kurgusu()
     return [w.pk for w in (w1, w2, w3, w4, w5)]
 
 
@@ -522,6 +565,14 @@ def test_izin_listesi_yalniz_katalog_tablolarini_ve_kisisiz_sutunlari_kapsar() -
         "principal_name",
         "demirbas",
         "password",
+        # F7: teslim (alan: şube/öğretmen), kayıp/hasar dosyası, bedel, onarım.
+        "delivery",
+        "recipient",
+        "personnel",
+        "lossdamage",
+        "responsible",
+        "market_price",
+        "copyrepair",
     ],
 )
 def test_gorunum_tanimlari_kisi_ve_tanimlayici_tablolarina_uzanmaz(kelime: str) -> None:

@@ -34,6 +34,18 @@ vi.mock("./api", async (importOriginal) => {
   return { ...actual, dolasimApi: { ...actual.dolasimApi, ...masa } };
 });
 
+// F7: teslimden geri alma ve kayıp bildirimi kendi uçlarına gider.
+const teslimKapi = vi.hoisted(() => ({ geriAl: vi.fn() }));
+vi.mock("../teslim/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../teslim/api")>();
+  return { ...actual, teslimApi: { ...actual.teslimApi, ...teslimKapi } };
+});
+const kayipKapi = vi.hoisted(() => ({ ac: vi.fn() }));
+vi.mock("../kayip/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../kayip/api")>();
+  return { ...actual, kayipApi: { ...actual.kayipApi, ...kayipKapi } };
+});
+
 import DolasimMasasi, {
   BAGLAM_KAPANDI,
   BAGLAM_SURESI_MS,
@@ -42,7 +54,11 @@ import DolasimMasasi, {
   DURUM_SORGUSU_KAPANDI,
   IADE_ONERISI,
   ISTEM_BAGLAM_DEGISTI,
+  KAYIP_BILDIRILDI,
   OKUTMA_KUTUSU,
+  SINIF_KITAPLIGINDA,
+  TESLIMDEN_GERI_AL,
+  TESLIM_GERI_ALMA_ONERISI,
 } from "./DolasimMasasi";
 import { KART_KILIDI_BASLIGI } from "./MasaDiyaloglari";
 
@@ -742,5 +758,149 @@ describe("Nüsha durum sorgusu", () => {
     expect(await screen.findByText("Rafta — ödünç verilebilir.")).toBeInTheDocument();
     expect(masa.nushaDurumu).toHaveBeenCalledWith(KITAP);
     expect(masa.iadeAl).not.toHaveBeenCalled();
+  });
+});
+
+// F7 — teslimdeki kitap masada okutulunca (U11, §4.4) ve açık ödüncün kayıp bildirimi.
+describe("F7 | teslimdeki kitap ve kayıp bildirimi", () => {
+  it("görevli: teslimdeki kitap iade edilmez, teslimden geri alma önerilir; kime teslim edildiği yazmaz", async () => {
+    const user = userEvent.setup();
+    masa.iadeAl.mockResolvedValue(
+      iadeSonucu({ result: "not_on_loan", message: SINIF_KITAPLIGINDA }),
+    );
+    teslimKapi.geriAl.mockResolvedValue({
+      result: "returned",
+      kind: "COPY",
+      message: "Geri alındı.",
+      copy: { barcode: KITAP, barcode_display: "2026-000123", work_title: "Masa Kitabı" },
+    });
+    const kutu = ekranaBas();
+
+    await user.type(kutu, `${KITAP}{Enter}`);
+    expect(await screen.findByText(TESLIM_GERI_ALMA_ONERISI)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: TESLIMDEN_GERI_AL }));
+
+    await waitFor(() => expect(teslimKapi.geriAl).toHaveBeenCalledWith(KITAP));
+    const durum = await screen.findByRole("status");
+    expect(durum).toHaveTextContent("Geri alındı.");
+    expect(durum).toHaveTextContent("2026-000123 — Masa Kitabı");
+    expect(screen.queryByRole("button", { name: TESLIMDEN_GERI_AL })).not.toBeInTheDocument();
+  });
+
+  it("yönetici: nüsha durumu teslimdeyse öneri çıkar; geri almada teslim alan yazılır", async () => {
+    const user = userEvent.setup();
+    masa.iadeAl.mockResolvedValue(
+      iadeSonucu({
+        result: "not_on_loan",
+        message: "Durum iletisi",
+        copy: {
+          barcode: KITAP,
+          barcode_display: "2026-000123",
+          work_title: "Masa Kitabı",
+          status: "DELIVERED",
+          status_display: "Sınıf kitaplığında",
+        },
+      }),
+    );
+    teslimKapi.geriAl.mockResolvedValue({
+      result: "returned",
+      kind: "COPY",
+      message: "Geri alındı.",
+      copy: { barcode: KITAP, barcode_display: "2026-000123", work_title: "Masa Kitabı" },
+      delivery: {
+        id: 3,
+        recipient_kind: "SECTION",
+        recipient_kind_display: "Sınıf kitaplığı",
+        recipient_label: "3/A",
+        delivered_on: "2026-09-21",
+        expected_return: null,
+        document_no: "2026/1",
+        returned_at: null,
+      },
+    });
+    const kutu = ekranaBas(false);
+    await user.type(kutu, `${KITAP}{Enter}`);
+    await user.click(await screen.findByRole("button", { name: TESLIMDEN_GERI_AL }));
+    expect(await screen.findByText(/Sınıf kitaplığı: 3\/A/)).toBeInTheDocument();
+  });
+
+  it("rafta ya da başka durumdaki kitapta teslim önerisi çıkmaz", async () => {
+    const user = userEvent.setup();
+    masa.iadeAl.mockResolvedValue(
+      iadeSonucu({ result: "not_on_loan", message: "Rafta — ödünç değil." }),
+    );
+    const kutu = ekranaBas();
+    await user.type(kutu, `${KITAP}{Enter}`);
+    expect(await screen.findByText("Rafta — ödünç değil.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: TESLIMDEN_GERI_AL })).not.toBeInTheDocument();
+  });
+
+  it("geri alma isteği başarısız olursa ileti düşer", async () => {
+    const user = userEvent.setup();
+    masa.iadeAl.mockResolvedValue(
+      iadeSonucu({ result: "not_on_loan", message: SINIF_KITAPLIGINDA }),
+    );
+    teslimKapi.geriAl.mockRejectedValue(new Error("ağ yok"));
+    const kutu = ekranaBas();
+    await user.type(kutu, `${KITAP}{Enter}`);
+    await user.click(await screen.findByRole("button", { name: TESLIMDEN_GERI_AL }));
+    expect(
+      await screen.findByText("Geri alma kaydedilemedi; kitabı yeniden okutun."),
+    ).toBeInTheDocument();
+  });
+
+  const ACIK_ODUNC = {
+    id: 1,
+    barcode: "2026000001",
+    barcode_display: "2026-000001",
+    work_title: "Kaybolan Eser",
+    loaned_at: "2026-09-01T10:00:00+03:00",
+    due_date: "2026-09-16",
+    overdue_days: 0,
+    cardless: false,
+    has_override: false,
+  };
+
+  it("yönetici: açık ödünçte kayıp bildirimi; ödünç kapanır ve kalan hak sunucudan tazelenir", async () => {
+    const user = userEvent.setup();
+    masa.kartOku.mockResolvedValue(
+      kartSonucu({
+        membership_id: 7,
+        remaining_quota: 2,
+        open_loan_count: 1,
+        open_loans: [ACIK_ODUNC],
+      }),
+    );
+    masa.uyeAc.mockResolvedValue(
+      kartSonucu({ membership_id: 7, remaining_quota: 3, open_loan_count: 0, open_loans: [] }),
+    );
+    kayipKapi.ac.mockResolvedValue({ id: 9, case_type: "LOST" });
+    const kutu = ekranaBas(false);
+    await user.type(kutu, `${KART}{Enter}`);
+    const baglam = await screen.findByRole("region", { name: "Üye bağlamı" });
+
+    await user.click(within(baglam).getByRole("button", { name: "2026-000001 için kayıp bildir" }));
+    const pencere = await screen.findByRole("dialog", { name: "Kayıp bildirilsin mi?" });
+    expect(pencere).toHaveTextContent("2026-000001 — Kaybolan Eser");
+    await user.click(within(pencere).getByRole("button", { name: "Kayıp bildir" }));
+
+    await waitFor(() =>
+      expect(kayipKapi.ac).toHaveBeenCalledWith(
+        expect.objectContaining({ case_type: "LOST", barcode: "2026000001" }),
+      ),
+    );
+    await waitFor(() => expect(masa.uyeAc).toHaveBeenCalledWith(7));
+    expect(await screen.findByText(KAYIP_BILDIRILDI)).toBeInTheDocument();
+    expect(await within(baglam).findByText("Kalan ödünç hakkı: 3")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("görevli kipinde kayıp bildirimi kısayolu yoktur", async () => {
+    const user = userEvent.setup();
+    masa.kartOku.mockResolvedValue(kartSonucu({ open_loans: [ACIK_ODUNC] }));
+    const kutu = ekranaBas();
+    await user.type(kutu, `${KART}{Enter}`);
+    await screen.findByRole("region", { name: "Üye bağlamı" });
+    expect(screen.queryByRole("button", { name: /kayıp bildir/i })).not.toBeInTheDocument();
   });
 });

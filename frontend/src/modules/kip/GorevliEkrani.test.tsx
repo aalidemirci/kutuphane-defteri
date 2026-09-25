@@ -35,13 +35,23 @@ vi.mock("../dolasim/api", async (importOriginal) => {
   return { ...actual, katalogOkumaApi: { ...actual.katalogOkumaApi, ...katalog } };
 });
 
+// F7: teslimden geri alma okutması (görevli kipinde açık tek teslim ucu).
+const teslim = vi.hoisted(() => ({ geriAl: vi.fn(), geriAlmaDokumuPdf: vi.fn() }));
+vi.mock("../teslim/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../teslim/api")>();
+  return { ...actual, teslimApi: { ...actual.teslimApi, ...teslim } };
+});
+
 import { OKUTMA_KUTUSU } from "../dolasim/DolasimMasasi";
+import { GERI_ALMA_KUTUSU } from "../teslim/GeriAlmaOkutmasi";
 import GorevliEkrani, {
   BEKLEYEN_ANAHTAR_METNI,
   GOREVLI_DOGRULAMA_BASLIGI,
   GOREVLI_DOGRULAMA_BITIR,
   GOREVLI_DOGRULAMA_DUGMESI,
   GOREVLI_EKRANI_METNI,
+  GOREVLI_GERI_ALMA_BASLIGI,
+  GOREVLI_GERI_ALMA_DUGMESI,
   GOREVLI_KATALOG_DUGMESI,
   GOREVLI_MASA_BASLIGI,
   GOREVLI_MASAYA_DON,
@@ -177,5 +187,37 @@ describe("GorevliEkrani — dolaşım masası ve katalog (F6)", () => {
 
     await user.click(screen.getByRole("button", { name: GOREVLI_MASAYA_DON }));
     expect(screen.getByLabelText(OKUTMA_KUTUSU)).toBeInTheDocument();
+  });
+});
+
+describe("GorevliEkrani — teslimden geri alma (F7)", () => {
+  it("görevli ekranından açılır; teslim alanın kimliği ve evrak görünmez; masaya dönülür", async () => {
+    const user = userEvent.setup();
+    // Görevli kipinde sunucu `delivery` göndermez.
+    teslim.geriAl.mockResolvedValue({
+      result: "returned",
+      kind: "COPY",
+      message: "Geri alındı.",
+      copy: { barcode: "2026000123", barcode_display: "2026-000123", work_title: "Sınıf Kitabı" },
+    });
+    render(<GorevliEkrani onGecti={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: GOREVLI_GERI_ALMA_DUGMESI }));
+    expect(screen.getByRole("heading", { level: 1, name: "Görevli Kipi" })).toBeVisible();
+    expect(
+      screen.getByRole("heading", { level: 2, name: GOREVLI_GERI_ALMA_BASLIGI }),
+    ).toBeVisible();
+    const kutu = screen.getByLabelText(GERI_ALMA_KUTUSU);
+    expect(kutu).toHaveFocus();
+
+    await user.type(kutu, "2026000123{Enter}");
+    expect(await screen.findByText("Geri alındı.")).toBeInTheDocument();
+    expect(screen.getByText("2026-000123 — Sınıf Kitabı")).toBeInTheDocument();
+    expect(screen.queryByText("Geri alma dökümü")).toBeNull();
+    // Teslim verme görevli ekranında yoktur.
+    expect(screen.queryByRole("button", { name: "Teslim et" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: GOREVLI_DOGRULAMA_BITIR }));
+    expect(screen.getByRole("heading", { level: 2, name: GOREVLI_MASA_BASLIGI })).toBeVisible();
   });
 });

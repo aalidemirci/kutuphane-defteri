@@ -53,6 +53,8 @@ GOREVLI_ACIK = frozenset(
         ("library-work-list", "GET"),
         ("library-work-detail", "GET"),
         ("library-copy-list", "GET"),
+        # F7: teslimden geri alma okutması (§4.4); teslim verme kapalı.
+        ("library-delivery-take-back", "POST"),
     }
 )
 
@@ -143,7 +145,7 @@ def test_katalog_uclarindan_yalniz_masa_isleri_izin_listesinde() -> None:
     Açık olanlar bilinçli kararlardır: etiket doğrulama okutması (kullanıcı
     kararı 24.09.2026) ve tasarım §4.4 tablosunun masa işleri (F6) — kartla üye
     çözme, ödünç ver, barkodla iade, nüsha durum sorgusu, GA-7 kilidi ve katalog
-    okuma (yalnız GET).
+    okuma (yalnız GET); F7'de teslimden geri alma okutması (teslim VERME kapalı).
     """
     from apps.okul.kip_izinleri import IZIN_LISTESI
 

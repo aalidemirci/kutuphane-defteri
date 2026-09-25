@@ -10,7 +10,10 @@
 //   * etiket doğrulama okutması (kullanıcı kararı 24.09.2026) — sunucu görevli
 //     kipinde yalnız `POST library/labels/verify/` ucunu geçirir ve nüsha özetinden
 //     yalnız barkodu ve eser adını döndürür;
-//   * katalogda arama — künye ve nüsha durumu (Ağ Kataloğunun alanlarına denk).
+//   * katalogda arama — künye ve nüsha durumu (Ağ Kataloğunun alanlarına denk);
+//   * teslimden geri alma okutması (F7, §4.4 "Teslimden geri alma okutması" açık) —
+//     sınıf kitaplığından ya da öğretmenden dönen kitaplar okutulur; sunucu teslim
+//     alanın kimliğini göndermez. Teslim VERME ve teslim listeleri yönetici kipindedir.
 // Etiketler sayfasının öbür sekmeleri, "Doğrulanmamış Etiketler" listesi, üye
 // listesi, ödünç geçmişi, gecikme listesi, gerekçeli istisna ve kartsız ödünç
 // yönetici kipindedir. Sayfanın h1'i her görünümde "Görevli Kipi"dir (üst çubukla
@@ -23,6 +26,7 @@ import Icon from "../../ui/Icon";
 import DolasimMasasi from "../dolasim/DolasimMasasi";
 import KatalogArama, { KATALOG_ARAMA_BASLIGI } from "../dolasim/KatalogArama";
 import DogrulamaOkutmasi from "../kutuphane/DogrulamaOkutmasi";
+import GeriAlmaOkutmasi from "../teslim/GeriAlmaOkutmasi";
 import YoneticiParolaDiyalogu from "./YoneticiParolaDiyalogu";
 import type { KipOzeti } from "./api";
 
@@ -41,6 +45,9 @@ export const GOREVLI_DOGRULAMA_DUGMESI = "Doğrulama okutmasını aç";
 export const GOREVLI_DOGRULAMA_BITIR = "Okutmayı bitir";
 export const GOREVLI_KATALOG_DUGMESI = "Katalogda ara";
 export const GOREVLI_MASAYA_DON = "Dolaşım masasına dön";
+/** Görevli ekranından açılan teslimden geri alma okutmasının bölüm başlığı ve düğmesi (F7). */
+export const GOREVLI_GERI_ALMA_BASLIGI = "Teslimden Geri Alma";
+export const GOREVLI_GERI_ALMA_DUGMESI = "Teslimden geri al";
 
 /**
  * Kurtarma anahtarı (kurulumda verilen ya da Ayarlar → Güvenlik'te yenilenen)
@@ -60,12 +67,13 @@ function BekleyenAnahtarUyarisi() {
   );
 }
 
-type Gorunum = "masa" | "dogrulama" | "katalog";
+type Gorunum = "masa" | "dogrulama" | "katalog" | "geriAlma";
 
 const BOLUM: Record<Gorunum, { baslik: string; ikon: string }> = {
   masa: { baslik: GOREVLI_MASA_BASLIGI, ikon: "sync_alt" },
   dogrulama: { baslik: GOREVLI_DOGRULAMA_BASLIGI, ikon: "barcode_reader" },
   katalog: { baslik: KATALOG_ARAMA_BASLIGI, ikon: "search" },
+  geriAlma: { baslik: GOREVLI_GERI_ALMA_BASLIGI, ikon: "move_to_inbox" },
 };
 
 export default function GorevliEkrani({
@@ -103,10 +111,19 @@ export default function GorevliEkrani({
               <Button variant="outlined" icon="search" onClick={() => setGorunum("katalog")}>
                 {GOREVLI_KATALOG_DUGMESI}
               </Button>
+              <Button
+                variant="outlined"
+                icon="move_to_inbox"
+                onClick={() => setGorunum("geriAlma")}
+              >
+                {GOREVLI_GERI_ALMA_DUGMESI}
+              </Button>
             </>
           ) : (
             <Button variant="outlined" icon="arrow_back" onClick={() => setGorunum("masa")}>
-              {gorunum === "dogrulama" ? GOREVLI_DOGRULAMA_BITIR : GOREVLI_MASAYA_DON}
+              {gorunum === "dogrulama" || gorunum === "geriAlma"
+                ? GOREVLI_DOGRULAMA_BITIR
+                : GOREVLI_MASAYA_DON}
             </Button>
           )}
           <Button icon="admin_panel_settings" onClick={() => setDiyalogAcik(true)}>
@@ -118,6 +135,7 @@ export default function GorevliEkrani({
       {gorunum === "masa" && <DolasimMasasi gorevli beklemede={diyalogAcik} />}
       {gorunum === "dogrulama" && <DogrulamaOkutmasi gorevli />}
       {gorunum === "katalog" && <KatalogArama />}
+      {gorunum === "geriAlma" && <GeriAlmaOkutmasi gorevli beklemede={diyalogAcik} />}
       <YoneticiParolaDiyalogu
         open={diyalogAcik}
         onClose={() => setDiyalogAcik(false)}

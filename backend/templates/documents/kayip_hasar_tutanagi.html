@@ -1,0 +1,77 @@
+{% extends "documents/base.html" %}
+{% comment %}Kayıp/hasar tutanağı (E6; tasarım §9-9, Md. 19) — bağlam
+apps/kutuphane/teslim_belgeleri.py::case_report_context'ten gelir.
+
+Kurumsal biçim: antet, tespit cümlesi, kaynak, ilgili kişi, çözüm, imza alanları.
+Kişinin adı şifreli alandan çözülür (yalnız yönetici kipinde basılır). Md. 19
+alıntısı ve tahsilat notu YALNIZ ortaöğretimde basılır (`md19`, `payment_note`
+boşsa bölüm yoktur). Program tahsilat yapmaz; disiplin süreci anılmaz. "zayi",
+"telef", "borç" ve "ceza" sözcükleri kullanılmaz (sözlük).
+
+Tek sayfa bütçesi gerçek uzunlukta veriyle testlidir (test_teslim_belgeleri.py:
+en uzun kaynak adı ve yazar, 64 karakterlik TKYS kodu, satır satır yazılmış 500
+karakterlik sorumlu notu). Sorumlu notunun satır sonları bağlamda boşluğa iner.
+ÇÖZÜM bölümü, Md. 19 alıntısı ve imza alanları TEK kutudadır (`.kapanis`,
+bölünmez): sayfa taşsa bile imzalar içerikten ayrı bir sayfaya tek başına düşmez.
+`text-transform` YOK.{% endcomment %}
+{% block extra_style %}
+<style>
+  body { font-size: 9.5pt; }
+  .doc-title { margin: 6pt 0 1pt; }
+  .doc-subtitle { margin-bottom: 3pt; }
+  .tarih { text-align: right; font-size: 9pt; color: var(--pr-label); margin: 4pt 0 0; }
+  .para { margin: 3pt 0 2pt; font-size: 9.5pt; line-height: 1.35; }
+  .section { margin-top: 5pt; }
+  .info td { padding: 1.5pt 8pt; font-size: 9pt; line-height: 1.25; }
+  .info td.label { width: 28%; }
+  .kapanis { break-inside: avoid; page-break-inside: avoid; }
+  .md19 { margin-top: 5pt; font-size: 8.2pt; color: var(--pr-secondary); text-align: justify;
+          line-height: 1.3; border-left: 2pt solid var(--pr-faint); padding-left: 6pt; }
+  {% comment %}İmza çizgileri aynı hizada: adın uzunluğu çizgiyi yukarı itmesin.{% endcomment %}
+  .sig-grid { margin-top: 10pt; table-layout: fixed; }
+  .sig-grid td { vertical-align: top; }
+  .sig-grid .space { height: 22pt; }
+</style>
+{% endblock %}
+{% block content %}
+  <div class="tarih">Tarih: {{ issued_on }}</div>
+  <div class="doc-title">{{ document_title }}</div>
+  <div class="doc-subtitle">{{ case_type }}</div>
+  <p class="para">{{ statement }}</p>
+
+  <div class="section">
+    <div class="section-title">KAYNAK</div>
+    <table class="info flush">
+      {% for r in source %}<tr><td class="label">{{ r.label }}</td><td>{{ r.value }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">İLGİLİ KİŞİ</div>
+    <table class="info flush">
+      {% for r in person %}<tr><td class="label">{{ r.label }}</td><td>{{ r.value }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div class="kapanis">
+    <div class="section">
+      <div class="section-title">ÇÖZÜM</div>
+      <table class="info flush">
+        {% for r in resolution %}<tr><td class="label">{{ r.label }}</td><td>{{ r.value }}</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+
+    {% if md19 %}<p class="md19">Okul Kütüphaneleri Yönetmeliği Md. 19: “{{ md19 }}” {{ payment_note }}</p>{% endif %}
+
+    <table class="sig-grid">
+      <tr>
+        <td><div class="space"></div><div class="line"></div><div class="name">&nbsp;</div><div class="role">Kütüphane yöneticisi</div></td>
+        <td><div class="space"></div><div class="line"></div><div class="name">{% if person_name %}{{ person_name }}{% else %}&nbsp;{% endif %}</div><div class="role">İlgili kişi</div></td>
+        <td><div class="space"></div><div class="line"></div><div class="name">{% if principal_name %}{{ principal_name }}{% else %}&nbsp;{% endif %}</div><div class="role">Okul müdürü</div></td>
+      </tr>
+    </table>
+  </div>
+{% endblock %}

@@ -8,6 +8,13 @@
 // Kaydetme KISMİDİR: yalnız buradaki alanlar gönderilir, politikanın öbür
 // alanlarına dokunulmaz (sunucu sözleşmesi).
 //
+// YÖNETİCİ KİPİ SÜRELERİ (F7; tasarım §4.4, GA-9): boşta kalma süresi ve en uzun
+// açık kalma süresi burada ayarlanır; kip kapısı yeni değeri bir sonraki istekte
+// kullanır (yeniden başlatma gerekmez). Sınırlar sunucu model doğrulayıcılarının
+// kopyasıdır (`IDLE_MINUTES_*`, `ADMIN_MAX_MINUTES_*`) ve eşitlikleri
+// `apps/kutuphane/tests/test_on_yuz_sabitleri.py` ile kilitlidir; boşta süresi en
+// uzun süreyi aşamaz (sunucu da reddeder).
+//
 // KÜNYE GETİRME (U13, tasarım §8.5) bu panelin son bölümüdür ve VARSAYILAN
 // OLARAK KAPALIDIR: ana bayrak kapalıyken program ISBN sorgusu için dışarıya
 // hiçbir istek atmaz (sunucu 409 `kunye_kapali` döner). Kaynak seçimleri ana
@@ -41,6 +48,12 @@ function sayi(deger: string, yedek: number): number {
   const n = Number(temiz);
   return Number.isFinite(n) ? n : yedek;
 }
+
+/** Yönetici kipi sürelerinin sınırları (dakika) — backend `models.py` sabitlerinin kopyası. */
+const BOSTA_DK_EN_AZ = 1;
+const BOSTA_DK_EN_COK = 15;
+const MUTLAK_DK_EN_AZ = 5;
+const MUTLAK_DK_EN_COK = 120;
 
 function Bolum({ baslik, children }: { baslik: string; children: ReactNode }) {
   return (
@@ -100,6 +113,8 @@ export default function KutuphanePolitikasiPaneli() {
   const [kapaliGunKaydir, setKapaliGunKaydir] = useState(true);
   const [sonOdunc, setSonOdunc] = useState("");
   const [sonOduncMezun, setSonOduncMezun] = useState("");
+  const [bostaDk, setBostaDk] = useState("");
+  const [mutlakDk, setMutlakDk] = useState("");
   const [enAzUye, setEnAzUye] = useState("");
   const [saklamaUyelik, setSaklamaUyelik] = useState("");
   const [saklamaOdunc, setSaklamaOdunc] = useState("");
@@ -121,6 +136,8 @@ export default function KutuphanePolitikasiPaneli() {
     setKapaliGunKaydir(p.shift_due_date_on_school_break);
     setSonOdunc(p.last_loan_date ?? "");
     setSonOduncMezun(p.last_loan_date_graduating ?? "");
+    setBostaDk(String(p.idle_minutes));
+    setMutlakDk(String(p.admin_max_minutes));
     setEnAzUye(String(p.popular_min_members));
     setSaklamaUyelik(String(p.retention_years_after_termination));
     setSaklamaOdunc(String(p.retention_years_returned_loans));
@@ -167,6 +184,8 @@ export default function KutuphanePolitikasiPaneli() {
       shift_due_date_on_school_break: kapaliGunKaydir,
       last_loan_date: sonOdunc || null,
       last_loan_date_graduating: sonOduncMezun || null,
+      idle_minutes: sayi(bostaDk, politika.idle_minutes),
+      admin_max_minutes: sayi(mutlakDk, politika.admin_max_minutes),
       popular_min_members: sayi(enAzUye, politika.popular_min_members),
       retention_years_after_termination: sayi(
         saklamaUyelik,
@@ -289,6 +308,32 @@ export default function KutuphanePolitikasiPaneli() {
               onChange={(e) => setSonOduncMezun(e.target.value)}
               error={errors.last_loan_date_graduating}
               helperText="İsteğe bağlı; mezun olacak sınıflar için daha erken bir tarih."
+            />
+          </div>
+        </Bolum>
+
+        <Bolum baslik="Yönetici Kipi Süreleri">
+          <p className="text-body-medium text-on-surface-variant">
+            Yönetici kipi, bu kadar dakika işlem yapılmazsa ya da açıldıktan en geç bu kadar dakika
+            sonra kapanır ve program görevli kipine geçer. Kısa süreler masadaki bilgisayarı korur;
+            değişiklik bir sonraki işlemden itibaren geçerlidir.
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <TextField
+              label="İşlem yapılmazsa kapanma süresi (dakika)"
+              inputMode="numeric"
+              value={bostaDk}
+              onChange={(e) => setBostaDk(e.target.value)}
+              error={errors.idle_minutes}
+              helperText={`${BOSTA_DK_EN_AZ} ile ${BOSTA_DK_EN_COK} arası; en uzun süreyi aşamaz.`}
+            />
+            <TextField
+              label="En uzun açık kalma süresi (dakika)"
+              inputMode="numeric"
+              value={mutlakDk}
+              onChange={(e) => setMutlakDk(e.target.value)}
+              error={errors.admin_max_minutes}
+              helperText={`${MUTLAK_DK_EN_AZ} ile ${MUTLAK_DK_EN_COK} arası. İşlem yapılsa da bu süre dolunca yönetici parolası yeniden sorulur.`}
             />
           </div>
         </Bolum>

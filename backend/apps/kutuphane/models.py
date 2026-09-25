@@ -40,6 +40,11 @@ Bu fazın kararları (tasarım §6.2, F2 sözleşmesi §1):
   yeniden kullanılmaz), `CardRevocation` (iptal edilmiş kart) ve `Loan`
   (gerekçeler şifreli). Kurallar `services.memberships` ve
   `services.circulation`'dadır.
+- **F7 (teslim, kayıp, hasar, onarım)**: `Delivery` (sınıf kitaplığına ya da
+  öğretmene teslim — ödünç DEĞİLDİR, U11), `LossDamageCase` (Md. 19; sorumlu
+  notu şifreli, bedel yalnız kayıt) ve `CopyRepair` (D3: onarıma gönder /
+  onarımdan dön). `Loan`'a "Kayba dönüştü" durumu eklenir. Kurallar
+  `services.deliveries` ve `services.loss_damage`'dadır.
 
 CLAUDE.md §3 "soft-delete ileri FK'da süzmez": `obj.fk` erişimi silinmiş kaydı
 geri getirir. Evraka ad basan yollar `deleted_at`'i elle denetler; katalog
@@ -137,8 +142,12 @@ class CopyStatus(models.TextChoices):
     bayrağından (`is_reference`) türetilir.
 
     DELIVERED (U11): sınıf kitaplığına ya da öğretmene teslim. Teslim ödünç
-    DEĞİLDİR, Md. 18 sayı sınırı uygulanmaz (§9-11); akışı F7'de gelir.
-    IN_REPAIR'in giriş/çıkış yolu F7'de yazılır (D3).
+    DEĞİLDİR, Md. 18 sayı sınırı uygulanmaz (§9-11); açık teslimi olan nüsha
+    `Delivery` kaydıyla eşleşir (`services.deliveries`). IN_REPAIR'in giriş ve
+    çıkış yolu `services.loss_damage`'dadır (D3; kayıt `CopyRepair`).
+    LOST: kayıp bildirimiyle girilir, dosya çözülünce (bulundu, aynısı temin
+    edildi…) rafa döner; asıl kayıttan düşme (WITHDRAWN_LOST) F8/F9'un TMY
+    yoludur.
     WITHDRAWN_*/TRANSFERRED terminaldir — yumuşak silme DEĞİL: kayıttan düşülen
     nüsha defterde ve tutanakta görünmeye devam eder.
     """
@@ -176,6 +185,19 @@ class CommissionDecisionType(models.TextChoices):
     SELECTION = "SELECTION", "Kaynak seçimi"
     DONATION_REVIEW = "DONATION_REVIEW", "Bağış değerlendirme"
     WEEDING = "WEEDING", "Ayıklama"
+
+
+#: Yönetici kipi sürelerinin ayar aralıkları (dakika; §4.4, F7 "Devreden").
+#: Boşta süresi kısa tutulur: görevli masadayken yönetici kipinin açık kalması
+#: gecikme istisnası, üye listesi ve ayarlar demektir. Mutlak süre bir ders
+#: saatinin katlarıyla sınırlıdır; üst sınır yönetici parolasının günde en az
+#: birkaç kez yeniden sorulmasını sağlar. Sınırların TEK kaynağı burasıdır;
+#: `apps.okul.kip` bu alanları kaydedilen sağlayıcı üzerinden okur
+#: (`services.policy.kip_sure_dakikalari`).
+IDLE_MINUTES_MIN = 1
+IDLE_MINUTES_MAX = 15
+ADMIN_MAX_MINUTES_MIN = 5
+ADMIN_MAX_MINUTES_MAX = 120
 
 
 class LibraryPolicy(BaseModel):
@@ -252,13 +274,16 @@ class LibraryPolicy(BaseModel):
     idle_minutes = models.PositiveSmallIntegerField(
         "yönetici kipi boşta süresi (dakika)",
         default=3,
-        validators=[MinValueValidator(1), MaxValueValidator(60)],
+        validators=[MinValueValidator(IDLE_MINUTES_MIN), MaxValueValidator(IDLE_MINUTES_MAX)],
         help_text="Bu süre boyunca işlem yapılmazsa görevli kipine inilir (§4.4).",
     )
     admin_max_minutes = models.PositiveSmallIntegerField(
         "yönetici kipi mutlak süresi (dakika)",
         default=30,
-        validators=[MinValueValidator(5), MaxValueValidator(480)],
+        validators=[
+            MinValueValidator(ADMIN_MAX_MINUTES_MIN),
+            MaxValueValidator(ADMIN_MAX_MINUTES_MAX),
+        ],
         help_text="İşlem yapılsa da bu süre sonunda görevli kipine inilir (§4.4).",
     )
     popular_min_members = models.PositiveSmallIntegerField(
@@ -328,6 +353,15 @@ class LibraryPolicy(BaseModel):
                         models.Q(staff_loans_decision_date__isnull=False)
                         & ~models.Q(staff_loans_decision_no="")
                     )
+                ),
+            ),
+            # §4.4: boşta süresi mutlak süreden uzun olamaz (aksi hâlde boşta
+            # süresi hiç işlemez ve ayar ekranı yanıltıcı olur).
+            models.CheckConstraint(
+                name="ck_librarypolicy_kip_sureleri",
+                condition=models.Q(idle_minutes__lte=models.F("admin_max_minutes")),
+                violation_error_message=(
+                    "Yönetici kipinin boşta süresi mutlak süresinden uzun olamaz."
                 ),
             ),
         ]
@@ -2134,10 +2168,17 @@ class CardRevocation(models.Model):
 
 class LoanStatus(models.TextChoices):
     """Ödünç durumu. "Gecikmiş" DURUM DEĞİLDİR: `status=OPEN` ve `due_date < bugün`
-    sorgusudur (selectors). Kayba dönüşme (Md. 19) F7'de eklenir."""
+    sorgusudur (selectors).
+
+    LOST_CONVERTED (F7, Md. 19): ödünçteki nüsha kayıp bildirilince ödünç KAPANIR
+    ve kayıp dosyasına (`LossDamageCase`) dönüşür. Kapanan ödünç sayı sınırına ve
+    gecikmeye sayılmaz; kişinin yükümlülüğü çözülmemiş kayıp dosyası olarak sürer
+    (ilişik listesi). Nüsha bulunursa ödünç yeniden AÇILMAZ, dosya "Bulundu" ile
+    kapanır."""
 
     OPEN = "OPEN", "Açık"
     RETURNED = "RETURNED", "İade edildi"
+    LOST_CONVERTED = "LOST_CONVERTED", "Kayba dönüştü"
 
 
 class OverrideReason(models.TextChoices):
@@ -2181,7 +2222,10 @@ class Loan(BaseModel):
       güne rastlarsa izleyen ilk açık gün (`services.circulation`). Uzatma, ceza
       ve harç YOKTUR — model bunlar için alan taşımaz.
     - **Bir nüshada tek açık ödünç** (§9-7): kısmi teklik kısıtı yarışta da
-      ikinci açık ödüncü keser.
+      ikinci açık ödüncü keser. Ödünç ile TESLİM arasındaki tek açık kayıt
+      kuralı (F7) iki tabloya yayıldığı için tek bir kısıtla yazılamaz; güvence
+      nüsha durumunun koşullu güncellenmesidir (`services.circulation`,
+      `services.deliveries` — "Rafta"dan çıkışı yalnız biri kazanır).
     - `override_reason` + `override_note`: gecikme engeli istisnası (kapalı
       liste + açıklama); ikisi de ŞİFRELİDİR (§6.3), ikisi birlikte dolar.
     - `cardless` + `cardless_reason`: kartsız ödünç (U12) işaretli kayıttır ve
@@ -2202,6 +2246,12 @@ class Loan(BaseModel):
     loaned_at = models.DateTimeField("verilme zamanı", default=timezone.now)
     due_date = models.DateField("iade tarihi", db_index=True)
     returned_at = models.DateTimeField("iade zamanı", null=True, blank=True)
+    lost_at = models.DateTimeField(
+        "kayba dönüşme zamanı",
+        null=True,
+        blank=True,
+        help_text="Kayıp bildirimiyle ödünç kapanınca yazılır (F7, Md. 19).",
+    )
     status = models.CharField(
         "durum", max_length=16, choices=LoanStatus.choices, default=LoanStatus.OPEN
     )
@@ -2241,12 +2291,16 @@ class Loan(BaseModel):
             models.CheckConstraint(
                 name="ck_loan_status", condition=models.Q(status__in=LoanStatus.values)
             ),
-            # Açık ödüncün iade zamanı boş, iade edilenin dolu.
+            # Açık ödüncün kapanış zamanları boş; iade edilenin iade zamanı, kayba
+            # dönüşenin kayba dönüşme zamanı dolu (ikisi birden asla).
             models.CheckConstraint(
-                name="ck_loan_returned_at",
+                name="ck_loan_closing_times",
                 condition=(
-                    models.Q(status="OPEN", returned_at__isnull=True)
-                    | models.Q(status="RETURNED", returned_at__isnull=False)
+                    models.Q(status="OPEN", returned_at__isnull=True, lost_at__isnull=True)
+                    | models.Q(status="RETURNED", returned_at__isnull=False, lost_at__isnull=True)
+                    | models.Q(
+                        status="LOST_CONVERTED", returned_at__isnull=True, lost_at__isnull=False
+                    )
                 ),
             ),
             # D12: istisna gerekçesi ve açıklaması birlikte dolar (boş gerekçe yok).
@@ -2284,3 +2338,493 @@ class Loan(BaseModel):
     @property
     def has_override(self) -> bool:
         return bool(self.override_reason)
+
+
+# ---------------------------------------------------------------------------
+# F7 — teslim (U11), kayıp ve hasar (Md. 19), onarım (D3) — tasarım §6.2, §9-9, §9-11
+# ---------------------------------------------------------------------------
+class DeliveryRecipientKind(models.TextChoices):
+    """Teslim alanın türü (sözlük: "sınıf kitaplığına teslim", "öğretmene teslim").
+
+    KİŞİSİZDİR ve kalıcıdır: saklama süresi sonunda alan bağı koparılsa da
+    (§6.4, F11) teslimin şubeye mi öğretmene mi yapıldığı bilinir — sayımda iki
+    tür ayrı işlem görür (§9-11, AT-1: şube teslimi 32/5'in birinci cümlesine,
+    öğretmene teslim ikinci cümlesine kıyasen).
+    """
+
+    SECTION = "SECTION", "Sınıf kitaplığı"
+    TEACHER = "TEACHER", "Öğretmen"
+
+
+class DeliveryStatus(models.TextChoices):
+    """Teslimin durumu. Geri alınan ve kayba dönüşen teslim kapanmıştır."""
+
+    OPEN = "OPEN", "Teslimde"
+    RETURNED = "RETURNED", "Geri alındı"
+    LOST_CONVERTED = "LOST_CONVERTED", "Kayba dönüştü"
+
+
+class Delivery(BaseModel):
+    """Toplu teslim satırı — bir nüshanın sınıf kitaplığına ya da öğretmene teslimi (U11).
+
+    **Teslim ödünç DEĞİLDİR** (§9-11, sözlük): Md. 18 sayı sınırı ve on beş
+    günlük süre uygulanmaz, üyelik gerekmez; teslim alanın ödünç hakkından bir
+    şey eksilmez. Aynı toplu teslimin satırları aynı belge no'yu taşır (E15
+    teslim listesi; şube tesliminde Dayanıklı Taşınırlar Listesi işlevi — TMY
+    23/6'ya kıyasen).
+
+    - **Alan: şube XOR öğretmen** (`recipient_kind` + iki FK, DB kısıtı). Teslim
+      AÇIKKEN alan boş olamaz ve silinemez (PROTECT; açık yükümlülük — kişi
+      kayıt defteri, `services.deliveries`). Kapanmış teslimde saklama sonunda
+      bağ AÇIK GÜNCELLEMEYLE koparılır (§6.4, F11) — `on_delete`'e güvenilmez
+      (CLAUDE.md §3); bu yüzden kısıt kapanmış teslimde boş alana izin verir.
+    - **Tek açık kayıt** (§9-7): bir nüsha aynı anda yalnız bir açık ödünçte YA
+      DA açık teslimde olabilir. Aynı tablodaki ikinci açık teslimi kısmi teklik
+      kısıtı keser; ödünç ile teslim arasındaki yarışı nüsha durumunun koşullu
+      güncellenmesi keser ("Rafta"dan çıkışı yalnız biri kazanır).
+    - Geri alma okutmayla yapılır (görevli kipinde de açık — §4.4); kapanış
+      zamanları durumla birlikte DB kısıtıyla tutarlıdır.
+
+    Kişi adı TAŞIMAZ: öğretmenin adı `Personnel`'dedir (şifreli), şubenin
+    etiketi kişisel veri değildir. Ağ Kataloğu bu tabloya hiç uzanmaz; katalog
+    yalnız nüsha durumunu ("Sınıf kitaplığında") gösterir (§5.1).
+    """
+
+    copy = models.ForeignKey(
+        Copy, on_delete=models.PROTECT, related_name="deliveries", verbose_name="nüsha"
+    )
+    recipient_kind = models.CharField(
+        "teslim alan türü", max_length=8, choices=DeliveryRecipientKind.choices
+    )
+    section = models.ForeignKey(
+        "okul.ClassSection",
+        on_delete=models.PROTECT,
+        related_name="library_deliveries",
+        verbose_name="şube (sınıf kitaplığı)",
+        null=True,
+        blank=True,
+    )
+    personnel = models.ForeignKey(
+        "okul.Personnel",
+        on_delete=models.PROTECT,
+        related_name="library_deliveries",
+        verbose_name="öğretmen",
+        null=True,
+        blank=True,
+    )
+    delivered_on = models.DateField("teslim tarihi", default=timezone.localdate)
+    expected_return = models.DateField("beklenen dönüş", null=True, blank=True)
+    document_no = models.CharField(
+        "belge no",
+        max_length=40,
+        help_text="Teslim listesinin (E15) numarası; aynı toplu teslimin satırlarında aynıdır.",
+    )
+    status = models.CharField(
+        "durum", max_length=16, choices=DeliveryStatus.choices, default=DeliveryStatus.OPEN
+    )
+    returned_at = models.DateTimeField("geri alma zamanı", null=True, blank=True)
+    lost_at = models.DateTimeField("kayba dönüşme zamanı", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "teslim"
+        verbose_name_plural = "teslimler"
+        ordering = ["-delivered_on", "-pk"]
+        indexes = [
+            models.Index(fields=["status", "recipient_kind"], name="kutuphane_delivery_st_idx"),
+            models.Index(fields=["document_no"], name="kutuphane_delivery_doc_idx"),
+        ]
+        constraints = [
+            # §9-7: bir nüsha aynı anda tek açık teslimde (yarış kısıtı).
+            models.UniqueConstraint(
+                fields=["copy"],
+                condition=models.Q(status="OPEN", deleted_at__isnull=True),
+                name="uq_delivery_open_per_copy",
+            ),
+            models.CheckConstraint(
+                name="ck_delivery_status", condition=models.Q(status__in=DeliveryStatus.values)
+            ),
+            models.CheckConstraint(
+                name="ck_delivery_recipient_kind",
+                condition=models.Q(recipient_kind__in=DeliveryRecipientKind.values),
+            ),
+            # Alan: şube XOR öğretmen, türle uyumlu. Açık teslimde alan boş olamaz;
+            # kapanmış teslimde saklama sonunda bağ koparılabilir (§6.4, F11).
+            models.CheckConstraint(
+                name="ck_delivery_recipient",
+                condition=(
+                    (
+                        models.Q(recipient_kind="SECTION", personnel__isnull=True)
+                        & (models.Q(section__isnull=False) | ~models.Q(status="OPEN"))
+                    )
+                    | (
+                        models.Q(recipient_kind="TEACHER", section__isnull=True)
+                        & (models.Q(personnel__isnull=False) | ~models.Q(status="OPEN"))
+                    )
+                ),
+            ),
+            models.CheckConstraint(
+                name="ck_delivery_closing_times",
+                condition=(
+                    models.Q(status="OPEN", returned_at__isnull=True, lost_at__isnull=True)
+                    | models.Q(status="RETURNED", returned_at__isnull=False, lost_at__isnull=True)
+                    | models.Q(
+                        status="LOST_CONVERTED", returned_at__isnull=True, lost_at__isnull=False
+                    )
+                ),
+            ),
+            models.CheckConstraint(
+                name="ck_delivery_expected_return",
+                condition=models.Q(expected_return__isnull=True)
+                | models.Q(expected_return__gte=models.F("delivered_on")),
+            ),
+            models.CheckConstraint(
+                name="ck_delivery_document_no", condition=~models.Q(document_no="")
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Teslim #{self.pk} ({self.get_status_display()})"
+
+    @property
+    def is_open(self) -> bool:
+        return self.status == DeliveryStatus.OPEN
+
+
+class CaseType(models.TextChoices):
+    """Kayıp/hasar dosyasının türü (sözlük: kayıp, hasar — "zayi", "telef" değil)."""
+
+    LOST = "LOST", "Kayıp"
+    DAMAGED = "DAMAGED", "Hasar"
+
+
+class CaseResolution(models.TextChoices):
+    """Kayıp/hasar dosyasının çözüm durumu — OYS `CaseResolution`'dan UYARLA (Md. 19).
+
+    Md. 19/1: "Ortaöğretim okul kütüphanelerinde hasara uğratılan veya kaybedilen
+    kaynak ilgili kişiden temin edilir, temin edilememesi hâlinde o günkü piyasa
+    bedeli, hasara uğratan veya kaybeden kişiden alınır. Kaynak bedeli ile mevcudu
+    varsa aynısı yoksa kaybedilenin kaydı silinerek başka eser satın alınır."
+
+    - **Bedel yolları YALNIZ ortaöğretimde** (`PRICE_RESOLUTIONS`; kapı
+      `services.loss_damage` — `SchoolConfig.kademe`). İlkokul ve ortaokulda
+      Md. 19 uygulanmaz: yalnız "Bulundu", "Aynısı temin edildi", "Onarıldı" ve
+      "Kayıttan düşme önerildi" yolları vardır.
+    - **Bedel iki adımdır** (25.09.2026 kullanıcı kararı): "Bedel belirlendi"
+      (`PRICE_DETERMINED`; o günkü piyasa bedeli kaydedilir, kişinin açık işi
+      SÜRER) ve "Bedel teslim alındı" (`PRICE_RECEIVED`; kişinin açık işi BİTER —
+      ilişik listesinden çıkar, E5 basılabilir). İkincisinden sonra dosya OKUL
+      İÇİN açık kalır ve yalnız "Bedelle aynısı alındı" ya da "Bedelle başka eser
+      alındı" ile kapanır (`PERSON_OPEN_RESOLUTIONS` ⊂ `OPEN_CASE_RESOLUTIONS`).
+    - Program TAHSİLAT YAPMAZ; bedel ve teslimi yalnız kaydedilir (sözlük:
+      "bedel belirlendi", "bedel teslim alındı" — asla borç, ceza ya da
+      tahsilat). Disiplin süreci başlatmaz.
+    - OYS'nin `WRITTEN_OFF`'u ("Kayıttan düşüldü") ALINMADI: kayıttan düşme bir
+      TMY işlemidir (F8/F9); burada yalnız ÖNERİ işaretlenir
+      (`WRITE_OFF_PROPOSED`, `LossDamageCase.write_off_proposed_at`). "Bedelle
+      başka eser alındı" da eski nüshanın kaydının silinmesini ister (Md. 19);
+      o da öneri işaretini taşır.
+    - `REPAIRED` ("Onarıldı") OYS'de yoktu: D3 hasar dosyasının onarımla
+      kapanmasıdır, bedel yolu değildir.
+    - `CONVERTED_TO_LOSS` ("Kayba dönüştü") KULLANICININ SEÇTİĞİ bir çözüm
+      değildir: açık hasar dosyası olan nüsha (hasar dosyası nüshayı dolaşımdan
+      çıkarmaz) ödünçte, teslimde ya da rafta kaybolunca kayıp bildirimi hasar
+      dosyasını bu durumla kapatır ve yeni kayıp dosyası açar (yalnız hasarda —
+      DB kısıtı). Hasar dosyasının sorumlusu ve notu kendi kaydında kalır.
+    """
+
+    PENDING = "PENDING", "Çözüm bekliyor"
+    PRICE_DETERMINED = "PRICE_DETERMINED", "Bedel belirlendi"
+    PRICE_RECEIVED = "PRICE_RECEIVED", "Bedel teslim alındı"
+    FOUND_RETURNED = "FOUND_RETURNED", "Bulundu"
+    REPLACED_SAME = "REPLACED_SAME", "Aynısı temin edildi"
+    REPAIRED = "REPAIRED", "Onarıldı"
+    CLOSED_SAME_REPURCHASED = "CLOSED_SAME_REPURCHASED", "Bedelle aynısı alındı"
+    CLOSED_OTHER_REPURCHASED = "CLOSED_OTHER_REPURCHASED", "Bedelle başka eser alındı"
+    WRITE_OFF_PROPOSED = "WRITE_OFF_PROPOSED", "Kayıttan düşme önerildi"
+    CONVERTED_TO_LOSS = "CONVERTED_TO_LOSS", "Kayba dönüştü"
+
+
+#: Çözülmemiş (AÇIK) dosya durumları — nüsha başına tek açık dosya; Kayıp ve Hasar
+#: ekranının "Çözülmemiş dosyalar"ı (okulun açık işi).
+OPEN_CASE_RESOLUTIONS: tuple[str, ...] = (
+    CaseResolution.PENDING,
+    CaseResolution.PRICE_DETERMINED,
+    CaseResolution.PRICE_RECEIVED,
+)
+#: KİŞİNİN (ya da şubenin) açık işi sayılan durumlar — kayıt defteri (silme engeli),
+#: ilişik listesi ve E5. "Bedel teslim alındı"da kişinin işi biter, dosya okul için
+#: açık kalır (25.09.2026 kullanıcı kararı).
+PERSON_OPEN_RESOLUTIONS: tuple[str, ...] = (
+    CaseResolution.PENDING,
+    CaseResolution.PRICE_DETERMINED,
+)
+#: Bedel yolları — YALNIZ ortaöğretimde başlar (Md. 19; `SchoolConfig.kademe`).
+PRICE_RESOLUTIONS: tuple[str, ...] = (
+    CaseResolution.PRICE_DETERMINED,
+    CaseResolution.PRICE_RECEIVED,
+    CaseResolution.CLOSED_SAME_REPURCHASED,
+    CaseResolution.CLOSED_OTHER_REPURCHASED,
+)
+#: Bedelin teslim alındığı kaydedilmiş durumlar (`price_received_at` dolu).
+PRICE_RECEIVED_RESOLUTIONS: tuple[str, ...] = (
+    CaseResolution.PRICE_RECEIVED,
+    CaseResolution.CLOSED_SAME_REPURCHASED,
+    CaseResolution.CLOSED_OTHER_REPURCHASED,
+)
+#: Kayıttan düşme ÖNERİSİ taşıyan çözümler (asıl kayıttan düşme F8/F9).
+WRITE_OFF_RESOLUTIONS: tuple[str, ...] = (
+    CaseResolution.CLOSED_OTHER_REPURCHASED,
+    CaseResolution.WRITE_OFF_PROPOSED,
+)
+#: Sorumlu notunun yardım metni (`Loan.override_note` ile aynı uyarı).
+RESPONSIBLE_NOTE_HELP = (
+    "Üye olmayan sorumlu ya da kısa açıklama. Sağlık ya da aile bilgisi yazmayın."
+)
+
+
+class LossDamageCase(BaseModel):
+    """Kayıp/hasar dosyası (Md. 19) — OYS'den UYARLA; kişi verisi taşır.
+
+    - `copy` PROTECT; `membership`, `loan`, `delivery` SET_NULL: saklama süresi
+      sonunda kişi bağı koparılır (§6.4, F11), dosya kişisiz istatistik (E9)
+      için kalır.
+    - `responsible_note` ŞİFRELİDİR (§6.3): üye olmayan sorumlunun adı ya da kısa
+      açıklama. Anahtar yokken boş olmayan değer yazılmaz (fail-closed, 409).
+    - `market_price` YALNIZ KAYITTIR (Md. 19 "o günkü piyasa bedeli"): program
+      tahsilat yapmaz, ödeme alanı yoktur. Bedel yolları yalnız ortaöğretimde
+      açılır (servis kapısı; DB kısıtı bedel yolunda bedelin dolu olmasını ister).
+      İki adımın zamanı ayrı tutulur (E6): `price_determined_at` bedelle birlikte
+      dolar (DB kısıtı: ikisi birlikte), `price_received_at` "Bedel teslim
+      alındı" ve sonrasında doludur.
+    - Nüsha başına tek AÇIK dosya (kısmi teklik). Çözüm durumu
+      `CaseResolution`; açık/kapalı ve öneri işareti durumla birlikte DB
+      kısıtıyla tutarlıdır.
+    - "Çözüm bekliyor" ve "Bedel belirlendi" kişinin AÇIK YÜKÜMLÜLÜĞÜDÜR (kişi
+      silinemez, ilişik listesine girer; `PERSON_OPEN_RESOLUTIONS`). "Bedel teslim
+      alındı" dosyası açıktır ama yalnız OKULUN işidir. Kişi dosyaya üyelik (ödünç)
+      ya da teslim (öğretmen) üzerinden bağlanır.
+
+    Ağ Kataloğu bu tabloya hiç uzanmaz: kayıp nüsha katalogda görünmez, hasar ve
+    bedel bilgisi hiçbir katalog sayfasında geçmez (§5.1, §5.10-4/5).
+    """
+
+    copy = models.ForeignKey(
+        Copy, on_delete=models.PROTECT, related_name="loss_damage_cases", verbose_name="nüsha"
+    )
+    case_type = models.CharField("tür", max_length=8, choices=CaseType.choices)
+    membership = models.ForeignKey(
+        Membership,
+        on_delete=models.SET_NULL,
+        related_name="loss_damage_cases",
+        verbose_name="üyelik",
+        null=True,
+        blank=True,
+    )
+    loan = models.ForeignKey(
+        Loan,
+        on_delete=models.SET_NULL,
+        related_name="loss_damage_cases",
+        verbose_name="ödünç",
+        null=True,
+        blank=True,
+    )
+    delivery = models.ForeignKey(
+        Delivery,
+        on_delete=models.SET_NULL,
+        related_name="loss_damage_cases",
+        verbose_name="teslim",
+        null=True,
+        blank=True,
+    )
+    responsible_note = EncryptedTextField(
+        "sorumlu notu", blank=True, default="", help_text=RESPONSIBLE_NOTE_HELP
+    )
+    reported_on = models.DateField("tespit tarihi", default=timezone.localdate)
+    market_price = models.DecimalField(
+        "piyasa bedeli",
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.01"))],
+        help_text="Yalnız kayıt — program tahsilat yapmaz (Md. 19; yalnız ortaöğretim).",
+    )
+    price_determined_at = models.DateTimeField(
+        "bedelin belirlendiği zaman",
+        null=True,
+        blank=True,
+        help_text="“Bedel belirlendi” adımı; bedel düzeltilince yenilenir.",
+    )
+    price_received_at = models.DateTimeField(
+        "bedelin teslim alındığı zaman",
+        null=True,
+        blank=True,
+        help_text="“Bedel teslim alındı” adımı — yalnız kayıt; program tahsilat yapmaz.",
+    )
+    resolution = models.CharField(
+        "çözüm",
+        max_length=28,
+        choices=CaseResolution.choices,
+        default=CaseResolution.PENDING,
+    )
+    resolved_at = models.DateTimeField("çözüm tarihi", null=True, blank=True)
+    write_off_proposed_at = models.DateTimeField(
+        "kayıttan düşme önerisi",
+        null=True,
+        blank=True,
+        help_text="Asıl kayıttan düşme TMY yoluyla yapılır (ayıklama ve sayım — F8/F9).",
+    )
+
+    class Meta:
+        verbose_name = "kayıp/hasar dosyası"
+        verbose_name_plural = "kayıp/hasar dosyaları"
+        ordering = ["-reported_on", "-pk"]
+        indexes = [
+            models.Index(fields=["resolution", "case_type"], name="kutuphane_ldc_res_idx"),
+        ]
+        constraints = [
+            # Nüsha başına tek AÇIK dosya.
+            models.UniqueConstraint(
+                fields=["copy"],
+                condition=models.Q(resolution__in=OPEN_CASE_RESOLUTIONS, deleted_at__isnull=True),
+                name="uq_lossdamagecase_open_per_copy",
+            ),
+            models.CheckConstraint(
+                name="ck_lossdamagecase_type", condition=models.Q(case_type__in=CaseType.values)
+            ),
+            models.CheckConstraint(
+                name="ck_lossdamagecase_resolution",
+                condition=models.Q(resolution__in=CaseResolution.values),
+            ),
+            # Açık dosyanın çözüm tarihi boş, kapanmışın dolu.
+            models.CheckConstraint(
+                name="ck_lossdamagecase_resolved_at",
+                condition=(
+                    models.Q(resolution__in=OPEN_CASE_RESOLUTIONS, resolved_at__isnull=True)
+                    | (
+                        ~models.Q(resolution__in=OPEN_CASE_RESOLUTIONS)
+                        & models.Q(resolved_at__isnull=False)
+                    )
+                ),
+            ),
+            # Kayıttan düşme önerisi işareti yalnız öneri taşıyan çözümlerde.
+            models.CheckConstraint(
+                name="ck_lossdamagecase_write_off",
+                condition=(
+                    models.Q(
+                        resolution__in=WRITE_OFF_RESOLUTIONS, write_off_proposed_at__isnull=False
+                    )
+                    | (
+                        ~models.Q(resolution__in=WRITE_OFF_RESOLUTIONS)
+                        & models.Q(write_off_proposed_at__isnull=True)
+                    )
+                ),
+            ),
+            # Bedel yolunda bedel kaydı dolu (Md. 19).
+            models.CheckConstraint(
+                name="ck_lossdamagecase_price",
+                condition=~models.Q(resolution__in=PRICE_RESOLUTIONS)
+                | models.Q(market_price__isnull=False),
+            ),
+            # Bedel ve belirlendiği zaman birlikte (ikisi de boş ya da ikisi de dolu).
+            models.CheckConstraint(
+                name="ck_lossdamagecase_price_determined",
+                condition=models.Q(market_price__isnull=True, price_determined_at__isnull=True)
+                | models.Q(market_price__isnull=False, price_determined_at__isnull=False),
+            ),
+            # Bedel teslimi zamanı yalnız teslim alınmış bedel yolunda (ve orada zorunlu);
+            # "Kayba dönüştü" hasar dosyası önceki adımın kaydını taşıyabilir.
+            models.CheckConstraint(
+                name="ck_lossdamagecase_price_received",
+                condition=(
+                    models.Q(
+                        resolution__in=PRICE_RECEIVED_RESOLUTIONS, price_received_at__isnull=False
+                    )
+                    | (
+                        ~models.Q(resolution__in=PRICE_RECEIVED_RESOLUTIONS)
+                        & models.Q(price_received_at__isnull=True)
+                    )
+                    | models.Q(resolution="CONVERTED_TO_LOSS")
+                ),
+            ),
+            # "Bulundu" yalnız kayıpta, "Onarıldı" yalnız hasarda.
+            models.CheckConstraint(
+                name="ck_lossdamagecase_found_lost",
+                condition=~models.Q(resolution="FOUND_RETURNED") | models.Q(case_type="LOST"),
+            ),
+            models.CheckConstraint(
+                name="ck_lossdamagecase_repaired_damaged",
+                condition=~models.Q(resolution="REPAIRED") | models.Q(case_type="DAMAGED"),
+            ),
+            # "Kayba dönüştü" yalnız hasar dosyasında (kayıp bildirimi kapatır).
+            models.CheckConstraint(
+                name="ck_lossdamagecase_converted_damaged",
+                condition=~models.Q(resolution="CONVERTED_TO_LOSS") | models.Q(case_type="DAMAGED"),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return (
+            f"{self.get_case_type_display()} dosyası #{self.pk} ({self.get_resolution_display()})"
+        )
+
+    @property
+    def is_open(self) -> bool:
+        return self.resolution in OPEN_CASE_RESOLUTIONS
+
+    @property
+    def is_person_open_work(self) -> bool:
+        """Kişinin (ya da şubenin) açık işi mi? "Bedel teslim alındı"da hayır — okulun işidir."""
+        return self.resolution in PERSON_OPEN_RESOLUTIONS
+
+
+class CopyRepair(BaseModel):
+    """Onarım kaydı (D3) — nüshanın onarıma gönderilmesi ve onarımdan dönüşü. Kişisiz.
+
+    OYS'de `IN_REPAIR` durumuna giden ve oradan çıkan bir yol yoktu (D3). Burada
+    "Onarıma gönder" nüshayı "Rafta"dan "Onarımda"ya alır ve bir kayıt açar,
+    "Onarımdan dön" kaydı kapatıp nüshayı rafa döndürür. Kayıt, yıl sonu
+    raporunun onarım sayısının (E9, F8) kaynağıdır. Hasar dosyasına bağlanabilir
+    (SET_NULL); serbest metin alanı YOKTUR (kişi adı yazılmasın).
+
+    Nüsha başına tek AÇIK onarım (kısmi teklik); nüshanın "Onarımda" durumu açık
+    onarım kaydıyla eşleşir (servis değişmezi).
+    """
+
+    copy = models.ForeignKey(
+        Copy, on_delete=models.PROTECT, related_name="repairs", verbose_name="nüsha"
+    )
+    case = models.ForeignKey(
+        LossDamageCase,
+        on_delete=models.SET_NULL,
+        related_name="repairs",
+        verbose_name="hasar dosyası",
+        null=True,
+        blank=True,
+    )
+    sent_on = models.DateField("onarıma gönderilme tarihi", default=timezone.localdate)
+    returned_on = models.DateField("onarımdan dönüş tarihi", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "onarım kaydı"
+        verbose_name_plural = "onarım kayıtları"
+        ordering = ["-sent_on", "-pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["copy"],
+                condition=models.Q(returned_on__isnull=True, deleted_at__isnull=True),
+                name="uq_copyrepair_open_per_copy",
+            ),
+            models.CheckConstraint(
+                name="ck_copyrepair_dates",
+                condition=models.Q(returned_on__isnull=True)
+                | models.Q(returned_on__gte=models.F("sent_on")),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Onarım #{self.pk}"
+
+    @property
+    def is_open(self) -> bool:
+        return self.returned_on is None

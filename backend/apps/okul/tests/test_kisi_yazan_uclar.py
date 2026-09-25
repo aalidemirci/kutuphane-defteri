@@ -60,6 +60,15 @@ KISI_YAZAN_UCLAR = frozenset(
         # verisi; kartsız ödünç ve istisna gerekçeleri şifreli) yazar.
         "library-checkout",
         "library-return",
+        # F7 teslim (U11): toplu teslim öğretmene bağlanır (PROTECT, açık yükümlülük);
+        # geri alma okutması o teslim kaydını kapatır.
+        "library-delivery-list",
+        "library-delivery-take-back",
+        # F7 kayıp/hasar dosyası (Md. 19): üyeliğe bağlanır, sorumlu notu şifrelidir;
+        # açma, not düzeltme ve çözüm kişi yazar.
+        "library-loss-damage-case-list",
+        "library-loss-damage-case-detail",
+        "library-loss-damage-case-resolve",
     }
 )
 
@@ -131,6 +140,23 @@ DIGER_UCLAR = frozenset(
         "library-desk-member",
         "library-desk-copy-status",
         "library-desk-card-unlock",
+        # F7: teslim listesine okutmanın ön denetimi yazmaz; onarım kaydı kişisizdir
+        # (nüsha durumu + tarih; serbest metin yok). Hepsi yönetici kipi işidir.
+        "library-delivery-check",
+        "library-copy-send-to-repair",
+        "library-copy-return-from-repair",
+        # F7 ilişik ve yıl akışları (E5, E4 yıl sonu pusulası) ve F7 evrakı (E6, E15):
+        # liste, özet ve PDF uçları yalnız okur; hiçbir kayıt yazmaz. Hepsi yönetici
+        # kipi işidir (§4.4 "ilişik", "kayıp dosyaları", "raporlar" kapalı).
+        "library-clearance",
+        "library-clearance-pdf",
+        "library-clearance-sections",
+        "library-clearance-certificate-pdf",
+        "library-year-end-slip-pdf",
+        "library-year-flows",
+        "library-loss-damage-case-pdf",
+        "library-delivery-pdf",
+        "library-delivery-take-back-report",
         # F6 evrak ve pano (E2, E4, E13, E19, T15): kuyruk, gecikme listesi ve
         # son işlemler yalnız okur; PDF uçları kayıt yazmaz; panonun POST'u
         # yalnız süreç içi "Kontrol ettim" onayıdır. Hepsi yönetici kipi işidir.
@@ -297,7 +323,8 @@ def test_parolasizken_kisi_yazan_her_uc_yazma_yontemiyle_409_doner(parolasiz: Pa
     # + F6 üyelik: liste (POST), ayrıntı (DELETE), kartı yenile, sonlandır, istek listesi (POST)
     # + F6 kart basım işareti ve geri alma (POST)
     # + F6 dolaşım masası: ödünç ver ve iade al (POST)
-    assert denenen == 2 + 2 * 3 + 4 + 2 + 1 + 1 + 5 + 2 + 2
+    # + F7: toplu teslim ve geri alma (POST), dosya açma (POST), not (PATCH), çözüm (POST)
+    assert denenen == 2 + 2 * 3 + 4 + 2 + 1 + 1 + 5 + 2 + 2 + 2 + 3
     assert not Student.all_objects.exists()
 
 

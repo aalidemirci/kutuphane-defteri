@@ -180,6 +180,37 @@ describe("UyelerSekmesi", () => {
     expect(within(pencere).getByText("İade Hatırlatma Pusulası")).toBeInTheDocument();
   });
 
+  it("kayba dönüşen ödünç (F7) açık ya da gecikmiş görünmez", async () => {
+    const user = userEvent.setup();
+    uyelikApiMock.oduncKaydi.mockResolvedValue(
+      sayfa([
+        {
+          id: 10,
+          barcode: "2026000002",
+          barcode_display: "2026-000002",
+          work_title: "Kaybolan Kaynak",
+          loaned_at: "2026-09-01T10:00:00+03:00",
+          due_date: "2026-09-16",
+          returned_at: null,
+          status: "LOST_CONVERTED",
+          status_display: "Kayba dönüştü",
+          overdue_days: 0,
+          has_override: false,
+          override_reason_display: "",
+          cardless: false,
+          cardless_reason_display: "",
+        },
+      ]),
+    );
+    ciz();
+    await user.click(await screen.findByRole("button", { name: "Deneme Öğrenci üyeliğini aç" }));
+    const pencere = await screen.findByRole("dialog", { name: "Üyelik" });
+    const kayit = await within(pencere).findByRole("region", { name: "Ödünç kaydı" });
+    expect(await within(kayit).findByText("Kaybolan Kaynak")).toBeInTheDocument();
+    expect(kayit).toHaveTextContent("kayba dönüştü");
+    expect(kayit).not.toHaveTextContent(/· açık|gecikti/);
+  });
+
   it("aydınlatma metni başvuru bilgileriyle basılır ve indirilir", async () => {
     const user = userEvent.setup();
     uyelikApiMock.aydinlatmaMetniPdf.mockResolvedValue(new Blob(["%PDF"]));

@@ -352,6 +352,69 @@ def test_sentetik_kisi_verisi_hicbir_katalog_sayfasinda_gecmez(katalog: KatalogI
     assert "Ödünçte" in sayfalar[f"/eser/{work.pk}"]
 
 
+def test_teslim_ve_kayip_hasar_verisi_hicbir_katalog_sayfasinda_gecmez(
+    katalog: KatalogIstemcisi,
+) -> None:
+    """F7 (§5.10-5 yeniden koşar): teslim alanın adı — şube etiketi ya da öğretmen adı —,
+    belge no, kayıp/hasar dosyasının sorumlu notu ve piyasa bedeli hiçbir katalog
+    sayfasında geçmez. Katalog teslimdeki nüshayı yalnız DURUMUYLA gösterir: "Sınıf
+    kitaplığında" (§5.1, U11); kayıp nüsha görünmez, onarımdaki "onarımda" sayılır."""
+    from decimal import Decimal
+
+    from apps.kutuphane.services import deliveries, loss_damage
+    from apps.kutuphane.tests.dolasim_ortak import odunc_ver, ogrenci
+    from apps.kutuphane.tests.teslim_ortak import kademe_yaz, ogretmen, sube, teslim_et
+
+    kademe_yaz("ORTAOGRETIM")
+    work = eser(title="Teslim Eseri", authors="Deneme Yazar", subjects="Tarih")
+    sinif = sube(11, "ZQ")  # etiket "11/ZQ": katalog metninde başka yerden geçemez
+    hoca = ogretmen(first_name="Teslimalan", last_name="Ogretmenkatalogdeneme")
+    sube_teslimi = teslim_et([nusha(work)], section=sinif, document_no="BELGE-KATALOG-77")
+    teslim_et([nusha(work)], personnel=hoca, document_no="BELGE-KATALOG-78")
+    geri = teslim_et([nusha(work)], personnel=hoca).deliveries[0]
+    deliveries.take_back(geri.copy)
+    uyelik = memberships.create_membership(
+        student=ogrenci(first_name="Kayipkatalogdeneme", last_name="Sorumluogrenci")
+    )
+    kayip = odunc_ver(uyelik, nusha(work))
+    dosya = loss_damage.report_lost(copy=kayip.copy, responsible_note="Sorumlunotkatalogdeneme")
+    loss_damage.resolve_case(dosya, resolution="PRICE_DETERMINED", market_price=Decimal("321.09"))
+    loss_damage.resolve_case(dosya, resolution="PRICE_RECEIVED")
+    loss_damage.open_damage_case(
+        copy=nusha(work), responsible_note="Hasarnotkatalogdeneme", send_to_repair=True
+    )
+
+    sayfalar = _gez(katalog, ["/", "/ara", "/ara?q=teslim", "/ara?q=tarih", "/konular"])
+    eser_sayfasi = sayfalar.get(f"/eser/{work.pk}")
+
+    assert eser_sayfasi is not None  # gezinti gerçekten esere ulaştı
+    assert "sınıf kitaplığında" in eser_sayfasi.casefold()
+    yasaklar = [
+        sinif.class_label,
+        "Teslimalan",
+        "Ogretmenkatalogdeneme",
+        "Kayipkatalogdeneme",
+        "Sorumluogrenci",
+        "Sorumlunotkatalogdeneme",
+        "Hasarnotkatalogdeneme",
+        "BELGE-KATALOG",
+        sube_teslimi.document_no,
+        "321.09",
+        "321,09",
+        "Kayba dönüştü",
+        "Bedel belirlendi",
+        "Bedel teslim alındı",
+    ]
+    for adres, metin in sayfalar.items():
+        for yasak in yasaklar:
+            assert yasak.casefold() not in metin.casefold(), f"“{yasak}” {adres} sayfasında geçti"
+    # Kayıp nüsha sayılmaz: 5 nüshadan kayıp olan görünmez; ikisi teslimde (şube ve
+    # öğretmen — ikisi de "sınıf kitaplığında"), biri onarımda, biri rafta.
+    assert Copy.objects.filter(work=work).count() == 5
+    for parca in ("4 nüsha", "1 rafta", "2 sınıf kitaplığında", "1 onarımda"):
+        assert parca in eser_sayfasi, parca
+
+
 # ======================================= §5.10-9 program kilitliyken katalog çalışır
 
 
