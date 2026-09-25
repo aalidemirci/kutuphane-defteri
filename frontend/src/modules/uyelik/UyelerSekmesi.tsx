@@ -567,11 +567,13 @@ function OduncKaydi({ uyelikId }: { uyelikId: number }) {
                 <span className="block text-body-small text-on-surface-variant">
                   {lo.barcode_display} · verildi {formatDate(lo.loaned_at.slice(0, 10))} · iade
                   tarihi {formatDate(lo.due_date)}
-                  {lo.returned_at
-                    ? ` · iade alındı ${formatDate(lo.returned_at.slice(0, 10))}`
-                    : lo.overdue_days > 0
-                      ? ` · ${formatNumber(lo.overdue_days)} gün gecikti`
-                      : " · açık"}
+                  {lo.status === "LOST_CONVERTED"
+                    ? ` · ${lo.status_display.toLocaleLowerCase("tr")}`
+                    : lo.returned_at
+                      ? ` · iade alındı ${formatDate(lo.returned_at.slice(0, 10))}`
+                      : lo.overdue_days > 0
+                        ? ` · ${formatNumber(lo.overdue_days)} gün gecikti`
+                        : " · açık"}
                   {lo.has_override && ` · gerekçeli istisna (${lo.override_reason_display})`}
                   {lo.cardless && ` · kartsız ödünç (${lo.cardless_reason_display})`}
                 </span>

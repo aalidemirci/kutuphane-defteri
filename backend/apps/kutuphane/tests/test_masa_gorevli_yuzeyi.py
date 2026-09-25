@@ -8,6 +8,7 @@ ağacı (noktalı yollar; listelerde `[]`) anlık görüntüyle karşılaştır�
 * kartla üye çözme YALNIZ ad + kalan hak (sınıf, okul no, kart no, açık ödünç YOK);
 * iadede ödünç alanın kimliği ve gecikme günü YOK;
 * nüsha durum sorgusunda ödünç kimde YOK;
+* teslimden geri alma okutmasında (F7) teslim alanın kimliği YOK;
 * katalog okuma Ağ Kataloğunun alan listesine denk (edinim, fiyat, bağışçı, TKYS,
   etiket damgaları YOK).
 
@@ -28,6 +29,7 @@ from rest_framework.test import APIClient
 
 from apps.kutuphane.tests import ortak
 from apps.kutuphane.tests.dolasim_ortak import odunc_nushasi, odunc_ver, ogrenci, uye
+from apps.kutuphane.tests.teslim_ortak import teslim_et
 from apps.okul.kip import KIP
 from apps.okul.kip_izinleri import IZIN_LISTESI
 from apps.okul.services import app_password
@@ -101,6 +103,9 @@ GOREVLI_YANITLARI: dict[tuple[str, str], set[str]] = {
     ("library-work-detail", "GET"): ESER,
     ("library-copy-list", "GET"): {*SAYFA, *{f"results[].{a}" for a in KATALOG_NUSHASI}},
     ("library-label-verify", "POST"): {"result", "kind", "message", *NUSHA_OZETI},
+    # F7: teslimden geri alma okutması — teslim alanın kimliği (şube, öğretmen), belge
+    # no ve tarihler YOK (§4.4).
+    ("library-delivery-take-back", "POST"): {"result", "kind", "message", *NUSHA_OZETI},
 }
 
 
@@ -125,11 +130,14 @@ def veri(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     uyelik = uye(ogrenci(first_name=AD, last_name=SOYAD, student_number=OKUL_NO))
     oduncte = odunc_ver(uyelik, odunc_nushasi(title="Yüzey Eseri"))
     rafta = odunc_nushasi(title="Raftaki Eser")
+    # F7: 9/A sınıf kitaplığına teslim (şube etiketi görevli yanıtında geçmemeli).
+    teslimde = teslim_et([odunc_nushasi(title="Teslimdeki Eser")]).deliveries[0]
     KIP.gorevliye_gec()
     return {
         "uyelik": uyelik,
         "oduncte": oduncte,
         "rafta": rafta,
+        "teslimde": teslimde,
         "eser": ortak.eser(title="Katalogdaki Eser"),
     }
 
@@ -162,6 +170,9 @@ def _istekler(veri: dict[str, Any]) -> dict[tuple[str, str], Callable[[APIClient
         ),
         ("library-copy-list", "GET"): lambda c: c.get(
             reverse("library-copy-list"), {"work": rafta.work_id}
+        ),
+        ("library-delivery-take-back", "POST"): json_post(
+            "library-delivery-take-back", {"barcode": veri["teslimde"].copy.barcode}
         ),
         ("library-label-verify", "POST"): json_post(
             "library-label-verify", {"code": rafta.barcode}

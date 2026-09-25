@@ -48,7 +48,13 @@ def client() -> APIClient:
 @pytest.fixture(autouse=True)
 def bos_kayit_defterleri(monkeypatch: pytest.MonkeyPatch) -> None:
     """Her test boş kayıt defterleriyle başlar (F6/F7 kayıtları testleri etkilemesin)."""
-    for ad in ("_obligation_checks", "_membership_checks", "_leave_hooks", "_merge_hooks"):
+    for ad in (
+        "_obligation_checks",
+        "_membership_checks",
+        "_leave_hooks",
+        "_merge_hooks",
+        "_deletion_blocks",
+    ):
         monkeypatch.setattr(persons, ad, [])
 
 

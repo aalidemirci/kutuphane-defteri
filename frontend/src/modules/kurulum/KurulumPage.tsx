@@ -638,7 +638,7 @@ function OkulBilgileriAdimi({ form, errors, onChange }: OkulBilgileriProps) {
           placeholder="Seçin"
           options={KADEME_SECENEKLERI}
           error={errors.kademe}
-          helperText="Kayıp kitap bedeli ve sınıf kitaplığı kuralları kademeye göre uygulanır."
+          helperText="Kayıp ve hasarda bedel seçenekleri (yalnız ortaöğretimde) ve yıl sonundaki son sınıf kademeye göre belirlenir."
         />
         <TextField
           label="İl"

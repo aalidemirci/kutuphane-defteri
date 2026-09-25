@@ -490,13 +490,38 @@ kılavuzun Üyelik ve Dolaşım Masası bölümleri, sözlük §4.10-4.11. D8, D
 D19, D21 kapandı. Sapmalar, kararlar ve düzeltme turu: tasarım §14.1 **"F6
 ekleri"**; yeni kalan riskler TB32 (son sınıf tarihi), TB33 (veri dizini de
 kaybolursa kart numarası), TB34 (görevli kipinde "bu üyede / başka üyede" ayrımı
-korunur — 25.09.2026 kullanıcı kararı, F6 ekleri 26); `kip_sureleri()` hâlâ A10
-sabitlerinde.
+korunur — 25.09.2026 kullanıcı kararı, F6 ekleri 26); `kip_sureleri()` F7'de
+`LibraryPolicy`'ye bağlandı (F7 ekleri 10).
 
-Sıradaki: F7 Teslim, kayıp, ilişik, yıl akışları (toplu teslim U11 + E15,
-kayıp/hasar/onarım D3, ilişik + E5/E6, yıl sonu ve yıl başı akışları; §5.10-4/5
-yeniden koşar). Tam tablo: tasarım §14.1. Saha hazırlık hattı (S1-S15, kod
-dışı): §14.2.
+**F7 Teslim, kayıp, ilişik, yıl akışları — kod tarafı bitti (25.09.2026, dal
+`f7-teslim`).** `Delivery` (şube XOR öğretmen, açık teslimde PROTECT, nüsha başına
+tek açık teslim), `LossDamageCase` (sorumlu notu şifreli, bedel yalnız kayıt),
+`CopyRepair` — tek göç `0006_teslim_kayip_onarim` · toplu teslim (TEK işlem, sayı
+sınırı yok, belge no `<yıl>/<sıra>`), okutmayla geri alma (görevli kipine açık tek
+F7 ucu `library-delivery-take-back`), E15 teslim listesi ve geri alma dökümü (oturumdan
+ya da belge no'dan) · ödünç ile teslim arasında tek açık kayıt (nüsha durumunun
+koşullu geçişi — `services.nusha_durumu`) · kayıp/hasar/onarım (D3 kapandı): Md. 19
+kademe kapısı (bedel yolları yalnız ortaöğretimde, tahsilat yok), **bedel iki
+adımdır** — "Bedel belirlendi"de kişinin açık işi sürer, "Bedel teslim alındı"da
+biter (ilişikten çıkar, E5 basılır) ve dosya okulun açık işi olarak bedelle alıma dek
+açık kalır (25.09.2026 kullanıcı kararı, F7 ekleri 26), kayıp bildirimi
+ödünç/teslimi "Kayba dönüştü" ile kapatır, açık hasar dosyası da kayba dönüşür,
+kayıttan düşme yalnız öneridir ve kayıp dosyasında "Bulundu" ile geri alınır · TMY
+32/3 kapı noktası (`services.tmy_kapisi`; F7'de boş, kapsam çözüm türüne göre) · kişi
+bağı tek kural (önce üyelik, yoksa teslim alan) · ilişik listesi (son sınıf → okuldan
+ayrılan → diğerleri), E5 "Kütüphaneden ilişiği yoktur" belgesi (ön koşul diye
+sunulmaz), E6 tutanak (gerçek uzunlukta tek sayfa) · Yıl Sonu ve Yıl Başı adım adım
+ekranları (kayıt yazmaz; `year_rollover` yok) · kip süreleri `LibraryPolicy`'ye
+bağlandı · kılavuz ve sözlük §4.12-4.13. Sapmalar, kararlar, düzeltme turu ve
+kullanıcı kararı: tasarım §14.1 **"F7 ekleri"** (madde 14-26; düzelticinin iki
+sapması — "Kayba dönüştü" ve TMY 32/3'ün daraltılmış kapsamı — onaylandı); bilinen
+sınırlar (a)-(i). Okuyucuyla toplu teslim, görevli kipinde geri alma ve F7
+belgelerinin gerçek yazıcı çıktısı F12'ye ertelendi.
+
+Sıradaki: F8 Komisyon + ayıklama (komisyon, ayıklama D7/D15 ve TMY yolu, devir,
+nadir eser D14, bağış kararı → toplu katalog, E7/E8/E9/E16, A8 kararı; F7'den devreden:
+kayıttan düşme önerileri kuyruğu ve "Bedelle başka eser alındı" nüshaları). Tam tablo:
+tasarım §14.1. Saha hazırlık hattı (S1-S15, kod dışı): §14.2.
 
 ---
 

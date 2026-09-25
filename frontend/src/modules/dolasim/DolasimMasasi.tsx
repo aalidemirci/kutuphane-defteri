@@ -37,6 +37,15 @@
 //   * "İade al ve ödünç ver" bağlamı düğmeye basıldığı an yakalar; iade sürerken
 //     bağlam değiştiyse ödünç verilmez.
 //   * "Yalnız durum sor" ayrı bir ses verir ve üye kartı okutulunca kendiliğinden kapanır.
+//
+// F7 (teslim ve kayıp):
+//   * Boş bağlamda okutulan kitap sınıf kitaplığına ya da öğretmene TESLİMDEYSE sunucu
+//     "Sınıf kitaplığında." der (iade yapılmaz — teslim ödünç değildir). Masa altına
+//     "Teslimden geri al" önerisini koyar; geri alma görevli kipinde de açıktır (§4.4).
+//     Öneri kitabın kime teslim edildiğini söylemez.
+//   * Yönetici kipinde üye bağlamındaki açık ödünçlerin yanında "Kayıp bildir" kısayolu
+//     durur (`kayip/DosyaAcDiyalogu`): ödünç "Kayba dönüştü" ile kapanır, kalan hak
+//     sunucudan yeniden okunur. Görevli kipinde kısayol YOKTUR (kayıp dosyaları kapalı).
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -48,9 +57,13 @@ import Button from "../../ui/Button";
 import Card from "../../ui/Card";
 import { hataOku } from "../../ui/ErrorBand";
 import Icon from "../../ui/Icon";
+import DosyaAcDiyalogu from "../kayip/DosyaAcDiyalogu";
+import type { SeciliNusha } from "../kayip/DosyaAcDiyalogu";
 import { barkodBicimle, kodTuru } from "../kutuphane/tarama";
+import { teslimApi } from "../teslim/api";
 import { KARTSIZ_GEREKCELER, RED, UYEYE_BAGLI_RETLER, dolasimApi } from "./api";
 import type {
+  AcikOdunc,
   IstisnaGerekcesi,
   KartsizGerekce,
   KartSonucu,
@@ -82,6 +95,13 @@ export const ISTEM_BAGLAM_DEGISTI =
 export const DURUM_SORGUSU_KAPANDI = "“Yalnız durum sor” kapatıldı: üye kartı okutuldu.";
 export const BAGLAM_ZAMAN_ASIMI = "Üye bağlamı kapandı: 60 saniye işlem yapılmadı.";
 export const BAGLAM_KAPANDI = "Üye bağlamı kapandı.";
+/** Teslimdeki nüshanın masa iletisi (backend `circulation.COPY_STATE_MESSAGES`). */
+export const SINIF_KITAPLIGINDA = "Sınıf kitaplığında.";
+/** Teslimdeki kitap okutulunca iletinin altındaki öneri (kime teslim edildiği yazmaz). */
+export const TESLIM_GERI_ALMA_ONERISI =
+  "Kitap sınıf kitaplığından ya da öğretmenden geri geldiyse teslimden geri alınabilir.";
+export const TESLIMDEN_GERI_AL = "Teslimden geri al";
+export const KAYIP_BILDIRILDI = "Kayıp bildirildi; ödünç kayba dönüştü ve kayıp dosyası açıldı.";
 
 interface UyeBaglami {
   /** Okutulan kart no — ödünçte yeniden gönderilir (görevlide üyeyi kanıtlayan tek şey). */
@@ -108,8 +128,11 @@ interface Islem {
 }
 
 interface Istem {
-  /** baska_uyede: iade al + ödünç ver · bu_uyede ve iade: yalnız iade al. */
-  tur: "baska_uyede" | "bu_uyede" | "iade";
+  /**
+   * baska_uyede: iade al + ödünç ver · bu_uyede ve iade: yalnız iade al · teslim:
+   * teslimden geri al (F7).
+   */
+  tur: "baska_uyede" | "bu_uyede" | "iade" | "teslim";
   barkod: string;
 }
 
@@ -155,6 +178,8 @@ export default function DolasimMasasi({
   const [kilitOdakta, setKilitOdakta] = useState(false);
   const [istisna, setIstisna] = useState<Istisna | null>(null);
   const [kartsizAcik, setKartsizAcik] = useState(false);
+  // Yalnız yönetici kipi: üyenin açık ödüncü için kayıp bildirimi (F7).
+  const [kayipNushasi, setKayipNushasi] = useState<SeciliNusha | null>(null);
   const [sonEtkinlik, setSonEtkinlik] = useState(0);
   const sayac = useRef(0);
   // Gerekçeli istisna penceresi açıkken kuyruğun sıradaki okutması BEKLER (pencere
@@ -193,7 +218,7 @@ export default function DolasimMasasi({
 
   const etkinlik = useCallback(() => setSonEtkinlik(Date.now()), []);
 
-  const diyalogAcik = istisna !== null || kartsizAcik;
+  const diyalogAcik = istisna !== null || kartsizAcik || kayipNushasi !== null;
 
   // 60 sn işlem yoksa üye bağlamı kapanır (§7.3). Pencere açıkken süre İŞLEMEZ:
   // pencereyi dolduran yönetici işlem yapıyordur; pencere kapanınca süre baştan başlar.
@@ -274,6 +299,11 @@ export default function DolasimMasasi({
         ekle("iade", sonuc.message, `${nushaMetni(sonuc.copy, kod)}${kimden}`);
         return sonuc.loan && sonuc.loan.overdue_days > 0 ? "uyari" : "basari";
       }
+      // F7: teslimdeki kitap (görevli kipinde nüsha özetinde durum yoktur; ileti yeter).
+      const teslimde =
+        sonuc.result === "not_on_loan" &&
+        (sonuc.copy?.status === "DELIVERED" || sonuc.message === SINIF_KITAPLIGINDA);
+      if (teslimde) setIstem({ tur: "teslim", barkod: sonuc.copy?.barcode ?? kod });
       ekle(
         sonuc.result === "not_on_loan" ? "uyari" : "hata",
         sonuc.message,
@@ -383,10 +413,37 @@ export default function DolasimMasasi({
     return b ? oduncVer(b, kod) : iadeAl(kod);
   };
 
+  // --- teslimden geri alma (F7; görevli kipinde de açık) ---
+  const teslimdenGeriAl = async (barkod: string) => {
+    try {
+      const sonuc = await teslimApi.geriAl(barkod);
+      const teslim =
+        !gorevli && sonuc.delivery
+          ? ` · ${[sonuc.delivery.recipient_kind_display, sonuc.delivery.recipient_label]
+              .filter(Boolean)
+              .join(": ")}`
+          : "";
+      ekle(
+        sonuc.result === "returned" ? "iade" : sonuc.result === "not_delivered" ? "uyari" : "hata",
+        sonuc.message,
+        `${nushaMetni(sonuc.copy, barkod)}${teslim}`,
+      );
+    } catch (e) {
+      ekle("hata", hataOku(e, "Geri alma kaydedilemedi; kitabı yeniden okutun.").message, barkod);
+    }
+  };
+
   // --- istem düğmeleri ("Önce iade alınsın mı?") ---
   const istemiUygula = async () => {
     const aktif = istem;
     if (aktif === null) return;
+    if (aktif.tur === "teslim") {
+      setIstem(null);
+      etkinlik();
+      await teslimdenGeriAl(aktif.barkod);
+      kutuRef.current?.focus();
+      return;
+    }
     // Bağlam düğmeye basıldığı AN yakalanır: iade sürerken okutulan yeni kartın
     // sahibine ödünç verilmez.
     const b = baglamRef.current;
@@ -435,6 +492,38 @@ export default function DolasimMasasi({
     } catch (e) {
       return hataOku(e, "Ödünç kaydedilemedi.").message;
     }
+  };
+
+  // --- kayıp bildirimi (F7; yalnız yönetici kipi) ---
+  const kayipBildir = (odunc: AcikOdunc) => {
+    setIstem(null);
+    etkinlik();
+    setKayipNushasi({
+      barcode: odunc.barcode,
+      barcode_display: odunc.barcode_display,
+      work_title: odunc.work_title,
+    });
+  };
+
+  const kayipBildirildi = async () => {
+    const nusha = kayipNushasi;
+    setKayipNushasi(null);
+    etkinlik();
+    ekle("uyari", KAYIP_BILDIRILDI, nusha ? `${nusha.barcode_display} — ${nusha.work_title}` : "");
+    // Kayba dönüşen ödünç sayı sınırına artık sayılmaz: üyenin bağlamı sunucudan tazelenir.
+    const b = baglamRef.current;
+    const uyelikId = b?.uye.membership_id;
+    if (b !== null && uyelikId !== undefined) {
+      try {
+        const sonuc = await dolasimApi.uyeAc(uyelikId);
+        if (sonuc.member !== null && ayniUye(b, baglamRef.current)) {
+          baglamiYaz({ ...b, uye: sonuc.member });
+        }
+      } catch {
+        /* bağlam eski kalır; bir sonraki kart okutmasında tazelenir */
+      }
+    }
+    kutuRef.current?.focus();
   };
 
   const son = islemler[0];
@@ -519,7 +608,14 @@ export default function DolasimMasasi({
         </label>
       </Card>
 
-      {baglam !== null && <UyeKarti baglam={baglam} gorevli={gorevli} onBitti={bitti} />}
+      {baglam !== null && (
+        <UyeKarti
+          baglam={baglam}
+          gorevli={gorevli}
+          onBitti={bitti}
+          onKayipBildir={gorevli ? undefined : kayipBildir}
+        />
+      )}
 
       {son && (
         <div
@@ -534,9 +630,16 @@ export default function DolasimMasasi({
             {istem && (
               <div className="mt-2 space-y-2">
                 {istem.tur === "iade" && <p className="text-body-medium">{IADE_ONERISI}</p>}
+                {istem.tur === "teslim" && (
+                  <p className="text-body-medium">{TESLIM_GERI_ALMA_ONERISI}</p>
+                )}
                 <div className="flex flex-wrap gap-2">
                   <Button icon="input" onClick={() => void istemiUygula()}>
-                    {istem.tur === "baska_uyede" ? "İade al ve ödünç ver" : "İade al"}
+                    {istem.tur === "baska_uyede"
+                      ? "İade al ve ödünç ver"
+                      : istem.tur === "teslim"
+                        ? TESLIMDEN_GERI_AL
+                        : "İade al"}
                   </Button>
                   <Button
                     variant="text"
@@ -590,6 +693,16 @@ export default function DolasimMasasi({
               etkinlik();
             }}
           />
+          <DosyaAcDiyalogu
+            open={kayipNushasi !== null}
+            tur="LOST"
+            nusha={kayipNushasi}
+            onClose={() => {
+              setKayipNushasi(null);
+              etkinlik();
+            }}
+            onAcildi={() => void kayipBildirildi()}
+          />
         </>
       )}
     </div>
@@ -600,10 +713,13 @@ function UyeKarti({
   baglam,
   gorevli,
   onBitti,
+  onKayipBildir,
 }: {
   baglam: UyeBaglami;
   gorevli: boolean;
   onBitti: () => void;
+  /** Yalnız yönetici kipi: açık ödüncün kayıp bildirimi (F7). */
+  onKayipBildir?: (odunc: AcikOdunc) => void;
 }) {
   const { uye } = baglam;
   const acik = uye.open_loans ?? [];
@@ -646,13 +762,23 @@ function UyeKarti({
             </p>
             <ul className="space-y-1 text-body-medium">
               {acik.map((o) => (
-                <li key={o.id} className="flex flex-wrap gap-x-2 text-on-surface">
+                <li key={o.id} className="flex flex-wrap items-center gap-x-2 text-on-surface">
                   <span className="font-mono">{o.barcode_display}</span>
                   <span>{o.work_title}</span>
                   <span className={o.overdue_days > 0 ? "text-error" : "text-on-surface-variant"}>
                     iade tarihi {formatDate(o.due_date)}
                     {o.overdue_days > 0 && ` · ${formatNumber(o.overdue_days)} gün gecikti`}
                   </span>
+                  {onKayipBildir && (
+                    <Button
+                      variant="text"
+                      icon="report"
+                      onClick={() => onKayipBildir(o)}
+                      aria-label={`${o.barcode_display} için kayıp bildir`}
+                    >
+                      Kayıp bildir
+                    </Button>
+                  )}
                 </li>
               ))}
             </ul>

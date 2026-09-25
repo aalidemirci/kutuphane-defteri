@@ -973,7 +973,7 @@ Personelin unvanı ve branşı modelde yoktur (§6.1).
 | Sonlanmış üyelik satırı + kişi kaydı | Açık yükümlülük yoksa aynı süre sonunda katı silinir | N = 2 yıl |
 | **Aktif** üyenin iade edilmiş ödünçleri | Ders yılı sonu + M sonunda kişi bağı koparılır, `override_reason` temizlenir | M = 1 yıl (A3) |
 | **Aktif** üyenin kapanmış kayıp/hasar dosyası | Kapanış + N sonunda kişi bağı ve `responsible_note` temizlenir | N = 2 yıl |
-| `PRICE_RECORDED`'da bekleyen dosya | Yıllık hatırlatma listesine düşer, sessizce silinmez | — |
+| "Bedel belirlendi" ya da "Bedel teslim alındı"da (`PRICE_DETERMINED` / `PRICE_RECEIVED`) bekleyen dosya | Yıllık hatırlatma listesine düşer, sessizce silinmez (F7 ekleri 26: bedel iki adımdır) | — |
 | Kapanmış teslim (U11) | Geri alma + N sonunda alan bağı koparılır (`Delivery.recipient` SET_NULL). E15 belgesi için `BelgeIzi` tutulur. Teslim açıkken alan kişi silinemez (PROTECT; açık yükümlülük sayılır) | N = 2 yıl |
 
 **Çalışma biçimi.**
@@ -1578,7 +1578,7 @@ ifadeleri ters çevrilir: `settings.py:3-7`, `server.py:8`, `docs/kurulum.md:83-
 |---|---|---|---|
 | D1 | TMY atıfları eski: 32/6 → **32/7**, 32/4 → 32/5, 10/1-m → **34/2-c + 34/3-a** | Tam metinden doğrulanır | F9, F10 |
 | D2 | Türkçe arama ve eşleştirme bozuk | T7 | F2 |
-| D3 | `IN_REPAIR` durumuna yol yok. `DAMAGED` açılamıyor | Akışlar yazılır | F7 |
+| D3 | `IN_REPAIR` durumuna yol yok. `DAMAGED` açılamıyor | Akışlar yazılır | F7 — kapandı (§14.1 F7 ekleri 3) |
 | D4 | Sayım kilidi `report_lost` ve `resolve_case`'i kapsamıyor | Kilit seçildiyse bunlar da kapsanır | F9 |
 | D5 | İçe aktarım: `shelf_location` kayboluyor, idempotency yok, önizleme uygulamayla eşleşmiyor | §8.1 | F3 |
 | D6 | Yıl UTC'den alınıyor | `localdate()` | F2 |
@@ -1847,7 +1847,8 @@ kararlar. Kod kapısı (§14.1 F2 satırı) ve `bash scripts/gates.sh` yeşildir
    getirir. Kullanıcıya "ayar var, etkisi yok" görünmesin diye iki alan **Kütüphane
    Politikası ekranına konmadı**. Karar (önbellekli okuma mı, F6'ya erteleme mi) açıktır;
    o güne dek geçerli olan A10 varsayılanlarıdır ve `kip.py` docstring'i "F6'da
-   bağlanacak" der.
+   bağlanacak" der. *(F7'de bağlandı: önbellekli okuma; iki alan Kütüphane Politikası
+   → Yönetici Kipi Süreleri'nde — F7 ekleri 10.)*
 2. **§6.2 — nüsha süzgeçlerinde "danışma" ayrı bir eksen DEĞİL.** Sunucudaki süzgeç
    `only_loanable`'dır ve `LOANABLE_Q`'nun dört koşulunu birden uygular (danışma,
    piyasada mevcudu yok, süreli yayın, durum ≠ Rafta); arayüzde **"Yalnız ödünç
@@ -2507,7 +2508,271 @@ açık karar olarak yazıldı; kullanıcı 25.09.2026'da §7.3'ün aynen kalmas�
     üyede ayrım görünmez, GA-7 kart denetimi, görevlilerin yazılı görevlendirilmesi,
     masa kartındaki gizlilik uyarısı). Aydınlatma metni bugünkü davranışı söyler.
     Ayrıca `kip_sureleri()` hâlâ A10 sabitlerindedir (F2 ekleri 1'in "F6'da
-    bağlanacak" notu F7'ye devredildi).
+    bağlanacak" notu F7'ye devredildi). *(F7'de bağlandı — F7 ekleri 10.)*
+
+**F7 ekleri (25.09.2026).** F7'de tasarımdan bilinçli sapmalar ve tasarımda yazmayan
+kararlar. Dört iş kolunda (teslim ve kayıp/hasar çekirdeği; ilişik, yıl akışları ve
+F7 evrakı; teslim ve kayıp/hasar ekranları; kılavuz) yapıldı, ardından
+bütünleştirildi; bütünleştirme sonrası denetimin düzeltme turu madde 14-25'tedir, düzeltme
+turunda kullanıcıya bırakılan kararın sonucu madde 26'dadır. Kod kapısı (§14.1 F7 satırı) ve `bash scripts/gates.sh` yeşildir;
+yıl sonu akışı sentetik veriyle uçtan uca sınanır
+(`apps/kutuphane/tests/test_yil_sonu_uctan_uca.py`). **D3 kapandı** (§13; madde 3).
+Okuyucuyla toplu teslim, görevli kipinde geri alma okutması ve F7 belgelerinin gerçek
+yazıcıdan çıktısı saha denemesidir (F12).
+
+1. **§6.2 — modeller ve tek göç** (`0006_teslim_kayip_onarim`). `Delivery`: şube XOR
+   öğretmen (`recipient_kind` kişisizdir ve bağ koparıldıktan sonra da kalır; sayımda
+   iki tür ayrı işlem görür — AT-1); açık teslimde alan boş olamaz ve PROTECT'tir,
+   kapanmış teslimde kısıt boş alana izin verir (F11 bağı açık güncellemeyle koparır,
+   `on_delete`'e güvenilmez); bir nüshada tek açık teslim (kısmi teklik); kapanış
+   zamanları durumla DB kısıtında; belge no zorunlu. `LossDamageCase`: nüsha PROTECT,
+   üyelik/ödünç/teslim SET_NULL; `responsible_note` şifreli; `market_price` yalnız
+   kayıt; nüsha başına tek açık dosya; `write_off_proposed_at` yalnız öneri taşıyan
+   çözümlerde (DB kısıtı). **Yeni** `CopyRepair`: kişisiz, serbest metin alanı yok,
+   nüsha başına tek açık onarım; E9 onarım sayısının kaynağı. `Loan`'a
+   `LOST_CONVERTED` ("Kayba dönüştü") ve `lost_at`. **Ödünç ile teslim arasındaki tek
+   açık kayıt** (§9-7) iki tabloya yayıldığı için tek DB kısıtıyla yazılamaz; güvence
+   nüsha durumunun koşullu güncellenmesidir ("Rafta"dan çıkışı yalnız biri kazanır —
+   `services.nusha_durumu`; eşzamanlı yarış testi dahil).
+2. **§9-9 — çözüm durumları** (OYS `CaseResolution` UYARLA). Başlangıç durumu "Çözüm
+   bekliyor" ve sekiz seçilebilir çözüm: Bedel belirlendi · Bedel teslim alındı · Bulundu ·
+   Aynısı temin edildi · Onarıldı · Bedelle aynısı alındı · Bedelle başka eser alındı ·
+   Kayıttan düşme önerildi; onuncu durum "Kayba dönüştü" düğme değildir (madde 15). OYS'nin
+   `WRITTEN_OFF`'u **alınmadı**: kayıttan düşme TMY işlemidir (F8/F9); burada
+   "Kayıttan düşme önerildi" ve "Bedelle başka eser alındı" yalnız öneri işareti
+   koyar, nüshanın durumu değişmez. "Onarıldı" OYS'de yoktu (D3). Açık sayılanlar
+   "Çözüm bekliyor", "Bedel belirlendi" ve "Bedel teslim alındı"dır: **bedel adımları
+   dosyayı kapatmaz** (Md. 19: önce temin; olmazsa bedelle aynısı ya da başka eser).
+   Kişinin açık işi yalnız ilk ikisidir: "Bedel teslim alındı"da kişi İlişik
+   Listesi'nden çıkar, dosya okulun açık işi olarak kalır (madde 26; madde 18'deki
+   açık karar bununla kapandı). Bedel yolları yalnız
+   ortaöğretimde; kademe seçilmemişse kapalıdır (fail-closed), kademe sonradan
+   değişirse açık dosyada bedel yolu kapanır — bedeli teslim alınmış dosyanın iki
+   kapanış yolu hariç (madde 26). Kapı servistedir; yanıttaki
+   `allowed_resolutions` ve `price_options_available` yalnız ekrana hangi düğmelerin
+   konacağını söyler.
+3. **D3 — onarım ve hasar.** "Onarıma gönder" / "Onarımdan dön": Rafta ⇄ Onarımda, her
+   gidiş bir `CopyRepair` kaydıdır. Hasar dosyası yalnız kütüphanedeki nüshaya açılır
+   (ödünçteki önce iade alınır, teslimdeki önce geri alınır; sorumlu, iadesi alınmış
+   ödünç ya da geri alınmış teslimle gösterilir). **Dosya açılışı nüshayı dolaşımdan
+   çıkarmaz** (kitap okunabilir olabilir; "Nüshayı onarıma da gönder" isteğe bağlıdır);
+   onarımdan dönüş dosyayı kendiliğinden kapatmaz. Kayıp bildirimi ödünçteki nüshanın
+   ödüncünü, teslimdeki nüshanın teslimini "Kayba dönüştü" ile kapatır (kapanan ödünç
+   sayı sınırına ve gecikmeye sayılmaz; yükümlülük dosyadır); "Bulundu" nüshayı rafa
+   döndürür, ödünç ya da teslim yeniden açılmaz. Onarımdaki nüshaya kayıp bildirilmez
+   (önce onarımdan dönüş işlenir). Açık hasar dosyalı nüsha kaybolursa madde 15;
+   öneriyle kapanan kayıp dosyasında kitap bulunursa madde 14.
+4. **§9-10, D4 — TMY 32/3 kapı noktası.** Kayıp bildirimi ve dosya çözümü
+   `services.tmy_kapisi.ensure_open`'dan geçer; kapı F7'de boştur, F9 doldurur (iki
+   yolun kapıyı sorduğu testlidir). Dosya çözümünde kapsam madde 17'dedir.
+5. **§9-11, U11 — toplu teslim.** Alan etkin ders yılının şubesi ya da aktif öğretmendir;
+   diğer personele teslim yapılmaz (fail-closed). Toplu teslim TEK işlemdir (bir kitap
+   reddedilirse hiçbiri; gerekçeler kitap kitap döner), bir listede en çok 500 nüsha.
+   Belge no verilmezse program `<yıl>/<sıra>` biçiminde verir, kullanılmış numara
+   tekrar verilmez; beklenen dönüş boşsa ders yılının son günüdür. Beklenen dönüşün
+   geçmesi gecikme değildir (yalnız rozet). Teslim alanın ödünç hakkı düşmez, Md. 18
+   sayı sınırı uygulanmaz (testli). Geri alma okutmayladır: tek okutma `{barcode}`,
+   okuyucu kuyruğu `{barcodes}` (en çok 200); geri alma hiçbir durumda kilitlenmez.
+6. **§4.4 — görevli yüzeyi.** İzin listesine yalnız `library-delivery-take-back` POST
+   girdi; görevli yanıtı sonuç, ileti, barkod ve eser adından ibarettir (teslim alanın
+   kimliği, belge no ve tarih yok; alan listeleri anlık görüntüyle sınanır). Teslim
+   verme, teslim listesi, kayıp/hasar dosyaları, onarım, ilişik ve yıl akışları uçları
+   görevliye kapalıdır. Masada teslimdeki kitap okutulunca "Sınıf kitaplığında."
+   altında "Teslimden geri al" önerisi çıkar (görevli kipinde de; kime teslim
+   edildiği yazmaz).
+7. **§8.3 — ilişik listesi.** Açık iş: iade edilmemiş ödünç, geri alınmamış teslim
+   (yalnız öğretmende; şube teslimi kişiye bağlı değildir ve listede ayrı "Sınıf
+   Kitaplıkları" tablosunda durur) ve çözülmemiş kayıp/hasar dosyası. Sıra: son sınıf
+   (kademenin son sınıfı 4 · 8 · 12; kademe seçilmemişse kimse) → okuldan ayrılan →
+   diğerleri. **"Nakil gidenler" programda "okuldan ayrılan" grubudur**: ayrılmış ya da
+   Ayrılış Havuzunda karar bekleyen kişi; nakil ile başka ayrılış ayrı tutulmaz.
+   Toplama görünümü yalnız toplanacak kitabı olanları gösterir (yalnız dosyası olan kişi
+   ilişikte vardır, toplamada yoktur). Okul no araması kör indeksle tam eşleşmedir.
+   Basılı ilişik listesi kaynak adı ve okul no basmaz.
+8. **E5 — "Kütüphaneden ilişiği yoktur" belgesi** yalnız açık işi olmayan kişiye, kişi
+   başına bir sayfa, tek seferde en çok 150; açık işi olan seçilirse ad yazmayan, sayılı
+   ret (400). Metin konum kalıbını ve Md. 18 alıntısını taşır; "karne", "diploma",
+   "borç" belgede, ekranda ve kılavuzda geçmez (testli). §3'teki "Bakanlık sistemi
+   kullanımda" hatırlatması F10 ayarına bağlıdır, bu fazda yoktur.
+9. **§8.3 — yıl akışları.** Yıl Sonu ve Yıl Başı ekranları kayıt yazmaz; işin yapıldığı
+   uçları ve ekranları kullanır, durumları kişisiz `library/year-flows/` özetinden
+   okur. Yıl sonu penceresi 1 Mayıs - 30 Haziran (ders yılı daha geç biterse bitişten
+   14 gün sonrasına dek); yıl başı penceresi 15 Ağustos - 31 Ekim ya da ders yılı
+   başlangıcından 21 gün önce ile 42 gün sonrası. Yıl başının "e-Okul listesi bu yıl
+   aktarıldı" ölçütü: son tamamlanmış aktarım ders yılı başlangıcından en çok 45 gün
+   önce yapılmış olmalı. Yıl sonu pusulası kişinin BÜTÜN açık ödünçlerini taşır (E4
+   biçimi), tek seferde en çok 150 kişi ("şube şube basın"); "son getirme günü"
+   pusulaya yazılır, kaydedilmez. Yıl başına üyelik istek listesi ve kart basımı adımı
+   konmadı (üyelik isteğe bağlıdır; istenirse beşinci, isteğe bağlı adım olur).
+10. **F2 ekleri 1 — kip süreleri bağlandı.** `kip_sureleri()` kütüphanenin
+    `AppConfig.ready` içinde kaydettiği sağlayıcıdan okur (bağımlılık yönü kütüphane →
+    okul; `persons` kayıt defterleriyle aynı kalıp). Değer süreç içinde önbelleğe
+    alınır, ayar yazılınca boşaltılır: sıcak yolda sorgu yoktur. Sınırlar 1-15 ve
+    5-120 dakikadır (tek kaynak model sabitleri), boşta süresi mutlak süreyi aşamaz (DB
+    kısıtı); anlamsız değer ya da okunamayan veritabanı varsayılana (3 / 30 dk) düşer.
+    Alanlar Kütüphane Politikası → Yönetici Kipi Süreleri'ndedir; değişiklik bir sonraki
+    işlemden geçerlidir.
+11. **E6, E15 — evrak.** Teslim listesi (şubede Dayanıklı Taşınırlar Listesi işlevi —
+    TMY 23/6'ya kıyasen) ve geri alma dökümü; belge no ve teslim tarihi `Delivery`'de
+    tutulur, `BelgeIzi` F11'dedir. Kayıp/hasar tutanağında sorumlunun adı şifreli
+    alandan çözülür; Md. 19 alıntısı ve "Bu tutanak bir ödeme ya da tahsilat belgesi
+    değildir." satırı yalnız ortaöğretimde basılır.
+12. **§5.10-4/5 yeniden koştu.** `kutuphane_delivery`, `kutuphane_lossdamagecase` ve
+    `kutuphane_copyrepair` katalog authorizer'ında reddedilir (görünümden bile); teslim
+    alan, belge no, sorumlu notu ve bedel hiçbir katalog sayfasında geçmez. Katalog
+    teslimdeki nüshayı (öğretmene teslim dahil) "Sınıf kitaplığında" sayar; kayıp nüsha
+    görünmez, onarımdaki "onarımda" sayılır.
+13. **Açık yükümlülük ve silme.** Açık teslim ve çözülmemiş dosya kişi kayıt
+    defterlerine (`apps/okul/services/persons.py`) açık yükümlülük olarak bağlandı:
+    kişi silinemez, ilişik listesine girer; çözülmüş dosya yükümlülük değildir.
+    **Kendisine (kapanmış da olsa) teslim yapılmış personel silinmez** — teslim satırı
+    alanı PROTECT ile tutar; kapanmış teslimin bağını kullanıcının "Sil"i değil F11
+    saklama taraması koparır (ileti "Okuldan ayrıldıysa “Ayrıldı olarak işaretle”
+    eylemini kullanın."). Personel birleştirmede kaynağın bütün teslimleri hedefe
+    taşınır (açık teslim yalnız öğretmene — madde 20). Açık teslimi olan şube silinemez
+    (şube tesliminden doğan çözülmemiş dosya da — madde 19).
+
+**Düzeltme turu (25.09.2026).** Bütünleştirme sonrası denetimin bulguları (mevzuat, veri
+bütünlüğü, evrak ve arayüz mercekleri) Docker sondalarıyla yeniden doğrulandı; hepsi
+gerçekti. Kök nedenden düzeltildi ve testle kilitlendi; biri (madde 18) karar olarak
+korunup kullanıcıya bırakıldı, kullanıcı 25.09.2026'da karar verdi (madde 26). Düzeltme
+turunun tasarımdan iki sapması — dokuzuncu çözüm durumu "Kayba dönüştü" (madde 15) ve TMY
+32/3 kapısının dosya çözümündeki daraltılmış kapsamı (madde 17) — ana oturumca
+**onaylandı** (25.09.2026).
+
+14. **Öneri geri alınabilir** (bulgu: öneri fiilen geri alınamaz bir karar gibi
+    işliyordu). "Kayıttan düşme önerildi" ile kapanmış KAYIP dosyasında nüsha hâlâ
+    "Kayıp"sa `allowed_resolutions` yalnız "Bulundu"yu verir: öneri kalkar
+    (`write_off_proposed_at` boşalır, F8/F9 kuyruğundan düşer), nüsha rafa döner, ödünç
+    ya da teslim yeniden açılmaz (`loss_damage.oneri_geri_alinabilir`). "Bedelle başka
+    eser alındı"da bu yol YOKTUR (Md. 19: "kaybedilenin kaydı silinerek başka eser satın
+    alınır"); onay metni ve kılavuz bunu söyler, bilinen sınır (h). Nüsha asıl kayıttan
+    düşülmüşse yol kapanır.
+15. **Açık hasar dosyalı nüsha kaybolursa** (bulgu: kayıp bildirilemiyor, ödünç açık
+    kalıp sayı sınırına ve gecikmeye sayılıyordu; tek çıkış dosyayı gerçeğe aykırı bir
+    çözümle kapatmaktı). Hasar dosyası nüshayı dolaşımdan çıkarmadığı için (madde 3)
+    kayıp bildirimi açık HASAR dosyasını aynı işlemde **"Kayba dönüştü"**
+    (`CONVERTED_TO_LOSS`) ile kapatır ve kayıp dosyası açar; ödünç ya da teslim her
+    zamanki gibi kayba dönüşür. Hasar dosyasının sorumlusu, notu ve kaydedilmiş bedeli
+    kendi kaydında kalır; kaybın sorumlusu ödünçten ya da bildirimden gelir. Yeni durum
+    kullanıcı seçimi değildir (servis reddeder) ve DB kısıtıyla yalnız hasarda durur;
+    yayınlanmamış tek göç `0006_teslim_kayip_onarim`'a işlendi. "Açık hasar dosyalı nüsha
+    ödünç ya da teslim edilmez" seçeneği madde 3'le çeliştiği için alınmadı. *(Tasarımdan
+    sapma olarak ONAYLANDI — ana oturum, 25.09.2026. Madde 26'yla durum sayısı ona çıktı;
+    "Kayba dönüştü" yine düğme değildir. Bedeli teslim alınmış hasar dosyası da kayba
+    dönüşebilir: iki adımın kaydı o dosyada kalır.)*
+16. **Kişi bağı tek kural** (bulgu: öğretmene teslimde üye seçilen dosya kayıt defterinde
+    öğretmende, ilişik listesinde öğrencide görünüyordu; öğretmene E5 basılabiliyordu).
+    Kural: önce üyelik, üyelik yoksa teslim alan öğretmen
+    (`selectors_teslim.case_person`). `open_cases_for_person` ve
+    `persons_with_open_cases` aynı kurala çekildi; kayıt defteri, ilişik listesi, E5 ve
+    E6 aynı sonucu verir (tutarlılık testi `TestKisiBagiTutarliligi`). Kayıp penceresi
+    teslimdeki kitapta üye seçilirse dosyanın o üyeye bağlanacağını söyler.
+17. **TMY 32/3 kapsamı çözüm türüne göre** (bulgu: kapı "Onarıldı"yı ve bedel kaydını da
+    kapsıyor, kapının kendi "onarım kapsam dışı" kuralıyla çelişiyordu).
+    `tmy_kapisi.dosya_cozumu_kapsamda_mi(tür, çözüm)`: kayıp dosyasında iki bedel adımı
+    ("Bedel belirlendi", "Bedel teslim alındı" — madde 26) dışındaki bütün çözümler, hasar
+    dosyasında yalnız kayıttan düşme önerisi yazanlar kapsamdadır; `resolve_case` kapıyı
+    yalnız bunlarda sorar. `ensure_open` imzası değişmedi. §14.1 F9 satırındaki "dosya
+    çözümü" bu kapsamla okunur (F9 sözleşmesi sabitler). *(Daraltılmış kapsam tasarımdan
+    sapma olarak ONAYLANDI — ana oturum, 25.09.2026; kapsamın son biçimi F9 sözleşmesine
+    devredildi.)*
+18. **"Bedel kaydedildi" açık iştir; karar korundu** (bulgu: kişinin ilişiği okulun satın
+    almasına bağlanıyor). Madde 2'nin kararı değişmedi; sonucu madde 2'ye ve kılavuza
+    açıkça yazıldı. Md. 19/1'in ikinci cümlesini okulun işi sayıp dosyayı açık tutarken
+    kişiyi ilişikten ayırmak bir kullanıcı kararıdır. *(Karar verildi — 25.09.2026:
+    bedel iki adıma ayrıldı; "Bedel teslim alındı"da kişi ilişikten ayrılır, dosya okul
+    için açık kalır. Ayrıntı madde 26.)*
+19. **Şube silme engeli dosyayı da sayar** (bulgu: şube tesliminden doğan çözülmemiş
+    dosya varken şube silinebiliyor, ilişik listesi silinmiş şubeyi gösteriyordu).
+    `section_delete_obstacles` üyeliksiz ve şube tesliminden doğan çözülmemiş dosyaları
+    da sayar ("Bu şubenin tesliminden doğan N çözülmemiş kayıp/hasar dosyası var; önce
+    dosyayı çözün."); süzgeç tek kaynaktan (`selectors_teslim.section_case_q`).
+20. **Birleştirmede açık teslim yalnız öğretmene** (bulgu: açık teslim "diğer personel"e
+    taşınıyor, E15 onu "Öğretmen" diye basıyordu). Kaynağın açık teslimi varsa ve hedef
+    öğretmen değilse birleştirme gerekçeyle reddedilir; tek işlem olduğu için hiçbir bağ
+    taşınmaz. Kapanmış teslimler türüne bakılmadan taşınır.
+21. **E6 sayfa bütçesi** (bulgu: gerçek uzunluktaki veride imzalar tek başına ikinci
+    sayfaya düşüyordu; test kısa yazar ve tek satırlık notla yanlış yeşil veriyordu).
+    Sorumlu notunun satır sonları tutanakta boşluğa iner; ÇÖZÜM bölümü, Md. 19 alıntısı ve
+    imzalar tek bölünmez kutudadır; aralıklar daraltıldı. Sayfa bütçesi testi en uzun okul
+    ve kişi adı, çeviri künyeli yazar, 64 karakterlik TKYS kodu, 40 karakterlik belge no ve
+    satır satır 500 karakterlik notla, ödünç ve öğretmen teslimi yolunda, ortaöğretim ve
+    ilkokulda tek sayfa ister. Alan sınırındaki veride bilinen sınır (i).
+22. **Geri alma dökümü belge no ile** (bulgu: döküm yalnız o anki okutma oturumundan
+    basılabiliyordu; görevli kipinde ya da masada geri alınanların dökümü alınamıyordu).
+    Teslim Kayıtları'nda belge no'ya tıklayınca çıkan kartta "Geri alma dökümü" bölümü
+    `{document_no}` ile belgenin bütün satırlarını durumlarıyla basar (sunucu yolu F7'de
+    vardı, ekrana bağlandı).
+23. **Yeni Teslim okutması** (iki bulgu). Ret iletisi kitabın numarasını ve adını taşır;
+    reddedilen kitaplar sonraki başarılı okutmada silinmeyen "Listeye girmeyen kitaplar"
+    listesinde durur (aynı kitap listeye girince çıkar). Okutma kutusunun odak uyarısı
+    açıldı (odak "Şube" seçicisindeyken okutulan kod kaybolur ve şube seçimini
+    değiştirebilir); öğretmen seçilince odak kutuya döner. "Şube" seçicisinde odak
+    kendiliğinden geri alınmaz: ok tuşlarıyla seçim yapan kullanıcının seçimini keserdi.
+24. **Kayıp ve Hasar sayfası** (iki bulgu). Sayfa açıklaması sözlükteki "açık iş"
+    terimini kullanır ("yükümlülük" F7 ekranlarında ve kılavuzda kullanıcı metnine
+    girmez; test). "Çözüm" süzgeci bedel yollarını yalnız ortaöğretimde listeler; kademe
+    kapısının yansıması liste yanıtının `price_options_available` alanıdır (liste boşken
+    de gelir), ekran kademeyi kendisi yorumlamaz.
+25. **Kitap Toplama başlığı görünür** (bulgu: kılavuz ve sözlük ekranda görünmeyen tablo
+    adını kullanıyordu). "Toplanacak kitaplar" artık adımın görünür alt başlığıdır.
+
+**Kullanıcı kararı (25.09.2026).**
+
+26. **Md. 19 bedel adımı ikiye ayrıldı** (madde 18'in açık kararı). Ortaöğretimde kayıp ya
+    da hasar dosyasının bedel yolu iki kayıttır; program tahsilat YAPMAZ, yalnız kaydeder
+    (dil "bedel belirlendi", "bedel teslim alındı" — borç, ceza, tahsilat yok):
+    - **"Bedel belirlendi"** (`PRICE_DETERMINED`; eski "Bedel kaydedildi"): o günkü piyasa
+      bedeli ve adımın zamanı (`price_determined_at`) kaydedilir. Kişinin açık işi SÜRER:
+      İlişik Listesi'nde kalır, E5 basılmaz, kişi silinemez. Bedel bu adımda yeniden
+      belirlenerek düzeltilebilir; bulunma, temin ve öneri yolları açık kalır.
+    - **"Bedel teslim alındı"** (`PRICE_RECEIVED`): yalnız "Bedel belirlendi"den gelinir;
+      adımın zamanı (`price_received_at`) kaydedilir. Kişinin açık işi BİTER: İlişik
+      Listesi'nden çıkar, "Kütüphaneden ilişiği yoktur" belgesi basılabilir, kayıt
+      defterinde yükümlülük sayılmaz (şube tesliminden doğan dosyada şubenin açık işi de
+      biter). Dosya **okul için AÇIK kalır** (nüsha başına tek açık dosya; Kayıp ve Hasar
+      ekranının "Çözülmemiş dosyalar"ında satırın altında "Okulun açık işi") ve yalnız
+      "Bedelle aynısı alındı" ya da "Bedelle başka eser alındı" ile kapanır; bu ikisi
+      artık yalnız bu adımdan sonra seçilir. Adım geri alınmaz, teslim alınan bedel
+      değiştirilmez. Kademe sonradan ortaöğretimden çıksa da bu iki kapanış yolu açık kalır
+      (alınmış bedelin kullanımı kaydedilmeli; dosya kilitlenmez).
+    - Kodda iki küme ayrıldı: `OPEN_CASE_RESOLUTIONS` (dosya açık — okulun işi) ve
+      `PERSON_OPEN_RESOLUTIONS` (kişinin açık işi: "Çözüm bekliyor", "Bedel belirlendi").
+      Kayıt defteri (`open_case_obligations`), `open_cases_for_person` /
+      `persons_with_open_cases`, şube engeli (`open_cases_for_section`), ilişik listesi,
+      E5 basılabilirliği ve yıl akışı sayıları ikinciye bakar. Serileştirici
+      `is_person_open_work`, `price_determined_at` ve `price_received_at` taşır. DB
+      kısıtları: bedel ile belirlendiği zaman birlikte; teslim zamanı yalnız teslim alınmış
+      bedel yolunda (ve orada zorunlu; "Kayba dönüştü" hasar dosyası önceki kaydını
+      taşıyabilir). Yayınlanmamış tek göç `0006_teslim_kayip_onarim`'a işlendi.
+    - **TMY 32/3**: iki bedel adımı da kapıdan geçmez (bedelin belirlenmesi ve teslim
+      alınması TMY'de giriş-çıkış değildir; madde 17 ile tutarlı).
+    - **E6**: piyasa bedeli satırı iki adımın tarihlerini taşır ("… TL (kayıt);
+      gg.aa.yyyy tarihinde belirlendi, gg.aa.yyyy tarihinde teslim alındı"; tek satır —
+      sayfa bütçesi testi en uzun yolda iki adımla koşar). **E5** hükmü "çözülmemiş kayıp ya
+      da hasar kaydı" yerine "kayıp ya da hasar nedeniyle kendisinden beklenen bir işlem"
+      der: bedeli teslim alınmış dosya okul için açıktır ama kişinin işi değildir.
+    - Testler: `TestBedelIkiAdim` (ilişik, kayıt defteri, toplu soru ve E5 tutarlılığı;
+      öğretmen ve şube teslimi; kademe kapısı — ilkokul ve ortaokulda iki adım da yok; DB
+      kısıtları), uç, E5 ucu, E6 ve yıl sonu uçtan uca testleri; kılavuz ve sözlük §4.12.
+
+*Bilinen sınırlar (F7 sonunda açık).* (a) Rafta duran hasarlı nüsha için "Kayıttan
+düşme önerildi" seçilse de nüsha ödünç verilebilir kalır (öneri ≠ onay, OYS'de de
+böyle); ekran raftan ayırmayı önerir, asıl işlem F8 ayıklamasıdır. (b) Eski veriden
+gelen, kaydı olmayan "Onarımda" nüsha "Onarımdan dön" ile rafa döner ama `CopyRepair`
+kaydı oluşmaz (E9 onarım sayısına girmez). (c) Onarımcıda kaybolan kitap için ayrı yol
+yoktur (önce onarımdan dönüş işlenir). (d) Görevli kipinde masa teslimdeki kitabı
+sunucunun "Sınıf kitaplığında." iletisinden tanır; ileti değişirse öneri kaybolur
+(daha sağlam yol: görevli yanıt alanlarına kişisiz bir teslim bayrağı). (e) Üye
+bağlamı açıkken okutulan teslimdeki kitaba "Teslimden geri al" önerisi çıkmaz. (f)
+"Aynısı temin edildi"den sonra gelen kitabın etiketini tek nüsha olarak yeniden basmanın
+yolu yoktur (Basım Geçmişi'ndeki "Yeniden bas" bütün partiyi basar). (g) 60'tan uzun
+teslim listesinde son sayfaya yalnız not ve imza düşebilir. (h) "Bedelle başka eser
+alındı" ile kapanan kayıp dosyasında kitap sonradan bulunursa rafa dönüş yolu yoktur (Md.
+19 bu yolda kaybedilenin kaydının silinmesini ister); nüsha F8 ayıklamasında ele alınır.
+(i) Kayıp/hasar tutanağı alan sınırındaki veride (500 karakterlik kaynak adı ve yazar)
+iki sayfa olur; ÇÖZÜM, Md. 19 alıntısı ve imzalar birlikte ikinci sayfaya geçer.
 
 ### 14.2 Saha hazırlık hattı (kod dışı — F0 ile başlar)
 

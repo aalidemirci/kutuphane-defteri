@@ -56,6 +56,7 @@ from apps.kutuphane.models import (
     LibraryPolicy,
     Loan,
     LoanStatus,
+    LossDamageCase,
     Membership,
     MembershipStatus,
     TerminationReason,
@@ -95,6 +96,10 @@ ALREADY_TERMINATED_MESSAGE = "Bu üyelik zaten sonlanmış."
 TERMINATE_OPEN_LOANS_MESSAGE = (
     "Açık ödüncü olan üyelik sonlandırılamaz. Önce iade alın; üye okuldan ayrıldıysa "
     "Kişiler ekranında “Ayrıldı olarak işaretle” eylemini kullanın."
+)
+DELETE_HAS_CASES_MESSAGE = (
+    "Kayıp/hasar dosyası olan üyelik silinemez. Üyelik yanlış açıldıysa “Yanlış kayıt” "
+    "nedeniyle sonlandırın."
 )
 DELETE_HAS_LOANS_MESSAGE = (
     "Ödünç kaydı olan üyelik silinemez. Üyelik yanlış açıldıysa “Yanlış kayıt” "
@@ -286,6 +291,9 @@ def delete_membership(membership: Membership) -> None:
     app_password.require_password_set()
     if Loan.all_objects.filter(membership=membership).exists():
         raise ValidationError(DELETE_HAS_LOANS_MESSAGE)
+    if LossDamageCase.all_objects.filter(membership=membership).exists():
+        # F7: silme, dosyanın sorumlu bağını SET_NULL ile sessizce koparırdı.
+        raise ValidationError(DELETE_HAS_CASES_MESSAGE)
     _revoke_card(membership.card_no_index, membership=None, reason=CardRevocationReason.DELETED)
     membership.hard_delete()
     logger.info("Yanlış açılan üyelik silindi; kartı iptal edildi.")

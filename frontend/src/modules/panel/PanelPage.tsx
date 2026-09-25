@@ -20,6 +20,8 @@ import KatalogSablonuKarti from "../kutuphane/KatalogSablonuKarti";
 import { okulApi } from "../okul/api";
 import type { RoadmapManualItem, SetupStatus } from "../okul/api";
 import DolasimKartlari from "../uyelik/DolasimKartlari";
+import { ILISIK_LISTESI_ADRESI, ILISIK_LISTESI_BASLIGI } from "../yil/api";
+import YilAkisiKartlari from "../yil/YilAkisiKartlari";
 import AyrilisHavuzuKarti from "./AyrilisHavuzuKarti";
 import BaslangicYolHaritasi from "./BaslangicYolHaritasi";
 
@@ -89,6 +91,8 @@ export default function PanelPage() {
       <DolasimKartlari />
       {/* Havuz boşsa görünmez; yalnız sayı okunur (F1 eki 7). */}
       <AyrilisHavuzuKarti />
+      {/* F7: yıl sonu (Mayıs-Haziran) ve yıl başı pencerelerinde kart; yalnız sayı (§8.3). */}
+      <YilAkisiKartlari />
       <div className="grid gap-4 sm:grid-cols-2">
         <HubFeatureCard
           to="/kisiler"
@@ -101,6 +105,13 @@ export default function PanelPage() {
           icon="settings"
           title="Ayarlar"
           description="Ders yılı, şubeler, okul bilgileri, güvenlik, yedek ve güncelleme."
+        />
+        {/* F7: ilişik her zaman gerekebilir (nakil); yıl akışları bu sayfadan da açılır. */}
+        <HubFeatureCard
+          to={ILISIK_LISTESI_ADRESI}
+          icon="fact_check"
+          title={ILISIK_LISTESI_BASLIGI}
+          description="Kütüphaneyle açık işi olan kişiler; “Kütüphaneden ilişiği yoktur” belgesi, yıl sonu ve yıl başı."
         />
       </div>
       <KatalogSablonuKarti onIndirildi={sablonIndirildi} />

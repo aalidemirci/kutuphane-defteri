@@ -36,9 +36,16 @@ const NAV_ITEMS: NavItem[] = [
 // Düzeninde tam ad. Bir sayfanın h1'i değişirse burası da değişir; eşlik
 // `App.test.tsx` "üst çubuk başlığı" testiyle korunur.
 const PAGE_TITLES: Array<[prefix: string, title: string]> = [
+  // F7: Dolaşım Masası'nın alt sayfaları köke göre ÖNCE gelir.
+  ["/dolasim/teslimler", "Teslimler"],
+  ["/dolasim/kayip-hasar", "Kayıp ve Hasar"],
   ["/dolasim", "Dolaşım Masası"],
   ["/kisiler", "Kişiler"],
   ["/gecikmis-oduncler", "Gecikmiş Ödünçler"],
+  // F7 (İ kolu): menüde yok; Genel Bakış kartlarından ve birbirlerinin bağlantılarından açılır.
+  ["/ilisik-listesi", "İlişik Listesi"],
+  ["/yil-sonu", "Yıl Sonu"],
+  ["/yil-basi", "Yıl Başı"],
   // Sıra anlamlıdır: alt sayfalar köke göre ÖNCE gelir ("/katalog/eser/3"
   // "/katalog" desenine de uyar, önce kendi başlığını bulmalıdır.)
   ["/katalog/eser", "Eser Ayrıntısı"],

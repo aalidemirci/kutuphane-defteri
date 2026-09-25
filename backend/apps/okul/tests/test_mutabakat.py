@@ -115,7 +115,13 @@ def aktif_yil() -> SchoolYear:
 
 @pytest.fixture(autouse=True)
 def bos_kayit_defterleri(monkeypatch: pytest.MonkeyPatch) -> None:
-    for ad in ("_obligation_checks", "_membership_checks", "_leave_hooks", "_merge_hooks"):
+    for ad in (
+        "_obligation_checks",
+        "_membership_checks",
+        "_leave_hooks",
+        "_merge_hooks",
+        "_deletion_blocks",
+    ):
         monkeypatch.setattr(persons, ad, [])
 
 

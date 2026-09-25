@@ -154,3 +154,54 @@ describe("Kütüphane Politikası — Künye Getirme", () => {
     expect(await screen.findByText(/Hiçbir kaynak seçili değil/)).toBeInTheDocument();
   });
 });
+
+// F7: yönetici kipi süreleri artık gerçekten etkilidir (kip kapısı LibraryPolicy'den okur).
+describe("Kütüphane Politikası — yönetici kipi süreleri", () => {
+  it("kayıtlı süreler görünür, sınırlar yazılır ve kayıtla birlikte gönderilir", async () => {
+    const user = userEvent.setup();
+    kapi.updatePolicy.mockResolvedValue(politika({ idle_minutes: 5, admin_max_minutes: 45 }));
+    ekranaBas();
+    const bosta = await screen.findByLabelText("İşlem yapılmazsa kapanma süresi (dakika)");
+    const mutlak = screen.getByLabelText("En uzun açık kalma süresi (dakika)");
+    expect(bosta).toHaveValue("3");
+    expect(mutlak).toHaveValue("30");
+    expect(screen.getByText("1 ile 15 arası; en uzun süreyi aşamaz.")).toBeInTheDocument();
+    expect(screen.getByText(/^5 ile 120 arası\./)).toBeInTheDocument();
+
+    await user.clear(bosta);
+    await user.type(bosta, "5");
+    await user.clear(mutlak);
+    await user.type(mutlak, "45");
+    await user.click(screen.getByRole("button", { name: "Kaydet" }));
+
+    await waitFor(() => expect(kapi.updatePolicy).toHaveBeenCalled());
+    expect(kapi.updatePolicy.mock.calls[0][0]).toMatchObject({
+      idle_minutes: 5,
+      admin_max_minutes: 45,
+    });
+  });
+
+  it("boş bırakılan süre kayıtlı değerle gider; sunucu reddi alanda görünür", async () => {
+    const user = userEvent.setup();
+    kapi.updatePolicy.mockRejectedValue(
+      new ApiError(400, "validation_error", "Gönderilen veride hatalar var.", {
+        idle_minutes: ["Yönetici kipinin boşta süresi mutlak süresinden uzun olamaz."],
+      }),
+    );
+    ekranaBas();
+    const bosta = await screen.findByLabelText("İşlem yapılmazsa kapanma süresi (dakika)");
+    await user.clear(screen.getByLabelText("En uzun açık kalma süresi (dakika)"));
+    await user.clear(bosta);
+    await user.type(bosta, "15");
+    await user.click(screen.getByRole("button", { name: "Kaydet" }));
+
+    await waitFor(() => expect(kapi.updatePolicy).toHaveBeenCalled());
+    expect(kapi.updatePolicy.mock.calls[0][0]).toMatchObject({
+      idle_minutes: 15,
+      admin_max_minutes: 30,
+    });
+    expect(
+      await screen.findByText("Yönetici kipinin boşta süresi mutlak süresinden uzun olamaz."),
+    ).toBeInTheDocument();
+  });
+});

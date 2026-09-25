@@ -73,12 +73,14 @@ iç kavramları (karar, faz, evrak kodları) yüzeye çıkmaz.
 | Yıl sonu (`last_loan_date`, `last_loan_date_graduating`) | **yıl sonu son ödünç tarihi**, **son sınıflar için son ödünç tarihi**; ret iletisi **"Yıl sonu son ödünç tarihi (gg.aa.yyyy) geçti — yeni ödünç verilmez. İade alınabilir."**; görevli kipinde tarihsiz: **"Yıl sonu son ödünç tarihi geçti — yeni ödünç verilmez. İade alınabilir."** | ödünç kapanışı, ödünç yasağı | Yalnız yeni ödüncü durdurur; iade sürer. Eski yılın tarihi yeni yılda uygulanmaz. Görevli iletisinde tarih yoktur: son sınıf tarihi kartın sahibinin son sınıfta olduğunu gösterirdi |
 | Ödünç geçmişi | **ödünç kaydı**, **ödünç geçmişi** | **okuduğu kitaplar**, okuma karnesi, okuma puanı, okuma geçmişi | **Ödünç ≠ okuduğu kitap.** Öğrenci bazlı ödünç sayısı öğretmene ya da e-Okul'a aktarılmaz (tasarım §3) |
 | İade tarihi | **iade tarihi**; gecikmişte **gecikme**, **"… gün gecikti"**; dönem sonu uyarısı **"İade tarihi (…) dönem sonundan (…) sonraya düşüyor. Süre kısaltılmaz."**; kapalı günler eksikse **"YYYY yılının resmî tatil ya da dini bayram günleri Kapalı Günler'de eksik; iade tarihi bir tatile rastlamış olabilir. Kütüphane yöneticisi Ayarlar → Kapalı Günler'den eklemelidir."** | son teslim tarihi, ceza, harç, uzatma | Programda uzatma, ceza ve harç yoktur. İade tarihi = verildiği gün + 15; kapalı güne rastlarsa izleyen ilk açık güne kayar. Kayma **iki ayrı kuraldır** ve Yönetmelikten gelmez: hafta sonu, resmî tatil ve dini bayram TBK 93'e kıyasen (idari izin programın kuralı, her zaman); ara tatil ve yarıyıl okulun tercihi (ayar). Kaydırılmış tarih "Md. 18 gereği" diye sunulmaz; Md. 18'e yalnız süre ve sayı cümlesinde atıf yapılır |
-| `LibraryPolicy` | **Kütüphane Politikası** (Ayarlar sekmesi); bölümleri **Ödünç Sınırları** · **İade ve Yıl Sonu** · **Vitrin ve Saklama** · **Künye Getirme** | ayarlar (tek başına), kurallar, ödünç ayarları | **Ödünç süresi burada AYAR DEĞİLDİR**: on beş gün sabittir (Md. 18/1) ve yalnız değiştirilemez bir bilgi satırıdır. Diğer personele ödünç açılırsa "Müdürlük kararı tarihi" ve "Müdürlük kararı sayısı" zorunludur |
+| `LibraryPolicy` | **Kütüphane Politikası** (Ayarlar sekmesi); bölümleri **Ödünç Sınırları** · **İade ve Yıl Sonu** · **Yönetici Kipi Süreleri** · **Vitrin ve Saklama** · **Künye Getirme** | ayarlar (tek başına), kurallar, ödünç ayarları | **Ödünç süresi burada AYAR DEĞİLDİR**: on beş gün sabittir (Md. 18/1) ve yalnız değiştirilemez bir bilgi satırıdır. Diğer personele ödünç açılırsa "Müdürlük kararı tarihi" ve "Müdürlük kararı sayısı" zorunludur. Yönetici kipi süreleri F7'den beri buradadır (aşağıda "Kip" satırı) |
 | `Holiday.SCHOOL_BREAK` | **öğrenciye kapalı gün** (ara tatil, yarıyıl) | tatil (tek başına) | Kanunen tatil değildir; resmî ve dini tatil ayrı türdür |
 | `Holiday` diğer türler | **resmî tatil**, **dini bayram**, **idari izin / diğer**; hepsinin üst adı **kapalı gün** (sayfa: "Kapalı Günler") | tatil günü (genel anlamda) | İdari izin kütüphanenin de kapalı olduğu gündür; iade tarihi hesabında resmî tatil gibi her zaman kapalı sayılır. Bu programın kuralıdır, TBK 93 kıyası altında anılmaz (`docs/mevzuat/BENIOKU.md` §4). Tahmini bayram tarihinde **"tahmini"** rozeti |
-| `Delivery` (U11) | **teslim**: "sınıf kitaplığına teslim", "öğretmene teslim"; geri dönüşü **geri alma** | ödünç, emanet, zimmet | **Teslim ödünç değildir**, Md. 18 sayı sınırı uygulanmaz |
-| İlişik | **"Kütüphaneden ilişiği yoktur" belgesi**, **ilişik listesi** | borç, ilişik kesme | Karne ya da diplomanın ön koşulu diye SUNULMAZ; dayanağı yok |
-| `LossDamageCase` | **kayıp**, **hasar**, **onarım**; belge "Kayıp/hasar tutanağı" | zayi, telef | Bedel seçenekleri yalnız ortaöğretimde (Md. 19). Program tahsilat yapmaz |
+| `Delivery` (U11) | **teslim**: "sınıf kitaplığına teslim", "öğretmene teslim"; **teslim alan** (**Sınıf kitaplığı** · **Öğretmen**); **belge no**; **beklenen dönüş**; geri dönüşü **geri alma** (masada ve görevli ekranında düğme **"Teslimden geri al"**); belgeler **Teslim listesi** · **Geri alma dökümü** | ödünç, emanet, zimmet, zimmetli, "teslim alındı" (geri alma anlamında; Md. 19 adımı **"Bedel teslim alındı"** bunun dışındadır), iade (geri alma anlamında), gecikme (teslimde) | **Teslim ödünç değildir**: Md. 18 sayı sınırı ve on beş günlük süre uygulanmaz, üyelik gerekmez, teslim alanın ödünç hakkından düşmez ("kalan hak" dili yok). Yalnız etkin ders yılının şubesine ya da aktif öğretmene; diğer personele teslim yapılmaz. Toplu teslim tek işlemdir (bir kitap reddedilirse hiçbiri). Nüsha **Sınıf kitaplığında** görünür (öğretmene teslimde de); kime teslim edildiği Ağ Kataloğunda ve görevliye görünmez. Beklenen dönüşün geçmesi gecikme değildir (rozet **"beklenen dönüş geçti"**). Şube teslim listesi Dayanıklı Taşınırlar Listesi işlevini görür (TMY 23/6'ya **kıyasen**); sayımdaki yerini sayım kurulu seçer (32/5'e kıyasen). Teslim verme yönetici kipinde, geri alma görevli kipinde de |
+| İlişik | **ilişik listesi**; **açık iş** ("kütüphaneyle açık işi olan kişi": iade edilmemiş ödünç, geri alınmamış teslim, çözülmemiş kayıp/hasar dosyası — **"Bedel teslim alındı"** dosyası hariç: o, kişinin değil **okulun açık işi**dir); **"Kütüphaneden ilişiği yoktur" belgesi** | borç, borçlu, ilişik kesme, ilişiği kesilmiştir, kara liste, yükümlülük (kullanıcı metninde; kod yorumunda serbest) | Karne ya da diplomanın ön koşulu diye SUNULMAZ; dayanağı yok (Md. 18 yalnız "iadesi sağlanır" der). Belgede ve ekranlarda "karne", "diploma" geçmez; kılavuz bunu tek bir olumsuz cümleyle söyler. Okuldan ayrılanlar listede kalır; sıra son sınıf → okuldan ayrılan → diğerleri. Ayrıntı §4.13 |
+| `LossDamageCase` | **kayıp** (eylem **"Kayıp bildir"**), **hasar** (eylem **"Hasar dosyası aç"**), **kayıp dosyası** / **hasar dosyası**; **sorumlu** ("Sorumlu üye", "Sorumlu notu"); **tespit tarihi**; **bedel belirlendi**, **bedel teslim alındı**, **o günkü piyasa bedeli** (yalnız kayıt); **okulun açık işi**; **kayıttan düşme önerisi**; belge **Kayıp/hasar tutanağı** | zayi, telef, borç, ceza, tahsil edildi, ödendi, tazminat, "kayıp ödünç" | Bedel seçenekleri yalnız ortaöğretimde (Md. 19). Program tahsilat yapmaz ve disiplin sürecini başlatmaz (OKY 164/1-g okulun işidir). Bedel iki adımdır (25.09.2026 kullanıcı kararı): **"Bedel belirlendi"** kişinin açık işini sürdürür; **"Bedel teslim alındı"** bitirir (ilişik listesinden çıkar, "Kütüphaneden ilişiği yoktur" belgesi basılabilir), dosya ise **okulun açık işi** olarak "Bedelle aynısı alındı" ya da "Bedelle başka eser alındı" ile kapanana dek açık kalır. İki adım da yalnız kayıttır ve dosyayı kapatmaz; ikincisi geri alınmaz. Kayıp bildirimi ödüncü ya da teslimi **Kayba dönüştü** ile kapatır; "Bulundu" onları yeniden açmaz. Kayıttan düşme burada yalnız önerilir; asıl işlem TMY yoludur. Öneri geri alınabilir: "Kayıttan düşme önerildi" ile kapanan kayıp dosyasında kitap bulunursa "Bulundu" seçilir ("Bedelle başka eser alındı"da seçilemez). Açık hasar dosyalı kitap kaybolunca hasar dosyası **Kayba dönüştü** ile kapanır. Dosyanın kişisi önce üyeliktir, üyelik yoksa teslim alan. Çözüm adları §4.12 |
+| Onarım (`CopyRepair`, `IN_REPAIR`) | **onarım**; eylemler **"Onarıma gönder"** · **"Onarımdan dön"**; nüsha durumu **Onarımda**; hasar dosyasının çözümü **Onarıldı** | tamir, bakım, servis | Hasar dosyası olmadan da onarıma gönderilir (Eser Ayrıntısı → **Kayıp, Hasar ve Onarım** bölümü). Onarımdaki nüsha ödünç ve teslim edilmez. Onarımdan dönüş hasar dosyasını kendiliğinden kapatmaz |
+| Yıl akışları (§8.3) | **yıl sonu**, **yıl başı**, **kitap toplama**, **son sınıf**, **okuldan ayrılan** | yıl devri, yıl kapanışı, sınıf atlatma (program işi olarak), mezun listesi (belge adı olarak) | Son sınıf kademenin son sınıfıdır (4 · 8 · 12). Programda yeni yıla geçiş işlemi yoktur; sınıf atlama ve mezunların ayrılışı e-Okul aktarımı ve Ayrılış Havuzu'yla olur. Ekran ve adım adları §4.13 |
 | `WeedingBatch` | **ayıklama** (Md. 12) | silme, temizleme, imha (genel anlamda) | Kütüphane kararıdır |
 | TMY işlemi | **kayıttan düşme**; imha yalnız **"imha tutanağı"** (TMY 28/5) bağlamında; **devir** | silme | Ayıklama ≠ kayıttan düşme: biri komisyon kararı, öbürü taşınır işlemidir |
 | `Acquisition` | **edinim**, **edinim partisi**; **edinim yolu**: Bakanlık gönderimi · Satın alma · Bağış · Değişim · Sayım fazlası (kayda giriş) · Mevcut koleksiyon (programa aktarım) | alım, temin, kaynak girişi, sağlama (tek başına) | İlk dördü Md. 10/5'in saydığı yollardır; son ikisi kayıt içi girişlerdir ve öyle adlandırılır. Bağışçı/satıcı adı **"kaynak notu"**dur ve şifreli saklanır |
@@ -92,7 +94,7 @@ iç kavramları (karar, faz, evrak kodları) yüzeye çıkmaz.
 | Ağ Doktoru | **Ağ Doktoru** | ağ tanılama, diagnostik | Yalnız yönetici kipinde |
 | BTR notu (E3) | belge adı **Ağ Hizmeti Bilgi Notu** | port izni, izin belgesi | "İzin" değil "bilgi" notudur (U10) |
 | BTR | ilk geçişte **"bilişim teknolojileri rehber öğretmeni (BTR)"**, sonra "BTR" | BT sorumlusu, sistem yöneticisi | "Sistem yöneticisi" Yönergedeki (4/1-s) dar anlamıyla kalır, BTR için kullanılmaz |
-| Kip (U5) | **görevli kipi**, **yönetici kipi**, **kilitli**; eylemler **"Görevli kipine geç"**, **"Kilitle"** | öğrenci modu, admin modu, kiosk, oturum | Görevli kipinden çıkış yönetici parolası ister |
+| Kip (U5) | **görevli kipi**, **yönetici kipi**, **kilitli**; eylemler **"Görevli kipine geç"**, **"Kilitle"**; süre alanları **"İşlem yapılmazsa kapanma süresi (dakika)"** · **"En uzun açık kalma süresi (dakika)"** (Kütüphane Politikası → **Yönetici Kipi Süreleri**) | öğrenci modu, admin modu, kiosk, oturum | Görevli kipinden çıkış yönetici parolası ister. Süreler: işlem yapılmazsa 1-15 dk (varsayılan 3), en uzun 5-120 dk (varsayılan 30); ilki ikincisini aşamaz, değişiklik bir sonraki işlemden geçerlidir |
 | Görevli | **görevli** (masadaki öğrenci görevli ya da personel) | asistan, operatör | Md. 23/1-a "kütüphane görevlisi" |
 | Sorumlu kişi | **kütüphane yöneticisi** (kütüphaneci ya da kütüphaneden sorumlu öğretmen) | admin, yetkili, sorumlu (tek başına) | Md. 20'nin terimi. Çoğu okulda kütüphaneci atanmaz (Md. 7/1) |
 | Parola | **yönetici parolası**, **kurtarma anahtarı** | şifre, uygulama parolası, PIN | Parola zorunludur, sihirbazın ilk adımıdır |
@@ -194,7 +196,7 @@ Düzenindedir; sekme adreste `?tab=` ile tutulur, böylece başka ekranlar ve
 kılavuz doğrudan sekmeye bağlanır. Kılavuzda ekran, sekme ve düğme adları
 buradaki ve ekrandaki metinle birebir yazılır ("Ayarlar → Güvenlik").
 
-*Aşağıdaki tablolar F6 sonundaki durumdur (24.09.2026); kaynak `AppShell.tsx`
+*Aşağıdaki tablolar F7 sonundaki durumdur (25.09.2026); kaynak `AppShell.tsx`
 (`NAV_ITEMS`, `PAGE_TITLES`), sayfaların h1'leri ve sekme tanımlarıdır.*
 
 ### 4.1 Sayfalar
@@ -203,8 +205,13 @@ buradaki ve ekrandaki metinle birebir yazılır ("Ayarlar → Güvenlik").
 |---|---|---|---|
 | Genel Bakış | Genel Bakış | `/` | Ana sayfanın tek adı |
 | Dolaşım Masası | Dolaşım Masası | `/dolasim` | Ödünç, iade, nüsha durumu, kartsız ödünç ve gerekçeli istisna (F6). Görevli kipinde aynı masa **Görevli Kipi** sayfasında durur (§4.10) |
+| — | Teslimler | `/dolasim/teslimler` | Menüde yoktur; Dolaşım Masası sayfasının sağ üstündeki **Teslimler** bağlantısıyla açılır. Sınıf kitaplığına ya da öğretmene toplu teslim, teslim kayıtları ve geri alma (F7, §4.12). Başlıkta "Dolaşım Masası / Teslimler". Yalnız yönetici kipinde; geri alma okutması görevli ekranında da vardır |
+| — | Kayıp ve Hasar | `/dolasim/kayip-hasar` | Menüde yoktur; Dolaşım Masası sayfasının sağ üstündeki **Kayıp ve Hasar** bağlantısıyla açılır. Kayıp ve hasar dosyaları, çözüm adımları, onarım (F7, §4.12). `?dosya=<kimlik>` dosyayı doğrudan açar. Yalnız yönetici kipinde |
 | Kişiler | Kişiler | `/kisiler` | |
 | — | Gecikmiş Ödünçler | `/gecikmis-oduncler` | Menüde yoktur; Genel Bakış'taki **Gecikmiş Ödünçler** kartından açılır (kart yalnız gecikme varken görünür). İade hatırlatma pusulası ve gecikmiş ödünç listesi buradan basılır. Yalnız yönetici kipinde |
+| — | İlişik Listesi | `/ilisik-listesi` | Menüde yoktur; Genel Bakış'taki **İlişik Listesi** kartından açılır. Kütüphaneyle açık işi olan kişiler, sınıf kitaplıkları, ilişik listesi ve "Kütüphaneden ilişiği yoktur" belgesi (F7, §4.13). Sağ üstte **Yıl Sonu** ve **Yıl Başı** bağlantıları. Yalnız yönetici kipinde |
+| — | Yıl Sonu | `/yil-sonu` | Menüde yoktur; Genel Bakış'taki **Yıl Sonu** kartından (Mayıs-Haziran) ya da İlişik Listesi'nin sağ üstünden açılır. Adım adım ekran (§4.13). Yalnız yönetici kipinde |
+| — | Yıl Başı | `/yil-basi` | Menüde yoktur; Genel Bakış'taki **Yıl Başı** kartından (yıl başı penceresinde) ya da İlişik Listesi'nin sağ üstünden açılır. Adım adım ekran; kayıt yazmaz, işin yapıldığı ekrana götürür (§4.13). Yalnız yönetici kipinde |
 | Katalog | Katalog | `/katalog` | Eser ve nüsha listelerinin tek ekranı |
 | — | Eser Ayrıntısı | `/katalog/eser/:id` | Menüde yoktur; katalog listesindeki satıra tıklanarak açılır. Başlıkta modül adı geri bağlantısıdır ("Katalog / Eser Ayrıntısı") |
 | — | Edinimler ve Bağışlar | `/katalog/edinimler` | Menüde yoktur; Katalog sayfasının sağ üstündeki **Edinimler ve Bağışlar** bağlantısıyla açılır |
@@ -220,8 +227,8 @@ buradaki ve ekrandaki metinle birebir yazılır ("Ayarlar → Güvenlik").
 Ana gezinmenin sırası: Genel Bakış · Dolaşım Masası · Kişiler · Katalog · Ayarlar ·
 Kılavuz. Görevli kipinde gezinme bağlantıları gösterilmez; her adreste görevli ekranı
 durur. Görevli ekranının varsayılan işi **Dolaşım Masası**dır; oradan **Doğrulama
-Okutması** ve **Katalogda Ara** açılır (bölüm başlıkları; sayfanın h1'i ve üst çubuk
-"Görevli Kipi" kalır).
+Okutması**, **Katalogda Ara** ve **Teslimden Geri Alma** (F7) açılır (bölüm
+başlıkları; sayfanın h1'i ve üst çubuk "Görevli Kipi" kalır).
 
 ### 4.2 Program durumu ekranları
 
@@ -247,6 +254,7 @@ kipine geç**, **Kilitle**.
 | Kişiler | **Öğrenciler** (`ogrenciler`) · **Öğretmenler ve Diğer Personel** (`personel`) · **Ayrılış Havuzu** (`havuz`) · **Üyeler** (`uyeler`) · **Üyelik İstek Listesi** (`uyelik-istekleri`) · **Kart Basımı** (`kart-basimi`) |
 | Katalog | **Eserler** (`eserler`) · **Nüshalar** (`nushalar`) |
 | Edinimler ve Bağışlar | **Edinim Partileri** (`partiler`) · **Bağış Ön Kayıtları** (`bagislar`) · **Komisyon Kararları** (`kararlar`) |
+| Teslimler | **Teslim Kayıtları** (`kayitlar`) · **Yeni Teslim** (`yeni`) · **Geri Alma** (`geri-alma`) |
 | Etiketler | **Basım Kuyruğu** (`kuyruk`) · **Basım Geçmişi** (`gecmis`) · **Boş Barkod Aralığı** (`bos-barkod`) · **Doğrulama Okutması** (`dogrulama`) · **Şablonlar ve Kalibrasyon** (`sablonlar`) |
 | İçe Aktarma | **Excel Aktarımı** (`excel`) · **Yapay Zekâ Köprüsü** (`kopru`) · **Çevrimdışı Künye** (`cevrimdisi`) · **Aktarım Geçmişi** (`gecmis`) |
 | Ayarlar | **Ders Yılları** (`ders-yillari`) · **Kapalı Günler** (`kapali-gunler`) · **Şubeler** (`subeler`) · **Kütüphane Politikası** (`politika`) · **Bölümler** (`bolumler`) · **Okul Bilgileri** (`okul`) · **Güvenlik** (`guvenlik`) · **Güncelleme** (`guncelleme`) · **Ağ Kataloğu** (`ag-katalogu`) |
@@ -275,7 +283,11 @@ başındadır) · **Son Oturumu Kontrol Edin** (yalnız önceki oturum düzgün
 kapanmadıysa; son ödünç ve iadeler, "Kontrol ettim") · **Gecikmiş Ödünçler**
 (yalnız gecikme varken, yalnız sayı: "N ödüncün iade tarihi geçti." → Gecikmiş
 Ödünçler) · **Ayrılış Havuzu** (yalnız havuz boş değilken: "N kişi ayrılış
-kararı bekliyor" → Kişiler → Ayrılış Havuzu) · **Kişiler** · **Ayarlar** ·
+kararı bekliyor" → Kişiler → Ayrılış Havuzu) · **Yıl Sonu** (yalnız yıl sonu
+penceresinde — 1 Mayıs'tan 30 Haziran'a, ders yılı daha geç biterse bitişten iki
+hafta sonrasına dek; yalnız sayı → Yıl Sonu) · **Yıl Başı** (yalnız yıl başı
+penceresinde — 15 Ağustos-31 Ekim ya da ders yılı başlangıcının çevresi — ve adımları
+bitmemişken → Yıl Başı) · **Kişiler** · **Ayarlar** · **İlişik Listesi** ·
 **Katalog Excel Şablonu** (bir sayfaya gitmez, şablonu indirir).
 
 ### 4.6 Ayarlar → Güvenlik kartları
@@ -478,12 +490,16 @@ da kütüphane etiketi"**; düğmeler **"Kartsız ödünç"** (yalnız yönetici
 sor"**. Kutunun altında gerektiğinde **"Sırada bekleyen okutma: N"** ve odak
 uyarısı (**"Kutuya dön"**) durur. Üye bağlamı kartı: **Üye** (ad), **"Kalan ödünç
 hakkı: N"**, düğme **"Bitti"**; yönetici kipinde ayrıca üye türü, sınıf ve **"Açık
-ödünçler"**. Görevli kipinde bağlamda yalnız ad ve kalan hak durur.
+ödünçler"** (her satırda **"Kayıp bildir"** kısayolu — F7, §4.12; kayıptan sonra
+masada **"Kayıp bildirildi; ödünç kayba dönüştü ve kayıp dosyası açıldı."** yazar ve
+kalan hak sunucudan yeniden okunur). Görevli kipinde bağlamda yalnız ad ve kalan hak
+durur; kayıp bildirimi kısayolu yoktur. Sayfanın sağ üstünde **Teslimler** ve
+**Kayıp ve Hasar** bağlantıları durur (yalnız yönetici kipinde).
 
 | Kavram | Kullanılır | Kullanılmaz | Not |
 |---|---|---|---|
 | Üye bağlamı | **üye bağlamı**; kapanış iletileri **"Üye bağlamı kapandı."** ve **"Üye bağlamı kapandı: 60 saniye işlem yapılmadı."** | oturum, seans, aktif üye | 60 saniye işlem yoksa, "Bitti" ile ya da başka kart okutulunca kapanır |
-| Masa iletileri | **"Ödünç verildi."** · **"İade alındı."** · **"Rafta — ödünç değil."** · **"Kayıp kaydında."** · **"Onarımda."** · **"Sınıf kitaplığında."** · **"Bu kitap başka bir üyede. Önce iade alınsın mı?"** (düğme **"İade al ve ödünç ver"**) · **"Bu kitap zaten bu üyede. İade alınsın mı?"** (düğme **"İade al"**) · üyeye bağlı retlerin (üyelik sonlanmış, ayrılmış, yıl sonu, gecikme, ödünç sınırı) altında **"Kitap iade için getirildiyse iadesi alınabilir."** (düğme **"İade al"**) | iade edildi (ileti olarak), teslim alındı | Görevli kipinde gecikmesi olan üyede TEK ileti: **"Ödünç verilemiyor — kütüphane yöneticisine yönlendirin."** Kişisel olmayan sebepler yazılır (ödünç sınırı, "Ödünç verilmez — kütüphanede okunur."). Görevli kipinde üyeye bağlı retler, kitabın kimde olduğundan ÖNCE verilir: gecikmeli ya da sınırı dolu üyede her kitap aynı iletiyi alır |
+| Masa iletileri | **"Ödünç verildi."** · **"İade alındı."** · **"Rafta — ödünç değil."** · **"Kayıp kaydında."** · **"Onarımda."** · **"Sınıf kitaplığında."** · **"Bu kitap başka bir üyede. Önce iade alınsın mı?"** (düğme **"İade al ve ödünç ver"**) · **"Bu kitap zaten bu üyede. İade alınsın mı?"** (düğme **"İade al"**) · üyeye bağlı retlerin (üyelik sonlanmış, ayrılmış, yıl sonu, gecikme, ödünç sınırı) altında **"Kitap iade için getirildiyse iadesi alınabilir."** (düğme **"İade al"**) · teslimdeki kitapta **"Sınıf kitaplığında."** altında **"Kitap sınıf kitaplığından ya da öğretmenden geri geldiyse teslimden geri alınabilir."** (düğme **"Teslimden geri al"**, görevli kipinde de; kime teslim edildiği yazmaz) | iade edildi (ileti olarak), teslim alındı | Görevli kipinde gecikmesi olan üyede TEK ileti: **"Ödünç verilemiyor — kütüphane yöneticisine yönlendirin."** Kişisel olmayan sebepler yazılır (ödünç sınırı, "Ödünç verilmez — kütüphanede okunur."). Görevli kipinde üyeye bağlı retler, kitabın kimde olduğundan ÖNCE verilir: gecikmeli ya da sınırı dolu üyede her kitap aynı iletiyi alır |
 | Kart iletileri | **"İptal edilmiş kart — kütüphane yöneticisine yönlendirin."** · **"Bu kart tanınmadı — kütüphane yöneticisine yönlendirin."** · **"Kart numarası hatalı. Kartı yeniden okutun."** | geçersiz kart (ileti olarak), kayıtsız kart | "Tanınmadı": numara doğru biçimde ama programda yok; "hatalı": sağlama hanesi tutmuyor (okuma ya da yazım hatası) |
 | Kart okutma kilidi | şerit (pencere değil) **"Kart okutma durduruldu"**, alan "Yönetici parolası", düğme **"Kart okutmayı aç"**; iletiler **"Art arda 5 geçersiz kart okutuldu. …"** · **"Son 10 dakikada 5 tanınmayan ya da iptal edilmiş kart okutuldu. …"**; şeritteki not **"İade almak kilitlenmez: üye kartı okutmadan kitabın kütüphane etiketini okuttuğunuzda iadesi alınır."** | hesap kilidi, bloke | Görevli kipinde art arda beş geçersiz kart ya da on dakikada beş tanınmayan/iptal edilmiş kart okutmasından sonra (araya geçerli kart girse de); yönetici parolası görevli kipinden çıkmadan girilir. Şerit dururken okutma kutusu açıktır: İade kilitlenmez |
 | Gerekçeli istisna | pencere **"Gerekçeli istisna"** (en üstte **"Kitap: 2026-000123 — Eser adı"**), alanlar **"Gerekçe"** ve **"Açıklama"** (yardım **"Sağlık ya da aile bilgisi yazmayın."**), düğme **"Gerekçeyle ödünç ver"**; gerekçeler **"Ders ya da ödev için gerekli"** · **"Gecikmenin geçerli bir mazereti var"** · **"Gecikmiş kaynağın iadesi için görüşüldü"** · **"Diğer"** | override, bypass, muafiyet | Yalnız yönetici kipinde ve yalnız gecikme engeline |
@@ -492,7 +508,7 @@ hakkı: N"**, düğme **"Bitti"**; yönetici kipinde ayrıca üye türü, sını
 | Ödünç retleri | **"Üyelik sonlanmış — ödünç verilemez."** · **"Üye okuldan ayrılmış — ödünç verilemez."** · **"Diğer personele ödünç verilmiyor (Kütüphane Politikası)."** · **"Ödünç sınırı dolu (en çok N kitap)."** · nüshanın gerekçesi (**"Ödünç verilmez — kütüphanede okunur."** vb.) · yıl sonu ve gecikme iletileri (§1) | ödünç reddedildi (tek başına), hata | Hepsi kişisel veri taşımaz ve görevli kipinde de yazılır; TEK istisna gecikmedir (görevliye yalnız "Ödünç verilemiyor — kütüphane yöneticisine yönlendirin.") |
 | Masadaki bilgi iletileri | **"Kitabın kütüphane etiketini okutun."** (kart okundu, sıra kitapta) · **"Üye kartı okundu."** · **"Kart okutma yeniden açıldı."** · **"Gerekçeli istisnayla ödünç verildi."** · başka üyedeki kitap iade alınıp verilince **"Kitap başka bir üyenin ödüncündeydi; iadesi alındı. Durumu kütüphane yöneticisine bildirin."**; "İade al ve ödünç ver" sürerken bağlam değişince **"İade alındı; üye bağlamı bu arada değiştiği için kitap ödünç verilmedi."**; yönetici kipinde iade **"İade alındı. N gün gecikti."** | — | Masadaki son işlemler listesinin (**"Bu ekrandaki son işlemler"**) satırlarıdır; görevli kipinde satırlarda üye adı yazmaz |
 | Etiket ve kod iletileri | **"Bu ISBN barkodu. Kitabın kütüphane etiketini okutun."** · **"Bu bir üye kartı. Kitabın kütüphane etiketini okutun."** · **"Bu kod tanınmadı. Kitabın kütüphane etiketini ya da üye kartını okutun."** · **"Bu barkodla kayıtlı nüsha yok. Kitabı ayırın ve kütüphane yöneticisine gösterin."** · bağlanmamış boş etiket ve numarası iptal edilmiş etiket için Doğrulama Okutması'ndaki iletiler; görevli kipinde sonları **"Kitabı ayırın ve kütüphane yöneticisine gösterin."** | geçersiz barkod, hatalı etiket | Görevli kipinde Hızlı Kayıt yönergesi verilmez (ekran görevliye kapalıdır), kitap yöneticiye yönlendirilir |
-| Görevli ekranının işleri | bölüm başlıkları **Dolaşım Masası** · **Doğrulama Okutması** · **Katalogda Ara**; düğmeler **"Doğrulama okutmasını aç"** / **"Okutmayı bitir"**, **"Katalogda ara"** / **"Dolaşım masasına dön"**, **"Yönetici kipine geç"** | kiosk, öğrenci ekranı | Katalogda Ara'da alan **"Kaynak adı, yazar, konu ya da ISBN"**; künye ve nüsha durumu görünür, edinim ve kimde olduğu görünmez |
+| Görevli ekranının işleri | bölüm başlıkları **Dolaşım Masası** · **Doğrulama Okutması** · **Katalogda Ara** · **Teslimden Geri Alma** (F7); düğmeler **"Doğrulama okutmasını aç"** / **"Okutmayı bitir"**, **"Katalogda ara"** / **"Dolaşım masasına dön"**, **"Teslimden geri al"** / **"Okutmayı bitir"**, **"Yönetici kipine geç"** | kiosk, öğrenci ekranı | Katalogda Ara'da alan **"Kaynak adı, yazar, konu ya da ISBN"**; künye ve nüsha durumu görünür, edinim ve kimde olduğu görünmez |
 
 ### 4.11 Üyelik ekranlarının ve belgelerinin adları
 
@@ -539,6 +555,150 @@ Pusulanın dış yüzünde **"KİŞİYE ÖZELDİR"**, iç yüzünde **"İADE HAT
 **"GECİKMİŞ KAYNAKLAR"** yazar; masa kartının bölümleri **"MASADA NASIL ÇALIŞILIR"**
 ve **"GİZLİLİK"**tir.
 
+### 4.12 Teslim ve Kayıp/Hasar ekranlarının adları
+
+Kılavuz bu adları birebir kullanır; ekrandaki metin değişirse buradaki de değişir
+(kaynak `frontend/src/modules/teslim` ve `frontend/src/modules/kayip`, iletiler
+`services/deliveries.py` ve `services/loss_damage.py`). F7'de eklendi.
+
+**Teslimler → Teslim Kayıtları.** Süzgeçler "Durum" (**Teslimde** · **Geri alındı** ·
+**Kayba dönüştü**; varsayılan Teslimde), "Teslim alan" (**Sınıf kitaplığı** ·
+**Öğretmen**), "Belge no" (düğmeler **"Ara"**, **"Temizle"**); tablo Belge no ·
+Teslim alan · Barkod · Kaynak adı · Teslim tarihi · Beklenen dönüş · Durum. Beklenen
+dönüşü geçmiş açık teslimde rozet **"beklenen dönüş geçti"** (gecikme DEĞİLDİR; ceza
+ya da hatırlatma dili yok). Belge no'ya tıklanınca liste o belgeye süzülür ve
+**"Teslim listesi — belge no …"** kartında "Önizle" · "PDF'i indir" durur; aynı kartın
+**Geri alma dökümü** bölümü o belgenin bütün satırlarını durumlarıyla basar (görevli
+kipinde, masada ya da başka oturumda geri alınanlar dahil). Açık teslimde **"Kayıp
+bildir"**.
+
+**Teslimler → Yeni Teslim.** Kart **Teslim Alan**: seçim **Sınıf kitaplığı** /
+**Öğretmen**; alanlar "Şube" (yalnız etkin ders yılının şubeleri) ya da "Öğretmen"
+(diğer personel listede görünür ama seçilemez: **"diğer personele teslim
+yapılmaz"**), "Teslim tarihi", "Beklenen dönüş (isteğe bağlı)" (boşsa ders yılının son
+günü), "Belge no (isteğe bağlı)" (boşsa program verir). Kart **Teslim Edilecek
+Kitaplar**: okutma kutusu **"Kütüphane etiketi"**, **"Listede N kitap"**, satırda
+**"Çıkar"**, **"Listeyi boşalt"** (onay "Liste boşaltılsın mı?"), **"Teslim et"**
+(onay başlığı **"N kitap 9/A sınıf kitaplığına teslim edilsin mi?"** ya da **"N kitap
+… adlı öğretmene teslim edilsin mi?"**). İletiler **"Bu kitap zaten listede."** ·
+retlerde kitabın numarası, adı ve sunucunun gerekçesi ("2026-000123 — Kaynak adı:
+**Ödünçte — teslim edilemez.**" vb.); reddedilenler sonraki okutmada silinmeyen
+**Listeye girmeyen kitaplar** listesinde durur · okutma kutusu odakta değilse
+BarcodeInput'un odak uyarısı ve **"Kutuya dön"** · toplu retlerde
+**"Listedeki bazı kitaplar teslim edilemiyor; hiçbir teslim yapılmadı."** ve kitap
+kitap liste · başarıda **"N kitap teslim edildi."** (sonuç kartında belge no, teslim
+listesi basımı ve **"Yeni teslim"**). Sayı sınırı yoktur; "kalan hak" dili kullanılmaz.
+
+**Teslimler → Geri Alma** (görevli kipinde **Teslimden Geri Alma**). Kart **Geri
+Alınan Kitapları Okutun**, okutma kutusu **"Kütüphane etiketi"**, sayaç **"Bu ekranda
+geri alınan: N"**, liste **"Son okutmalar"**. İletiler **"Geri alındı."** · **"Bu
+kitap teslimde değil (…)."** · **"Bu kitap teslimde değil (Ödünçte). İade için dolaşım
+masasını kullanın."**. Yönetici kipinde satırda teslim alan, belge no ve teslim
+tarihi; altta **Geri alma dökümü** kartı ("Önizle" · "PDF'i indir"). Görevli kipinde
+teslim alanın kimliği ve evrak yoktur.
+
+**Kayıp ve Hasar** (sayfa). Sağ üstte **"Hasar dosyası aç"** ve **"Kayıp bildir"**;
+süzgeçler "Görünüm" (**Çözülmemiş dosyalar** · **Bütün dosyalar**), "Tür" (**Kayıp** ·
+**Hasar**), bütün dosyalarda "Çözüm" (bedel çözümleri yalnız ortaöğretimde); tablo Barkod · Kaynak adı · Tür · Sorumlu ·
+Tespit tarihi · Çözüm · Nüsha durumu (bedeli teslim alınmış dosyanın Çözüm hücresinde alt satır
+**"Okulun açık işi"**). Dosya açma pencereleri (başlık soru, gövde
+sonuç): **"Kayıp bildirilsin mi?"** (düğme **"Kayıp bildir"**) · **"Hasar dosyası
+açılsın mı?"** (düğme **"Hasar dosyası aç"**, kutu **"Nüshayı onarıma da gönder"**);
+alanlar "Kütüphane etiketi" (nüsha önceden seçilmemişse), "Tespit tarihi", "Sorumlu
+üye (isteğe bağlı)" (ödünçteki kitapta sorulmaz: **"Sorumlu, kitabı ödünç alan
+üyedir; ödünç kaydından belirlenir."**), "Sorumlu notu (isteğe bağlı)" (yardım
+**"Üye olmayan sorumlu ya da kısa açıklama. Sağlık ya da aile bilgisi yazmayın."**).
+Başarı iletileri **"Kayıp bildirildi; kayıp dosyası açıldı."** · **"Hasar dosyası
+açıldı."**. Dosya penceresi **Kayıp dosyası** / **Hasar dosyası**: alanlar Nüsha ·
+Nüsha durumu · Dosya türü · Tespit tarihi · Sorumlu üye · Çözüm · Kaydedilen piyasa
+bedeli · Bedel belirlendi · Bedel teslim alındı · Kapanış · Kayıttan düşme önerisi;
+**"Notu kaydet"**; bölüm **Çözüm** (yalnız
+sunucunun izin verdiği çözümlerin düğmeleri; ortaöğretim dışında **"Bedel seçenekleri
+yalnız ortaöğretim okullarında sunulur (Yönetmelik Md. 19). …"**; bedeli teslim alınmış
+dosyada **"Bedel teslim alındı: kişinin kütüphaneyle açık işi kalmadı; İlişik Listesi'nde
+görünmez ve “Kütüphaneden ilişiği yoktur” belgesi basılabilir. Dosya okulun açık işi olarak
+kalır; bedelle alınan kaynak kaydedilince kapanır."**; kayıttan düşme
+önerisiyle kapanmış kayıp dosyasında yalnız **"Bulundu"** ve açıklama **"Kayıttan düşme
+yalnız önerildi; nüsha hâlâ “Kayıp”. Kitap bulunduysa “Bulundu” seçin: öneri geri alınır ve
+nüsha rafa döner."**); bölüm **Onarım**
+(**"Onarıma gönder"** / **"Onarımdan dön"**); **Kayıp/hasar tutanağı** basımı. Çözüm
+onayı pencerenin kendisidir: başlık **"“…” işlensin mi?"**, düğme **"İşle"**; yalnız
+"Bedel belirlendi"de alan **"O günkü piyasa bedeli (TL)"** (yardım **"Yalnız kayıt içindir;
+program tahsilat yapmaz."**; teslim alınan bedel sonradan değişmez). Onarım onayları **"Nüsha onarıma gönderilsin mi?"** ·
+**"Nüsha onarımdan dönsün mü?"**.
+
+| Kavram | Kullanılır | Kullanılmaz | Not |
+|---|---|---|---|
+| Teslim durumu | **Teslimde** · **Geri alındı** · **Kayba dönüştü** | iade edildi, emanette, zimmette | `DeliveryStatus` ile birebir |
+| Teslim alan | **Sınıf kitaplığı** · **Öğretmen** | sınıf (tek başına), zimmetli | Teslim yalnız etkin ders yılının şubesine ya da aktif öğretmene yapılır |
+| Dosya türü | **Kayıp** · **Hasar** (pencere başlıkları "Kayıp dosyası" / "Hasar dosyası") | zayi, telef | `CaseType` ile birebir. Bir nüshanın aynı anda tek çözülmemiş dosyası olur |
+| Çözüm durumları | **Çözüm bekliyor** · **Bedel belirlendi** · **Bedel teslim alındı** · **Bulundu** · **Aynısı temin edildi** · **Onarıldı** · **Bedelle aynısı alındı** · **Bedelle başka eser alındı** · **Kayıttan düşme önerildi** · **Kayba dönüştü** | borç, ceza, tahsil edildi, ödendi, zayi, kayıttan düşüldü, bedel kaydedildi (iki adım ayrıdır) | `CaseResolution` ile birebir. Bedel yolları yalnız ortaöğretimde ve sırayla: "Bedel belirlendi" → "Bedel teslim alındı" → "Bedelle aynısı / başka eser alındı". Açık dosyalar "Çözüm bekliyor", "Bedel belirlendi" ve "Bedel teslim alındı"dır; kişinin açık işi yalnız ilk ikisidir. Kayıttan düşme burada yalnız öneridir. "Kayba dönüştü" düğme değildir: yalnız hasar dosyasında, kayıp bildiriminin kapattığı dosyada görünür |
+| Ödünç durumu (F7) | **Kayba dönüştü** (Üyelik → Ödünç Kaydı satırında "kayba dönüştü") | kayıp ödünç, iptal | Kayıp bildirimiyle kapanan ödünç; sayı sınırına ve gecikmeye sayılmaz |
+| Teslim, dosya ve onarım iletileri | **"Teslim edilebilir."** (teslim listesine okutma ön denetimi) · **"Geri alındı."** · **"Bu kitap teslimde değil (…)."** · **"Bu kitap teslimde değil (Ödünçte). İade için dolaşım masasını kullanın."** · **"Teslim yalnız etkin ders yılının şubesine yapılır."** · **"Teslim yalnız sınıf kitaplığına ya da öğretmene yapılır; diğer personele teslim yapılmaz."** · **"Nüsha onarıma gönderildi."** · **"Nüsha onarımdan döndü; rafta."** · **"Onarıma yalnız raftaki nüsha gönderilir (…)."** · **"Onarımdaki nüsha için kayıp bildirilemez; önce onarımdan dönüşünü işleyin."** · **"Ödünçteki nüsha için önce iade alın; hasar dosyası iadeden sonra açılır."** · **"Teslimdeki nüsha için önce geri alın; hasar dosyası geri almadan sonra açılır."** · silme engelleri **"Bu şubede N açık teslim var; önce geri alın."**, **"Bu şubenin tesliminden doğan N çözülmemiş kayıp/hasar dosyası var; önce dosyayı çözün."** ve **"Bu kişiye kütüphaneden teslim yapılmış; kaydı silinemez. Okuldan ayrıldıysa “Ayrıldı olarak işaretle” eylemini kullanın."** · birleştirme engeli **"Birleştirilecek kaydın N açık teslimi var; teslim yalnız öğretmene yapılır. Kalacak kaydın üye türü “Öğretmen” olmalıdır ya da önce teslimleri geri alın."** | iade edildi (geri alma iletisi olarak), teslim alındı, tamir edildi | Kaynak `services/deliveries.py`, `services/loss_damage.py`, `views_teslim.py`; hiçbiri kişi adı taşımaz. Görevli kipindeki geri almada da aynı iletiler yazılır, teslim alanın kimliği yazılmaz |
+
+**Eser Ayrıntısı → Nüshayı düzenle.** Bölüm **Kayıp, Hasar ve Onarım**: teslimdeki
+nüshada **"Teslimde — Sınıf kitaplığı: 9/A · belge no … · teslim …"**, çözülmemiş
+dosyada **"Çözülmemiş kayıp dosyası · tespit … · …"** (kayıp nüshada son dosya, kapanmış
+da olsa: **"Kayıp dosyası · tespit … · …"**) ve bağlantı **"Dosyayı göster"**;
+düğmeler durumuna göre **"Onarıma gönder"** · **"Onarımdan dön"** · **"Hasar dosyası
+aç"** · **"Kayıp bildir"**. Pencerede ayrıca bilgi satırı **Durum**.
+
+**Ayarlar → Kütüphane Politikası → Yönetici Kipi Süreleri.** Alanlar **"İşlem
+yapılmazsa kapanma süresi (dakika)"** (1-15; en uzun süreyi aşamaz) ve **"En uzun açık
+kalma süresi (dakika)"** (5-120). Değişiklik bir sonraki işlemden itibaren geçerlidir.
+
+### 4.13 İlişik ve yıl akışı ekranlarının ve belgelerinin adları
+
+Kılavuz bu adları birebir kullanır; ekrandaki metin değişirse buradaki de değişir
+(kaynak `frontend/src/modules/yil`, belgeler `apps/kutuphane/ilisik_belgeleri.py` ve
+`teslim_belgeleri.py`). F7'de eklendi.
+
+**İlişik Listesi** (sayfa). Süzgeçler **"Kapsam"** (**Bütün kişiler** · **Son
+sınıflar** · **Okuldan ayrılanlar** · **Son sınıflar ve okuldan ayrılanlar** ·
+**Diğerleri**), "Şube" ("Bütün okul"), "Ara" (yer tutucu "Ad soyad ya da okul no…",
+yardım "Okul no tam yazılarak aranır."); tablo Ad soyad · Sınıf / üye türü · Durum ·
+Açık işler. Durum rozetleri **"Son sınıf"** · **"Ayrıldı · gg.aa.yyyy"** ·
+**"Ayrılış kararı bekliyor"**. Açık işler özeti **"N ödünç (M gecikmiş) · N teslim ·
+N kayıp/hasar dosyası"**, altında satır satır Ödünç / Teslim / Kayıp / Hasar. Boş
+listede **"Bu seçimde kütüphaneyle açık işi olan kişi yok."** Kartlar **Sınıf
+Kitaplıkları** (Şube · Ders yılı · Kitap · Belge no · Teslim listesi; şube teslimi
+kişiye bağlı değildir, ayrı durur; **"önceki ders yılı"** notu) · **İlişik Listesi**
+(toplu belgenin kartı; "Önizle" · "PDF'i indir") · **Kütüphaneden İlişiği Yoktur Belgesi**
+(alan **"Kişi"**, düğme **"Ara"**; yalnız açık işi olmayan kişi seçilebilir). Kılavuz bu
+iki kartı ekrandaki başlığıyla anar; belgelerin kendisini cümle içinde §2'deki adla
+("İlişik listesi", "Kütüphaneden ilişiği yoktur" belgesi) anlatır.
+
+**Yıl Sonu** (sayfa). Adım rayı: **Son Ödünç Tarihleri** · **Kitap Toplama** ·
+**Son Sınıflar ve Ayrılanlar** · **İlişik ve Belgeler**; düğmeler **"Geri"**,
+**"Devam"**. Adım 1'de alanlar **"Yıl sonu son ödünç tarihi"** ve **"Son sınıflar için
+son ödünç tarihi"** (yardım "İsteğe bağlı; daha erken bir tarih."), düğme **"Kaydet"**,
+ileti **"Son ödünç tarihleri kaydedildi."**; eski yılın tarihi için **"Kayıtlı … son
+ödünç tarihi (gg.aa.yyyy) önceki ders yılına ait; bu yıl uygulanmaz."** Adım 2'de
+görünür başlık ve tablo **Toplanacak kitaplar**, belge kartı **İade Hatırlatma Pusulası** (alan **"Son
+getirme günü"**, yardım "Pusulaya yazılır; kaydedilmez.") ve **Sınıf Kitaplıkları**.
+Adım 3'te son sınıfların ve okuldan ayrılanların ilişik listesi basımı ("Önizle" · "PDF'i
+indir") ve yalnız son sınıf şubelerinin **Sınıf Kitaplıkları** kartı. Adım 4'te seçici
+**"Son sınıf şubesi"** ("Bütün son sınıflar"), bağlantı **"İlişik Listesi'ni aç"** ve belge
+basımı (tek seferde en çok 150 belge). Sağ üstte **İlişik Listesi** ve **Yıl Başı**
+bağlantıları. Genel Bakış kartının bağlantısı **"Yıl Sonu'nu aç"**.
+
+**Yıl Başı** (sayfa). Adım rayı: **Ders Yılı** · **e-Okul Listeleri** · **Ayrılış
+Havuzu** · **Kapalı Günler**; her adımda işin yapıldığı ekrana bağlantı
+(**"Ders Yılları'nı aç"** · **"Öğrencileri aç"** · **"Öğretmenler ve Diğer Personel'i
+aç"** · **"Ayrılış Havuzu'nu aç"** · **"Kapalı Günler'i aç"**). Programda "yıl devri"
+işlemi yoktur; ekran bunu söyler (kılavuz "yeni yıla geçiş için ayrı bir işlem yoktur"
+der ve bu sözcüğü kullanmaz). Sağ üstte **İlişik Listesi** ve **Yıl Sonu** bağlantıları.
+Genel Bakış kartının bağlantısı **"Yıl Başı'nı aç"**.
+
+| Kavram | Kullanılır | Kullanılmaz | Not |
+|---|---|---|---|
+| Yıl akışları | **yıl sonu**, **yıl başı**, **kitap toplama**, **son sınıflar**, **okuldan ayrılanlar** | yıl devri, yıl kapanışı, mezun listesi (belge adı olarak), sınıf atlatma (program işi olarak) | "Son sınıf" kademenin son sınıfıdır (4 · 8 · 12); kademe seçilmemişse son sınıf yoktur |
+| E5 belgesi | başlık **"KÜTÜPHANEDEN İLİŞİĞİ YOKTUR BELGESİ"**; hüküm **"… iade edilmemiş ödünç kaynağı ve kayıp ya da hasar nedeniyle kendisinden beklenen bir işlem bulunmamaktadır. Kütüphaneden ilişiği yoktur."** (personelde "geri alınmamış teslimi" de; "çözülmemiş kayıt" denmez: bedeli teslim alınmış dosya okul için açık kalır ama kişinin işi değildir); konum kalıbı **"Bu belge, okulun kütüphane işlerini yürüttüğü yerel araçtaki kayıtlara göre düzenlenmiştir. Okul Kütüphaneleri Yönetmeliği Md. 18'deki “… alınan ödünç kitabın kütüphaneye iadesi sağlanır.” hükmünün uygulanmasına yöneliktir; Bakanlık otomasyon sistemindeki kaydın yerine geçmez."** | karne, diploma, borç, ilişik kesme | Yalnız açık işi olmayan kişiye; kişi başına bir sayfa. Açık işi olan seçilince **"Seçilenlerden N kişinin iade edilmemiş kaynağı, geri alınmamış teslimi ya da çözülmemiş kayıp/hasar dosyası var; belge basılmadı. İlişik listesine bakın."** (ad yazmaz) |
+| İlişik listesi (belge) | başlık **"İLİŞİK LİSTESİ"**, sütunlar Sıra · Ad soyad · Sınıf / üye türü · Durum · Ödünç · Teslim · Dosya · Açık işler; ikinci tablo **"SINIF KİTAPLIKLARINDAKİ AÇIK TESLİMLER"**; her sayfada §5 dipnotu | borç listesi, kara liste | Kaynak adı ve okul no BASILMAZ (yalnız barkod, iade tarihi, belge no) |
+| Yıl sonu pusulası | belge adı **İade hatırlatma pusulası** (E4 biçimi); iç başlık **"İADE HATIRLATMASI"**, kaynak başlığı **"İADE EDİLECEK KAYNAKLAR"**; metin **"Ders yılı sona eriyor. Kütüphaneden ödünç aldığınız, sağda yazılı kaynakları ders yılı bitmeden (ya da: en geç gg.aa.yyyy tarihine kadar) kütüphaneye getirin."** | ihtar, son uyarı | Kişinin BÜTÜN açık ödünçleri (gecikmemişler dahil); dış yüz E4'le aynıdır |
+| E15 belgeleri | **"TESLİM LİSTESİ"** (şubede not: "… Dayanıklı Taşınırlar Listesinin işlevini görür (Taşınır Mal Yönetmeliği md. 23/6'ya kıyasen). Teslim ödünç değildir."; imza **"Teslim eden — Kütüphane yöneticisi"** / **"Teslim alan — Sınıf kitaplığı sorumlusu"** ya da **"— Öğretmen"**) · **"GERİ ALMA DÖKÜMÜ"** (durumlar **"Geri alındı · gg.aa.yyyy"** · **"Teslimde"** · **"Kayba dönüştü · gg.aa.yyyy"**; özet **"N kitap geri alındı · N kitap teslimde · N kitap kayba dönüştü"**) | zimmet, emanet | Şubenin güncel teslim listesi de basılabilir (Sınıf Kitaplıkları kartı) |
+| E6 belgesi | başlık **"KAYIP/HASAR TUTANAĞI"**; bölümler **KAYNAK** · **İLGİLİ KİŞİ** · **ÇÖZÜM**; imza **Kütüphane yöneticisi** · **İlgili kişi** · **Okul müdürü**; bedel **"… TL (kayıt); gg.aa.yyyy tarihinde belirlendi, gg.aa.yyyy tarihinde teslim alındı"** (iki adımın tarihleri; teslim alınmamışsa yalnız ilki) | zayi, telef, borç, ceza, tahsil edildi | Md. 19 alıntısı ve **"Bu tutanak bir ödeme ya da tahsilat belgesi değildir."** YALNIZ ortaöğretimde |
+
 ## 5. Kişisel veri ve metin
 
 - **Görevli kipindeki iletilerde okuma bilgisi yoktur.** Gecikmesi olan üyede
@@ -567,5 +727,15 @@ ve **"GİZLİLİK"**tir.
 - Hata ve uyarı metnine, günlüğe ve uç yoluna öğrenci adı yazılmaz.
 - Basılı toplu gecikme listesi şu dipnotu taşır: "Kişisel veri içerir —
   asılmaz, çoğaltılmaz."
+- İlişik listesinin basılı hâli de aynı dipnotu taşır ve kaynak adı ile okul no
+  basmaz (yalnız barkod, tarih, belge no). "Kütüphaneden ilişiği yoktur" belgesinin
+  ret iletisi kişi adı yazmaz, yalnız sayı verir.
+- Görevli kipinde teslimden geri almada teslim alanın kimliği (şube ya da öğretmen)
+  ve belge no gösterilmez; masadaki "Teslimden geri al" önerisi kime teslim
+  edildiğini söylemez. Ağ Kataloğu teslimdeki kitabı yalnız "Sınıf kitaplığında"
+  diye gösterir.
+- Kayıp/hasar dosyası, tutanağı ve öğretmene teslim listesi kişi adı taşır:
+  yalnız yönetici kipinde açılır, kişisel veri içeren belge gibi saklanır. Sorumlu
+  notuna sağlık ya da aile bilgisi yazılmaz.
 - Ağ kataloğunun hiçbir sayfasında üye, ödünç, iade tarihi ya da kişi adı
   geçmez. "Hakkında" sayfası bunu açıkça söyler.

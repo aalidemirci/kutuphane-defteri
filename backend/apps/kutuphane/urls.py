@@ -15,7 +15,8 @@ doğrulama okutması; kullanıcı kararı 24.09.2026), F6 dolaşım masası uçl
 (`library-desk-member`, `library-checkout`, `library-return`,
 `library-desk-copy-status`, `library-desk-card-unlock`) ve katalog okuma
 (`library-work-list`, `library-work-detail`, `library-copy-list` — yalnız GET,
-sorgu parametresi kuralıyla; yanıt görevli kipinde daralır) vardır. Geri kalan
+sorgu parametresi kuralıyla; yanıt görevli kipinde daralır) ve F7 teslimden geri
+alma okutması (`library-delivery-take-back` POST) vardır. Geri kalan
 uçlar kapalıdır (varsayılan kapalı — CLAUDE.md §2-4): katalog düzenlemek,
 edinim açmak, bağış kararı işlemek, etiket basmak ve üyelik yönetimi (F6:
 üyelik açma, kartı yenile, sonlandırma, istek listesi, ödünç geçmişi)
@@ -30,11 +31,13 @@ from apps.kutuphane import (
     views,
     views_ag_doktoru,
     views_evrak,
+    views_ilisik,
     views_import,
     views_katalog,
     views_kunye,
     views_kuyruk,
     views_masa,
+    views_teslim,
     views_uyelik,
 )
 from apps.kutuphane.labels import urls as label_urls
@@ -441,6 +444,90 @@ urlpatterns = [
         "library/desk/card-unlock/",
         views_masa.MasaKartKilidiView.as_view(),
         name="library-desk-card-unlock",
+    ),
+    # --- F7: toplu teslim (U11). Teslim VERME yönetici kipinde; görevli kipi izin
+    # listesinde YALNIZ geri alma okutması (`take-back/` POST, yanıt daralır — §4.4).
+    path(
+        "library/deliveries/",
+        views_teslim.DeliveryListCreateView.as_view(),
+        name="library-delivery-list",
+    ),
+    path(
+        "library/deliveries/check/",
+        views_teslim.DeliveryCheckView.as_view(),
+        name="library-delivery-check",
+    ),
+    path(
+        "library/deliveries/take-back/",
+        views_teslim.DeliveryTakeBackView.as_view(),
+        name="library-delivery-take-back",
+    ),
+    # --- F7: kayıp/hasar dosyaları (Md. 19) ve onarım (D3) — YALNIZ yönetici kipi.
+    # OYS adları (`library-loss-damage-case-*`) korunur.
+    path(
+        "library/loss-damage-cases/",
+        views_teslim.LossDamageCaseListCreateView.as_view(),
+        name="library-loss-damage-case-list",
+    ),
+    path(
+        "library/loss-damage-cases/<int:pk>/",
+        views_teslim.LossDamageCaseDetailView.as_view(),
+        name="library-loss-damage-case-detail",
+    ),
+    path(
+        "library/loss-damage-cases/<int:pk>/resolve/",
+        views_teslim.LossDamageCaseResolveView.as_view(),
+        name="library-loss-damage-case-resolve",
+    ),
+    path(
+        "library/copies/<int:pk>/send-to-repair/",
+        views_teslim.CopySendToRepairView.as_view(),
+        name="library-copy-send-to-repair",
+    ),
+    path(
+        "library/copies/<int:pk>/return-from-repair/",
+        views_teslim.CopyReturnFromRepairView.as_view(),
+        name="library-copy-return-from-repair",
+    ),
+    # --- F7-İ: ilişik listesi, yıl akışları ve F7 evrakı (E5, E6, E15) — YALNIZ
+    # yönetici kipi (§4.4 "ilişik", "kayıp dosyaları", "raporlar" kapalı). Hiçbiri
+    # kayıt yazmaz. `library-clearance` OYS adıdır.
+    path("library/clearance/", views_ilisik.ClearanceListView.as_view(), name="library-clearance"),
+    path(
+        "library/clearance/pdf/",
+        views_ilisik.ClearancePdfView.as_view(),
+        name="library-clearance-pdf",
+    ),
+    path(
+        "library/clearance/sections/",
+        views_ilisik.ClearanceSectionsView.as_view(),
+        name="library-clearance-sections",
+    ),
+    path(
+        "library/clearance/certificates/",
+        views_ilisik.ClearanceCertificatePdfView.as_view(),
+        name="library-clearance-certificate-pdf",
+    ),
+    path(
+        "library/year-end/slips/",
+        views_ilisik.YearEndSlipPdfView.as_view(),
+        name="library-year-end-slip-pdf",
+    ),
+    path("library/year-flows/", views_ilisik.YearFlowsView.as_view(), name="library-year-flows"),
+    path(
+        "library/loss-damage-cases/<int:pk>/pdf/",
+        views_ilisik.LossDamageCaseReportView.as_view(),
+        name="library-loss-damage-case-pdf",
+    ),
+    path(
+        "library/deliveries/pdf/",
+        views_ilisik.DeliveryListPdfView.as_view(),
+        name="library-delivery-pdf",
+    ),
+    path(
+        "library/deliveries/take-back-report/",
+        views_ilisik.DeliveryTakeBackReportView.as_view(),
+        name="library-delivery-take-back-report",
     ),
 ]
 

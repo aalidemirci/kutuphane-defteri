@@ -109,6 +109,8 @@ def test_izin_listesi_anlik_goruntuyle_sabittir() -> None:
         ("library-checkout", "POST"),
         # Katalog okuma (F6, §4.4): works/copies GET, yanıt Ağ Kataloğuna denk.
         ("library-copy-list", "GET"),
+        # F7 teslimden geri alma okutması (§4.4, U11); yanıt görevli kipinde daralır.
+        ("library-delivery-take-back", "POST"),
         # GA-7: art arda geçersiz kart okutmasından sonra gövdede yönetici parolası.
         ("library-desk-card-unlock", "POST"),
         # Nüsha durum sorgusu ve kartla üye çözme (yalnız ad + kalan hak).

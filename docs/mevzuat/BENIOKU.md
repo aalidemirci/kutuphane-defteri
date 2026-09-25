@@ -53,11 +53,12 @@ Mal Yönetmeliği · **OKY** Ortaöğretim Kurumları Yönetmeliği. Bölüm num
 | §3 otomasyon şartı, konum dili | Yön. 9/2 · 11/2 · 16/2 · 16/3 · 17 · 18 · 20-23 | İşlemler "Bakanlıkça belirlenen" ya da "kütüphane otomasyon sistemi" üzerinden yürütülür. Program kendini bu sistemin yerine koymaz, "yerel araç" der |
 | §3 sınıflama, §5.4 `/konular` | Yön. 8/1-a · 11/1 | Bakanlıkça belirlenen kataloglama ve sınıflama sistemi; katalog yazar, eser adı ve konuya göre alfabetik |
 | §3 KVKK dayanağı | Yön. 8/1-f · 16/2 · 16/3 · 18 · 23 | Ödünç kaydı, iade takibi, ayrılışta üyeliğin sonlanması ve iadenin sağlanması |
-| §3 okul türü, §9-9 | Yön. 19 | Kayıp ve hasar bedeli **yalnız ortaöğretimde** |
+| §3 okul türü, §9-9 (kılavuzun Kayıp, Hasar ve Onarım bölümü) | Yön. 19 | Kayıp ve hasar bedeli **yalnız ortaöğretimde** |
 | §3 okul türü, U11 | Yön. 4/1-i · 5/1 | İlkokulda sınıf kitaplığı |
 | §4.4 terim | Yön. 4/1-e, f · 7/1 · 20 | Kütüphaneci, kütüphaneden sorumlu öğretmen, "kütüphane yöneticisi"; 10.000 kitap eşiği; yardımcı memur |
 | §6.2 `Section` | Yön. 4/1-a · 6/1 | Kütüphane bölümü (Yönetmelikte "alan") |
 | §6.2 `LibraryPolicy`, §9-4 | Yön. 18 | Süre **on beş gün, sabit**; öğrenciye en fazla 3, öğretmene en fazla 5 |
+| §8.3 ilişik ve yıl sonu, E5 (kılavuzun İlişik Listesi ve Yıl Sonu ve Yıl Başı bölümleri) | Yön. 18/1 | Okuldan ayrılma sebebiyle üyelik sonlanınca "alınan ödünç kitabın kütüphaneye iadesi sağlanır"; "Kütüphaneden ilişiği yoktur" belgesi bu hükmün uygulanmasına yöneliktir, karne ya da diploma ön koşulu değildir (§4) |
 | §9-1 | Yön. 13/1 · 16/1 · 17/1 | Doğal kullanıcı öğrenci ve öğretmen; diğer personel yalnız "kullanıcı hizmetleri"nde sayılır. Diğer personele ödünç Yönetmelikte düzenlenmemiştir, programda müdürlük kararıyla açılan **ihtiyat kuralıdır** |
 | §9-2 | Yön. 17/1 | Üyelik isteğe bağlıdır ("üye olmak isteyen") |
 | §9-3, §8.1 | Yön. 14/1-a · 16/1 a-c | Danışma kaynağı (ders kitabı dahil), piyasada mevcudu olmayan eser ve süreli yayın ödünç verilmez |
@@ -80,7 +81,7 @@ Mal Yönetmeliği · **OKY** Ortaöğretim Kurumları Yönetmeliği. Bölüm num
 | §3, §8.4, E11 | TMY 9/1-ç · 10/1-a-4 · 15/4 | Taşınır Kütüphane Defteri; süreli yayına VİF düzenlenmez, ciltletildikten sonra kayda alınır |
 | E11 | TMY 34/2-c · 34/3-a | Müze/Kütüphane Yönetim Hesabı Cetveli |
 | §9-10, E10 | TMY 32/3 | Giriş ve çıkışların durdurulması **isteğe bağlıdır** (kurul talebi + harcama yetkilisi), "hizmetin aksamaması" kaydıyla |
-| §9-11, E15 | TMY 32/5 · 23/6 | Ortak kullanım alanı sayımı ve Dayanıklı Taşınırlar Listesi; kişilere verilen miktar (kıyasen) |
+| §9-11, E15 (kılavuzun Sınıf Kitaplığına ve Öğretmene Teslim bölümü) | TMY 32/5 · 23/6 | Ortak kullanım alanı sayımı ve Dayanıklı Taşınırlar Listesi; kişilere verilen miktar (kıyasen) |
 | E10 | TMY 32/7 · 32/8 · 32/9 · 10/1-g | Noksan düşüm teklifi, belgelerin muhasebe birimine gidişi, Sayım ve Döküm Cetveli |
 | E7 | TMY 5/8 · 10/1-e · 24/2 · 27/1 · 27/3 · 28 (1, 3, 4, 5, 7) · 31 | Kayıttan düşme, komisyon, imha tutanağı, devir |
 
@@ -118,7 +119,7 @@ Mal Yönetmeliği · **OKY** Ortaöğretim Kurumları Yönetmeliği. Bölüm num
 |---|---|---|
 | §9-5 iade tarihi | TBK 92/1 | Gün olarak belirlenmiş süre ilk gün sayılmadan işler: iade tarihi `bugün + 15` |
 | §9-5 iade tarihi | TBK 93 | Son gün kanunen tatile rastlarsa izleyen ilk güne geçer. Yön. 18'de hüküm olmadığı için **kıyasen** uygulanır |
-| §9-9 kayıp ve hasar | OKY 164/1-g | Kütüphaneden alınan kitabı eksik vermek ya da kötü kullanmak kınama konusudur. Program disiplin sürecini **başlatmaz** |
+| §9-9 kayıp ve hasar (kılavuzun Kayıp, Hasar ve Onarım bölümü) | OKY 164/1-g | Kütüphaneden alınan kitabı eksik vermek ya da kötü kullanmak kınama konusudur. Program disiplin sürecini **başlatmaz** |
 | §9-11 teslim, E15 | OKY 96/3 | Okulun bütün bölümlerinde dayanıklı taşınırlar listesi |
 | Bağlam | OKY 94/1-b · 95/2 · 100 · 157/2-h | Kütüphane memuru; okulda kütüphane bulunması; kütüphanenin Yönetmeliğe göre işletilmesi; öğrenciden kitapları koruması beklenir |
 

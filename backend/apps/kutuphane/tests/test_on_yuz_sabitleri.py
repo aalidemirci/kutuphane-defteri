@@ -26,14 +26,14 @@ _KAYNAK = Path("frontend") / "src" / "modules" / "kutuphane" / "EserDetayPage.ts
 _SABIT = re.compile(r"^const EN_COK_NUSHA = (\d+);$", flags=re.MULTILINE)
 
 
-def _on_yuz_kaynagi() -> str:
+def _on_yuz_kaynagi(kaynak: Path = _KAYNAK) -> str:
     """Depo kökünü bulur: yerelde `depo/backend/...`, konteynerde `/app` + `/repo`."""
     yerel_kok = Path(__file__).resolve().parents[4]
     for kok in (yerel_kok, Path("/repo")):
-        yol = kok / _KAYNAK
+        yol = kok / kaynak
         if yol.is_file():
             return yol.read_text(encoding="utf-8")
-    pytest.fail(f"{_KAYNAK} bulunamadı (depo kökü: {yerel_kok} ya da /repo).")
+    pytest.fail(f"{kaynak} bulunamadı (depo kökü: {yerel_kok} ya da /repo).")
 
 
 def test_on_yuzdeki_toplu_nusha_siniri_backendle_aynidir() -> None:
@@ -46,3 +46,25 @@ def test_toplu_nusha_ucunun_ust_siniri_ayni_kaynaktan_gelir() -> None:
     """Serializer sınırı da aynı sabittir; üçüncü bir kopya doğmasın."""
     alan: Any = CopyBulkCreateSerializer().fields["count"]
     assert alan.max_value == MAX_COPIES_PER_ROW
+
+
+# --- F7: yönetici kipi sürelerinin sınırları (Ayarlar → Kütüphane Politikası) ---
+_POLITIKA = Path("frontend") / "src" / "modules" / "kutuphane" / "KutuphanePolitikasiPaneli.tsx"
+
+
+@pytest.mark.parametrize(
+    ("ad", "sabit"),
+    [
+        ("BOSTA_DK_EN_AZ", "IDLE_MINUTES_MIN"),
+        ("BOSTA_DK_EN_COK", "IDLE_MINUTES_MAX"),
+        ("MUTLAK_DK_EN_AZ", "ADMIN_MAX_MINUTES_MIN"),
+        ("MUTLAK_DK_EN_COK", "ADMIN_MAX_MINUTES_MAX"),
+    ],
+)
+def test_on_yuzdeki_kip_suresi_sinirlari_modelle_aynidir(ad: str, sabit: str) -> None:
+    """Panelin yardım metnindeki sınır, model doğrulayıcısının sınırıyla aynıdır."""
+    from apps.kutuphane import models
+
+    eslesme = re.search(rf"^const {ad} = (\d+);$", _on_yuz_kaynagi(_POLITIKA), flags=re.MULTILINE)
+    assert eslesme is not None, f"{_POLITIKA} içinde `const {ad} = <sayı>;` yok."
+    assert int(eslesme.group(1)) == getattr(models, sabit)

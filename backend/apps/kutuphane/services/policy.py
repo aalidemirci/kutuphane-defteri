@@ -19,9 +19,12 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from apps.kutuphane.models import LibraryPolicy
+from apps.okul import kip
 
 #: Ödünç süresi — Md. 18, sabit. Ayar DEĞİLDİR; F6 dolaşımı buradan okur.
 LOAN_PERIOD_DAYS = 15
+
+KIP_SURELERI_MESSAGE = "Yönetici kipinin boşta süresi mutlak süresinden uzun olamaz."
 
 
 def load_policy() -> LibraryPolicy:
@@ -50,12 +53,52 @@ def ensure_staff_loan_decision(policy: LibraryPolicy) -> None:
         raise ValidationError(eksik)
 
 
+def ensure_mode_durations(policy: LibraryPolicy) -> None:
+    """Yönetici kipi süreleri: boşta süresi mutlak süreden uzun olamaz (§4.4, F7).
+
+    Aralıklar model doğrulayıcılarındadır (boşta 1-15 dk, mutlak 5-120 dk); DB
+    kısıtı (`ck_librarypolicy_kip_sureleri`) aynı ilişkiyi söyler. Buradaki
+    denetim iletiyi alan adıyla üretir.
+    """
+    if int(policy.idle_minutes) > int(policy.admin_max_minutes):
+        raise ValidationError({"idle_minutes": KIP_SURELERI_MESSAGE})
+
+
+def kip_sure_dakikalari() -> tuple[int, int] | None:
+    """`apps.okul.kip`'in süre kaynağı: `(boşta_dk, mutlak_dk)`; satır yoksa None.
+
+    `KutuphaneConfig.ready` içinde kaydedilir (`kip.sure_kaynagini_kaydet`). Kip
+    değeri önbelleğe alır; bu işlev yalnız ilk değerlendirmede ve ayar
+    değiştikten sonra bir kez çağrılır (sıcak yolda sorgu yok).
+    """
+    satir = (
+        LibraryPolicy.objects.filter(pk=LibraryPolicy.SINGLETON_PK)
+        .values_list("idle_minutes", "admin_max_minutes")
+        .first()
+    )
+    if satir is None:
+        return None
+    return int(satir[0]), int(satir[1])
+
+
+def _kip_surelerini_tazele() -> None:
+    """Kip süre önbelleğini hem hemen hem işlem sonunda boşaltır.
+
+    Hemen: aynı işlemde (ve testlerde) yeni değer okunur. İşlem sonunda: işlem
+    sürerken başka bir istek ESKİ değeri okuyup önbelleğe almış olabilir.
+    """
+    kip.sure_onbellegini_bosalt()
+    transaction.on_commit(kip.sure_onbellegini_bosalt)
+
+
 @transaction.atomic
 def update_policy(**fields: Any) -> LibraryPolicy:
     """Politikayı günceller (satır yoksa varsayılanlarla açar).
 
     Gönderilmeyen alana DOKUNULMAZ: ekranın bir sekmesinden yapılan kayıt,
-    öbür sekmedeki ayarları varsayılana döndürmemelidir.
+    öbür sekmedeki ayarları varsayılana döndürmemelidir. Kip süreleri
+    değiştiyse kip kapısı yeni değerleri bir sonraki istekte kullanır
+    (yeniden başlatma gerekmez).
     """
     policy: LibraryPolicy
     policy, _created = LibraryPolicy.objects.get_or_create(pk=LibraryPolicy.SINGLETON_PK)
@@ -68,6 +111,8 @@ def update_policy(**fields: Any) -> LibraryPolicy:
         policy.staff_loans_decision_date = None
         policy.staff_loans_decision_no = ""
     ensure_staff_loan_decision(policy)
+    ensure_mode_durations(policy)
     policy.full_clean()
     policy.save()
+    _kip_surelerini_tazele()
     return policy

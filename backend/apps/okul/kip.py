@@ -49,6 +49,11 @@ GÖREVLİ'ye iner:
 Kalan süre sıfıra ulaştığı anda kip iner (fail-closed: sınır anı görevli
 sayılır). Saat enjekte edilebilir; varsayılan `UykuyuSayanSaat`tir.
 
+İki süre ayarlanabilir (§4.4, GA-9): F7'den beri `kip_sureleri()` kütüphanenin
+kaydettiği kaynaktan (`LibraryPolicy.idle_minutes` / `admin_max_minutes`)
+okur; değer süreç içinde önbelleğe alınır ve ayar yazılınca boşaltılır, yani
+sıcak yolda veritabanı sorgusu yoktur (F2 ekleri 1'in kaygısı).
+
 KURULUM BİTENE KADAR SÜRELER KİPİ DÜŞÜRMEZ (F1 eki, 22.09.2026 kullanıcı kararı
 2-1). Sihirbazın ilk adımında kurtarma anahtarı ekrandadır; boşta süre dolup
 görevli kipine inmek kullanıcıyı anahtar saklanmadan ekrandan atıyordu.
@@ -91,6 +96,7 @@ gider. Tam durum (`durum()`, `ozet()`) kip uçlarında ve tepside sorulur.
 
 from __future__ import annotations
 
+import logging
 import math
 import threading
 import time
@@ -116,6 +122,8 @@ GOREVLI: Final = "gorevli"
 VARSAYILAN_BOSTA_DK: Final = 3
 VARSAYILAN_MUTLAK_DK: Final = 30
 
+logger = logging.getLogger("kutuphane_defteri.okul")
+
 
 @dataclass(frozen=True)
 class KipSureleri:
@@ -125,14 +133,91 @@ class KipSureleri:
     mutlak_sn: int
 
 
-def kip_sureleri() -> KipSureleri:
-    """Yönetici kipi sürelerinin sağlayıcısı.
+VARSAYILAN_SURELER: Final = KipSureleri(
+    bosta_sn=VARSAYILAN_BOSTA_DK * 60, mutlak_sn=VARSAYILAN_MUTLAK_DK * 60
+)
 
-    F6'da `LibraryPolicy`'ye bağlanacak (iki süre de ayarlanabilir, §4.4);
-    o zamana dek tasarım varsayılanları döner. Kip nesnesi sağlayıcıyı her
-    değerlendirmede çağırır: ayar değişikliği yeniden başlatma istemez.
+# ---------------------------------------------------------------------------
+# Süre kaynağı (F7 — "Devreden": `LibraryPolicy.idle_minutes` / `admin_max_minutes`)
+# ---------------------------------------------------------------------------
+#: Kayıtlı süre kaynağı: `(boşta_dk, mutlak_dk)` ya da `None` (ayar satırı yok).
+#: Bağımlılık yönü <uygulama> → okul'dur (`services.persons` kayıt defterleriyle
+#: aynı kalıp): okul kütüphane modellerini import etmez, kütüphane kendi
+#: sağlayıcısını `AppConfig.ready` içinde buraya kaydeder.
+type SureKaynagi = Callable[[], tuple[int, int] | None]
+
+_sure_kilidi = threading.Lock()
+_sure_kaynagi: SureKaynagi | None = None
+_sure_onbellegi: KipSureleri | None = None
+
+
+def sure_kaynagini_kaydet(kaynak: SureKaynagi | None) -> None:
+    """Süre kaynağını kaydeder (fikirdeş; `None` kaydı kaldırır) ve önbelleği boşaltır."""
+    global _sure_kaynagi, _sure_onbellegi
+    with _sure_kilidi:
+        _sure_kaynagi = kaynak
+        _sure_onbellegi = None
+
+
+def sure_onbellegini_bosalt() -> None:
+    """Önbelleği boşaltır: ayar değişince bir sonraki değerlendirme yeniden okur."""
+    global _sure_onbellegi
+    with _sure_kilidi:
+        _sure_onbellegi = None
+
+
+def _gecerli_sureler(dakikalar: object) -> KipSureleri | None:
+    """Kaynağın değerini denetler: pozitif tam sayılar ve boşta ≤ mutlak; değilse None.
+
+    Aralık sınırlarının sahibi ayarın kendisidir (`LibraryPolicy` doğrulayıcıları
+    ve DB kısıtı); burada yalnız anlamsız değer (sıfır, eksi, boşta > mutlak)
+    süre olarak KULLANILMAZ — kip kapısı varsayılanlara döner (fail-closed değil
+    ama güvenli: varsayılanlar tasarımın kısa süreleridir).
     """
-    return KipSureleri(bosta_sn=VARSAYILAN_BOSTA_DK * 60, mutlak_sn=VARSAYILAN_MUTLAK_DK * 60)
+    if not isinstance(dakikalar, tuple) or len(dakikalar) != 2:
+        return None
+    bosta, mutlak = dakikalar
+    if not (isinstance(bosta, int) and isinstance(mutlak, int)):
+        return None
+    if bosta < 1 or mutlak < 1 or bosta > mutlak:
+        return None
+    return KipSureleri(bosta_sn=bosta * 60, mutlak_sn=mutlak * 60)
+
+
+def kip_sureleri() -> KipSureleri:
+    """Yönetici kipi sürelerinin sağlayıcısı (§4.4; F7'de `LibraryPolicy`'ye bağlandı).
+
+    Kip nesnesi sağlayıcıyı HER değerlendirmede çağırır (ara katmanın sıcak yolu):
+    veritabanı bu yüzden YALNIZ ilk çağrıda ve ayar değiştikten sonra bir kez
+    okunur (süreç içi önbellek; F2 ekleri 1'in "sıcak yol sorgusu" kaygısı). Ayar
+    yazan servis önbelleği boşaltır (`sure_onbellegini_bosalt`), yani ayar
+    değişikliği yeniden başlatma istemez. Geri yükleme süreci yeniden başlatır
+    (`restart_gate`), önbellek de onunla sıfırlanır.
+
+    Kaynak kayıtlı değilse, ayar satırı yoksa ya da değer anlamsızsa tasarım
+    varsayılanları (3 / 30 dk) döner. Kaynak hata verirse (veritabanı
+    okunamıyor) varsayılanlar döner ve ÖNBELLEĞE ALINMAZ: bir sonraki çağrı
+    yeniden dener.
+    """
+    global _sure_onbellegi
+    with _sure_kilidi:
+        if _sure_onbellegi is not None:
+            return _sure_onbellegi
+        kaynak = _sure_kaynagi
+    if kaynak is None:
+        return VARSAYILAN_SURELER
+    try:
+        deger = kaynak()
+    except Exception:  # veritabanı okunamazsa varsayılanlar (önbelleksiz)
+        logger.debug("Yönetici kipi süreleri okunamadı; varsayılanlar kullanılıyor.")
+        return VARSAYILAN_SURELER
+    sureler = VARSAYILAN_SURELER if deger is None else _gecerli_sureler(deger)
+    if sureler is None:
+        logger.warning("Yönetici kipi süre ayarı geçersiz; varsayılanlar kullanılıyor.")
+        sureler = VARSAYILAN_SURELER
+    with _sure_kilidi:
+        _sure_onbellegi = sureler
+    return sureler
 
 
 def kurulum_tamamlandi_mi() -> bool:
@@ -409,7 +494,11 @@ class KipDurumu:
         sureler: Callable[[], KipSureleri] | None = None,
         kurulum_tamam: Callable[[], bool] | None = None,
     ) -> None:
-        """Yalnız testler için: tekil süreç içi olduğundan durum testler arasında sızar."""
+        """Yalnız testler için: tekil süreç içi olduğundan durum testler arasında sızar.
+
+        Süre önbelleği de boşaltılır (bir testin yazdığı ayar öbürüne sızmasın).
+        """
+        sure_onbellegini_bosalt()
         with self._kilit:
             self._saat = saat if saat is not None else UykuyuSayanSaat()
             self._sureler = sureler if sureler is not None else kip_sureleri

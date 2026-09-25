@@ -74,7 +74,8 @@ export interface MemberLoan {
   loaned_at: string;
   due_date: string;
   returned_at: string | null;
-  status: "OPEN" | "RETURNED";
+  /** F7: `LOST_CONVERTED` — kayıp bildirimiyle kapanan ödünç ("Kayba dönüştü"). */
+  status: "OPEN" | "RETURNED" | "LOST_CONVERTED";
   status_display: string;
   overdue_days: number;
   has_override: boolean;
