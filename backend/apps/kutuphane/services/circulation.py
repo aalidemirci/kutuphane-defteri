@@ -3,10 +3,14 @@
 OYS'nin `apps/kutuphane/circulation.py` dosyasından UYARLA (tasarım §12): rol ve
 izin dalları, `by_user` ve denetim kaydı (AuditLog) düştü — program hesapsızdır,
 masadaki kişi ayrımı kiple yapılır (§4.4); iz ödünç kaydının kendisindedir
-(gerekçe alanları, kartsız işareti). Sayım kilidi (OYS `_ensure_circulation_open`)
-ALINMADI: TMY 32/3 durdurması ödüncü kapsamaz, "sayım için hizmet arası" ayrı bir
-okul kararıdır ve F9'da yalnız YENİ ÖDÜNCÜ durdurur (§9-10, D18). **İade hiçbir
-durumda kilitlenmez.**
+(gerekçe alanları, kartsız işareti). OYS'nin dolaşım kilidi (`_ensure_circulation_open`
+— ödüncü de iadeyi de kilitliyordu, D18) ALINMADI: TMY 32/3 durdurması ödüncü
+kapsamaz; "sayım için hizmet arası" ayrı bir okul kararıdır ve (F9) YENİ ÖDÜNCÜ ve
+YENİ TESLİMİ durdurur (§9-10; teslim — madde 27, 25.09.2026 kullanıcı kararı —
+`services.deliveries`): `checkout` onu ilk iş sorar, ret `RED_HIZMET_ARASI`
+(görevli ve yönetici kipinde aynı, kişisiz ileti). **İade hiçbir durumda
+kilitlenmez** (Md. 23/1-c): `return_copy` ve `return_loan` sayımı sormaz; teslimden
+geri alma da açıktır.
 
 KURALLAR (§9; her biri testle kilitli — `tests/test_dolasim_kurallari.py`):
 
@@ -76,7 +80,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.exceptions import APIException
 
-from apps.kutuphane import selectors_dolasim
+from apps.kutuphane import selectors_dolasim, selectors_sayim
 from apps.kutuphane.models import (
     TERMINAL_COPY_STATUSES,
     CardlessReason,
@@ -112,6 +116,9 @@ RED_ODUNC_VERILMEZ = "odunc_verilmez"
 RED_SINIR = "sinir_dolu"
 RED_GECIKME = "gecikme_engeli"
 RED_ACIK_ODUNC_YOK = "acik_odunc_yok"
+#: F9: sayım için hizmet arası (okul kararı) — yeni ödünç ve yeni teslim durur; iade ve
+#: teslimden geri alma açıktır. Toplu teslim de aynı kodla reddedilir (`services.deliveries`).
+RED_HIZMET_ARASI = "sayim_hizmet_arasi"
 
 # ---------------------------------------------------------------------------
 # İletiler (kişisel veri YOK; sözlük §5)
@@ -138,6 +145,12 @@ HOLIDAYS_MISSING_WARNING = (
     "{yil} yılının resmî tatil ya da dini bayram günleri Kapalı Günler'de eksik; iade "
     "tarihi bir tatile rastlamış olabilir. Kütüphane yöneticisi Ayarlar → Kapalı "
     "Günler'den eklemelidir."
+)
+#: F9: sayım için hizmet arası — masada görevliye de anlaşılır, kişisiz ve tarihsiz. Ödünç
+#: ve teslim aynı iletiyi verir (madde 27, 25.09.2026 kullanıcı kararı).
+SERVICE_PAUSE_MESSAGE = (
+    "Sayım için hizmet arası — yeni ödünç ve teslim yapılamıyor. İade ve teslimden geri "
+    "alma açık."
 )
 OVERRIDE_NOTE_REQUIRED = "Gerekçeli istisnada açıklama zorunludur."
 OVERRIDE_REASON_REQUIRED = "Açıklama yalnız gerekçeli istisnada yazılır; önce gerekçe seçin."
@@ -449,6 +462,10 @@ def checkout(
         require_admin_mode()
     gerekce, aciklama = _clean_override(override_reason, override_note)
     kartsiz = _clean_cardless(cardless_reason)
+    # F9 (§9-10): sayım için hizmet arası yeni ödüncü (ve teslimi) durdurur — üyeye ve nüshaya
+    # bakmadan önce: okulun kararıdır, kimseye özgü değildir (ret sırası bir şey ele vermez).
+    if selectors_sayim.service_pause_active():
+        raise DolasimReddi(SERVICE_PAUSE_MESSAGE, code=RED_HIZMET_ARASI)
 
     politika = LibraryPolicy.load()
     bugun = timezone.localdate()

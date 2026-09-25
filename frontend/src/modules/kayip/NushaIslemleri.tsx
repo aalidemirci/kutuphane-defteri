@@ -41,6 +41,7 @@ const SON_DURUMLAR: ReadonlySet<CopyStatus> = new Set<CopyStatus>([
   "WITHDRAWN_WEEDED",
   "WITHDRAWN_MISSING",
   "WITHDRAWN_LOST",
+  "WITHDRAWN_DAMAGED",
   "TRANSFERRED",
 ]);
 

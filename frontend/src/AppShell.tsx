@@ -57,6 +57,8 @@ const PAGE_TITLES: Array<[prefix: string, title: string]> = [
   ["/katalog/etiketler", "Etiketler"],
   ["/katalog/ayiklama", "Ayıklama"],
   ["/katalog/nadir-eserler", "Nadir Eserler"],
+  // F9: Katalog'un sağ üstünden ve Genel Bakış'ın "Sayım" kartından açılır.
+  ["/katalog/sayim", "Sayım"],
   ["/katalog", "Katalog"],
   ["/ayarlar", "Ayarlar"],
   ["/ag-doktoru", "Ağ Doktoru"],

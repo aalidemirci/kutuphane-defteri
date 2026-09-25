@@ -117,6 +117,14 @@ vi.mock("./modules/ayiklama/api", async (importOriginal) => {
   return { ...actual, ayiklamaApi: { ...actual.ayiklamaApi, ...ayiklamaApiMock } };
 });
 
+// Sayım (F9) kendi uçlarına gider; burada yalnız rota ve başlık. Genel Bakış'ın sayım kartı
+// durum beklemede kaldığı için çizilmez.
+const sayimApiMock = vi.hoisted(() => ({ durum: vi.fn(), sayimlar: vi.fn() }));
+vi.mock("./modules/sayim/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./modules/sayim/api")>();
+  return { ...actual, sayimApi: { ...actual.sayimApi, ...sayimApiMock } };
+});
+
 // Ağ Doktoru (F5) kendi uçlarına gider; burada yalnız rota ve başlık kablolaması.
 const agKataloguApiMock = vi.hoisted(() => ({
   durum: vi.fn(),
@@ -235,6 +243,7 @@ beforeEach(() => {
   // F7 İ kolu: yıl akışı özeti beklemede kalır (Genel Bakış kartı çizilmez, akış
   // sayfaları iskelet gösterir); ilişik listesi ve sınıf kitaplıkları boştur.
   yilApiMock.akislar.mockReturnValue(new Promise(() => undefined));
+  sayimApiMock.durum.mockReturnValue(new Promise(() => undefined));
   yilApiMock.ilisikListesi.mockResolvedValue(bosSayfa);
   yilApiMock.sinifKitapliklari.mockResolvedValue([]);
   for (const liste of [
@@ -250,6 +259,7 @@ beforeEach(() => {
     ayiklamaApiMock.teklifler,
     ayiklamaApiMock.listeler,
     ayiklamaApiMock.raporlar,
+    sayimApiMock.sayimlar,
   ]) {
     liste.mockResolvedValue(bosSayfa);
   }
@@ -498,6 +508,8 @@ describe("App — kabuk gezinmesi", () => {
     // F8: Katalog'un sağ üstünden açılır.
     ["/katalog/ayiklama", "Ayıklama"],
     ["/katalog/nadir-eserler", "Nadir Eserler"],
+    // F9: Katalog'un sağ üstünden ve Genel Bakış kartından açılır.
+    ["/katalog/sayim", "Sayım"],
     ["/ayarlar", "Ayarlar"],
     ["/ag-doktoru", "Ağ Doktoru"],
     ["/kilavuz", "Kullanım Kılavuzu"],

@@ -27,6 +27,7 @@ import { SkeletonList } from "../../ui/Skeleton";
 import { useSnackbar } from "../../ui/SnackbarProvider";
 import Stepper from "../../ui/Stepper";
 import type { StepperItem, StepperStatus } from "../../ui/Stepper";
+import { DurdurmaBandi } from "../sayim/SayimKarti";
 import { ayiklamaApi, GEREKCE_BENDI, teklifAdi } from "./api";
 import type { AyiklamaBelgesi, Kalem, TeklifAyrintisi as TeklifVerisi, TeklifDurumu } from "./api";
 import { BelgeSatiri, Bilgi, Rozet, useKurallar } from "./ortak";
@@ -258,6 +259,9 @@ export default function TeklifAyrintisi({ id, onGeri }: { id: number; onGeri: ()
         </dl>
 
         {hata && <ErrorBand hata={hata} />}
+
+        {/* F9: TMY 32/3 durdurması sürerken teklif uygulanamaz (kayıttan düşme ve devir). */}
+        {durum === "APPROVED" && <DurdurmaBandi islem="kayıttan düşme ve devir" />}
 
         <div className="flex flex-wrap gap-2">
           {durum === "DRAFT" && (

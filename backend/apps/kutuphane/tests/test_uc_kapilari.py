@@ -55,6 +55,10 @@ GOREVLI_ACIK = frozenset(
         ("library-copy-list", "GET"),
         # F7: teslimden geri alma okutması (§4.4); teslim verme kapalı.
         ("library-delivery-take-back", "POST"),
+        # F9 (madde 24, 26 — 25.09.2026 kullanıcı kararları): sayım okutması (öbür sayım
+        # uçları kapalı) ve masanın kişisiz durumu.
+        ("library-stocktake-scan", "POST"),
+        ("library-desk-state", "GET"),
     }
 )
 
@@ -145,7 +149,8 @@ def test_katalog_uclarindan_yalniz_masa_isleri_izin_listesinde() -> None:
     Açık olanlar bilinçli kararlardır: etiket doğrulama okutması (kullanıcı
     kararı 24.09.2026) ve tasarım §4.4 tablosunun masa işleri (F6) — kartla üye
     çözme, ödünç ver, barkodla iade, nüsha durum sorgusu, GA-7 kilidi ve katalog
-    okuma (yalnız GET); F7'de teslimden geri alma okutması (teslim VERME kapalı).
+    okuma (yalnız GET); F7'de teslimden geri alma okutması (teslim VERME kapalı); F9'da
+    sayım okutması ve kişisiz masa durumu (madde 24, 26 — sayımın öbür işleri kapalı).
     """
     from apps.okul.kip_izinleri import IZIN_LISTESI
 

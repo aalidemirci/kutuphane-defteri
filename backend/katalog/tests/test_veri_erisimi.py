@@ -24,6 +24,14 @@ YOLUYLA kurar (uygulanmış teklif: nüshalar "Ayıklandı (kayıttan düşüld�
 "Devredildi") ve okunan küme yine DEĞİŞMEZ. Kayıttan düşülmüş ve devredilmiş
 nüsha görünümlerde ve sayaçlarda yoktur
 (`test_ayiklamayla_dusulen_ve_devredilen_nusha_gorunmez`).
+
+F9 (§5.10-4 yeniden koşar): sayım ve kalemleri (kurul, durduran ve onaylayan harcama
+yetkilisi adları şifreli; sayım fazlasının kodu ve açıklaması) aynı biçimde sınanır;
+`_genis_kurgu` onaylanmış bir sayımı SERVİS YOLUYLA kurar (noksan "Sayım noksanı",
+kayıp "Kayıp", hasar önerisi "Hasar" diye kayıttan düşülür; fazla kayda alınır) ve
+okunan küme yine DEĞİŞMEZ. Sayımla kayıttan düşülen nüsha görünümde ve sayfada yoktur,
+fazladan kayda alınan nüsha rafta sayılır
+(`test_sayimla_dusulen_nusha_gorunmez_fazla_rafta_sayilir`).
 """
 
 from __future__ import annotations
@@ -49,6 +57,7 @@ from apps.kutuphane.models import (
     KatalogPopuler,
     PopulerPencereTuru,
     ResourceType,
+    StockTakeItem,
     Work,
 )
 from apps.kutuphane.services import circulation, memberships
@@ -131,6 +140,11 @@ def _db_yolu() -> Path:
         (OKUMA, "kutuphane_rareworkssubmission", "sent_document_no", None, DENY),
         (OKUMA, "kutuphane_rareworkssubmissionitem", "copy_id", "kd_katalog_nusha", DENY),
         (OKUMA, "kutuphane_annuallibraryreview", "stats", "kd_katalog_eser", DENY),
+        # F9: sayım ve kalemleri de okunamaz (kurul ve harcama yetkilisi adları şifreli).
+        (OKUMA, "kutuphane_stocktake", "committee_chair", "kd_katalog_eser", DENY),
+        (OKUMA, "kutuphane_stocktake", "approved_by_name", None, DENY),
+        (OKUMA, "kutuphane_stocktakeitem", "surplus_note", "kd_katalog_nusha", DENY),
+        (OKUMA, "kutuphane_stocktakeitem", "copy_id", None, DENY),
         (OKUMA, "sqlite_master", "sql", None, DENY),
         # Geri kalan her şey → RED
         (sqlite3.SQLITE_PRAGMA, "query_only", "OFF", None, DENY),
@@ -408,6 +422,41 @@ def _ayiklama_kurgusu() -> dict[str, Any]:
     return {"dusulen": dusulen, "devredilen": devredilen, "dusulen_eser": dusulen_eser}
 
 
+def _sayim_kurgusu() -> dict[str, Any]:
+    """F9 tablolarını SERVİS YOLUYLA doldurur: iki seçenekli, onaylanmış sayım — noksan
+    (32/7), hasar önerisi (27/1 + 10/1-e) ve kayda alınan sayım fazlası (TMY 17); kurul,
+    durduran ve onaylayan harcama yetkilisi adları şifreli. Kayıpta görünen nüsha
+    okutulmaz (noksan olarak düşülür); öbür bütün nüshalar okutulur ki kurgunun geri kalanı
+    (sayfa kodları) değişmesin."""
+    from apps.kutuphane.services import loss_damage, stocktake
+    from apps.kutuphane.tests.sayim_ortak import durdurma_alanlari, onayla, tamamla
+
+    noksan = nusha(eser(title="Sayımda Noksan"))
+    hasarli = nusha(eser(title="Sayımda Hasarlı"))
+    dosya = loss_damage.open_damage_case(copy=hasarli, responsible_note="Hasarnotsayimdeneme")
+    loss_damage.resolve_case(dosya, resolution="WRITE_OFF_PROPOSED")
+    fazla_eseri = eser(title="Sayım Fazlası Eser")
+    sayim = stocktake.create_stocktake(
+        committee_chair="Kurulsayimkatalog Başkan",
+        committee_property_officer="Kurulsayimkatalog Taşınır",
+        committee_members="Kurulsayimkatalog Üye",
+        service_pause=True,
+        **{**durdurma_alanlari(), "tmy_stop_by_name": "Durduransayimkatalog"},
+    )
+    stocktake.start_stocktake(sayim)
+    okunacak = list(
+        StockTakeItem.objects.filter(stocktake=sayim, copy__isnull=False)
+        .exclude(copy=noksan)
+        .exclude(expected_status=CopyStatus.LOST)
+        .values_list("copy__barcode", flat=True)
+    )
+    for bas in range(0, len(okunacak), 200):
+        stocktake.scan_many(sayim, okunacak[bas : bas + 200])
+    stocktake.add_surplus(sayim, note="Fazlanotsayimkatalog", work=fazla_eseri)
+    onayla(tamamla(sayim), approved_by_name="Onaylayansayimkatalog")
+    return {"noksan": noksan, "hasarli": hasarli, "fazla_eseri": fazla_eseri}
+
+
 @pytest.mark.parametrize(
     "sql",
     [
@@ -437,24 +486,35 @@ def _ayiklama_kurgusu() -> dict[str, Any]:
         "SELECT copy_id FROM kutuphane_rareworkssubmissionitem",
         "SELECT stats FROM kutuphane_annuallibraryreview",
         "SELECT n.durum FROM kd_katalog_nusha n JOIN kutuphane_weedingitem w ON w.copy_id = n.id",
+        # F9 (§5.10-4 yeniden koşar): sayım ve kalemleri.
+        "SELECT * FROM kutuphane_stocktake",
+        "SELECT committee_chair, approved_by_name, tmy_stop_by_name FROM kutuphane_stocktake",
+        "SELECT surplus_barcode, surplus_note, copy_id FROM kutuphane_stocktakeitem",
+        "SELECT count(*) FROM kutuphane_stocktakeitem",
+        "SELECT n.durum FROM kd_katalog_nusha n JOIN kutuphane_stocktakeitem s ON s.copy_id = n.id",
     ],
 )
 def test_gercek_uyelik_odunc_teslim_ve_dosya_tablolari_katalog_baglantisindan_okunamaz(
     sql: str,
 ) -> None:
-    """F6/F7/F8: tablolar gerçek ve doludur; katalog bağlantısı yine okuyamaz."""
+    """F6/F7/F8/F9: tablolar gerçek ve doludur; katalog bağlantısı yine okuyamaz."""
     _uye_ve_odunc_kurgusu()
     _teslim_ve_dosya_kurgusu()
     _ayiklama_kurgusu()
+    _sayim_kurgusu()
     with connection.cursor() as imlec:  # kurgu gerçekten doldu (Django bağlantısı)
         imlec.execute("SELECT count(*) FROM kutuphane_loan")
         assert imlec.fetchone()[0] == 3
         imlec.execute("SELECT count(*) FROM kutuphane_delivery")
         assert imlec.fetchone()[0] == 2
         imlec.execute("SELECT count(*) FROM kutuphane_lossdamagecase")
-        assert imlec.fetchone()[0] == 2
+        assert imlec.fetchone()[0] == 3
         imlec.execute("SELECT count(*) FROM kutuphane_weedingitem")
         assert imlec.fetchone()[0] == 2
+        imlec.execute("SELECT count(*) FROM kutuphane_stocktake WHERE status = 'APPROVED'")
+        assert imlec.fetchone()[0] == 1
+        imlec.execute("SELECT count(*) FROM kutuphane_stocktakeitem WHERE copy_id IS NULL")
+        assert imlec.fetchone()[0] == 1
 
     with pytest.raises(veri.VeriHatasi), veri.baglan(_db_yolu()) as conn:
         conn.execute(sql).fetchall()
@@ -555,6 +615,9 @@ def _genis_kurgu() -> list[int]:
     # F8: uygulanmış ayıklama, nadir eser listesi ve yıl sonu raporu DOLUYKEN de küme
     # değişmez (kayıttan düşülen eserin sayfası 404'tür — ayrı testte).
     _ayiklama_kurgusu()
+    # F9: onaylanmış sayım (noksan, hasar ve kayıp düşümü, sayım fazlası) DOLUYKEN de küme
+    # değişmez: görünümler sayım tablolarına uzanmaz, yalnız nüsha durumunu okur.
+    _sayim_kurgusu()
     return [w.pk for w in (w1, w2, w3, w4, w5)]
 
 
@@ -807,6 +870,7 @@ def test_gorunur_ve_gizli_durumlar_butun_durumlari_ayrik_kapsar() -> None:
         "WITHDRAWN_WEEDED",
         "WITHDRAWN_MISSING",
         "WITHDRAWN_LOST",
+        "WITHDRAWN_DAMAGED",
         "TRANSFERRED",
     }
 
@@ -974,6 +1038,64 @@ def test_ayiklamayla_dusulen_ve_devredilen_nusha_gorunmez(katalog: KatalogIstemc
             assert yasak not in metin
         for durum in ("Ayıklandı", "Devredildi", "kayıttan düşüldü"):
             assert durum not in metin
+
+
+def test_sayimla_dusulen_nusha_gorunmez_fazla_rafta_sayilir(katalog: KatalogIstemcisi) -> None:
+    """F9 (§5.10-4/5 yeniden): SERVİS YOLUYLA onaylanan sayımdan sonra noksan (32/7), kayıp
+    ve hasar önerisi (27/1) diye kayıttan düşülen nüsha görünümde, sayaçta ve sayfada
+    yoktur; sayım fazlası olarak kayda alınan nüsha rafta sayılır. Kurul, harcama
+    yetkilileri ve fazlanın açıklaması hiçbir sayfada geçmez."""
+    from apps.kutuphane.services import loss_damage, stocktake
+    from apps.kutuphane.tests.sayim_ortak import durdurma_alanlari, onayla, tamamla
+
+    karma = eser(title="Sayılan Madonna", authors="Deneme Yazar")
+    kalan = nusha(karma)
+    noksan = nusha(karma)
+    hasarli = nusha(karma)
+    kayip = nusha(karma)
+    dosya = loss_damage.open_damage_case(copy=hasarli)
+    loss_damage.resolve_case(dosya, resolution="WRITE_OFF_PROPOSED")
+    loss_damage.report_lost(copy=kayip)
+    sayim = stocktake.create_stocktake(
+        committee_chair="Kurulgorunumdeneme A",
+        committee_property_officer="Kurulgorunumdeneme B",
+        committee_members="Kurulgorunumdeneme C",
+        **{**durdurma_alanlari(), "tmy_stop_by_name": "Durdurangorunumdeneme"},
+    )
+    stocktake.start_stocktake(sayim)
+    stocktake.scan_many(sayim, [kalan.barcode, hasarli.barcode, "778899"])
+    stocktake.add_surplus(sayim, note="Fazlanotgorunumdeneme", work=karma)
+    fazla_kodu = StockTakeItem.objects.get(stocktake=sayim, surplus_barcode="778899")
+    stocktake.update_surplus(fazla_kodu, excluded=True, note="Haricnotgorunumdeneme")
+    onayla(tamamla(sayim), approved_by_name="Onaylayangorunumdeneme")
+    assert {
+        c.status for c in Copy.all_objects.filter(pk__in=[noksan.pk, hasarli.pk, kayip.pk])
+    } == {CopyStatus.WITHDRAWN_MISSING, CopyStatus.WITHDRAWN_DAMAGED, CopyStatus.WITHDRAWN_LOST}
+
+    with veri.baglan(_db_yolu()) as conn:
+        satir = _eser_satiri(conn, karma.pk)
+        nushalar = {
+            int(r["id"])
+            for r in conn.execute("SELECT id FROM kd_katalog_nusha WHERE eser_id = ?", (karma.pk,))
+        }
+
+    assert (satir["nusha_sayisi"], satir["rafta"]) == (2, 2)  # kalan + kayda alınan fazla
+    assert kalan.pk in nushalar and not {noksan.pk, hasarli.pk, kayip.pk} & nushalar
+    sayfa = katalog.get(f"/eser/{karma.pk}").text
+    arama = katalog.get("/ara?q=madonna").text
+    assert "2 nüsha" in sayfa
+    for metin in (sayfa, arama):
+        for yasak in (
+            "Kurulgorunumdeneme",
+            "Durdurangorunumdeneme",
+            "Onaylayangorunumdeneme",
+            "Fazlanotgorunumdeneme",
+            "Haricnotgorunumdeneme",
+            "778899",
+            "kayıttan düşüldü",
+            "Sayım",
+        ):
+            assert yasak not in metin, yasak
 
 
 def test_silinmis_eser_aramada_dizinde_ve_sayfasinda_yok(katalog: KatalogIstemcisi) -> None:

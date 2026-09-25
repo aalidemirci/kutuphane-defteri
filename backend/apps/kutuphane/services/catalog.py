@@ -17,6 +17,16 @@ Kurallar tek yerdedir; görünüm katmanı ORM'e doğrudan yazmaz:
 - **Yumuşak silinmiş eser ya da edinim kullanılamaz.** CLAUDE.md §3: `obj.fk`
   erişimi ve `select_related` silinmiş kaydı geri getirir, `PROTECT` yumuşak
   silmede hiç tetiklenmez — canlılık elle denetlenir.
+- **TMY 32/3 durdurması** (F9, §9-10): süren sayımda durdurma seçildiyse edinim
+  partisi açılmaz ve yeni nüsha kaydedilmez (`tmy_kapisi.ensure_open(EDINIM)`).
+  Kapı iki noktadadır — `create_acquisition` ve `validate_new_copy` — ve bütün
+  giriş yolları (tek nüsha, çoklu nüsha, bağış kataloglaması, içe aktarım, boş
+  etiket bağlama) bunlardan geçer. "Mevcut koleksiyon (programa aktarım)" yolu
+  taşınır girişi değildir ama durdurma süresince o da kapalıdır; iletisi TMY'ye
+  dayanmaz (F9 ekleri K4 — `tmy_kapisi.edinim_islemi`). Var olan edinimin ya da
+  nüshanın bilgilerini düzeltmek giriş değildir, kapıya takılmaz.
+- **Süren sayımdaki nüsha silinmez** (F9): anlık görüntü o nüshayı sayar; sayımın
+  onayında sayım fazlası olarak açılan nüsha da silinmez (tutanakta görünür).
 
 Durum (`Copy.status`) geçişleri BU MODÜLDE DEĞİLDİR: ödünç/iade F6'da,
 teslim ve onarım F7'de, kayıttan düşme F8-F9'da kendi servislerinden yürür.
@@ -29,7 +39,7 @@ from typing import Any
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from apps.kutuphane import keys, selectors_ayiklama
+from apps.kutuphane import keys, selectors_ayiklama, selectors_sayim
 from apps.kutuphane.models import (
     DIGITAL_RESOURCE_TYPES,
     TERMINAL_COPY_STATUSES,
@@ -43,7 +53,7 @@ from apps.kutuphane.models import (
     Section,
     Work,
 )
-from apps.kutuphane.services import commissions, numbering
+from apps.kutuphane.services import commissions, numbering, tmy_kapisi
 
 #: Nüshada servis dışından yazılamayacak alanlar (kimlik ve durum makinesi).
 PROTECTED_COPY_FIELDS: tuple[str, ...] = ("barcode", "accession_no", "status")
@@ -279,7 +289,11 @@ def validate_new_copy(*, work: Work, acquisition: Acquisition, **fields: Any) ->
     etiketten mi geldiği, nüsha kurallarını (dijital kaynak, ciltsiz süreli
     yayın, silinmiş eser/edinim/bölüm) değiştirmez. Kimlik alanları dışarıdan
     verilemez — ayrılmış numarayı da çağıran bu işlevden SONRA ekler.
+
+    TMY 32/3 durdurması sürerken yeni nüsha kaydedilmez (F9 — taşınır girişi; programa
+    aktarım ediniminde ileti TMY'ye dayanmaz — K4).
     """
+    tmy_kapisi.ensure_open(tmy_kapisi.edinim_islemi(getattr(acquisition, "method", "")))
     for alan in PROTECTED_COPY_FIELDS:
         if alan in fields:
             raise ValidationError(
@@ -351,6 +365,15 @@ DELETE_IN_WEEDING_MESSAGE = (
     "Ayıklama teklifine girmiş nüsha silinemez: teklif ve tutanakları nüshayı gösterir. "
     "Taslak teklifteyse önce kalemi çıkarın; kitap kayıttan düşülecekse ayıklama yolunu "
     "kullanın."
+)
+#: F9: süren sayımın anlık görüntüsündeki nüsha ve sayım fazlası olarak açılan nüsha.
+DELETE_IN_STOCKTAKE_MESSAGE = (
+    "Süren sayımda sayılan nüsha silinemez. Sayım onaylandıktan ya da iptal edildikten "
+    "sonra silin."
+)
+DELETE_STOCKTAKE_SURPLUS_MESSAGE = (
+    "Bu nüsha bir sayımın onayında sayım fazlası olarak kayda alındı; silinemez. Bilgilerini "
+    "düzeltin."
 )
 
 
@@ -476,6 +499,10 @@ def delete_copy(copy: Copy) -> None:
         raise ValidationError({"status": DELETE_RARE_LISTED_MESSAGE})
     if selectors_ayiklama.weeding_items_for_copy(copy.pk).exists():
         raise ValidationError({"status": DELETE_IN_WEEDING_MESSAGE})
+    if selectors_sayim.copy_in_live_stocktake(copy.pk):
+        raise ValidationError({"status": DELETE_IN_STOCKTAKE_MESSAGE})
+    if selectors_sayim.copy_created_by_stocktake(copy.pk):
+        raise ValidationError({"status": DELETE_STOCKTAKE_SURPLUS_MESSAGE})
     copy.delete()
 
 
@@ -507,7 +534,9 @@ def ensure_acquisition_decision(method: str, decision: CommissionDecision | None
 
 @transaction.atomic
 def create_acquisition(**fields: Any) -> Acquisition:
-    """Edinim partisi açar."""
+    """Edinim partisi açar (TMY 32/3 durdurması sürerken açılmaz — F9; programa aktarım
+    partisinde ileti TMY'ye dayanmaz — K4)."""
+    tmy_kapisi.ensure_open(tmy_kapisi.edinim_islemi(fields.get("method")))
     acquisition = Acquisition(**fields)
     ensure_acquisition_decision(acquisition.method, acquisition.commission_decision)
     acquisition.full_clean()

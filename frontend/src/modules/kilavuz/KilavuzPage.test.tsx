@@ -132,6 +132,8 @@ import {
   GOREVLI_GERI_ALMA_DUGMESI,
   GOREVLI_KATALOG_DUGMESI,
   GOREVLI_MASAYA_DON,
+  GOREVLI_SAYIM_BASLIGI,
+  GOREVLI_SAYIM_DUGMESI,
 } from "../kip/GorevliEkrani";
 import { GOREVLI_KISAYOLU } from "../kip/KipGostergesi";
 import { BAGIS_BIRIM_FIYAT_YARDIMI } from "../kutuphane/BagisPaneli";
@@ -204,6 +206,26 @@ import {
 } from "../ayiklama/api";
 import { HASAR_ONERILERI_BASLIGI, KAYIP_ONERILERI_BASLIGI } from "../ayiklama/TeklifDiyaloglari";
 import { TESPIT_YARDIMI, YAZ_DONEMI_UYARISI } from "../ayiklama/YilSonuRaporuPage";
+import {
+  EK_ADI,
+  HIZMET_ARASI,
+  ONAY_SONUCU_TR,
+  SAYIM_ADRESI,
+  SAYIM_BICIMI_TR,
+  SAYIM_TUTANAGI_ADI,
+  TMY_DURDURMASI,
+} from "../sayim/api";
+import { SAYIM_ADIMLARI } from "../sayim/SayimAyrintisi";
+import { IPTAL_BASLIGI, ONAY_BASLIGI, ONAY_DOGRULAMASI } from "../sayim/SayimDiyaloglari";
+import { FAZLA_BASLIGI, KALEMLER_BASLIGI, SONUCLAR_BASLIGI } from "../sayim/SayimKalemleri";
+import { PROGRAMA_AKTARIM_KAPALI, TMY_DURDURMA_KAPSAMAZ } from "../sayim/api";
+import { HIZMET_ARASI_SURUYOR } from "../sayim/SayimKarti";
+import { KURUL_SECIMI_BASLIGI } from "../sayim/SayimTaslagi";
+import {
+  IKINCI_SAYIM_BASLIGI,
+  OKUTMA_BASLIGI,
+  OKUTMA_KUTUSU as SAYIM_OKUTMA_KUTUSU,
+} from "../sayim/SayimOkutmasi";
 import KilavuzPage, { KILAVUZ_BOLUMLERI } from "./KilavuzPage";
 
 function renderPage() {
@@ -243,6 +265,7 @@ const BEKLENEN_BASLIKLAR = [
   "Yıl Sonu ve Yıl Başı",
   "Ayıklama ve Nadir Eserler",
   "Yıl Sonu Raporu",
+  "Sayım",
   "Katalog Excel Şablonu",
   "İçe Aktarma",
   "Yedek ve Güvenlik Dosyası",
@@ -1478,6 +1501,10 @@ describe("KilavuzPage — sözlük ve kalıntı denetimi", () => {
       /okuma raporu/iu,
       /faaliyet raporu/iu,
       /(?<!Seçim ve )Ayıklama Komisyon/iu,
+      // Sayım sözlüğünün "kullanılmaz" sütunu (docs/sozluk.md §1, F9): iki seçenek kendi
+      // adlarıyla anılır.
+      /sayım kilidi/iu,
+      /dondurma/iu,
     ]) {
       expect(metin).not.toMatch(yasak);
     }
@@ -2071,7 +2098,9 @@ describe("KilavuzPage — Sınıf Kitaplığına ve Öğretmene Teslim (F7)", ()
     expect(metin).toContain("Dayanıklı Taşınırlar Listesinin işlevini gördüğü notu basılır");
     expect(metin).toContain("(Taşınır Mal Yönetmeliği md. 23/6'ya kıyasen)");
     expect(screen.getByRole("heading", { level: 3, name: "Sayımdaki yeri" })).toBeInTheDocument();
-    expect(metin).toContain("Sayım ekranı sonraki bir sürümde gelecek");
+    // F9: sayım ekranı geldi; bölüm Sayım bölümüne gönderir.
+    expect(metin).not.toContain("sonraki bir sürümde");
+    expect(metin).toContain("(ayrıntı Sayım bölümünde)");
     expect(metin).toContain("sayım kurulu karar verir");
     expect(metin).toContain("(Taşınır Mal Yönetmeliği md. 32/5'e kıyasen)");
     expect(metin).toContain("TKYS'de Taşınır Teslim Belgesi düzenlendiyse");
@@ -2753,9 +2782,14 @@ describe("KilavuzPage — Seçim ve Ayıklama Komisyonu ve TMY yolları (F8)", (
       expect(metin).toContain(ad);
     }
     expect(metin).toContain("kutu yalnız hurdaya ayırma kalemi olan teklifte çıkar");
-    // Sayım ekranı henüz yok: kayıp nüshanın kaydını sayım kapatır, iki bölüm de bunu söyler.
-    expect(metin).toContain("sayım ekranı sonraki bir sürümde gelecek");
-    expect(bolumMetni("kayip-hasar")).toContain("sayım ekranı sonraki bir sürümde gelecek");
+    // F9: kayıp nüshanın kaydını sayım kapatır; iki bölüm de Sayım bölümüne gönderir.
+    expect(metin).toContain("Ayıklama Komisyonu kararı gerekmez (Sayım bölümü)");
+    expect(bolumMetni("kayip-hasar")).toContain(
+      "harcama yetkilisinin onayıyla kapanır (Sayım bölümü)",
+    );
+    for (const bolum of ["ayiklama", "kayip-hasar", "teslim"]) {
+      expect(bolumMetni(bolum)).not.toContain("sonraki bir sürümde");
+    }
   });
 
   it("nadir eserler: dört adım ekrandaki adlarla; nadir eser ayıklanmaz", () => {
@@ -2795,5 +2829,368 @@ describe("KilavuzPage — Yıl Sonu Raporu kişisizdir (F8)", () => {
     expect(metin).toContain("kişisel veri içermez");
     expect(metin).toContain("şube ile konu kırılımı yapmaz");
     expect(metin).toContain("öğrenci, öğretmen ya da personel adı yazmayın");
+  });
+});
+
+describe("KilavuzPage — Sayım (F9)", () => {
+  it("sayımı kurul yapar; ekran bağlantısı ve yönetici kipi", () => {
+    renderPage();
+    const metin = bolumMetni("sayim");
+
+    // 32/1'in ifadesi kısaltılmadan: "durum ve zamanlarda".
+    expect(metin).toContain(
+      "yıl sonlarında ve harcama yetkilisinin gerekli gördüğü durum ve zamanlarda",
+    );
+    expect(metin).toContain("(Taşınır Mal Yönetmeliği md. 32/1)");
+    expect(metin).toContain(
+      "taşınır kayıt yetkilisinin de katıldığı en az üç kişilik sayım kurulu",
+    );
+    expect(metin).toContain("(md. 32/2)");
+    // Madde 24 (25.09.2026 kullanıcı kararı): okutma görevli kipinde de açık; öbür işler yönetici.
+    expect(metin).toContain("Sayım ekranı yalnız yönetici kipinde açılır.");
+    expect(metin).toContain(
+      `Kitaplar görevli kipinde de okutulur: sayım sürerken Görevli Kipi sayfasındaki “${GOREVLI_SAYIM_DUGMESI}” düğmesi okutma bölümünü açar`,
+    );
+    expect(metin).toContain(
+      "sayım fazlasına karar vermek, tamamlamak ve onaylamak yönetici kipindedir",
+    );
+    expect(metin).toContain("“Sayım'ı aç”");
+    // Program sayımı mali yıla bağlar; ders yılı sonundaki Yıl Sonu ekranı sayım değildir.
+    expect(metin).toContain("“Mali yıl (isteğe bağlı)”");
+    expect(metin).toContain("o yılın 1 Ocak-31 Aralık dönemi için hesaplanır");
+    expect(metin).toContain("Ders yılı sonundaki Yıl Sonu ekranı sayım değildir.");
+    const bolum = document.getElementById("sayim");
+    const adresler = Array.from(bolum?.querySelectorAll("a") ?? []).map((a) =>
+      a.getAttribute("href"),
+    );
+    expect(adresler).toContain(SAYIM_ADRESI);
+  });
+
+  it("iki seçenek ayrı, ekrandaki adlarla; 32/3 alıntısı; iade hiç durmaz", () => {
+    renderPage();
+    const metin = bolumMetni("sayim");
+
+    expect(metin).toContain(`“${TMY_DURDURMASI}” isteğe bağlıdır`);
+    // Madde 27: hizmet arası yeni teslimi de durdurur.
+    expect(metin).toContain(
+      `“${HIZMET_ARASI}” okulun kararıdır ve yeni ödüncü ve yeni teslimi durdurur`,
+    );
+    expect(metin).toContain("birbirinden bağımsızdır ve Sayım tutanağında ayrı satırlarda yazılır");
+    expect(metin).toContain(
+      "“Sayım süresince, hizmetin aksamaması ve bozulabilecek nitelikteki taşınırlar için gerekli tedbirlerin alınması kaydıyla, taşınır giriş ve çıkışları sayım kurulunun talebi üzerine harcama yetkilisince durdurulabilir.”",
+    );
+    expect(metin).toContain("Taşınır Mal Yönetmeliği, md. 32/3");
+    expect(metin).toContain("“Kurulun talep tarihi”");
+    expect(metin).toContain("“Durdurma tarihi”");
+    expect(metin).toContain("“TMY 32/3 durdurması sürüyor” bandı");
+    // Masadaki ileti ekrandakiyle (ve sunucununkiyle) birebir.
+    expect(metin).toContain(`“${HIZMET_ARASI_SURUYOR}”`);
+    expect(metin).toContain("İade hiçbir durumda durmaz (Yönetmelik Md. 23/1-c)");
+    expect(metin).toContain("ancak harcama yetkilisinin onayıyla ya da sayımın iptaliyle kalkar");
+    // Hizmet arası TMY'ye dayandırılmaz; ödünç 23/4'e göre ödünç takip sistemiyle izlenir.
+    expect(metin).toContain("Taşınır Mal Yönetmeliğine dayanmaz");
+    expect(metin).toContain("(md. 23/4)");
+  });
+
+  it("ödünçteki ve teslimdeki kitap: kurulun üç seçimi ekrandaki adlarla ve dayanakları", () => {
+    renderPage();
+    const metin = bolumMetni("sayim");
+
+    for (const kod of ["COLLECT", "IN_PLACE", "BY_RECORD"] as const) {
+      expect(metin).toContain(`“${SAYIM_BICIMI_TR[kod]}”`);
+    }
+    expect(metin).toContain("md. 32/5'in birinci cümlesine kıyasen");
+    expect(metin).toContain("md. 32/5'in ikinci cümlesi");
+    expect(metin).toContain("Ödünçteki, öğretmendeki ya da onarımdaki kitap noksan sayılmaz");
+    expect(metin).toContain("Sınıf kitaplığında bulunmayan kitap noksandır");
+    // K3: sınıf kitaplığında "Kayda göre alınır" yok; toplanamayan yerinde aranır.
+    expect(metin).toContain(
+      "“Sınıf kitaplığına teslim edilen nüsha” için “Yerinde sayılır” ya da “Sayımdan önce toplanır”",
+    );
+    expect(metin).toContain("Sınıf kitaplığındaki kitap kayda göre alınmaz");
+    expect(metin).toContain("geri alınamayan kitap sınıf kitaplığında yerinde aranır");
+    // K2: onarımdaki nüsha için kurulun seçimi, kararın sözcükleriyle; dayanak uydurulmaz.
+    expect(metin).toContain(
+      "“Onarımdaki nüsha” için “Sayımdan önce geri alınır” ya da “Kayda göre alınır — onarımda”",
+    );
+    expect(metin).toContain(
+      "Taşınır Mal Yönetmeliğinde onarıma gönderilmiş taşınırın sayımına ilişkin doğrudan hüküm yoktur",
+    );
+    expect(metin).toContain("“Onarımdan geri alınamadı; kayda göre alındı.”");
+  });
+
+  it("adım adım: ekrandaki kart, kutu, düğme ve pencere adlarıyla", () => {
+    renderPage();
+    const metin = bolumMetni("sayim");
+
+    for (const ad of [
+      "“Yeni sayım”",
+      "“Sayım Kurulu”",
+      "“Kurul başkanı”",
+      "“Taşınır kayıt yetkilisi”",
+      "“Kurul üyeleri”",
+      "“Sayım Sırasındaki Seçenekler”",
+      `“${KURUL_SECIMI_BASLIGI}”`,
+      "“Kaydet”",
+      "“Sayımı başlat”",
+      `“${OKUTMA_BASLIGI}”`,
+      `“${SAYIM_OKUTMA_KUTUSU}”`,
+      "“Bölümlere Göre İlerleme”",
+      "“Sayımı tamamla”",
+      `“${IKINCI_SAYIM_BASLIGI}”`,
+      "“İkinci sayımı tamamla”",
+      "“Sayım Belgeleri”",
+      "“Harcama yetkilisinin onayını işle”",
+      "“Harcama yetkilisinin adı”",
+      "“Onay tarihi”",
+      "“Onaylanmadı”",
+      `“${ONAY_DOGRULAMASI}”`,
+      "“Onayla”",
+      `“${FAZLA_BASLIGI}”`,
+      "“Etiketsiz kitap ekle”",
+      "“Eseri seç”",
+      "“Kayda alınmayacak”",
+      "“Çıkar”",
+      "“İptal et”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+    // Adım rayının adları ekranınkiyle aynı (ikinci sayım ve onay adımları metinde geçer).
+    expect(SAYIM_ADIMLARI).toContain("İkinci sayım");
+    expect(metin).toContain("ikinci sayım başlar");
+    expect(metin).toContain("(md. 32/6)");
+  });
+
+  it("onayda: 32/7, durumu değişen düşülmez, hasar 27/1 ve 10/1-e, uzlaştırma, fazla 17/1", () => {
+    renderPage();
+    const metin = bolumMetni("sayim");
+
+    for (const durum of [
+      COPY_STATUS_TR.WITHDRAWN_MISSING,
+      COPY_STATUS_TR.WITHDRAWN_LOST,
+      COPY_STATUS_TR.WITHDRAWN_DAMAGED,
+    ]) {
+      expect(metin).toContain(`“${durum}”`);
+    }
+    expect(metin).toContain("(md. 32/7)");
+    expect(metin).toContain("Onayda her noksan yeniden denetlenir");
+    expect(metin).toContain("“Onayda durumu değişmişti — düşülmedi”");
+    expect(metin).toContain("(TMY 27/1)");
+    expect(metin).toContain("komisyon kurulmadan harcama yetkilisince onaylanabilir");
+    expect(metin).toContain("(TMY md. 10/1-e)");
+    expect(metin).toContain("Bu kitaplar ayıklamaya konmaz.");
+    expect(metin).toContain(
+      "“Yapılan sayım sonucunda fazla bulunan taşınırlar, Varlık İşlem Fişi düzenlenerek kayıtlara alınır.”",
+    );
+    expect(metin).toContain("numara asla yeniden kullanılmaz");
+  });
+
+  it("tutanak ve eki: ödünç alanın kimliği yazılmaz; cetvel TKYS'de düzenlenir; 34/1 alıntısı", () => {
+    renderPage();
+    const metin = bolumMetni("sayim");
+
+    expect(metin).toContain(SAYIM_TUTANAGI_ADI);
+    expect(metin).toContain("Ödünç alanın ve teslim alanın kimliği tutanağa yazılmaz");
+    expect(metin).toContain("(TMY md. 10/1-g, 32/8)");
+    expect(metin).toContain(`“${EK_ADI}”`);
+    expect(metin).toContain("programa aktarım ayrı satırda");
+    expect(metin).toContain(
+      "“Taşınır mal yönetim hesabında; önceki yıldan devredilen, yılı içinde giren, çıkan ve ertesi yıla devredilen taşınırlar ile yıl sonu sayımında bulunan fazla ve noksanlar gösterilir.”",
+    );
+    expect(metin).toContain("Program Taşınır Sayım ve Döküm Cetvelini düzenlemez");
+    expect(metin).toContain("“TASLAK” ibaresi");
+  });
+
+  it("cetvel: program düzenlemez; 32/9 kurul düzenler, kurul ve taşınır kayıt yetkilisi imzalar; 10/1-ğ", () => {
+    renderPage();
+    const metin = bolumMetni("sayim");
+
+    // Eski metin cetveli "taşınır kayıt yetkilisi düzenler" diyordu; 32/9 sayım kurulu der.
+    expect(metin).not.toContain("cetveli taşınır kayıt yetkilisi");
+    expect(metin).toContain(
+      "“Bu döküm Taşınır Sayım ve Döküm Cetveli değildir; resmî cetvel TKYS'de düzenlenir.” ibaresini taşır",
+    );
+    expect(metin).toContain("Ekteki sayılar TKYS'deki cetvele aktarılır.");
+    expect(metin).toContain(
+      "sağlandıktan sonra sayım kurulu düzenler; sayım kurulu ile taşınır kayıt yetkilisi imzalar (md. 32/9)",
+    );
+    expect(metin).toContain(
+      "Cetvelin “Gelecek Yıla Devir” sütunundaki miktar, yıl sonu Sayım Tutanağının “Sayımda Bulunan Miktar” sütunundakine eşit olmalıdır (md. 10/1-ğ).",
+    );
+    // Programın tutanağı nüsha düzeyindedir; resmî belgeler TKYS'de.
+    expect(metin).toContain("Sayım tutanağı kütüphane materyalinin nüsha düzeyindeki dökümüdür.");
+    expect(metin).toContain("Taşınır kodu düzeyindeki resmî Sayım Tutanağı (md. 10/1-g)");
+    expect(metin).toContain("İptal edilmiş sayımın tutanağı basılmaz.");
+    expect(metin).toContain("“Kayıp/hasar tutanağı” sütunu");
+  });
+
+  it("32/3 durdurması: kapsadığı ve kapsamadığı işler, kayıp kitap okutulur", () => {
+    renderPage();
+    const metin = bolumMetni("sayim");
+
+    expect(metin).toContain("üçü de zorunludur");
+    expect(metin).toContain(
+      "Durdurma sürerken şu işler yapılamaz: edinim ve yeni nüsha kaydı (Hızlı Kayıt, içe aktarma ve bağış kataloglaması dahil), kayıttan düşme ve devir",
+    );
+    expect(metin).toContain("kayıp bildirimi ve kayıp/hasar dosyası çözümü");
+    // Kapsam dışı: kayıpta bulunma (K1) ve bedel adımları, öneri yazmayan hasar çözümleri,
+    // onarım, teslim, ödünç, iade.
+    expect(metin).toContain(
+      "Durmayanlar: kayıp dosyasında kitabın bulunması (“Bulundu”, “Bulundu (bedel teslim alınmıştı)”) ve bedelin iki adımı (“Bedel belirlendi”, “Bedel teslim alındı”)",
+    );
+    expect(metin).toContain(
+      "hasar dosyasında kayıttan düşme önerisi yazmayan çözümler (“Onarıldı”, “Aynısı temin edildi”, “Bedelle aynısı alındı”)",
+    );
+    expect(metin).toContain("onarıma gönderme ve onarımdan dönüş; teslim ve teslimden geri alma.");
+    // F9 düzeltme turu: durdurma ödüncü ve iadeyi KAPSAMAZ (hizmet arası seçildiyse yeni ödünç
+    // ve teslim o yüzden durur — madde 27); "ödünç açıktır" koşulsuz yazılmaz.
+    expect(metin).toContain(
+      `${TMY_DURDURMA_KAPSAMAZ} Yeni ödünç ve teslim yalnız “Sayım için hizmet arası” seçildiyse durur.`,
+    );
+    // K1 (25.09.2026): kayıp dosyası durdurma sürerken de "Bulundu" ile kapatılır.
+    expect(metin).toContain("kayıp dosyası durdurma sürerken de “Bulundu” ile kapatılır");
+    expect(metin).not.toContain("kayıp dosyası “Bulundu” ile kapatılamaz");
+    // Tamamlandıktan sonra getirilen kayıp kitabın yolu (okutma kapanmıştır).
+    expect(metin).toContain(
+      "Sayım tamamlandıktan sonra okutma kapanır: o arada getirilen kayıp kitap için onaydan önce kayıp dosyasında “Bulundu”yu seçin",
+    );
+    expect(metin).toContain("Hızlı Kayıt'ta “Nüshayı aç” düğmesi kapalıdır");
+    // K4: programa aktarım kapalı ama iletisi TMY'ye dayanmaz (sunucunun iletisi birebir).
+    expect(metin).toContain(`“${PROGRAMA_AKTARIM_KAPALI}”`);
+    expect(metin).toContain("bant “Sayım sürüyor” der");
+  });
+
+  it("hizmet arası TMY'ye dayandırılmaz: 13/1 ve 23/4; tutanakta okul kararı, en fazla 32/3 ikinci cümle", () => {
+    renderPage();
+    const metin = bolumMetni("sayim");
+
+    expect(metin).toContain(
+      "ödünç, yönetmeliğin saydığı giriş ve çıkış hâllerinden değildir (md. 13/1)",
+    );
+    expect(metin).toContain(
+      "Taşınır Teslim Belgesi düzenlenmeden ödünç takip sistemiyle izlenir (md. 23/4)",
+    );
+    expect(metin).toContain("Tutanağın “Dayanak” sütununda “Okul kararı” yazar");
+    expect(metin).toContain("(md. 32/3, ikinci cümle)");
+    expect(metin).toContain("“Okul kararı (isteğe bağlı)”");
+    expect(metin).toContain("Hizmet arası teslimden geri almayı durdurmaz.");
+    expect(metin).toContain("Yeni Teslim'de “Teslim et” kapalıdır");
+    // Madde 26: şerit iki kipte de açılışta çıkar (görevli kipinde ilk retten ÖNCE).
+    expect(metin).toContain("şerit iki kipte de ekran açılırken çıkar");
+    expect(metin).toContain("iki seçenekte de ve sayım tamamlandıktan sonra da iade alınır");
+    expect(metin).toContain("“Sürüyor”");
+  });
+
+  it("kurulun seçicileri ekrandaki adlarla; toplanamayan kitap işaretlenir", () => {
+    renderPage();
+    const metin = bolumMetni("sayim");
+
+    for (const seciciAdi of [
+      "“Ödünçteki nüsha”",
+      "“Öğretmene teslim edilen nüsha”",
+      "“Sınıf kitaplığına teslim edilen nüsha”",
+    ]) {
+      expect(metin).toContain(seciciAdi);
+    }
+    expect(metin).toContain("“Toplanamadı; kayda göre alındı.”");
+    expect(metin).toContain("teslimi “Kayba dönüştü” ile kapanır");
+    expect(metin).toContain("Tutanak ödünçteki ve teslimdeki kitapları yalnız sayıyla gösterir.");
+  });
+
+  it("onay: 10/1-e takdir diliyle, 27/3; uzlaştırma ve fazlanın değeri; ekran ve pencere adları", () => {
+    renderPage();
+    const metin = bolumMetni("sayim");
+
+    // Tasarım F8 ekleri 27: 10/1-e kesin hüküm gibi yazılmaz.
+    expect(metin).toContain("o belge sayılıp sayılmayacağını harcama yetkilisi değerlendirir");
+    expect(metin).not.toContain("komisyon kurulmadan harcama yetkilisince onaylanır");
+    expect(metin).toContain("(md. 27/3)");
+    expect(metin).toContain("Onay tek işlemdir. Önce seçilen durdurma ve hizmet arası kalkar");
+    expect(metin).toContain(`“${ONAY_SONUCU_TR.RECONCILED}”`);
+    expect(metin).toContain("“Bulundu (bedel teslim alınmıştı)”");
+    expect(metin).toContain("(md. 17/1, ikinci cümle); program değer yazmaz");
+    expect(metin).toContain("Önerisi olan kitap sayımda bulunamazsa noksandır.");
+    expect(metin).toContain("Kayıttan düşülen kitap katalogdan ve Ağ Kataloğundan çıkar");
+    for (const ad of [
+      `“${ONAY_BASLIGI}”`,
+      `“${IPTAL_BASLIGI}”`,
+      "“İptal gerekçesi (isteğe bağlı)”",
+      "“Sayım başlatılsın mı?”",
+      "“Süren sayımı aç”",
+      "“Taslağı sil”",
+      `“${SONUCLAR_BASLIGI}”`,
+      `“${KALEMLER_BASLIGI}”`,
+      "“Bu kitap bu sayımda zaten okutuldu.”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+  });
+
+  it("sayım bölümünde imha ve TKYS'nin yerine geçme dili yok; hasar önerisi için ipucu", () => {
+    renderPage();
+    const metin = bolumMetni("sayim");
+
+    expect(metin).not.toMatch(/[iİ]mha/u);
+    expect(metin).not.toMatch(/yerine geç/u);
+    expect(metin).toContain(
+      "kayıttan düşülmesini istediğiniz hasarlı kitabın dosyasını “Kayıttan düşme önerildi” ile kapatın",
+    );
+    expect(metin).toContain("durdurma sürerken kayıttan düşme önerisi yazılamaz");
+  });
+});
+
+describe("KilavuzPage — F9 ile değişen eski bölümler", () => {
+  it("sayımda kayıttan düşülen nüshanın açık dosyası: bulunma yok, temin ve bedel yeni nüsha", () => {
+    renderPage();
+    const kayip = bolumMetni("kayip-hasar");
+    expect(kayip).toContain("Dosya açıkken nüsha sayımda kayıttan düşüldüyse");
+    expect(kayip).toContain("pencerede bulunma çözümü yoktur");
+    expect(kayip).toContain("“Nüsha ekle” diyerek yeni nüsha olarak kaydedilir");
+  });
+
+  it("öbür bölümler iki seçeneği ekrandaki adlarıyla anar ve Sayım bölümüne gönderir", () => {
+    renderPage();
+
+    // Dolaşım Masası: hizmet arası şeridi ekrandakiyle (ve sunucununkiyle) birebir; iade açık.
+    const dolasim = bolumMetni("dolasim");
+    expect(dolasim).toContain(`“${HIZMET_ARASI_SURUYOR}” şeridi durur`);
+    expect(dolasim).toContain("sayım sürerken gelen kitap da");
+    expect(dolasim).toContain("kart okutma durdurulmuşken gelen kitap da iade edilir");
+    // Kipler (madde 24): görevli süren sayımda okutur; sayımın öbür işleri yönetici kipindedir.
+    const kipler = bolumMetni("kipler");
+    expect(kipler).toContain(`“${GOREVLI_SAYIM_DUGMESI}” düğmesi de durur`);
+    expect(kipler).toContain(`açılan “${GOREVLI_SAYIM_BASLIGI}” bölümünde`);
+    expect(kipler).toContain("sayımın okutma dışındaki bütün işleri");
+    // Dolaşım (madde 26, 27): şerit iki kipte de masa açılırken çıkar; teslim de durur.
+    expect(dolasim).toContain("iki kipte de masa açılırken çıkar");
+    // Teslimler (madde 27; K3): hizmet arası yeni teslimi durdurur; sınıf kitaplığı kayda göre
+    // alınmaz.
+    const teslimMetni = bolumMetni("teslim");
+    expect(teslimMetni).toContain("sayım süresince yeni teslim yapılmaz");
+    expect(teslimMetni).toContain("Sınıf kitaplığındaki kitap kayda göre alınmaz.");
+    // İçe Aktarma (K4): "Sayım sürüyor" bandı; ileti TMY'ye dayanmaz.
+    const aktarma = bolumMetni("ice-aktarma");
+    expect(aktarma).toContain("“Sayım sürüyor” bandı");
+    expect(aktarma).toContain(`“${PROGRAMA_AKTARIM_KAPALI}”`);
+    // Katalog, Kayıp ve Hasar, Ayıklama: TMY 32/3 durdurmasının bandı.
+    for (const bolum of ["katalog", "kayip-hasar", "ayiklama"]) {
+      const metin = bolumMetni(bolum);
+      expect(metin).toContain("“TMY 32/3 durdurması sürüyor” bandı");
+      expect(metin).toContain("Sayım bölümü");
+      expect(metin).not.toMatch(/sayım kilidi|dondurma/iu);
+    }
+    expect(bolumMetni("katalog")).toContain(
+      "Sayım fazlası kitaplar sayım onaylanınca kendiliğinden bir “Sayım fazlası (kayda giriş)” edinimiyle kayda girer",
+    );
+    // K1 (25.09.2026): kayıp dosyasında bulunma da durdurmanın kapsamında değildir.
+    expect(bolumMetni("kayip-hasar")).toContain(
+      "kayıp dosyasında kitabın bulunması (“Bulundu”, “Bulundu (bedel teslim alınmıştı)”) ve bedelin iki adımı, hasar dosyasında kayıttan düşme önerisi yazmayan çözümler",
+    );
+    expect(bolumMetni("kayip-hasar")).toContain(
+      "onaydan önce dosyada “Bulundu”yu seçin; onay kalemi yeniden denetler",
+    );
+    expect(bolumMetni("ayiklama")).toContain(
+      "Sayımda TMY 32/3 durdurması sürerken teklif uygulanamaz",
+    );
   });
 });

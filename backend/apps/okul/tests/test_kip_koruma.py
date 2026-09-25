@@ -116,10 +116,15 @@ def test_izin_listesi_anlik_goruntuyle_sabittir() -> None:
         # Nüsha durum sorgusu ve kartla üye çözme (yalnız ad + kalan hak).
         ("library-desk-copy-status", "GET"),
         ("library-desk-member", "POST"),
+        # F9 (madde 26): masanın kişisiz durumu — hizmet arası ve süren sayımın okutması.
+        ("library-desk-state", "GET"),
         # Etiket doğrulama okutması (F4, kullanıcı kararı 24.09.2026). Yanıt görevli
         # kipinde daralır; öbür etiket uçları kapalıdır (test_etiket_kuyrugu_uclari.py).
         ("library-label-verify", "POST"),
         ("library-return", "POST"),
+        # F9 sayım okutması (madde 24, kullanıcı kararı 25.09.2026). Yanıt görevli kipinde
+        # daralır; öbür sayım uçları kapalıdır (test_sayim_uclari.py).
+        ("library-stocktake-scan", "POST"),
         ("library-work-detail", "GET"),
         ("library-work-list", "GET"),
         ("security-lock", "POST"),
@@ -140,6 +145,7 @@ def test_parametre_kurallari_anlik_goruntuyle_sabittir() -> None:
         ),
         ("library-desk-member", "POST"): govdede_yok("membership_id"),
         ("library-desk-copy-status", "GET"): yalniz_sorgu("barcode"),
+        ("library-desk-state", "GET"): yalniz_sorgu(),
         ("library-work-list", "GET"): yalniz_sorgu(
             "q", "order", "resource_type", "section", "limit", "offset"
         ),

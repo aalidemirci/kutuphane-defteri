@@ -17,7 +17,11 @@ Alt modüller (OYS'nin tek `services.py` dosyası bölündü — tasarım §12):
 - `yonetici_kipi` (F6): "yalnız yönetici kipinde" işlerin servis katmanı kapısı;
 - `weeding` (F8): ayıklama teklifi — E7 yolu, komisyon kararı, harcama yetkilisi onayı;
 - `rare_works` (F8): el yazması ve nadir eserler listesi (Md. 12/2);
-- `annual_review` (F8): yıl sonu kütüphane raporu (Md. 12/1, E9 — kişisiz).
+- `annual_review` (F8): yıl sonu kütüphane raporu (Md. 12/1, E9 — kişisiz);
+- `stocktake` (F9): sayım — anlık görüntü, okutma, 32/6 ikinci sayım, onay (32/7 noksan,
+  27/1 hasar, TMY 17 fazla), iptal; iki ayrı seçenek (TMY 32/3 durdurması — kapısı
+  `tmy_kapisi`; sayım için hizmet arası — kapısı `circulation.checkout`). İade hiçbir
+  durumda kilitlenmez.
 
 Hatalar `django.core.exceptions.ValidationError` ile yükseltilir; DRF katmanında
 `shared.exceptions.kd_exception_handler` bunu 400'e ve `{code, message, fields}`

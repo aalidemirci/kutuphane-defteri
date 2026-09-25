@@ -39,6 +39,7 @@ import DosyaAyrintisi, {
   KAYITTAN_DUSULMUS_NOTU,
   OKULUN_ACIK_ISI_NOTU,
   ONERI_GERI_ALMA_NOTU,
+  SAYIMDA_DUSULMUS_NOTU,
   bedelMetni,
   cozumSonucu,
 } from "./DosyaAyrintisi";
@@ -310,6 +311,25 @@ describe("DosyaAyrintisi — bedelden sonra bulunan kitap (25.09.2026 kullanıc�
     expect(within(bolum).getByText(KAYITTAN_DUSULMUS_NOTU)).toBeInTheDocument();
     expect(KAYITTAN_DUSULMUS_NOTU).toContain("“Sayım fazlası (kayda giriş)”");
     expect(within(bolum).getByText(BEDEL_IADESI_NOTU)).toBeInTheDocument();
+  });
+
+  it("F9: açık dosyanın nüshası sayımda kayıttan düşüldüyse bulunan kitabın yolu yazılır", () => {
+    // Sunucu bulunma çözümlerini listeden çıkarır; temin ve bedel yolları kalır.
+    ciz(
+      dosyaVerisi({
+        is_open: true,
+        copy_status: "WITHDRAWN_LOST",
+        copy_status_display: "Kayıp (kayıttan düşüldü)",
+        allowed_resolutions: [{ value: "REPLACED_SAME", label: "Aynısı temin edildi" }],
+      }),
+    );
+    const bolum = screen.getByRole("region", { name: "Bulunan kitap" });
+    expect(within(bolum).getByText(SAYIMDA_DUSULMUS_NOTU)).toBeInTheDocument();
+    expect(SAYIMDA_DUSULMUS_NOTU).toContain("“Sayım fazlası (kayda giriş)”");
+    expect(SAYIMDA_DUSULMUS_NOTU).toContain("“Nüsha ekle”");
+    const cozum = screen.getByRole("region", { name: "Çözüm" });
+    expect(within(cozum).queryByRole("button", { name: "Bulundu" })).toBeNull();
+    expect(within(cozum).getByRole("button", { name: "Aynısı temin edildi" })).toBeInTheDocument();
   });
 
   it("bedelden sonra bulunmuş dosya bedelin iadesinin okulun kararı olduğunu söyler", () => {

@@ -57,8 +57,10 @@ KURALLAR (her biri testle kilitli — `tests/test_kayip_hasar.py`):
 7. **TMY 32/3 durdurması** kayıp bildirimini ve kayıp dosyası çözümünü kapsar
    (§9-10, D4): iki yol `services.tmy_kapisi.ensure_open`'dan geçer (F7'de boş,
    F9 doldurur). Hangi çözümün kapsamda olduğunu `tmy_kapisi.dosya_cozumu_kapsamda_mi`
-   söyler (onarım ve iki bedel adımı kapsam dışıdır — bedelin belirlenmesi ve
-   teslim alınması TMY'de giriş-çıkış değildir).
+   söyler: onarım, iki bedel adımı ve kayıp dosyasında kitabın bulunması ("Bulundu",
+   "Bulundu (bedel teslim alınmıştı)") kapsam dışıdır — bedelin belirlenmesi ve teslim
+   alınması TMY'de giriş-çıkış değildir; kayıptaki kitabın rafa dönüşü de değildir,
+   nüsha kayıttan düşülmediyse kayıtta zaten vardır (F9 ekleri K1, 25.09.2026).
 8. Nüsha başına tek AÇIK dosya ve tek açık onarım (DB kısıtları + servis
    iletisi). Dosya işlemleri yalnız yönetici kipindedir (§4.4 "kayıp dosyaları"
    görevliye kapalı); kişi yazan işlemler parola kurulu değilse 409 alır.
@@ -87,6 +89,7 @@ from apps.kutuphane.models import (
     OPEN_CASE_RESOLUTIONS,
     PRICE_RECEIVED_RESOLUTIONS,
     PRICE_RESOLUTIONS,
+    SHELF_RETURN_RESOLUTIONS,
     TERMINAL_COPY_STATUSES,
     WRITE_OFF_RESOLUTIONS,
     CaseResolution,
@@ -211,11 +214,30 @@ def allowed_resolutions(
       alınmıştı)" vardır; üçü de kademeden bağımsızdır: bedel alınmıştır, okulun
       açık işi kademe sonradan değişse de kapanabilmelidir.
     - "Kayba dönüştü" hiçbir zaman seçilemez (kayıp bildiriminin işidir).
+    - **Nüsha sayımda kayıttan düşülmüşse** (F9 — noksan 32/7 ya da hasar 27/1):
+      açık dosyada bulunma yolları ("Bulundu", "Bulundu (bedel teslim alınmıştı)")
+      kalkar — bulunan kitap "Sayım fazlası (kayda giriş)" edinimiyle YENİ nüsha
+      olarak alınır (TMY 17'ye kıyasen). Temin ve bedel yolları açık kalır: Md. 19
+      yükümlülüğü TMY çıkışından bağımsızdır; temin edilen kitap yeni nüsha olarak
+      kayda alınır (`_nushayi_rafa_dondur` eski nüshaya dokunmaz).
     """
     if not case.is_open:
         if oneri_geri_alinabilir(case):
             return (ONERIDEN_BULUNMA[case.resolution],)
         return ()
+    if case.copy.status in TERMINAL_COPY_STATUSES:
+        return tuple(
+            cozum
+            for cozum in allowed_resolutions_for_open(case, price_options=price_options)
+            if cozum not in FOUND_RESOLUTIONS
+        )
+    return allowed_resolutions_for_open(case, price_options=price_options)
+
+
+def allowed_resolutions_for_open(
+    case: LossDamageCase, *, price_options: bool | None = None
+) -> tuple[str, ...]:
+    """AÇIK dosyanın seçilebilir çözümleri (nüshanın kayıt durumuna bakmadan)."""
     if case.resolution == CaseResolution.PRICE_RECEIVED:
         kapanis: tuple[str, ...] = (
             CaseResolution.CLOSED_SAME_REPURCHASED,
@@ -473,7 +495,13 @@ def _nushayi_rafa_dondur(dosya: LossDamageCase) -> None:
 
     Hasar dosyası nüshayı dolaşımdan çıkarmadığı için hasarda nüsha rafta, ödünçte
     ya da teslimde olabilir: yalnız onarımdaysa (onarım kaydı kapanarak) rafa döner.
+
+    Nüsha sayımda kayıttan düşülmüşse (F9) eski kayda DOKUNULMAZ: temin edilen ya da
+    bedelle alınan kitap yeni nüsha olarak kayda alınır; terminal kayıt terminal kalır.
     """
+    guncel_durum = Copy.all_objects.filter(pk=dosya.copy_id).values_list("status", flat=True)
+    if next(iter(guncel_durum), None) in TERMINAL_COPY_STATUSES:
+        return
     if dosya.case_type == CaseType.LOST:
         if not nusha_durumu.gecir(dosya.copy_id, eski=CopyStatus.LOST, yeni=CopyStatus.AVAILABLE):
             raise ValidationError(FOUND_NOT_LOST_MESSAGE)
@@ -550,11 +578,7 @@ def resolve_case(
         raise ValidationError({"market_price": PRICE_REQUIRED_MESSAGE})
     if resolution == CaseResolution.PRICE_RECEIVED:
         dosya.price_received_at = simdi
-    if resolution in (
-        *FOUND_RESOLUTIONS,
-        CaseResolution.REPLACED_SAME,
-        CaseResolution.CLOSED_SAME_REPURCHASED,
-    ):
+    if resolution in SHELF_RETURN_RESOLUTIONS:
         _nushayi_rafa_dondur(dosya)
     elif resolution == CaseResolution.REPAIRED:
         _onarimi_kapat(dosya.copy_id)

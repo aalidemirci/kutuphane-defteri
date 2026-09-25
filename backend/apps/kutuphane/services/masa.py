@@ -52,7 +52,7 @@ from rest_framework import status
 from rest_framework.exceptions import APIException
 
 from apps.kutuphane import barcode as barcode_module
-from apps.kutuphane import selectors_dolasim
+from apps.kutuphane import selectors_dolasim, selectors_sayim
 from apps.kutuphane.barcode import ScanKind
 from apps.kutuphane.models import (
     CardlessReason,
@@ -63,6 +63,7 @@ from apps.kutuphane.models import (
     LoanStatus,
     Membership,
     OverrideReason,
+    StockTakeStatus,
 )
 from apps.kutuphane.selectors_dolasim import REVOKED_CARD_MESSAGE, CardLookup, CardLookupState
 from apps.kutuphane.serializers_masa import (
@@ -72,6 +73,8 @@ from apps.kutuphane.serializers_masa import (
     ADMIN_MEMBER_FIELDS,
     ADMIN_RETURN_FIELDS,
     ADMIN_STATUS_FIELDS,
+    DESK_STATE_FIELDS,
+    DESK_STOCKTAKE_FIELDS,
     OPEN_LOAN_FIELDS,
     RETURN_LOAN_FIELDS,
     STAFF_CHECKOUT_FIELDS,
@@ -563,6 +566,25 @@ def iade_okut(value: object, *, staff: bool) -> dict[str, Any]:
     if not staff and iade.overdue_days > 0:
         ileti = f"{ileti} {iade.overdue_days} gün gecikti."
     return iade_yaniti(IADE_ALINDI, guncel(), ileti, staff=staff, iade=iade)
+
+
+def masa_durumu() -> dict[str, Any]:
+    """Masanın ve görevli ekranının KİŞİSİZ durumu (F9 — madde 24, 26; iki kipte aynı).
+
+    - `service_pause`: sayım için hizmet arası sürüyor mu (yeni ödünç ve teslim durur;
+      şerit açılışta çizilir — görevli kipinde de, ilk retten önce);
+    - `stocktake_scan`: okutması açık süren sayım (`{id, round}`) ya da `None`. Görevli
+      ekranı "Sayım okutmasını aç" düğmesini buna göre gösterir. Taslak, tamamlanmış ve
+      onaylanmış sayım okutulmaz.
+    """
+    canli = selectors_sayim.locking_stocktake()
+    okutma = None
+    if canli is not None and canli.status == StockTakeStatus.IN_PROGRESS:
+        okutma = _sec({"id": canli.pk, "round": canli.round}, DESK_STOCKTAKE_FIELDS)
+    return _sec(
+        {"service_pause": selectors_sayim.service_pause_active(), "stocktake_scan": okutma},
+        DESK_STATE_FIELDS,
+    )
 
 
 def durum_sorgula(value: object, *, staff: bool) -> dict[str, Any]:

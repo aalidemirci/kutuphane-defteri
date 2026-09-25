@@ -7,6 +7,7 @@
 | `POST library/return/` | `library-return` | AÇIK — barkodla iade |
 | `GET library/desk/copy-status/?barcode=` | `library-desk-copy-status` | AÇIK — nüsha durum sorgusu |
 | `POST library/desk/card-unlock/` | `library-desk-card-unlock` | AÇIK — gövdede yönetici parolası (GA-7) |
+| `GET library/desk/state/` | `library-desk-state` | AÇIK — kişisiz masa durumu (F9) |
 
 Uç ve PARAMETRE kuralı ara katmandadır (`apps/okul/kip_izinleri.py`); görünüm
 aynı kuralı bir kez daha söyler (savunma derinliği): gerekçeli istisna, kartsız
@@ -173,6 +174,21 @@ class MasaNushaDurumuView(APIView):
         sorgu = MasaKodSerializer(data=request.query_params)
         sorgu.is_valid(raise_exception=True)
         return Response(masa.durum_sorgula(sorgu.validated_data["barcode"], staff=_gorevli()))
+
+
+class MasaDurumuView(APIView):
+    """`GET library/desk/state/` — masanın ve görevli ekranının KİŞİSİZ durumu (F9).
+
+    `{service_pause, stocktake_scan}`: sayım için hizmet arası sürüyor mu (masa şeridi
+    açılışta çizilir — madde 26, 25.09.2026 kullanıcı kararı) ve okutması açık, süren bir
+    sayım var mı (`{id, round}` ya da `null` — görevli ekranının "Sayım okutmasını aç"
+    düğmesi; madde 24). Sayımın durumu, seçenekleri, ilerlemesi ve kurulu YOKTUR
+    (sayım uçları yönetici işidir). Görevli kipinde de açıktır; kullanıcı eylemi değildir
+    (ön yüz `X-KD-Etkinlik` göndermez).
+    """
+
+    def get(self, request: Request) -> Response:
+        return Response(masa.masa_durumu())
 
 
 class MasaKartKilidiView(_MasaGorunumu):

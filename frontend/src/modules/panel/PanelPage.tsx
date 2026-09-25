@@ -18,6 +18,7 @@ import HubFeatureCard from "../../ui/HubFeatureCard";
 import { useSnackbar } from "../../ui/SnackbarProvider";
 import KatalogSablonuKarti from "../kutuphane/KatalogSablonuKarti";
 import { okulApi } from "../okul/api";
+import SayimKarti from "../sayim/SayimKarti";
 import type { RoadmapManualItem, SetupStatus } from "../okul/api";
 import DolasimKartlari from "../uyelik/DolasimKartlari";
 import { ILISIK_LISTESI_ADRESI, ILISIK_LISTESI_BASLIGI } from "../yil/api";
@@ -93,6 +94,9 @@ export default function PanelPage() {
       <AyrilisHavuzuKarti />
       {/* F7: yıl sonu (Mayıs-Haziran) ve yıl başı pencerelerinde kart; yalnız sayı (§8.3). */}
       <YilAkisiKartlari />
+      {/* F9: canlı sayım varken "Sayım" kartı — durumu, kişisiz ilerleme ve süren seçenekler
+          (TMY 32/3 durdurması, sayım için hizmet arası) ayrı satırlarda; iade her zaman açık. */}
+      <SayimKarti />
       <div className="grid gap-4 sm:grid-cols-2">
         <HubFeatureCard
           to="/kisiler"

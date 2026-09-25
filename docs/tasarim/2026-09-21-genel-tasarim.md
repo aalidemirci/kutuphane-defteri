@@ -903,7 +903,7 @@ kuralıyla her zaman kapalıdır; `Student` ve `Personnel` **ayrılış havuzu**
 | `WeedingBatch`/`WeedingItem` | + kalem silme · + teklifi geri çekme · + **TMY yol eşlemesi** (§10-E7) · + 28/1 komisyon adları (şifreli) · + harcama yetkilisi onayı · `approved_by_name` şifreli |
 | `AnnualLibraryReview` | E9 bölümleri (§10) |
 | `RareWorksSubmission` | nadir nüsha denetimi + komisyon kararı bağı |
-| `StockTake`/`StockTakeItem` | Başlangıçta **anlık görüntü** alınır · iki ayrı seçenek (§9-10): (1) **TMY 32/3 durdurması** (kurul talebi + harcama yetkilisi adı ve tarihi) yalnız edinim, kayıttan düşme, devir ve kayıp dosyası çözümünü kapsar; (2) **"sayım için hizmet arası"** yeni ödüncü durdurur ve okul kararıdır · seçilen kilitler APPROVED ya da iptale kadar sürer · onayda her MISSING kalem yeniden doğrulanır · iptal yolu · LOST nüsha uzlaştırma · ödünçteki nüsha için kurul seçimi (sayımdan önce toplansın mı, kayda göre mi alınsın) · `surplus_barcode` · kurul adları ve onaylayan şifreli |
+| `StockTake`/`StockTakeItem` | Başlangıçta **anlık görüntü** alınır · iki ayrı seçenek (§9-10): (1) **TMY 32/3 durdurması** (kurul talebi + harcama yetkilisi adı ve tarihi) yalnız edinim, kayıttan düşme, devir ve kayıp dosyası çözümünü kapsar; (2) **"sayım için hizmet arası"** yeni ödüncü ve yeni teslimi durdurur ve okul kararıdır (F9 ekleri 27) · seçilen kilitler APPROVED ya da iptale kadar sürer · onayda her MISSING kalem yeniden doğrulanır · iptal yolu · LOST nüsha uzlaştırma · ödünçteki nüsha için kurul seçimi (sayımdan önce toplansın mı, kayda göre mi alınsın) · `surplus_barcode` · kurul adları ve onaylayan şifreli |
 | **Yeni** `KatalogAyari` (pk=1) | açık/kapalı, port, dinleme kipi, seçili IP, son afiş IP'si, uyku engelleme, vitrin, `/konular` açık mı. **Port ve IP'nin tek kaynağıdır** |
 | **Yeni** `kd_katalog_populer` | (eser, pencere, sıra), eşikli, kapanmış pencereler dondurulmuş |
 | **Yeni** `BelgeIzi` | Resmî belgenin kişisiz izi: tür, tarih/sayı, sha256. Anonimleştirmeden sonra yeniden basımda "Anonimleştirilmiş kopya — ıslak imzalı asıl nüsha okul arşivindedir" ibaresi (KM-12) |
@@ -1369,13 +1369,15 @@ kitap perakendecileri (API yok, kullanım koşulları doğrulanamadı).
     başlatılırken seçilir, tutanakta **ayrı satırlarda** görünür:
     - **TMY 32/3 durdurması (isteğe bağlı):** kurul talebi ile harcama yetkilisinin adı
       ve tarihi zorunludur. Kapsadığı işlemler: edinim ve yeni nüsha, kayıttan düşme,
-      devir, kayıp dosyası çözümü. Bunlar TMY anlamında giriş ve çıkıştır.
-    - **"Sayım için hizmet arası" (okul kararı):** yalnız yeni ödüncü durdurur. TMY'ye
-      dayandırılmaz, çünkü ödünç ve iade TMY'de giriş-çıkış değildir (13/1, 23/4).
-      32/3 durdurmayı ayrıca "hizmetin aksamaması kaydıyla" tanır. Dayanak olarak en
-      fazla 32/3'ün ikinci cümlesi (kurulun önlem alma sorumluluğu) anılabilir.
-    - **İade hiçbir zaman kilitlenmez** (Md. 23/1-c). Sayım sırasında iade edilen nüsha
-      o turda "bulundu" sayılır.
+      devir, kayıp dosyası çözümü (kitabın bulunması hariç — F9 ekleri K1). Bunlar TMY
+      anlamında giriş ve çıkıştır. Programa aktarım da durur ama TMY'ye dayandırılmaz (K4).
+    - **"Sayım için hizmet arası" (okul kararı):** yeni ödüncü ve yeni teslimi durdurur
+      (teslim — F9 ekleri madde 27, 25.09.2026 kullanıcı kararı). TMY'ye dayandırılmaz,
+      çünkü ödünç ve iade TMY'de giriş-çıkış değildir (13/1, 23/4). 32/3 durdurmayı
+      ayrıca "hizmetin aksamaması kaydıyla" tanır. Dayanak olarak en fazla 32/3'ün
+      ikinci cümlesi (kurulun önlem alma sorumluluğu) anılabilir.
+    - **İade ve teslimden geri alma hiçbir zaman kilitlenmez** (Md. 23/1-c). Sayım
+      sırasında iade edilen ya da geri alınan nüsha o turda "bulundu" sayılır.
     - Seçilen kilitler onaya ya da iptale kadar sürer. Onayda MISSING kalemler yeniden
       doğrulanır (D17).
 11. **Toplu teslim (U11).**
@@ -1385,8 +1387,9 @@ kitap perakendecileri (API yok, kullanım koşulları doğrulanamadı).
     - Sayımdaki yeri (AT-1). Sayım kurulu teslimdeki nüshanın yerinde mi sayılacağını,
       kayda göre mi alınacağını seçer:
       - **Şube (sınıf kitaplığı) teslimi:** 32/5'in birinci cümlesine kıyasen ortak
-        kullanım alanı gibi yerinde sayılır. Teslim listesi (E15) Dayanıklı Taşınırlar
-        Listesi işlevini görür (23/6'ya kıyasen).
+        kullanım alanı gibi yerinde sayılır ya da sayımdan önce toplanır; toplanamayan
+        yerinde aranır. Kayda göre ALINMAZ (F9 ekleri K3). Teslim listesi (E15)
+        Dayanıklı Taşınırlar Listesi işlevini görür (23/6'ya kıyasen).
       - **Öğretmene teslim:** TKYS'de Taşınır Teslim Belgesi düzenlendiyse 32/5'in
         ikinci cümlesi uygulanır ("Kişilere Verilen Miktar"). Düzenlenmediyse 32/5'e
         kıyasen işlem yapılır (23/4).
@@ -1585,10 +1588,10 @@ ifadeleri ters çevrilir: `settings.py:3-7`, `server.py:8`, `docs/kurulum.md:83-
 
 | # | Kusur | Düzeltme | Faz |
 |---|---|---|---|
-| D1 | TMY atıfları eski: 32/6 → **32/7**, 32/4 → 32/5, 10/1-m → **34/2-c + 34/3-a** | Tam metinden doğrulanır | F9, F10 |
+| D1 | TMY atıfları eski: 32/6 → **32/7**, 32/4 → 32/5, 10/1-m → **34/2-c + 34/3-a** | Tam metinden doğrulanır | F9, F10 — F9 kısmı (32/7, 32/5) kapandı (§14.1 F9 ekleri 3); 34/2-c + 34/3-a F10'da (E11) |
 | D2 | Türkçe arama ve eşleştirme bozuk | T7 | F2 |
 | D3 | `IN_REPAIR` durumuna yol yok. `DAMAGED` açılamıyor | Akışlar yazılır | F7 — kapandı (§14.1 F7 ekleri 3) |
-| D4 | Sayım kilidi `report_lost` ve `resolve_case`'i kapsamıyor | Kilit seçildiyse bunlar da kapsanır | F9 |
+| D4 | Sayım kilidi `report_lost` ve `resolve_case`'i kapsamıyor | Kilit seçildiyse bunlar da kapsanır | F9 — kapandı (§14.1 F9 ekleri 4) |
 | D5 | İçe aktarım: `shelf_location` kayboluyor, idempotency yok, önizleme uygulamayla eşleşmiyor | §8.1 | F3 |
 | D6 | Yıl UTC'den alınıyor | `localdate()` | F2 |
 | D7 | Karar türü denetlenmiyor | Tür denetimi | F2, F8 — kapandı (§14.1 F8 ekleri 10; düzeltme turu 24) |
@@ -1600,9 +1603,9 @@ ifadeleri ters çevrilir: `settings.py:3-7`, `server.py:8`, `docs/kurulum.md:83-
 | D13 | Anonimleştirme eksik (üyelik satırı, not metinleri) | §6.4 | F11 |
 | D14 | Nadir eser denetimi ve komisyon bağı yok | §6.2 | F8 — kapandı (§14.1 F8 ekleri 5, 7; düzeltme turu 22, 23, 26) |
 | D15 | Ayıklamada kalem silme ve teklif geri çekme yok | §6.2 | F8 — kapandı (§14.1 F8 ekleri 2; düzeltme turu 25) |
-| D16 | Sayım fazlası eski barkodu raf alanına yazıyor | `surplus_barcode` | F9 |
-| D17 | Sayımda COMPLETED ile APPROVED arasında kilit boşluğu var (EK-12) | Kilit onaya kadar + onayda yeniden doğrulama | F9 |
-| D18 | TMY 32/3 zorunlu bir kilit gibi okunmuş, iade de kilitleniyor | §9-10 | F9 |
+| D16 | Sayım fazlası eski barkodu raf alanına yazıyor | `surplus_barcode` | F9 — kapandı (§14.1 F9 ekleri 7) |
+| D17 | Sayımda COMPLETED ile APPROVED arasında kilit boşluğu var (EK-12) | Kilit onaya kadar + onayda yeniden doğrulama | F9 — kapandı (§14.1 F9 ekleri 5, 9; düzeltme turu 30: onayda sayım fazlası da yeniden doğrulanır) |
+| D18 | TMY 32/3 zorunlu bir kilit gibi okunmuş, iade de kilitleniyor | §9-10 | F9 — kapandı (§14.1 F9 ekleri 4) |
 | D19 | Ödünç süresi 1-15 arası ayarlanabilir; Md. 18 süreyi sabit koyuyor | 15 gün sabit | F6 — kapandı (§14.1 F6 ekleri 12) |
 | D20 | Etiket kuyruğu barkod sırasında | Seçilebilir sıra | F4 |
 | D21 | Kart no sıralı, tahmin edilebilir | Rastgele + sağlama | F6 — kapandı (§14.1 F6 ekleri 12) |
@@ -1636,8 +1639,8 @@ ifadeleri ters çevrilir: `settings.py:3-7`, `server.py:8`, `docs/kurulum.md:83-
 | **F6 Üyelik + dolaşım** | Membership (istek listesi) · kart şeması + kartı yenile · **dolaşım masası** (§7.3) · görevli ekranı · kartsız ödünç (yönetici) · iade tarihi (kapalı gün) · gecikme kartı + pusula · E2, E4, E13, E19 · D8, D9, D12, D19, D21 | §9-1…8, 12, 13 testleri · görevli kipinde yalnız izinliler (§5.10-8 dolu) · hızlı okutmada okuma kaybı yok · §5.10-4/5 yeniden koşar |
 | **F7 Teslim, kayıp, ilişik, yıl akışları** | Toplu teslim (U11) + E15 · kayıp/hasar/onarım (D3) · ilişik + E5, E6 · yıl sonu ve yıl başı akışları | Md. 19 kademe kapısı · teslimde sayı sınırı yok, ödünçte var · yıl sonu akışı sentetik veriyle uçtan uca · §5.10-4/5 yeniden koşar |
 | **F8 Komisyon + ayıklama** | Komisyon · ayıklama (D7, D15, TMY yolu) · devir · nadir eser (D14) · bağış kararı → toplu katalog · E7, E8, E9, E16 · A8 kararı | Nadir eser ayıklanamaz · devir yalnız düzeye uygunsuzlukla · TMY yol eşlemesi testi · E9'da kişisel veri yok |
-| **F9 Sayım** | Anlık görüntü · iki ayrı seçenek: TMY 32/3 durdurması ve "hizmet arası" · iade her zaman açık · kuyruk · iptal · LOST uzlaştırma · **kayıp ve hasar dosyasının kayıttan düşme önerisinin düşülmesi** (TMY 27/1 + 10/1-e, kayıp/hasar tutanağıyla, komisyonsuz — F8 ekleri 34) · teslimdeki nüsha için kurul seçimi · D1, D4, D16, D17, D18 · E10 + **ekinde TMY 34/1 büyüklükleri** (A8; cetvel TKYS'de — F8 ekleri 13) | 32/3 durdurması açıkken edinim, kayıttan düşme, devir ve dosya çözümü kapalı, ödünç açık · hizmet arası açıkken yalnız yeni ödünç kapalı · iki seçenek tutanakta ayrı satırda · iade hiçbir durumda kapanmaz · onayda durumu değişen kalem düşülmez · tutanakta ödünç alan kimliği yok · 32/7 |
-| **F10 Raporlar + dışa aktarım** | İstatistik (kişisiz, eşikli kırılımlar) · 10.000 eşiği (Md. 7) · çok okunanlar (k farklı üye; gün değişimi kapısına eklenir) + E12 · E11 (ciltsiz süreli yayın hariç), E17, E20 · dışa aktarım şeması + gidiş-dönüş · kişi dökümü · "Bakanlık sistemi kullanımda" hatırlatma ayarı | Gidiş-dönüş aynı kataloğu verir · §5.10-12 · profil yasağı testleri (§3) · ciltsiz süreli yayın E11'e girmez |
+| **F9 Sayım** | Anlık görüntü · iki ayrı seçenek: TMY 32/3 durdurması ve "hizmet arası" · iade her zaman açık · kuyruk · iptal · LOST uzlaştırma · **kayıp ve hasar dosyasının kayıttan düşme önerisinin düşülmesi** (TMY 27/1 + 10/1-e, kayıp/hasar tutanağıyla, komisyonsuz — F8 ekleri 34) · teslimdeki nüsha için kurul seçimi · D1, D4, D16, D17, D18 · E10 + **ekinde TMY 34/1 büyüklükleri** (A8; cetvel TKYS'de — F8 ekleri 13) | 32/3 durdurması açıkken edinim, kayıttan düşme, devir ve dosya çözümü kapalı, ödünç açık · hizmet arası açıkken yeni ödünç ve yeni teslim kapalı (F9 ekleri 27) · iki seçenek tutanakta ayrı satırda · iade hiçbir durumda kapanmaz · onayda durumu değişen kalem düşülmez · tutanakta ödünç alan kimliği yok · 32/7 |
+| **F10 Raporlar + dışa aktarım** | İstatistik (kişisiz, eşikli kırılımlar) · 10.000 eşiği (Md. 7) · çok okunanlar (k farklı üye; gün değişimi kapısına eklenir) + E12 · E11 (ciltsiz süreli yayın hariç), E17, E20 · dışa aktarım şeması + gidiş-dönüş · kişi dökümü · "Bakanlık sistemi kullanımda" hatırlatma ayarı · **sayıma "yıl sonu sayımı" işareti** (F9 ekleri K6 KARAR, 25.09.2026 — F10 sözleşmesine devredildi: işaretsiz sayımda E10 eki basılmaz ya da başlığı "Ara sayım — sayılar cetvele aktarılmaz" olur; bir alan + göç) | Gidiş-dönüş aynı kataloğu verir · §5.10-12 · profil yasağı testleri (§3) · ciltsiz süreli yayın E11'e girmez · işaretsiz sayımın eki cetvele aktarılacak sayı basmaz |
 | **F11 Bakım** | Dış yedek hatırlatması · saklama/anonimleştirme (gün değişimi kapısına eklenir; azami gecikme, `pre-anonim` rotasyonu, tetikte eski `pre-migrate` silme, BelgeIzi, kapanmış teslim) · görev devri (E18) · güncelleme (manifest, düğmeyle) | Eski exe yeni DB'yi açmaz · anonimleştirme sonrası yeniden basımda ibare var · açık yükümlülük varken kişi silinmez · temiz makinede geri yükleme provası |
 | **F12 Paketleme + saha kabulü** | Inno (yeni GUID, WebView2, iki mutex, kapatma olayı, güncelleme kipinde kural korunur) · `.deb` (ufw/firewalld) · `veri_sizintisi` ×2 · belgeler (kurulum, ağ kurulumu, yeni bilgisayara taşıma, kılavuz, masa kartı) · okulapp.org alanı (§17) · **ertelenen saha kapıları** | Temiz Windows 11'de uçtan uca: kurulum → sihirbaz → e-Okul → Excel katalog → etiket → dolaşım → ağdan arama → yedek/geri yükleme · Pardus'ta aynı zincir · tahtadan arama (S2'ye bağlı) · gerçek okuyucu |
 
@@ -2685,7 +2688,14 @@ turunun tasarımdan iki sapması — dokuzuncu çözüm durumu "Kayba dönüşt�
     yalnız bunlarda sorar. `ensure_open` imzası değişmedi. §14.1 F9 satırındaki "dosya
     çözümü" bu kapsamla okunur (F9 sözleşmesi sabitler). *(Daraltılmış kapsam tasarımdan
     sapma olarak ONAYLANDI — ana oturum, 25.09.2026; kapsamın son biçimi F9 sözleşmesine
-    devredildi.)*
+    devredildi.)* **KARAR (25.09.2026) — ANA OTURUM KARARI, F9 ekleri K1 (a): kapsam bir
+    kez daha daraldı.** Kayıp dosyasında kitabın bulunması ("Bulundu", "Bulundu (bedel
+    teslim alınmıştı)") de kapsam DIŞINDADIR: kayıptaki kitabın rafa dönüşü taşınır
+    giriş-çıkışı değildir; nüsha kayıttan düşülmediyse kayıtta zaten vardır. Kapsamda
+    kalan kayıp çözümleri aynısının temini ("Aynısı temin edildi", "Bedelle aynısı alındı")
+    ve kayıttan düşme önerisidir ("Kayıttan düşme önerildi", "Bedelle başka eser alındı").
+    `dosya_cozumu_kapsamda_mi` ve testleri (`test_kayip_hasar.py`, `test_sayim.py`) buna
+    göre güncellendi.
 18. **"Bedel kaydedildi" açık iştir; karar korundu** (bulgu: kişinin ilişiği okulun satın
     almasına bağlanıyor). Madde 2'nin kararı değişmedi; sonucu madde 2'ye ve kılavuza
     açıkça yazıldı. Md. 19/1'in ikinci cümlesini okulun işi sayıp dosyayı açık tutarken
@@ -3229,6 +3239,502 @@ yazıldı (madde 34-35).
     sonraki günden başlar (Haziran'da sonlandırılan rapor eksiksizdir, yaz işi sonraki
     yılın raporuna girer). *Öneri:* (b) — okul müdürlüğüne yazı Haziran'da gider;
     rapora sonradan dönmeyi gerektirmeyen dönem kuralı daha güvenlidir.
+
+**F9 ekleri (25.09.2026).** F9'da tasarımdan bilinçli sapmalar ve tasarımda yazmayan
+kararlar. Üç iş kolunda (çekirdek: model, servis, kapılar ve uçlar — madde 1-12; belge ve
+ekranlar — madde 13-18; kılavuz ve sözlük — madde 19-20) yapıldı, ardından bütünleştirildi
+(madde 21-23) ve denetimden sonra bir düzeltme turundan geçti (madde 28-43). Kararına
+sunulan öneriler (madde 24-27 ve K1-K7) **25.09.2026'da karara bağlandı ve uygulandı**:
+madde 24-27 KULLANICI KARARI, K1-K7 ANA OTURUM KARARI (öneriler kabul); her maddede
+"KARAR (25.09.2026)" satırı, uygulamanın ayrıntısı karar turunda (madde 44-52). Bu bölümde
+KARAR BEKLEYEN madde kalmadı. Kod kapısı (§14.1 F9 satırı; kapının bütün maddelerini tek
+sentetik sayımda sırayla geçen kalıcı test madde 21) ve `bash scripts/gates.sh` yeşildir
+(25.09.2026; karar turundan sonra ilgili testler, tam backend `pytest`, ruff, mypy,
+`makemigrations --check` ve ön yüz denetimleri yeniden koşuldu — madde 52). **D1'in
+F9 kısmı, D4, D16, D17 ve D18 kapandı** (§13; madde 3, 4, 7, 5 ve 9 ile 30, 4). Her madde atfı
+`docs/mevzuat/` metninden doğrulandı (atıf haritası `docs/mevzuat/BENIOKU.md` §3.2). E10'un
+gerçek yazıcıdan çıktısı ve sayım gününün kendisi saha denemesidir (F12).
+
+1. **§6.2 — modeller ve tek göç** (`0008_sayim`): `StockTake` + `StockTakeItem`. Şifreli:
+   sayım kurulunun başkanı, taşınır kayıt yetkilisi, kurul üyeleri, durduran harcama
+   yetkilisi (`tmy_stop_by_name`) ve onaylayan harcama yetkilisi (`approved_by_name`).
+   Kalem kişisizdir: ödünç alanın, teslim alanın ve kayıp/hasar dosyası kişisinin kimliği
+   hiçbir sayım verisine girmez. Yeni terminal nüsha durumu **"Hasar (kayıttan düşüldü)"**
+   (`WITHDRAWN_DAMAGED` — F8 ekleri 34'teki "hasarda F9 uygun terminal durumu belirler").
+   Aynı anda tek canlı sayım (taslak dahil): `open_slot` + kısmi teklik kısıtı.
+2. **Durum makinesi.** Taslak → Sürüyor → Tamamlandı → Onaylandı | İptal edildi. OYS'nin iki
+   turlu durumu "Sürüyor"un içinde tur sayacı oldu (`round`; ekranda "İkinci sayım"
+   rozeti). Seçenekler, kurul ve kurulun seçimi YALNIZ taslakta değişir. Kurul (32/2):
+   başkan (harcama yetkilisi ya da görevlendirdiği kişi), taşınır kayıt yetkilisi ve en az
+   üç FARKLI kişi. Bütün işlemler yalnız yönetici kipindedir (`require_admin_mode`); şifreli
+   ada yazan uçlar parola kurulmadan 409 döner.
+3. **D1 — atıflar metinden.** Noksanın düşüm teklifi **32/7** (OYS 32/6 diyordu; 32/6 ikinci
+   sayımdır), ödünçteki ve teslimdeki nüsha **32/5** (OYS 32/4), sayım fazlasının girişi
+   **TMY 17/1** ve 32/7. `StockTakeWriteOffPath` iki yolu adıyla taşır: "Sayım noksanı (TMY
+   32/7)" ve "Kullanılmaz hâle gelme — hasar (TMY 27/1, 10/1-e)". D1'in 10/1-m → 34/2-c +
+   34/3-a kısmı E11'indir (F10).
+4. **İki AYRI seçenek (§9-10; D4, D18).** *TMY 32/3 durdurması* isteğe bağlıdır; seçildiyse
+   kurulun talep tarihi, durduran harcama yetkilisinin adı ve durdurma tarihi zorunludur
+   (durdurma talepten önce, ikisi bugünden sonra olamaz). `tmy_kapisi.ensure_open` doldu:
+   **edinim ve yeni nüsha** (`EDINIM` — edinim partisi, tek ve çoklu nüsha, bağış
+   kataloglaması, boş etiket bağlama; içe aktarımın önizlemesi ve uygulaması satır düzeyinde
+   değil BAŞTA reddedilir), **kayıttan düşme** ve **devir** (ayıklama "Uygula"), **kayıp
+   bildirimi** ve **kayıp/hasar dosyası çözümü** (D4) — çözümün kapsamı F7 ekleri 17'dir
+   (`dosya_cozumu_kapsamda_mi`: kayıpta bulunma ve bedel adımları dışındaki çözümler —
+   bulunma K1 kararıyla çıktı —, hasarda yalnız kayıttan düşme önerisi). Ret 400, kod
+   `tmy_32_3_durdurmasi`. Programa aktarım ("Mevcut koleksiyon (programa aktarım)" yolu)
+   da durur ama iletisi TMY'ye dayanmaz ve kodu `sayim_programa_aktarim`'dır (K4). *Sayım
+   için hizmet arası* okul kararıdır, TMY'ye dayandırılmaz (tutanakta dayanağı "Okul kararı
+   (TMY 32/3 ikinci cümle: sayımda önlem almak kurulun görevidir)"); yeni ödüncü
+   (`circulation.checkout`) ve yeni teslimi (`deliveries.deliver`, teslim ön denetimi —
+   madde 27 KARAR) durdurur — ret kodu `sayim_hizmet_arasi`, üyeye ve nüshaya bakılmadan
+   (ret sırası bir şey ele vermez). **İade ve geri alma hiçbir durumda durmaz** (Yön.
+   23/1-c; ödünç TMY'de giriş-çıkış değildir — 13/1, 23/4). Taslakta kilit yoktur. Sözlük:
+   "sayım kilidi" ve "dondurma" hiçbir metinde ve kodda yok.
+5. **D17 — kilitler onaya dek.** Seçilen kilitler "Sürüyor" ve "Tamamlandı"da sürer
+   (`LOCKING_STOCKTAKE_STATUSES`), onayla ya da iptalle kalkar. Onay kilitleri İLK iş olarak
+   kaldırır, sonra sayımın kendi çıkışını (32/7, 27/1) ve girişini (TMY 17) işler.
+6. **Anlık görüntü** başlatmada alınır: kayıtlı her nüsha (kayıttan düşülmüş, devredilmiş
+   ve silinmiş hariç) beklenen durumu, teslim türü, bölümü ve sınıf kitaplığıyla bir kalem
+   olur. Sayım sırasındaki değişiklikler kalemi değiştirmez; sayım başladıktan sonra kayda
+   giren nüsha kapsam dışıdır; sayım sırasında kayıttan çıkan nüsha "Sayım sırasında
+   kayıttan çıktı" olur (ne bulunan ne noksan). Süren sayımda sayılan nüsha ve sayım fazlası
+   olarak açılan nüsha silinmez.
+7. **D16 ve okutma kuyruğu.** Sayım fazlasının okutulan kodu yalnız
+   `StockTakeItem.surplus_barcode`'dadır, hiçbir nüsha alanına yazılmaz; kayda alınan fazla
+   yeni numara alır (numara asla yeniden kullanılmaz), yalnız hiçbir kitaba bağlanmamış boş
+   etiket kendi numarasıyla bağlanır. Tek istekte en çok 200 kod; her kod ayrı sonuç
+   (kararlı kodlar `bulundu`, `zaten_okutuldu`, `fazla`, `fazla_tekrar`, `kapsam_disi`,
+   `gecersiz`); aynı kodu ikinci kez okutmak zararsızdır. ISBN ve üye kartı reddedilir ve
+   yazılmaz (kart numarası kişiye bağlanabilir). Etiketsiz kitap elle fazla olarak eklenir.
+8. **Kurulun seçimi (§9-11, AT-1).** Ödünçteki nüsha: "Sayımdan önce toplanır" ya da "Kayda
+   göre alınır" (32/5'e kıyasen; 23/4). Sınıf kitaplığına teslim: "Yerinde sayılır" (32/5
+   birinci cümleye kıyasen; teslim listesi Dayanıklı Taşınırlar Listesi işlevini görür —
+   23/6'ya kıyasen) ya da toplanır; toplanamayan yerinde aranır (K3 KARAR: "Kayda göre
+   alınır" kalktı). Öğretmene teslim: toplanır ya da kayda göre (Taşınır Teslim Belgesi
+   düzenlendiyse 32/5 ikinci cümle, düzenlenmediyse 32/5'e kıyasen — 23/4). Onarımdaki
+   nüsha: "Sayımdan önce geri alınır" ya da "Kayda göre alınır — onarımda" (K2 KARAR;
+   sayım kurulunun kararı, TMY'de doğrudan hüküm yok). Açık ödünçteki, öğretmendeki ya da
+   onarımdaki nüsha noksan SAYILMAZ, kayda göre alınır (toplanamadıysa işaretli); sınıf
+   kitaplığında bulunmayan nüsha noksandır, düşülürse açık teslimi "Kayba dönüştü" ile
+   kapanır. Sayım sırasında kütüphaneye dönen nüsha (iade, teslimden geri alma, kayıp
+   dosyasında bulunma ya da aynısının temini, sayım başladıktan SONRA onarımdan dönüş —
+   madde 28, 29) o turda "bulundu" sayılır.
+9. **Tamamla (32/6) ve onay (D17).** İlk turda noksan varsa sayım ikinci tura geçer; ikinci
+   turun sonunda sonuçlar kesinleşir. Onay TEK işlemdir: harcama yetkilisinin adı ve onay
+   tarihi zorunlu; tarih tamamlanma gününden önce ve bugünden sonra olamaz (10/1-a: VİF
+   dayanağından önceki tarihi taşıyamaz). Her noksan kalem onayda YENİDEN sınıflanır:
+   durumu değişmiş (kütüphaneye dönmüş, ödünç verilmiş, kayıttan çıkmış) kalem düşülmez,
+   "Onayda durumu değişmişti — düşülmedi" ve "Onayda durumu: …" notuyla kalır. Harcama
+   yetkilisinin onaylamadığı noksan ya da hasar kalemi gerekçesiyle "Onaylanmadı" olur ve
+   kayıtta kalır. Düşülecek nüshanın durumu arada değiştiyse bütün onay geri sarılır.
+10. **Kayıp ve hasar (F8 ekleri 34).** Kayıptaki nüsha bulunmazsa 32/7 ile düşülür ("Kayıp
+    (kayıttan düşüldü)"); kayıp dosyası AÇIK kalır (Md. 19 yükümlülüğü TMY çıkışından
+    bağımsızdır), bulunma yolları kalkar, temin ve bedel yolları açık kalır ve eski kayda
+    dokunmaz. Kayıp önerisi noksanla bağlanır; düşüldükten sonra öneri geri alınamaz. Hasar
+    önerisi: sayımda bulunan (rafta ya da onarımda, açık ödünç ya da teslim yok) nüsha
+    onayda 27/1 + 10/1-e yolundan komisyonsuz düşülür ("Hasar (kayıttan düşüldü)"; açık
+    onarım kaydı kapanır); onayda ödünçteyse düşülmez. **LOST uzlaştırma:** kayıpta görünüp
+    okutulan nüshanın dosyası onayda "Bulundu" ile kapanır, nüsha rafa döner (onay sonucu
+    "Kayıp kaydı kapandı"); kayıp bildirimi okutmadan SONRA yapılmışsa uzlaştırma yapılmaz.
+11. **Sayım fazlası (TMY 17/1).** Kurul fazla için ya kayda alınacağı eseri seçer ya da
+    gerekçesiyle "Kayda alınmayacak" der; çözülmemiş fazla onayı durdurur. Kayda
+    alınacaklar onayda tek "Sayım fazlası (kayda giriş)" edinimiyle, onay tarihiyle girer.
+    Kayıttan düşülmüş ya da silinmiş eski kaydın bölümü ve işaretleri taşınır, numarası
+    taşınmaz; kayda alınan süreli yayın ciltli sayılır (15/4). Birim fiyatı program yazmaz.
+12. **Uçlar** (`library/stocktakes/…`, 15 desen: liste ve oluşturma, durum, ayrıntı,
+    başlat, okut, kalemler, kalem, fazla, ilerleme, tamamla, onay, iptal, TMY 34/1, belge
+    listesi, belge). Görevli kipi izin listesinde **yalnız okutma** vardır (madde 24 KARAR;
+    yanıt daralır); öbür 14 desen kapalıdır. Kalem ve liste yanıtları kişi alanı taşımaz; serializer alan
+    listeleri anlık görüntüyle sınanır (T13). Durum ucu Genel Bakış kartını, masa şeridini ve
+    bantları besler. Ağ Kataloğu sayım tablolarını okumaz; sayımla düşülen nüsha katalogda
+    görünmez (§5.10-4/5 yeniden koştu).
+13. **E10 — Sayım tutanağı (PDF + XLSX).** Taslakta ve iptal edilmiş sayımda basılmaz;
+    sürerken "TASLAK" ibaresiyle ara döküm, tamamlanınca imzaya (OLUR boş), onaydan sonra
+    onayla. Tablolar: sayım sonuçları · sayım sırasındaki seçenekler (TMY 32/3 durdurması,
+    sayım için hizmet arası ve iade **üç ayrı satırda**; seçilmeyen de satırda durur) ·
+    ödünçteki ve teslimdeki nüshalar için kurulun seçimi ve dayanağı (kişisiz, sayıyla) ·
+    bölümlere göre · 32/7 noksan düşüm teklifi · 27/1 hasar teklifi · kayıpta görünüp
+    bulunanlar · sayım fazlası (17/1 alıntısıyla) · onaydan sonra onaylanmayanlar ve onayda
+    durumu değişenler. "Kayıp/hasar tutanağı" sütunu kalemi dosyaya tespit tarihiyle bağlar.
+    İmzalar SAYIM KURULU ve OLUR; dipnot resmî Sayım Tutanağı, Kayıttan Düşme Teklif ve Onay
+    Tutanağı ve VİF'in TKYS'de düzenlendiğini söyler. **Ödünç alanın ve teslim alanın
+    kimliği YOK** (10/1-g, 32/8) — sentetik adla PDF ve Excel taraması. Kurul ve harcama
+    yetkilisinin adları şifreli alandan yalnız belgeye çözülür. Excel sayfaları: Sayım
+    tutanağı · Kalemler · Cetvele aktarılacak sayılar.
+14. **A8 eki (F8 ekleri 13).** Yeni sayfada "EK: TAŞINIR SAYIM VE DÖKÜM CETVELİNE AKTARILACAK
+    SAYILAR": 34/1 alıntısı; önceki yıldan devir, yıl içinde giren (10/5 yolları ve sayım
+    fazlası; programa aktarım ayrı satırda — taşınır girişi değildir), yıl içinde çıkan
+    (ayıklama, sayım noksanı, kayıp, hasar, devir), kayda göre yıl sonu, **gelecek yıla
+    devir = sayımda bulunan miktar** (10/1-ğ), fark, fazla ve noksan; "Bu döküm Taşınır Sayım
+    ve Döküm Cetveli değildir; resmî cetvel TKYS'de düzenlenir." Çıkışın tarihi kayıttan
+    düşmeyi onaylayan harcama yetkilisinin onay tarihidir. Sayım sürerken gelecek yıla devir
+    "Sayım tamamlanınca yazılır". Fark satırı: madde 25 (KARAR: gelecek yıla devirden onayda
+    27/1 ile düşülenler çıkarılır, ayrı satırda gösterilir).
+15. **Sayfa bütçesi (CLAUDE.md §3).** Kapanış (notlar, kurul imzaları, OLUR, dipnot) bölünmez
+    kutudur (F8 şablonuyla aynı); uzun listede tablo başlığı her sayfada yinelenir. Gerçek
+    uzunlukta verili tek noksanlı sayım en çok 3 sayfa + 1 sayfa ektir (test). Uzun kurul ve
+    notlarda önceki sayfanın altında boşluk kalabilir (bilinçli).
+16. **Ekranlar.** Katalog → **Sayım** (`/katalog/sayim`): liste; ayrıntıda adım rayı (Taslak ·
+    Sayım · İkinci sayım · Harcama yetkilisi onayı · Onaylandı). Taslakta Sayım Kurulu, Sayım
+    Sırasındaki Seçenekler (iki kutu; her birinin açıklaması ve iadenin hiç durmadığını
+    söyleyen satır), Ödünçteki ve Teslimdeki Nüshalar. Sürerken Kitapları Okutun (okutma
+    kuyruğu), İkinci Sayım: Bulunamayan Nüshalar, Bölümlere Göre İlerleme (yerinde sayılan
+    sınıf kitaplıkları ayrı), Sayım Fazlası. Tamamlanınca Sonuçlar ve Kalemler; onay ve iptal
+    pencereleri; Sayım Belgeleri. Genel Bakış'ta canlı sayım varken **Sayım** kartı (durum,
+    kişisiz ilerleme, süren seçenekler ayrı satırlarda). Durdurmanın kapsadığı ekranlarda
+    bant "TMY 32/3 durdurması sürüyor" (Edinimler ve Bağışlar, Hızlı Kayıt, Eser Ayrıntısı,
+    onaylı ayıklama teklifi, Kayıp ve Hasar); İçe Aktarma'da ve programa aktarım edinimli
+    Hızlı Kayıt'ta "Sayım sürüyor" (K4 KARAR). Onay penceresinde onaylanmayan kalem
+    seçimi ilk 200 noksan ve 200 hasar kalemiyle ve arama kutusuyla yapılır; okutma kuyruğu
+    her kodu ayrı istekle gönderir (sunucu 200'lük toplu gövdeyi de kabul eder).
+17. **Masa.** Dolaşım Masası'nda (ve madde 27 KARAR'ından beri Teslimler → Yeni Teslim'de)
+    şerit "Sayım için hizmet arası — yeni ödünç ve teslim yapılamıyor. İade ve teslimden geri
+    alma açık." Şerit iki kipte de kişisiz masa durumundan (`library-desk-state`) açılışta
+    açılır (madde 26 KARAR; dakikada bir yeniden okunur); ödünç reddi şeridi hemen açar ve
+    okutulan kitabın iadesi önerilir; başarılı ödünç şeridi kaldırır (madde 40).
+18. **Kayıp/hasar dosyası.** Nüsha sayımda kayıttan düşülmüşse açık dosyada bulunma çözümleri
+    yoktur; pencere bulunan kitabın "Sayım fazlası (kayda giriş)" edinimiyle, temin edilen ya
+    da bedelle alınan kitabın "Nüsha ekle" ile yeni nüsha olarak kaydedileceğini söyler. Ön
+    yüzün nüsha durumu birliğine "Hasar (kayıttan düşüldü)" eklendi.
+19. **Kılavuz — Sayım bölümü**; F8'in "sonraki bir sürümde" dediği iki cümle Sayım bölümüne
+    gönderir. Kılavuz 10/1-e'yi F8 ekleri 27'deki takdir diliyle noksan için de yazar; cetvel
+    cümlesi 32/9'a göredir (kurul düzenler; kurul ile taşınır kayıt yetkilisi imzalar; cetvel
+    TKYS'dedir); ödüncün TMY'de giriş-çıkış olmadığı 13/1 ve 23/4 ile gösterilir. Alıntılar
+    fıkranın metniyle, iletiler ve adlar koddan birebir sınanır
+    (`test_sayim_kilavuz_metinleri.py`).
+20. **Sözlük §4.15** (sayım ekranlarının ve belgesinin adları) ve §4 satırları: sayım durumları,
+    kurulun seçimi, sayım ve onay sonuçları, okutma iletileri, bulunma ve düşme yolu, E10
+    adları, "Kayda alınmayacak". Sayım listesinin "Seçenekler" sütunu ikinci seçeneği kısaca
+    "Hizmet arası" diye yazar (sözlükte kısa ad).
+
+**Bütünleştirme (25.09.2026).**
+
+21. **Uçtan uca kod kapısı testi** (`apps/kutuphane/tests/test_sayim_uctan_uca.py`). Tek
+    sentetik sayım: TMY 32/3 durdurması ve hizmet arası seçili başlar → edinim, yeni nüsha ve
+    kayıp bildirimi reddedilir, yeni ödünç reddedilir, iade geçer ve o turda "bulundu"
+    sayılır (anlık görüntü etkilenmez) → okutma (üye kartı yazılmaz), sayım fazlası →
+    ikinci sayım → tamamlanır, kilitler sürer → onaydan önce yerinde sayılıp bulunmayan
+    sınıf kitaplığı nüshası teslimden geri alınır ve onayda DÜŞÜLMEZ → noksan 32/7, kayıp
+    önerili nüsha 32/7 ("Kayıp (kayıttan düşüldü)"), hasar önerisi 27/1, fazla TMY 17 ile
+    girer → kilitler kalkar, edinim ve ödünç açılır → E10 (PDF + XLSX) ve eki basılır;
+    ödünç alanın, dosya kişisinin ve teslim alan öğretmenin adı, okul numarası ve kart
+    numarası hiçbir çıktıda (belge, uçtan indirilen PDF ve XLSX, sayım yanıtları) yoktur.
+    Onay anında noksan bir kalemin kütüphaneye dönüş yolları teslimden geri alma ve (K1
+    KARAR'ından beri) kayıp dosyasında bulunmadır: hizmet arası onaya dek yeni ödüncü ve
+    teslimi durdurduğu için noksan nüshanın ödüncü o arada açılıp kapanamaz. Karar turunda
+    test genişledi: programa aktarım TMY'siz iletiyle, yeni teslim hizmet arası koduyla
+    reddedilir; ekte gelecek yıla devir onayda 27/1 ile düşüleni çıkarır (madde 25).
+22. **Metin düzeltmeleri.** Kayıp ve Hasar ekranındaki durdurma bandı kapsamı eksik
+    söylüyordu ("bedel adımları ve onarım dışında"); kapının kapsamıyla yazıldı: "kayıp
+    bildirimi, kayıp dosyasının bedel adımları dışındaki çözümü ve hasar dosyasında
+    kayıttan düşme önerisi" (sözlük §4 `LossDamageCase` satırıyla aynı). İkinci sayım kartı
+    "bütün liste 'Kalemler' bölümündedir" diyordu, oysa Kalemler bölümü yalnız tamamlanmış
+    sayımda çizilir; ileti "bütün liste sayım tutanağının ara dökümündedir (Sayım
+    Belgeleri)" oldu (ara döküm sürerken basılır ve noksan tablosunu taşır).
+23. **Göç ve sızıntı.** `makemigrations --check` temiz. Depo sızıntısı taraması izlenen VE
+    henüz izlenmeyen (git'e girecek) dosyalarla genişletilerek koşuldu: bulgu yok. F9
+    değişikliklerinde kurum adı, gerçek IP bloğu, e-posta, telefon ve 11 haneli sayı yok;
+    test ve örnek belgelerdeki bütün adlar uydurmadır.
+
+**Kullanıcı kararına sunulanlar — KARAR (25.09.2026), uygulandı.**
+
+24. **Sayım okutması görevli kipine açılsın mı? KARAR (25.09.2026) — KULLANICI KARARI:
+    açılır, UYGULANDI.** İzin listesine sayım uçlarından YALNIZ `library-stocktake-scan` POST
+    girer; `scan_many`'deki `require_admin_mode` yalnız okutma için kalktı (başlatma,
+    düzenleme, tamamlama, onay, iptal, kalem listesi, ilerleme, fazla kararı ve belgeler
+    yönetici kipinde kalır — görünüm `YoneticiKipiGorunumu`, servis `require_admin_mode`).
+    Görevli yanıtı kişisiz ve daraltılmıştır: `{results: [{code, message, barcode,
+    barcode_display, work_title}]}` (`serializers_sayim.STAFF_SCAN_FIELDS`; kalem, özet ve
+    kayda göre durum yok; sayım fazlasında eser adı boş). Görevli ekranı süren sayımı kişisiz
+    masa durumundan öğrenir (madde 26 ile aynı uç — madde 46); "Sayım okutmasını aç" yalnız
+    okutması açık (Sürüyor) sayım varken görünür; bölüm başlığı "Sayım Okutması", çıkış
+    "Okutmayı bitir" (`sayim/GorevliSayimOkutmasi`). Emsal etiket doğrulama okutmasıdır (F4).
+    Kalan risk: görevli yanlış kitabı "bulundu" işaretleyebilir — yönetici tamamlamadan önce
+    ilerlemeyi ve sayım fazlası kartını görür. Testler: `test_kip_koruma` anlık görüntüsü,
+    `test_sayim_uclari.py` (görevli kipinde okutma 200 ve daralmış yanıt, öbür 16 yol × yöntem
+    403, alan listesi anlık görüntüsü), `test_sayim.py::test_gorevli_kipinde_yalniz_okutma_yapilir`,
+    `GorevliEkrani.test.tsx`; kılavuz Kipler ve Sayım, sözlük §4.10.
+25. **34/1 ekindeki "Fark". KARAR (25.09.2026) — ANA OTURUM KARARI (öneri kabul):
+    SEÇENEK (a), UYGULANDI.** Gelecek yıla devirden onayda
+    27/1 ile düşülenler çıkarılır ve altında ayrı satırda gösterilir; sayımda bulunan miktar
+    (tutanağın SONUÇLAR'ı) değişmez. Ekin satırları: **"Gelecek yıla devir (sayımda bulunan −
+    onayda hasar nedeniyle kayıttan düşülen)"**, altında girintili **"Sayımda bulunan miktar
+    (sayım tutanağı)"** ve **"Onayda hasar nedeniyle kayıttan düşülen (TMY md. 27/1)"**, sonra
+    Fark (kayda göre yıl sonu − gelecek yıla devir). Hasar düşümünün −1'i kalktı; Fark yalnız
+    onaylanmayan noksandan ve sayım sürerken yapılan giriş-çıkıştan doğar. Onaylanmamış hasar
+    önerisi varken (Tamamlandı) devir ve Fark **"Harcama yetkilisinin onayından sonra
+    yazılır"** (`tmy_34_1.carryover_final`); sayımda bulunan miktar yazılır. Ekin 10/1-ğ notu
+    (`GELECEK_YIL_NOTU`) nedeni söyler: 27/1 düşümü sayımın kendi çıkışıdır. Çekirdek:
+    `selectors_sayim.found_quantity` (`damage_written_off`, `damage_pending`), `tmy_34_1`
+    (`found_quantity`, `carryover_final`); belge `sayim_belgeleri.ek_satirlari`. Testler:
+    `test_sayim.py::TestTmy341`, `test_sayim_belgeleri.py::test_ekte_gelecek_yila_devirden_hasar_dusumu_ayri_satirda`,
+    uçtan uca test.
+26. **Görevli kipinde hizmet arası açılışta gösterilsin mi? KARAR (25.09.2026) — KULLANICI
+    KARARI: gösterilir, UYGULANDI.** Yeni kişisiz masa ucu `GET library/desk/state/`
+    (`library-desk-state`, görevli izin listesinde, sorgu dizesi yok — `yalniz_sorgu()`):
+    `{service_pause, stocktake_scan: {id, round} | null}` (`serializers_masa.DESK_STATE_FIELDS`,
+    `services.masa.masa_durumu`). Dolaşım Masası şeridi iki kipte de bu uçtan açılışta açar
+    (sayımın yönetici durum ucu masada artık sorulmaz), dakikada bir yeniden okur
+    (`dolasim/masaDurumu.ts`); ödünç reddi şeridi hemen açar, başarılı ödünç kaldırır (madde
+    40). Görevli ekranı aynı uçla "Sayım okutmasını aç"ı gösterir (madde 24). Bu uç sayım
+    uçlarından değildir: madde 24'ün "yalnız okutma" kuralı sayım uçları içindir; masa
+    durumu sayımın ayrıntısını, ilerlemesini ve kurulunu taşımaz. Testler:
+    `test_sayim_uclari.py::test_masa_durumu_hizmet_arasini_ve_sureni_sayimi_kisisiz_verir`,
+    `test_kip_koruma` anlık görüntüsü, `DolasimMasasiHizmetArasi.test.tsx`,
+    `GorevliEkrani.test.tsx`.
+27. **Hizmet arası toplu teslimi de durdursun mu? KARAR (25.09.2026) — KULLANICI KARARI:
+    durdurur, UYGULANDI.** `services.deliveries.deliver` (`ensure_no_service_pause`, alan
+    ve listeden ÖNCE) ve teslim ön denetimi (`delivery_check_scan` — her okutma `rejected` +
+    hizmet arası iletisi) hizmet arası açıkken reddeder; kod ve ileti ödünçle AYNIDIR
+    (`circulation.RED_HIZMET_ARASI`, `SERVICE_PAUSE_MESSAGE` = "Sayım için hizmet arası — yeni
+    ödünç ve teslim yapılamıyor. İade ve teslimden geri alma açık."). Teslimden geri alma ve
+    iade AÇIK kalır. Tutanağın seçenek satırı: "Seçildi (okul kararı …): sayım süresince yeni
+    ödünç ve teslim durdurulur; iade ve teslimden geri alma açıktır."
+    (`selectors_sayim.SERVICE_PAUSE_SCOPE_TEXT`). Ekranlar: masa şeridi yeni iletiyi yazar;
+    Teslimler → Yeni Teslim'de aynı şerit (altında teslime özgü ipucu) ve "Teslim et" kapalı;
+    taslak açıklaması, başlatma onayı ve Genel Bakış kartı "yeni ödünç ve teslim" der.
+    CLAUDE.md §2-7, §9-10, §9-11, kılavuz (Dolaşım Masası, Teslimler, Sayım) ve sözlük
+    güncellendi. Testler: `test_sayim.py::TestHizmetArasi`,
+    `test_sayim_uclari.py::test_hizmet_arasinda_teslim_reddi_kodludur`, uçtan uca test,
+    `YeniTeslim.test.tsx`.
+
+*Bilinçli sınırlar.* (a) 32/6'nın ikinci sayımı yalnız noksanlar içindir (okutulmuş ya da elle
+yazılmış fazla sayım sırasında kurulun elindedir, yeniden sayılmaz; tutanağın notu bunu söyler —
+madde 35); (b) yıl sonu raporu (E9) sayım sonuçlarını ayrıca raporlamaz (durum sayıları yeni
+terminal durumu kendiliğinden sayar); (c) 34/1 ekinde çıkış tarihi harcama yetkilisinin onay
+tarihidir, E9 uygulama zamanını kullanır (farklı amaç); (d) okutulan fazla kod yalnız rakamdır
+(en çok 32 hane; harf içeren kod okutulmaz ve yazılmaz, kitap elle fazla eklenir — madde 31);
+(e) sayım fazlasının birim fiyatını program yazmaz (17/1); (f) iptal edilmiş sayımın tutanağı
+basılmaz; süren sayım ekranında Sonuçlar ve Kalemler yoktur (ilerleme ve ikinci sayım listesi
+vardır; tutanak ara döküm olarak basılır); (g) sayım başladıktan sonra aynı gün onarımdan dönüş
+onarım kaydının kapanma anıyla ayrılır (`CopyRepair.updated_at`; kayıt yalnız açılışta ve
+kapanışta yazılır — kapanmış onarım kaydını düzenleyen bir yol eklenirse bu varsayım yeniden
+değerlendirilir); (h) kaydı olmayan (eski veriden gelen) "Onarımda" nüshanın sayım sırasındaki
+dönüşü görülemez (F7 bilinen sınır b) — okutulmalıdır.
+
+**Düzeltme turu (25.09.2026).** Denetimin yirmi iki bulgusu şüpheyle yeniden doğrulandı (kod
+okuması + depo dışı sondalar); gerçek olanlar kök nedeninden düzeltildi ve her biri kilitleyen
+testle bağlandı (`tests/test_sayim_duzeltme.py`, `test_sayim_belgeleri.py::TestDuzeltmeTuru`,
+`test_sayim_kilavuz_metinleri.py` son dört test, `test_on_yuz_sabitleri.py`,
+`SayimDuzeltme.test.tsx`, `DolasimMasasiHizmetArasi.test.tsx`, `HizliKayitPage.test.tsx`,
+`BarcodeInput.test.tsx`). Tasarım kararını değiştirecek olanlar düzeltilmedi; güvenli ara önlem
+alındı ve karar aşağıda K1-K7'dedir. Hiçbir bulgu bütünüyle reddedilmedi.
+
+28. **Onarımdan dönüş AN düzeyinde.** `return_event_q` onarım dönüşünü GÜN düzeyinde
+    karşılaştırıyordu: sayım başlamadan önce aynı gün onarımdan dönen ve hiç okutulmayan nüsha
+    "bulundu" sayılıyor, 32/7 teklifine girmiyordu. Artık ertesi gün ve sonrası kesin dönüştür;
+    aynı gün onarım kaydının kapanma anı sayımın başlangıcıyla karşılaştırılır (bilinçli sınır g).
+    İlerleme çubuğu da aynı koşulu kullanır.
+29. **Kayıp dosyasında temin dönüştür.** "Aynısı temin edildi" ve "Bedelle aynısı alındı" nüshayı
+    rafa döndürür (F7) ama dönüş sayılmıyordu: kitap kütüphanede dururken tamamlanırken noksan
+    oluyor, onayda durum değişmediği için 32/7 ile düşülüyordu. Nüshayı rafa döndüren çözümler tek
+    kaynaktır (`models.SHELF_RETURN_RESOLUTIONS` — `resolve_case` ve sayımın dönüş sorgusu aynı
+    kümeyi kullanır; yalnız kayıp dosyasında). Madde 8'in dönüş listesine eklendi.
+30. **D17 sayım fazlasına da uygulanır.** Sayım fazlası olarak okutulan boş etiket sayım sürerken
+    Hızlı Kayıt'ta bağlanırsa kitap o anda kendi edinimiyle kayda girmiştir; onay onu ikinci kez
+    (yeni numarayla) kayda alıyordu. Artık onayda her fazla yeniden doğrulanır
+    (`selectors_sayim.surplus_bound_q`: etiketin numarası, sayım başladıktan sonra açılmış canlı
+    bir nüshaya çözülüyor mu): böyle fazla "Kayda alınmadı" olur, notu "Etiket sayım sırasında …
+    nüshasına bağlandı; kitap kayıtta, yeniden kayda alınmadı."; kararı beklenmez, onayı
+    durdurmaz, sayımda bulunan miktara girer (kitap vardır). Kalem yanıtına
+    `surplus_bound_barcode` eklendi (T13 alan listesi güncellendi); ekranda ve tutanakta "Sayım
+    sırasında kayda girdi: …".
+31. **Harfli kod birleşmez.** Okutulan kod rakamlarına indirgeniyordu: "KTP-A00123" ile
+    "KTP-B00123" aynı fazlada birleşiyor, ikincisi "zaten yazıldı" diye düşüyordu; yalnız harften
+    oluşan kod "Okutulan kod boş." alıyordu. Bilinçli sınır (d) ("harfli eski kod okutulamaz")
+    artık gerçekten uygulanır: harf içeren kod yazılmaz, ileti "Bu kod harf içeriyor; programın
+    kütüphane etiketi değil. …" (ham kodla fazla yazmak K7).
+32. **Kararı bekleyen fazla varken sayılar kesin değildir.** Tamamlanmış sayımda kararı bekleyen
+    fazla "sayımda bulunan miktar"a katılıp kesin sayılıyordu; kurul sonra "Kayda alınmayacak"
+    derse imzalı tutanak onaydaki sayıdan farklı kalıyordu. `found_quantity.final` artık
+    kararsız fazla varken yanlıştır; tutanağın durum notu "N sayım fazlası kitabın kararı
+    bekleniyor; … Tutanağı kararlardan sonra imzaya basın." der, SONUÇLAR'da ayrı satır durur,
+    ekte gelecek yıla devir "Sayım fazlası kararları verilince yazılır".
+33. **Seçenek metinleri kapıyla aynı.** Tutanak, taslak, başlatma onayı ve Genel Bakış kartı
+    durdurmanın kapsamını bütüncül yazıyordu ("kayıp/hasar dosyası çözümü"); artık kapının
+    gerçek kapsamıyla: "… kayıp bildirimi, kayıp dosyasının bedel adımları dışındaki çözümü ve
+    hasar dosyasında kayıttan düşme önerisi" (tek kaynak `selectors_sayim.TMY_STOP_SCOPE_TEXT`, ön
+    yüzde `TMY_DURDURMA_KAPSAMI`; test eşitler). İki seçenek birlikte seçilince tutanak, ret
+    iletisi ve bant "Ödünç ve iade açıktır" diyordu, oysa hizmet arası yeni ödüncü durdurmuştu:
+    cümle durumu değil kapsamı söyler — "Durdurma ödüncü ve iadeyi kapsamaz."
+    (`TMY_STOP_NOT_COVERED_TEXT`; sözlük satırı güncellendi). *K1 KARAR'ından (25.09.2026)
+    sonra kapsam metni: "… kayıp dosyasının bulunma ve bedel adımları dışındaki çözümü …".*
+34. **Sınıf kitaplığında kayda göre almanın dayanağı uydurulmaz.** "Kayda göre alınır: TMY
+    32/5'e kıyasen (teslim listesi — 23/6'ya kıyasen)" metinden desteklenmiyordu: 23/6'ya kıyas
+    sınıf kitaplığını ortak kullanım alanı yapar ve 32/5'in birinci cümlesi onu SAYAR; "sayım
+    yapılmaksızın" yalnız ikinci cümlede ve kamu görevlilerine teslim belgesiyle verilen taşınır
+    içindir. §9-11 madde 11 şube için yalnız yerinde sayımı verir. Seçenek (sözleşmede "kurul
+    seçer") kaldı, dayanak metni dürüst yazıldı: "sayım kurulunun kararıdır; TMY 32/5 birinci
+    cümle (23/6'ya kıyasen) sınıf kitaplığının yerinde sayılmasını öngörür, kayda göre almanın
+    Yönetmelikte doğrudan dayanağı yoktur." Toplanamayan şube nüshası için de aynı cümle.
+    Kaldırılması K3. *K3 KARAR (25.09.2026): seçenek kalktı; `SECTION_BY_RECORD_NOTE` silindi,
+    şube dayanakları yalnız 32/5 birinci cümleye kıyasendir (madde 45).*
+35. **32/6 notu yaptığını söyler.** Tutanak "Kayıtlı miktardan farklı çıkan nüshaların sayımı bir
+    kez daha tekrarlanmıştır" diyordu; program yalnız bulunamayanları yeniden aratır. Not:
+    "İlk sayımda bulunamayan nüshaların sayımı bir kez daha tekrarlanmıştır; … Sayım fazlası
+    kitaplar ikinci kez sayılmamıştır: okutulan ya da elle yazılan kitap sayım sırasında kurulun
+    elindedir." Elle eklenen fazlaya kurul teyidi K5.
+36. **Tutanak düzeni.** Barkod hücresi `nowrap` idi: 10 haneli barkod %12'lik sütunun çizgisini
+    kesiyor, 13-32 haneli fazla kodu yandaki sütunun üstüne biniyordu. Barkod sütunları %15,
+    "Okutulan kod" %16; `tek` hücresi kırılabilir (`overflow-wrap: anywhere; word-break:
+    break-all`). Sayfa bütçesine WeasyPrint düzen kutularından YATAY taşma testi eklendi (10
+    haneli barkod, 13, 20 ve 32 haneli fazla kodu; eski CSS'le kırmızı). Sürerken boş noksan
+    tablosu "Noksan sayım tamamlanınca belirlenir." der ("Noksan çıkmadı." kesin sonuç gibi
+    okunuyordu). Sayım fazlası ediniminin notu iç kimlik ("sayım #12") yerine ekrandaki adı
+    taşır: "Sayım fazlası — Sayım · 2026 · 21.12.2026 (TMY 17, 32/7)" (`stocktake.sayim_adi`).
+    XLSX'in ek sayfasında sayılar ve özetteki mali yıl SAYI hücresidir (`#,##0`); ek satırları
+    ham sayıyı taşır (`EkSatiri`).
+37. **Ekin ara sayım notu.** Cetvel yıl sonu hesabı içindir (10/1-ğ "yıl sonu hesaplarına ilişkin
+    işlemlerinde", 32/9 "yıl sonu hesabını oluşturur"); 32/1 yıl sonu sayımını harcama
+    yetkilisinin gerekli gördüğü sayımdan ayırır. Program bu ayrımı tutmadığı için ek her sayımda
+    şu paragrafı taşır: "… Bu sayım yıl sonu sayımı değilse (md. 32/1: harcama yetkilisinin
+    gerekli gördüğü sayım), aşağıdaki sayılar yılın o güne kadarki durumunu gösterir ve cetvele
+    aktarılmaz." "Yıl sonu sayımı" işareti K6 (KARAR: F10'a devredildi; F9'da bu koşullu
+    not kalır).
+38. **Onay penceresi uyarıları.** Özet `missing_recorded_lost` ve `missing_in_repair` sayılarını
+    taşır; pencere bunlar için uyarır ("Noksanlardan N kitap kayıtta kayıp görünüyor. Kitap sayım
+    tamamlandıktan sonra getirildiyse “Onaylanmadı” ile işaretleyin; onaydan sonra kayıp
+    dosyasında “Bulundu”yu seçin." ve onarım eşi), kalemin altında kısa uyarı durur. Bu, K1 ve
+    K2 kararına dek ara önlemdir: TMY 32/3 durdurması sürerken Tamamlandı'da getirilen kayıp
+    kitap ne okutulabilir ne dosyası kapatılabilir; onarımcıdaki kitap okutulamaz. Onaylanmama
+    gerekçesinde yardım "Kişi adı yazmayın." (gerekçe tutanağa ve Excel'e basılır; sayfalar VİF'e
+    eklenip muhasebe birimine gider — 10/1-g, 32/8). Kılavuzun "sayımda okutun" cümlesi
+    Tamamlandı'da yapılamayanı söylüyordu; düzeltildi. *K1 ve K2 KARAR'ından (25.09.2026)
+    sonra ara önlem sadeleşti (madde 44, 47): kayıp uyarısı "Onaylanmadı" yerine onaydan
+    ÖNCE bulunmayı söyler ("… Kitap sayım tamamlandıktan sonra getirildiyse onaydan önce
+    kayıp dosyasında “Bulundu”yu seçin; onayda kayıttan düşülmez."); onarım uyarısı yalnız
+    sayım SIRASINDA onarıma gönderilen noksan için kalır ("Noksanlardan N kitap sayım
+    sırasında onarıma gönderilmiş. …").*
+39. **Okutma kuyruğu pencerelerde de bekler.** Okutma kutusu yalnız onay ve iptal penceresinde
+    beklemedeydi; sayım fazlası penceresi ve onay kutuları (tamamla, çıkar) açıkken okutulan kod
+    kayboluyor ya da açıklama alanına yazılıyordu. Artık hepsinde beklemededir (F6 tamponu).
+    `BarcodeInput` sırada bekleyen ve işlenmekte olan okutma sayısını bildirir
+    (`onBekleyenDegisti`); bu sayı sıfır değilken "Sayımı tamamla" kapalıdır, onay kutusu açıkken
+    okutulan kod sıraya girdiyse tamamlama başlamaz ("Sırada işlenmeyi bekleyen N okutma var. …")
+    — tamamlanınca okutma kutusu kalkar ve sıradaki kod kaybolurdu.
+40. **Masa şeridi kalkar.** Hizmet arası şeridi ilk retten sonra hiç kalkmıyordu. Masa artık
+    kendi gözlemini (ret → açık, başarılı ödünç → kapalı) sunucunun son okumasına dek tutar;
+    yönetici kipinde durum dakikada bir yeniden okunur (`DURUM_YENILEME_MS`). Görevli kipinde
+    açılışta gösterme madde 26'dır (KARAR: uygulandı — iki kip de kişisiz masa durumunu okur,
+    `MASA_DURUMU_YENILEME_MS`).
+41. **Hızlı Kayıt durdurmada eser açmaz.** Etiket ön denetimi (`check_label`) kapıyı sormuyordu:
+    durdurma sürerken eser açılıyor, nüsha kapıda reddediliyor, katalogda nüshasız eser
+    kalıyordu. Ön denetim artık durdurmayı söyler (`tmy_kapisi.durdurma_iletisi`; "bindable"
+    yanlış, yeni numara ipucu verilmez) ve "Nüshayı aç" durdurma sürerken kapalıdır.
+42. **Sayım Fazlası kartı sayfalıdır.** Kart 200 kalemde sessizce kesiliyordu; onay bütün
+    fazlanın kararını istediği için 201. ve sonrasına ulaşılamıyordu. Kart sayfalıdır (25),
+    "Göster" seçicisi (**Karar bekleyenler** · **Tümü**; uç `?undecided=`) ve "N sayım fazlası ·
+    kararı bekleyen M" sayacı vardır.
+43. **Kılavuz ve sözlük.** Kılavuzun Sayım ve Kayıp ve Hasar bölümleri ile sözlük §4 ve §4.15
+    yukarıdaki davranışları yazar; BENIOKU atıf haritası (şubede kayda göre almanın dayanağı
+    yok; ekin ara sayım notu — 10/1-ğ, 32/9, 32/1) güncellendi. `makemigrations --check` temiz
+    (göç değişmedi); genişletilmiş depo sızıntısı taraması bulgu vermedi.
+
+**Düzeltme turundan karara kalanlar — KARAR (25.09.2026), ANA OTURUM KARARI (öneriler kabul).**
+
+- **K1 — TMY 32/3 durdurması ile kayıp dosyasında "Bulundu". KARAR (25.09.2026) — ANA OTURUM
+  KARARI: SEÇENEK (a), UYGULANDI.** "Bulundu" ve "Bulundu (bedel teslim alınmıştı)" 32/3
+  kapsamından ÇIKTI: kayıptaki kitabın rafa dönüşü taşınır giriş-çıkışı değildir; nüsha
+  kayıttan düşülmediyse kayıtta zaten vardır (programda "Kayıp" TMY çıkışı değildir, çıkış
+  32/7'deki düşümdür; sayım dönüşü yakalar — `return_event_q`, onay STATE_CHANGED yazar).
+  F7 ekleri 17 güncellendi; `tmy_kapisi.dosya_cozumu_kapsamda_mi` (`FOUND_RESOLUTIONS`
+  hariç), kapsam metni (`TMY_STOP_SCOPE_TEXT` — "kayıp dosyasının bulunma ve bedel adımları
+  dışındaki çözümü"), ön yüz sabiti ve Kayıp ve Hasar bandı. Madde 38'in ara önlemi (onay
+  uyarısı) sadeleşti: Tamamlandı'da getirilen kayıp kitap için yol artık onaydan ÖNCE
+  "Bulundu"dur. *(Önceki metin: (a) kapsamdan çıkar · (b) Tamamlandı'da okutma açılır · (c)
+  bugünkü gibi; öneri (a).)*
+- **K2 — Onarımdaki nüsha. KARAR (25.09.2026) — ANA OTURUM KARARI: SEÇENEK (a), UYGULANDI.**
+  Onarımdaki nüsha için kurul seçimi: **"Sayımdan önce geri alınır"** · **"Kayda göre alınır —
+  onarımda"** (`StockTake.repair_basis`, kod COLLECT · BY_RECORD, varsayılan BY_RECORD;
+  `REPAIR_BASIS_CHOICES`, `REPAIR_BASIS_LABELS`; DB kısıtı `ck_stocktake_repair_basis`; göç
+  0008 yayınlanmadığı için yerinde düzenlendi, `makemigrations --check` temiz). Okutulmayan
+  ve hâlâ onarımda olan nüsha (anlık görüntüde onarımda) noksan sayılmaz, kayda göre alınır
+  ("Sayımdan önce geri alınır"da geri alınamadığı işaretlenir — `basis_fallback`, kalemde
+  "Onarımdan geri alınamadı; kayda göre alındı."); sayım sırasında onarımdan dönen bulunmuş
+  sayılır. Tutanakta AYRI satırda: SONUÇLAR'da "Kayda göre alınan (onarımda — sayım kurulunun
+  kararı)", kurul seçimi tablosunda "Onarımdaki nüsha". Dayanak metinden doğrulandı: TMY'de
+  onarıma gönderilmiş taşınırın sayımına ilişkin hüküm YOKTUR (md. 32'nin hiçbir fıkrası
+  onarımı anmaz — test; BENIOKU §4), bu yüzden dayanaksız ama açık ibare: "sayım kurulunun
+  kararıdır; Taşınır Mal Yönetmeliğinde onarıma gönderilmiş taşınırın sayımına ilişkin
+  doğrudan hüküm yoktur." (`selectors_sayim.REPAIR_NOTE`; 32/5 atfedilmez). Sayım
+  SIRASINDA onarıma gönderilen (anlık görüntüde rafta) nüsha okutulmazsa yine noksandır;
+  onay penceresi onun için uyarır. Bilinçli sınır: kayda göre alınan onarımdaki nüshanın
+  hasar önerisi o sayımda 27/1 ile düşülmez (yalnız bulunan nüsha düşülür — madde 10).
+- **K3 — Sınıf kitaplığında "Kayda göre alınır". KARAR (25.09.2026) — ANA OTURUM KARARI:
+  SEÇENEK (a), UYGULANDI.** Seçenek kalktı (`SECTION_DELIVERY_BASIS_CHOICES` = Yerinde
+  sayılır · Sayımdan önce toplanır; DB kısıtı daraldı): 32/5'in birinci cümlesi ortak kullanım
+  alanını SAYAR; "sayım yapılmaksızın" yalnız ikinci cümlededir ve kamu görevlilerine teslim
+  belgesiyle verilen taşınır içindir. "Sayımdan önce toplanır"da geri alınamayan şube nüshası
+  yerinde aranır; okutulmazsa noksandır (onayda düşülür, teslimi "Kayba dönüştü"). §9-11
+  madde 11 ile tutarlı. Öğretmene teslimde 32/5 ikinci cümle yolu kalır.
+- **K4 — Programa aktarım ve 32/3. KARAR (25.09.2026) — ANA OTURUM KARARI: SEÇENEK (b),
+  UYGULANDI.** Programa aktarım ("Mevcut koleksiyon (programa aktarım)" yolu: içe aktarım,
+  bu yoldaki edinim partisi ve Hızlı Kayıt'ta bu edinimle yeni nüsha) durdurma süresince
+  kapalı KALIR; ret iletisi TMY'ye dayandırılmaz: **"Sayım sürerken programa aktarım
+  yapılamaz; sayım bitince aktarın."** (`tmy_kapisi.PROGRAMA_AKTARIM`,
+  `PROGRAMA_AKTARIM_MESSAGE`, kod `sayim_programa_aktarim`; yolu `edinim_islemi(method)`
+  seçer). Edinim (Md. 10/5 yolları ve sayım fazlası — gerçek taşınır girişi) iletisi TMY
+  32/3'e dayanmaya devam eder. Ekranda İçe Aktarma'da ve programa aktarım edinimli Hızlı
+  Kayıt'ta bant "Sayım sürüyor" (`AktarimBandi`). Bilinçli sınır: Hızlı Kayıt'ın etiket ön
+  denetimi (`check_label`) edinimi bilmez, durdurmada "edinim ve yeni nüsha kaydı" iletisini
+  verir — ekran durdurma sürerken "Nüshayı aç"ı zaten kapattığı için bu ön denetime
+  gidilmez.
+- **K5 — İkinci sayımda elle eklenen fazlanın teyidi. KARAR (25.09.2026) — ANA OTURUM
+  KARARI: GEREKMEZ.** Kural kalır: 32/6'nın ikinci sayımı yalnız noksanlar içindir; okutulmuş
+  ya da elle yazılmış fazla sayım sırasında kurulun elindedir ve yeniden sayılmaz (madde 35,
+  bilinçli sınır a). Tutanağın 32/6 notu bunu söyler.
+- **K6 — "Yıl sonu sayımı" işareti. KARAR (25.09.2026) — ANA OTURUM KARARI: SEÇENEK (a),
+  F10 İLE.** İşaret F10'da eklenir; **F10 sözleşmesine devredildi** (işaretsiz sayımda ek
+  basılmaz ya da başlığı "Ara sayım — sayılar cetvele aktarılmaz" olur; bir alan + göç;
+  F10'un E11 — 34/2-c + 34/3-a — işiyle birlikte). F9'da bugünkü koşullu not kalır (madde
+  37, `ARA_SAYIM_NOTU`).
+- **K7 — Harfli eski etiket. KARAR (25.09.2026) — ANA OTURUM KARARI: BUGÜNKÜ GİBİ.** Harf
+  içeren kod ham koduyla sayım fazlası olarak YAZILMAZ (madde 31, bilinçli sınır d); kitap
+  "Etiketsiz kitap ekle" ile yazılır.
+
+**Karar turu (25.09.2026).** Madde 24-27 ve K1-K7 kararlarının uygulanması:
+
+44. **K1** — `tmy_kapisi.dosya_cozumu_kapsamda_mi` kayıpta `FOUND_RESOLUTIONS`'ı dışlar;
+    kapsam metni ve ön yüz sabiti eşitlendi; `test_kayip_hasar.py` (kapsam tablosu, bulunmada
+    kapı sorulmaz), `test_sayim.py` (durdurma sürerken "Bulundu" geçer, "Aynısı temin edildi"
+    ve öneri reddedilir). Onay uyarısı ve kalem uyarısı sadeleşti (`SayimDiyaloglari`).
+45. **K2, K3** — model ve göç (madde K2), servis (`_kalem_bicimi` onarımda `repair_basis`;
+    `_siniflandir`: şube teslimi kayda göre alınmaz, anlık görüntüde onarımda ve hâlâ
+    onarımda olan kayda göre), seçici (`BASIS_DAYANAK`, `BASIS_CATEGORY_FIELDS`,
+    `BASIS_FALLBACK_TEXT`, `basis_label`, `item_basis_label`, `category_lines` onarım satırı),
+    serializer (`repair_basis`, `repair_basis_display`, `basis_choices.repair_basis`; kalemin
+    `basis_display`'i onarımda kararın sözcükleri — T13 anlık görüntüsü güncellendi), tutanak
+    (SONUÇLAR'da ayrı satır, tablo başlıkları "ÖDÜNÇTEKİ, TESLİMDEKİ VE ONARIMDAKİ NÜSHALAR"),
+    taslak kartı "Ödünçteki, Teslimdeki ve Onarımdaki Nüshalar" (dört seçici).
+46. **Madde 24, 26** — izin listesine `library-stocktake-scan` POST ve `library-desk-state`
+    GET (sorgu dizesi yok) girdi; `StockTakeScanView` `APIView`'dır ve görevli kipinde
+    `staff_scan_result` döndürür; `services.masa.masa_durumu`. Ön yüz: `dolasim/masaDurumu.ts`
+    (`useMasaDurumu`), `DolasimMasasi` iki kipte de bu uçtan okur, `GorevliEkrani` düğmesi ve
+    `sayim/GorevliSayimOkutmasi`.
+47. **Madde 25** — madde 25'teki satırlar; `tmy_34_1` yeni alanları (`found_quantity`,
+    `damage_written_off`, `damage_pending`, `carryover_final`); belge sabitleri
+    `GELECEK_YIL_SATIRI`, `SAYIMDA_BULUNAN_SATIRI`, `HASAR_DUSULEN_SATIRI`, `BELIRSIZ_ONAY`.
+48. **Madde 27** — `deliveries.ensure_no_service_pause`; `SERVICE_PAUSE_MESSAGE` ve
+    `SERVICE_PAUSE_SCOPE_TEXT`; Yeni Teslim şeridi ve kapalı "Teslim et"
+    (`TESLIM_HIZMET_ARASI_IPUCU`).
+49. **K4** — `tmy_kapisi.edinim_islemi`; `catalog.create_acquisition`, `validate_new_copy` ve
+    içe aktarımın önizleme/uygulaması yolu yönteme göre seçer; `AktarimBandi`,
+    `PROGRAMA_AKTARIM_KAPALI` (sunucuyla birebir — `test_on_yuz_sabitleri.py`).
+50. **Kılavuz ve sözlük** — kılavuzun Kipler, Katalog, Dolaşım Masası, Teslimler, Kayıp ve
+    Hasar, Sayım ve İçe Aktarma bölümleri; sözlük §4 (`LossDamageCase`, `StockTake`, seçenekler
+    satırı), §4.1, §4.10 (görevli ekranının işleri, masa şeridi), §4.15; BENIOKU §3.2 ve §4
+    (onarımın dayanağı yok, programa aktarım programın kuralı). Testler:
+    `test_sayim_kilavuz_metinleri.py` (K1, K2, K3, K4 testleri), `KilavuzPage.test.tsx`.
+51. **CLAUDE.md** — §2-7 (hizmet arası yeni ödünç ve teslimi durdurur; geri alma da açık) ve
+    §7 F9 paragrafı ("Sıradaki: F10" satırı "yıl sonu sayımı" işaretini üstlenir).
+52. **Kapı** — tam backend `pytest -q --no-cov` (3855 geçti, 2 atlandı), `ruff check`,
+    `ruff format --check`, `mypy` (327 dosya), `makemigrations --check` (değişiklik yok), ön
+    yüz `typecheck`, `eslint`, `prettier --check` ve ilgili `vitest` (sayım, dolaşım, kip,
+    teslim, kütüphane, kayıp, kılavuz, panel, App — 42 dosya, 628 test) yeşil (25.09.2026).
+    Karar turunda görevli yüzeyinin anlık görüntüleri de güncellendi
+    (`test_masa_gorevli_yuzeyi.py`, `test_uc_kapilari.py`, `test_kisi_yazan_uclar.py`).
+    `bash scripts/gates.sh` bu turda koşulmadı.
 
 ### 14.2 Saha hazırlık hattı (kod dışı — F0 ile başlar)
 

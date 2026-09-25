@@ -43,6 +43,7 @@ import DosyaAcDiyalogu, {
   KAYIP_DUGMESI,
   dosyaAcildiIletisi,
 } from "./DosyaAcDiyalogu";
+import { DurdurmaBandi } from "../sayim/SayimKarti";
 import DosyaAyrintisi from "./DosyaAyrintisi";
 
 /** Sayfanın başlığı — üst çubuktaki başlıkla aynıdır (docs/sozluk.md §4). */
@@ -194,6 +195,12 @@ export default function KayipHasarPage() {
         {bedelVar ? "; piyasa bedeli yalnız kaydedilir (Yönetmelik Md. 19)" : ""}. Kayıttan düşme
         burada yalnız önerilir. Bu liste kişisel veri içerir.
       </p>
+
+      {/* F9: TMY 32/3 durdurması kayıp bildirimini ve dosya çözümünü kapsar — kapsam
+          `tmy_kapisi.dosya_cozumu_kapsamda_mi` (F7 ekleri 17): kayıp dosyasında bulunma (F9
+          ekleri K1) ve bedel adımları DIŞINDAKİ çözümler, hasar dosyasında YALNIZ kayıttan
+          düşme önerisi (sözlük §4). */}
+      <DurdurmaBandi islem="kayıp bildirimi, kayıp dosyasının bulunma ve bedel adımları dışındaki çözümü ve hasar dosyasında kayıttan düşme önerisi" />
 
       <Card
         elevation={0}

@@ -351,3 +351,34 @@ describe("BarcodeInput — alan davranışı", () => {
     expect(screen.queryByText(ODAK_UYARISI)).toBeNull();
   });
 });
+
+describe("BarcodeInput — bekleyen okutma bildirimi (F9 düzeltme turu)", () => {
+  it("sırada bekleyen ve işlenmekte olan okutma sayısını bildirir; bitince 0", async () => {
+    const user = userEvent.setup();
+    const bildirimler: number[] = [];
+    const bitirenler: Array<() => void> = [];
+    const isleyici = vi.fn(
+      () =>
+        new Promise<OkutmaGeriBildirimi>((coz) => {
+          bitirenler.push(() => coz("basari"));
+        }),
+    );
+    render(
+      <BarcodeInput
+        label="Okut"
+        onOkut={isleyici}
+        onBekleyenDegisti={(n) => bildirimler.push(n)}
+      />,
+    );
+    const kutu = screen.getByLabelText("Okut");
+    await user.type(kutu, "2026000401{Enter}");
+    await user.type(kutu, "2026000402{Enter}");
+    // Biri işleniyor, biri sırada: 2.
+    expect(bildirimler.at(-1)).toBe(2);
+    act(() => bitirenler[0]());
+    await waitFor(() => expect(bitirenler).toHaveLength(2));
+    expect(bildirimler.at(-1)).toBe(1);
+    act(() => bitirenler[1]());
+    await waitFor(() => expect(bildirimler.at(-1)).toBe(0));
+  });
+});

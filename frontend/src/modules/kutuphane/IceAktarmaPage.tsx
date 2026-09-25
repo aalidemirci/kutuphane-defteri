@@ -19,6 +19,7 @@ import Button from "../../ui/Button";
 import ModuleHeader from "../../ui/ModuleHeader";
 import Tabs, { tabPanelProps } from "../../ui/Tabs";
 import type { TabItem } from "../../ui/Tabs";
+import { AktarimBandi } from "../sayim/SayimKarti";
 import AktarimGecmisi from "./AktarimGecmisi";
 import AktarimPaneli from "./AktarimPaneli";
 import CevrimdisiKunyePaneli from "./CevrimdisiKunyePaneli";
@@ -72,6 +73,10 @@ export default function IceAktarmaPage() {
         ekrandaki sayılar uygulamanın yazacağı sayılardır ve önizlemede hiçbir kayıt yazılmaz. Kitap
         kitap giriş için Katalog → Hızlı Kayıt ekranını kullanın.
       </p>
+
+      {/* F9: TMY 32/3 durdurması sürerken içe aktarımın önizlemesi de reddedilir. Programa
+          aktarım taşınır girişi değildir: bant TMY'ye dayanmaz (F9 ekleri K4). */}
+      <AktarimBandi />
 
       <Tabs
         items={TABS}

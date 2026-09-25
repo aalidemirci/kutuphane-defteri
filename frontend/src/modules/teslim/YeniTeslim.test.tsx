@@ -32,6 +32,12 @@ vi.mock("../okul/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../okul/api")>();
   return { ...actual, okulApi: { ...actual.okulApi, ...okul } };
 });
+// F9 (madde 27): masanın kişisiz durumu — hizmet arası sürerken yeni teslim yapılmaz.
+const masa = vi.hoisted(() => ({ masaDurumu: vi.fn() }));
+vi.mock("../dolasim/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../dolasim/api")>();
+  return { ...actual, dolasimApi: { ...actual.dolasimApi, ...masa } };
+});
 const saveBlobMock = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/download", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../lib/download")>()),
@@ -39,7 +45,13 @@ vi.mock("../../lib/download", async (importOriginal) => ({
 }));
 
 import { ODAK_UYARISI } from "../../ui/BarcodeInput";
-import YeniTeslim, { LISTEYE_GIRMEYENLER, TESLIM_KUTUSU, ZATEN_LISTEDE } from "./YeniTeslim";
+import { HIZMET_ARASI_SURUYOR } from "../sayim/SayimKarti";
+import YeniTeslim, {
+  LISTEYE_GIRMEYENLER,
+  TESLIM_HIZMET_ARASI_IPUCU,
+  TESLIM_KUTUSU,
+  ZATEN_LISTEDE,
+} from "./YeniTeslim";
 
 function denetim(barkod: string, ad: string): TeslimDenetimi {
   return {
@@ -127,11 +139,44 @@ beforeEach(() => {
   );
   teslim.teslimEt.mockResolvedValue(sonuc());
   teslim.teslimListesiPdf.mockResolvedValue(new Blob(["%PDF"]));
+  masa.masaDurumu.mockResolvedValue({ service_pause: false, stocktake_scan: null });
 });
 
 async function okut(user: ReturnType<typeof userEvent.setup>, kod: string) {
   await user.type(screen.getByLabelText(TESLIM_KUTUSU), `${kod}{Enter}`);
 }
+
+describe("YeniTeslim — sayım için hizmet arası (F9, madde 27)", () => {
+  it("hizmet arası sürerken şerit durur ve “Teslim et” kapalıdır", async () => {
+    const user = userEvent.setup();
+    masa.masaDurumu.mockResolvedValue({ service_pause: true, stocktake_scan: null });
+    ciz();
+
+    const serit = await screen.findByRole("status", { name: "Sayım için hizmet arası" });
+    expect(serit).toHaveTextContent(HIZMET_ARASI_SURUYOR);
+    expect(serit).toHaveTextContent(TESLIM_HIZMET_ARASI_IPUCU);
+    await okut(user, "2026000101");
+    await screen.findByText("Listede 1 kitap");
+    expect(screen.getByRole("button", { name: "Teslim et" })).toBeDisabled();
+    expect(teslim.teslimEt).not.toHaveBeenCalled();
+  });
+
+  it("ön denetimin hizmet arası reddi kitabın yanında yazılır", async () => {
+    const user = userEvent.setup();
+    teslim.denetle.mockResolvedValue({
+      result: "rejected",
+      kind: "COPY",
+      message: HIZMET_ARASI_SURUYOR,
+      copy: { barcode: "2026000101", barcode_display: "2026-000101", work_title: "Birinci Kitap" },
+    });
+    ciz();
+    await okut(user, "2026000101");
+    expect(
+      await screen.findAllByText(`2026-000101 — Birinci Kitap: ${HIZMET_ARASI_SURUYOR}`),
+    ).not.toHaveLength(0);
+    expect(screen.getByText("Listede 0 kitap")).toBeInTheDocument();
+  });
+});
 
 describe("YeniTeslim", () => {
   it("şubeler yalnız etkin ders yılından gelir; sayı sınırı dili yoktur", async () => {

@@ -2,7 +2,7 @@
 // §14.1): F0 iskeleti kurulum, kişiler, ayarlar, kılavuz ve hakkında
 // ekranlarını taşır; F2 katalog ekranlarını (eser, nüsha, edinim, bağış)
 // ekledi; F3 toplu aktarım ve hızlı kayıt ekranlarını, F4 etiket ekranını,
-// F5 Ağ Doktoru'nu ekledi; dolaşım ve sayım ekranları kendi fazlarında gelir. Kilit ekranı
+// F5 Ağ Doktoru'nu ekledi; F6-F8 dolaşım, teslim, ayıklama ve F9 sayım ekranlarını. Kilit ekranı
 // (GuvenlikKapisi) kurulum kapısından ÖNCE gelir — parola kuruluysa hiçbir
 // veri ekranı (sihirbaz dahil) açılmadan kilit çözülmelidir. Kip kapısı
 // (KipKapisi) en içtedir: görevli kipinde rotaların yerine görevli ekranı
@@ -33,6 +33,7 @@ import PanelPage from "./modules/panel/PanelPage";
 import AyiklamaPage from "./modules/ayiklama/AyiklamaPage";
 import NadirEserlerPage from "./modules/ayiklama/NadirEserlerPage";
 import YilSonuRaporuPage from "./modules/ayiklama/YilSonuRaporuPage";
+import SayimPage from "./modules/sayim/SayimPage";
 import TeslimlerPage from "./modules/teslim/TeslimlerPage";
 import GecikmisOdunclerPage from "./modules/uyelik/GecikmisOdunclerPage";
 import IlisikListesiPage from "./modules/yil/IlisikListesiPage";
@@ -88,6 +89,10 @@ export default function App() {
                   Katalog'un sağ üstünden açılır. Yalnız yönetici kipinde. */}
               <Route path="/katalog/ayiklama" element={<AyiklamaPage />} />
               <Route path="/katalog/nadir-eserler" element={<NadirEserlerPage />} />
+              {/* F9: sayım (TMY 32; iki ayrı seçenek — TMY 32/3 durdurması ve sayım için
+                  hizmet arası; E10 sayım tutanağı). Katalog'un sağ üstünden ve Genel
+                  Bakış'ın "Sayım" kartından açılır. Yalnız yönetici kipinde. */}
+              <Route path="/katalog/sayim" element={<SayimPage />} />
               {/* Ders yılı, şubeler, okul künyesi, güvenlik, güncelleme, Ağ Kataloğu. */}
               <Route path="/ayarlar" element={<AyarlarPage />} />
               {/* Ağ Doktoru (F5): Ağ Kataloğu denetimi ve belgeleri; yalnız yönetici kipinde. */}

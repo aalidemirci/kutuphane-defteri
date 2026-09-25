@@ -46,6 +46,15 @@
 //   * Yönetici kipinde üye bağlamındaki açık ödünçlerin yanında "Kayıp bildir" kısayolu
 //     durur (`kayip/DosyaAcDiyalogu`): ödünç "Kayba dönüştü" ile kapanır, kalan hak
 //     sunucudan yeniden okunur. Görevli kipinde kısayol YOKTUR (kayıp dosyaları kapalı).
+//
+// F9 (sayım): "Sayım için hizmet arası" okul kararıdır ve yeni ödüncü ve yeni teslimi durdurur
+// (madde 27); iade ve teslimden geri alma hiçbir durumda durmaz. Sürerken okutma kutusunun
+// üstünde şerit durur ("Sayım için hizmet arası — yeni ödünç ve teslim yapılamıyor. İade ve
+// teslimden geri alma açık."). Şerit masanın kişisiz durum ucundan (`library-desk-state`)
+// açılır — İKİ KİPTE de, masa açılırken (madde 26, 25.09.2026 kullanıcı kararı); durum
+// dakikada bir yeniden okunur. Ödünç reddi şeridi hemen açar, başarılı her ödünç kaldırır
+// (düzeltme turu: şerit hizmet arası kalktıktan sonra da duruyordu). Retten sonra okutulan
+// kitabın iadesi önerilir (kitap iade için getirilmiş olabilir).
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -60,8 +69,10 @@ import Icon from "../../ui/Icon";
 import DosyaAcDiyalogu from "../kayip/DosyaAcDiyalogu";
 import type { SeciliNusha } from "../kayip/DosyaAcDiyalogu";
 import { barkodBicimle, kodTuru } from "../kutuphane/tarama";
+import { HizmetArasiSeridi } from "../sayim/SayimKarti";
 import { teslimApi } from "../teslim/api";
 import { KARTSIZ_GEREKCELER, RED, UYEYE_BAGLI_RETLER, dolasimApi } from "./api";
+import { useMasaDurumu } from "./masaDurumu";
 import type {
   AcikOdunc,
   IstisnaGerekcesi,
@@ -180,6 +191,17 @@ export default function DolasimMasasi({
   const [kartsizAcik, setKartsizAcik] = useState(false);
   // Yalnız yönetici kipi: üyenin açık ödüncü için kayıp bildirimi (F7).
   const [kayipNushasi, setKayipNushasi] = useState<SeciliNusha | null>(null);
+  // F9: sayım için hizmet arası. Masanın kişisiz durumundan okunur — iki kipte de, açılışta
+  // (madde 26) — ve masa gün boyu açık kaldığı için aralıkla yeniden okunur. Masanın kendi
+  // gözlemi (`hizmetArasiYerel`: ret → açık, başarılı ödünç → kapalı) sunucudan gelen son
+  // okumaya dek geçerlidir — şerit hizmet arası kalktıktan sonra "yeni ödünç ve teslim
+  // yapılamıyor" demeye devam etmesin (F9 düzeltme turu).
+  const masaDurumu = useMasaDurumu();
+  const [hizmetArasiYerel, setHizmetArasi] = useState<boolean | null>(null);
+  useEffect(() => {
+    setHizmetArasi(null); // sunucudan yeni okuma geldi: o geçerlidir
+  }, [masaDurumu]);
+  const hizmetArasi = hizmetArasiYerel ?? masaDurumu?.service_pause ?? false;
   const [sonEtkinlik, setSonEtkinlik] = useState(0);
   const sayac = useRef(0);
   // Gerekçeli istisna penceresi açıkken kuyruğun sıradaki okutması BEKLER (pencere
@@ -347,6 +369,8 @@ export default function DolasimMasasi({
   const oduncVer = async (b: UyeBaglami, kod: string): Promise<OkutmaGeriBildirimi> => {
     try {
       const sonuc = await dolasimApi.oduncVer(oduncGovdesi(b, kod));
+      // Ödünç verilebildi: hizmet arası (varsa) kalkmıştır — şerit kalkar.
+      setHizmetArasi(false);
       oduncSonucunuYaz(b, sonuc);
       return sonuc.warnings.length > 0 ? "uyari" : "basari";
     } catch (e) {
@@ -374,6 +398,12 @@ export default function DolasimMasasi({
       if (e.code === RED.kartKilidi) {
         baglamiYaz(null);
         setKartKilidi(e.message);
+      } else if (e.code === RED.hizmetArasi) {
+        // F9: sayım için hizmet arası — yeni ödünç durur, iade açıktır. Şerit hemen açılır (masa
+        // durumu dakikada bir okunur; hizmet arası o arada başlamış olabilir) ve kitap iade için
+        // getirilmiş olabileceğinden iadesi önerilir.
+        setHizmetArasi(true);
+        setIstem({ tur: "iade", barkod: kod });
       } else if (UYEYE_BAGLI_RETLER.has(e.code)) {
         // Üyeye bağlı ret: kitap iade için getirilmiş olabilir (§9-8 — sonlanmış üye
         // de iade yapar). İade önerisi kitabın kimde olduğunu söylemez.
@@ -564,6 +594,8 @@ export default function DolasimMasasi({
             </Button>
           </div>
         </div>
+
+        {hizmetArasi && <HizmetArasiSeridi />}
 
         {kartKilidi !== null && (
           <KartKilidiSeridi

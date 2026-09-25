@@ -152,10 +152,13 @@ Kütüphaneleri Yönetmeliği (RG 23.11.2024/32731) ile TMY'ye bağlıdır. Meti
 
 7. **Sayımda iki ayrı seçenek** (§9-10). **TMY 32/3 durdurması** isteğe
    bağlıdır (kurul talebi + harcama yetkilisi adı ve tarihi) ve yalnız edinim,
-   kayıttan düşme, devir ve kayıp dosyası çözümünü kapsar. **"Sayım için
-   hizmet arası"** okul kararıdır ve yalnız yeni ödüncü durdurur; TMY'ye
-   dayandırılmaz, çünkü ödünç TMY'de giriş-çıkış değildir (13/1, 23/4). İkisi
-   tutanakta **ayrı satırdadır**. **İade hiçbir durumda kilitlenmez.**
+   kayıttan düşme, devir ve kayıp dosyası çözümünü kapsar (kayıp dosyasında
+   bulunma ve bedel adımları hariç — F9 ekleri K1; programa aktarım da durur ama
+   iletisi TMY'ye dayanmaz — K4). **"Sayım için hizmet arası"** okul kararıdır
+   ve yeni ödüncü ve yeni teslimi durdurur (F9 ekleri 27, 25.09.2026 kullanıcı
+   kararı); TMY'ye dayandırılmaz, çünkü ödünç TMY'de giriş-çıkış değildir (13/1,
+   23/4). İkisi tutanakta **ayrı satırdadır**. **İade ve teslimden geri alma
+   hiçbir durumda kilitlenmez.**
 
 8. **Türkçe arama ve sıralama** (T7). SQLite'ın `LIKE`'ı ve BINARY sıralaması
    Türkçe harflerde çalışmaz. Arama `search_key`, sıralama `sort_key`,
@@ -545,12 +548,46 @@ ayıklamaya konmaz (ara belge düzeltmesi ve kalemin dosya bağı kalktı) · ra
 kuralı kalır, Yıl Sonu Raporu ekranı uyarır. E7-E9, E16'nın gerçek yazıcı çıktısı F12'ye
 ertelendi.
 
-Sıradaki: F9 Sayım (anlık görüntü, TMY 32/3 durdurması ve "hizmet arası" iki ayrı seçenek,
-LOST uzlaştırma ve kayıp nüshanın kayıttan düşülmesi, D1/D4/D16/D17/D18, E10). F9, A8
-kararının ekini (E10 ekinde TMY 34/1 büyüklükleri; cetvel TKYS'de) ve kayıp/hasar
-önerilerinin TMY 27/1 + 10/1-e yolundan kayıp/hasar tutanağıyla komisyonsuz düşülmesini
-üstlenir (F8 ekleri 13, 34). Tam tablo: tasarım §14.1. Saha hazırlık hattı (S1-S15, kod
-dışı): §14.2.
+**F9 Sayım — kod tarafı bitti (25.09.2026, dal `f9-sayim`).** `StockTake` + `StockTakeItem`
+(kurul, durduran ve onaylayan harcama yetkilisi adları şifreli; kalem kişisiz), terminal durum
+**"Hasar (kayıttan düşüldü)"** — tek göç `0008_sayim` · taslak → sürüyor (iki tur; 32/6) →
+tamamlandı → onaylandı | iptal; aynı anda tek canlı sayım · başlatmada **anlık görüntü** ·
+**iki AYRI seçenek**: TMY 32/3 durdurması (isteğe bağlı; kurulun talebi + harcama yetkilisinin
+adı ve tarihi; `tmy_kapisi.ensure_open` doldu — edinim ve yeni nüsha, kayıttan düşme, devir,
+kayıp bildirimi, kayıp dosyasının bulunma ve bedel adımları dışındaki çözümü, hasarda düşme
+önerisi; programa aktarım da kapalı ama iletisi TMY'siz) ve **sayım için hizmet arası** (okul
+kararı; yeni ödünç ve yeni teslim) · **iade ve teslimden geri alma hiçbir durumda durmaz**,
+sayım sırasında kütüphaneye dönen nüsha "bulundu" · kilitler onaya ya da iptale dek (D17) ·
+okutma kuyruğu (ISBN ve üye kartı yazılmaz, harfli kod yazılmaz; görevli kipinde de açık,
+yanıt daralır), sayım fazlası `surplus_barcode`'da (D16) · kurulun ödünçteki, teslimdeki ve
+onarımdaki nüsha seçimi (32/5'e kıyasen; şubede yerinde ya da toplanır — kayda göre değil,
+23/6'ya kıyasen; onarımda sayım kurulunun kararı) · onay TEK işlem: noksan 32/7, hasar önerisi 27/1 + 10/1-e
+komisyonsuz, LOST uzlaştırma, fazla TMY 17 ile tek edinimde; her noksan ve fazla onayda
+YENİDEN doğrulanır · E10 Sayım tutanağı (PDF + XLSX; iki seçenek ve iade ayrı satırda, ödünç
+alanın kimliği yok) + ek **"Taşınır Sayım ve Döküm Cetveline aktarılacak sayılar"** (34/1'in
+dört büyüklüğü; cetvel TKYS'de) · Sayım ekranları, Genel Bakış kartı, bantlar, masa şeridi ·
+kılavuzun Sayım bölümü, sözlük §4.15. **D1'in F9 kısmı, D4, D16, D17, D18 kapandı.** Sapmalar,
+kararlar ve düzeltme turu (denetimin 22 bulgusu; madde 28-43: aynı gün onarımdan dönüş,
+kayıp dosyasında temin, sayımda bağlanan boş etiketin ikinci kez kayda girmesi, harfli kodun
+birleşmesi, kararsız fazlada kesinlik, tutanak taşması, pencerelerde okutma kaybı, masa şeridi,
+Hızlı Kayıt ön denetimi, fazla kartının sayfalanması, dürüst dayanak metinleri): tasarım §14.1
+**"F9 ekleri"**. **Kararlar (25.09.2026) uygulandı** (F9 ekleri madde 24-27 ve K1-K7, karar
+turu madde 44-52; bekleyen karar yok): KULLANICI KARARI — sayım okutması görevli kipine açık
+(izin listesine yalnız `library-stocktake-scan` POST; kişisiz masa durumu `library-desk-state`
+GET), hizmet arası yeni teslimi de durdurur ve masada iki kipte açılışta görünür; ANA OTURUM
+KARARI — ekte gelecek yıla devirden onayda 27/1 ile düşülen çıkarılır (madde 25 a), kayıp
+dosyasında "Bulundu" 32/3 kapsamı dışında (K1), onarımdaki nüsha için kurul seçimi
+`repair_basis` (K2), şubede "Kayda göre alınır" yok (K3), programa aktarım durdurmada kapalı
+ama TMY'siz iletiyle (K4), ikinci turda fazla teyidi yok (K5), harfli eski etiket yazılmaz
+(K7). E10'un gerçek yazıcı çıktısı ve sayım gününün kendisi F12'ye ertelendi.
+
+Sıradaki: F10 Raporlar + dışa aktarım (kişisiz istatistik ve eşikli kırılımlar, Md. 7'nin 10.000
+eşiği, çok okunanlar — k farklı üye, gün değişimi kapısına eklenir — + E12, E11 ciltsiz süreli
+yayın hariç ve D1'in kalan kısmı 34/2-c + 34/3-a, E17, E20, sürümlü dışa aktarım şeması +
+gidiş-dönüş, kişi dökümü, "Bakanlık sistemi kullanımda" hatırlatma ayarı). F10, F9'dan sayıma
+**"yıl sonu sayımı" işaretini** üstlenir (F9 ekleri K6 KARAR — F10 sözleşmesine devredildi;
+işaretsiz sayımın eki cetvele aktarılacak sayı basmaz). Tam tablo: tasarım §14.1. Saha hazırlık
+hattı (S1-S15, kod dışı): §14.2.
 
 ---
 

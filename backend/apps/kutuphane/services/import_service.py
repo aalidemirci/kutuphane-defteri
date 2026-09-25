@@ -84,6 +84,7 @@ from apps.kutuphane.models import (
     Work,
 )
 from apps.kutuphane.services import catalog as catalog_service
+from apps.kutuphane.services import tmy_kapisi
 from apps.okul.excel_ogrenci import ParserError, read_sheet
 
 logger = logging.getLogger("kutuphane_defteri.kutuphane")
@@ -1291,7 +1292,12 @@ def preview_import(
 
     Kalıcı iz (DRY_RUN koşusu) geri sarmanın DIŞINDA yazılır: geçmiş görünümü boş
     kalmasın ve aynı dosyanın daha önce uygulanıp uygulanmadığı görünsün.
+
+    TMY 32/3 durdurması sürerken (F9) önizleme de reddedilir: her satırı aynı
+    gerekçeyle "hatalı" gösteren bir önizleme yanıltıcı olurdu. Programa aktarımın
+    (varsayılan yol) iletisi TMY'ye dayanmaz (F9 ekleri K4).
     """
+    tmy_kapisi.ensure_open(tmy_kapisi.edinim_islemi((spec or AcquisitionSpec()).method))
     plan = _plan(
         parsed.rows,
         decisions=_normalize_decisions(decisions),
@@ -1335,7 +1341,13 @@ def apply_import(
     new_sections: Sequence[str] | None = None,
     spec: AcquisitionSpec | None = None,
 ) -> CatalogImportReport:
-    """Onaylanan aktarımı uygular (tek işlem; satır hatası partiyi düşürmez)."""
+    """Onaylanan aktarımı uygular (tek işlem; satır hatası partiyi düşürmez).
+
+    TMY 32/3 durdurması (F9) BAŞTA sorulur: satır düzeyinde yakalansaydı her satır
+    hatalı sayılır ve dosya "uygulandı" diye kaydedilirdi (aynı dosya sonra "zaten
+    uygulandı" görünürdü). Programa aktarımın iletisi TMY'ye dayanmaz (K4).
+    """
+    tmy_kapisi.ensure_open(tmy_kapisi.edinim_islemi((spec or AcquisitionSpec()).method))
     plan = _plan(
         parsed.rows,
         decisions=_normalize_decisions(decisions),
