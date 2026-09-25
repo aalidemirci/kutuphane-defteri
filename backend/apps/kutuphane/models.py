@@ -51,6 +51,10 @@ Bu fazın kararları (tasarım §6.2, F2 sözleşmesi §1):
   `RareWorksSubmission` + satırları (Md. 12/2; D14 — komisyon kararı bağı) ve
   `AnnualLibraryReview` (Md. 12/1, E9 — kişisiz, sonlandırılınca dondurulur).
   Kurallar `services.weeding`, `services.rare_works`, `services.annual_review`.
+- **F9 (sayım)**: `StockTake` + `StockTakeItem` (TMY 32 — başlangıçta anlık
+  görüntü; iki AYRI seçenek: TMY 32/3 durdurması ve sayım için hizmet arası;
+  kurul ve harcama yetkilisi adları şifreli; kalem kişisizdir). Kurallar
+  `services.stocktake`, kapılar `services.tmy_kapisi` ve `services.circulation`.
 
 CLAUDE.md §3 "soft-delete ileri FK'da süzmez": `obj.fk` erişimi silinmiş kaydı
 geri getirir. Evraka ad basan yollar `deleted_at`'i elle denetler; katalog
@@ -156,6 +160,10 @@ class CopyStatus(models.TextChoices):
     yoludur.
     WITHDRAWN_*/TRANSFERRED terminaldir — yumuşak silme DEĞİL: kayıttan düşülen
     nüsha defterde ve tutanakta görünmeye devam eder.
+    WITHDRAWN_DAMAGED (F9): hasar dosyasında kayıttan düşme önerilen nüshanın
+    sayımda TMY 27/1 yolundan (kullanılamaz hâle gelme), kayıp/hasar tutanağıyla
+    komisyonsuz — harcama yetkilisinin onayıyla (10/1-e) — düşülmesi (tasarım F8
+    ekleri 34). "Ayıklandı" DEĞİLDİR: hasar Md. 12/1'in bentlerinden değildir.
     """
 
     AVAILABLE = "AVAILABLE", "Rafta"
@@ -166,6 +174,7 @@ class CopyStatus(models.TextChoices):
     WITHDRAWN_WEEDED = "WITHDRAWN_WEEDED", "Ayıklandı (kayıttan düşüldü)"
     WITHDRAWN_MISSING = "WITHDRAWN_MISSING", "Sayım noksanı (kayıttan düşüldü)"
     WITHDRAWN_LOST = "WITHDRAWN_LOST", "Kayıp (kayıttan düşüldü)"
+    WITHDRAWN_DAMAGED = "WITHDRAWN_DAMAGED", "Hasar (kayıttan düşüldü)"
     TRANSFERRED = "TRANSFERRED", "Devredildi"
 
 
@@ -175,6 +184,7 @@ TERMINAL_COPY_STATUSES: tuple[str, ...] = (
     CopyStatus.WITHDRAWN_WEEDED,
     CopyStatus.WITHDRAWN_MISSING,
     CopyStatus.WITHDRAWN_LOST,
+    CopyStatus.WITHDRAWN_DAMAGED,
     CopyStatus.TRANSFERRED,
 )
 
@@ -2594,6 +2604,15 @@ FOUND_RESOLUTIONS: tuple[str, ...] = (
     CaseResolution.FOUND_RETURNED,
     CaseResolution.FOUND_AFTER_PRICE,
 )
+#: Kaynağın yerine gelmesiyle kapanan çözümler: kayıp dosyasında nüsha "Kayıp"tan rafa
+#: DÖNER, hasar dosyasında onarımdaysa rafa döner (`services.loss_damage.resolve_case`).
+#: Sayım bunları kayıp dosyasında "sayım sırasında kütüphaneye döndü" sayar
+#: (`selectors_sayim.return_event_q` — F9 düzeltme turu: temin de dönüştür).
+SHELF_RETURN_RESOLUTIONS: tuple[str, ...] = (
+    *FOUND_RESOLUTIONS,
+    CaseResolution.REPLACED_SAME,
+    CaseResolution.CLOSED_SAME_REPURCHASED,
+)
 #: Kayıttan düşme ÖNERİSİ taşıyan çözümler. Asıl kayıttan düşme sayımda (F9) TMY 27/1
 #: yolundan, kayıp/hasar tutanağıyla yapılır; öneri ayıklamaya konmaz (F8 ekleri 34).
 WRITE_OFF_RESOLUTIONS: tuple[str, ...] = (
@@ -3471,3 +3490,646 @@ class AnnualLibraryReview(BaseModel):
     @property
     def is_finalized(self) -> bool:
         return self.finalized_at is not None
+
+
+# ---------------------------------------------------------------------------
+# F9 — sayım (TMY 32; tasarım §6.2, §9-10, §9-11, §10 E10, §13 D1/D4/D16/D17/D18)
+# ---------------------------------------------------------------------------
+class StockTakeStatus(models.TextChoices):
+    """Sayımın yaşam döngüsü (OYS `StockTakeStatus` UYARLA).
+
+    OYS'nin iki turu (ROUND1/ROUND2) burada "Sürüyor" durumunun içindeki tur
+    sayacıdır (`StockTake.round`): TMY 32/6 farklılık çıkan taşınırların sayımının
+    bir kez daha tekrarlanmasını ister. Taslakta seçenekler ve kurul yazılır;
+    "Sürüyor"da anlık görüntü alınmıştır ve okutma açıktır; "Tamamlandı"da sonuçlar
+    yazılmıştır ve harcama yetkilisinin onayı beklenir; onay noksanı kayıttan düşer
+    (32/7), fazlayı kayda alır (TMY 17). İptal kilitleri kaldırır, anlık görüntü
+    iz olarak kalır.
+    """
+
+    DRAFT = "DRAFT", "Taslak"
+    IN_PROGRESS = "IN_PROGRESS", "Sürüyor"
+    COMPLETED = "COMPLETED", "Tamamlandı"
+    APPROVED = "APPROVED", "Onaylandı"
+    CANCELLED = "CANCELLED", "İptal edildi"
+
+
+#: Canlı (onaylanmamış, iptal edilmemiş) sayım durumları — aynı anda tek canlı sayım.
+OPEN_STOCKTAKE_STATUSES: tuple[str, ...] = (
+    StockTakeStatus.DRAFT,
+    StockTakeStatus.IN_PROGRESS,
+    StockTakeStatus.COMPLETED,
+)
+#: Seçilen kilitlerin (TMY 32/3 durdurması, hizmet arası) sürdüğü durumlar. D17:
+#: "Tamamlandı" ile "Onaylandı" arasında boşluk YOKTUR — kilit onaya ya da iptale dek sürer.
+LOCKING_STOCKTAKE_STATUSES: tuple[str, ...] = (
+    StockTakeStatus.IN_PROGRESS,
+    StockTakeStatus.COMPLETED,
+)
+#: Sayım kurulunun en az üye sayısı (TMY 32/2: "en az üç kişiden oluşturulan sayım kurulu").
+STOCKTAKE_COMMITTEE_MIN_MEMBERS = 3
+
+
+class CountBasis(models.TextChoices):
+    """Nüshanın sayımda nasıl sayıldığı — kütüphanedeki nüsha ve kurulun seçimi (§9-11, AT-1).
+
+    Ödünçteki, teslimdeki ve onarımdaki nüsha için SAYIM KURULU seçer (taslakta):
+
+    - **Sayımdan önce toplanır:** kitaplar geri çağrılır ve kütüphanede okutulur;
+      sayım sırasında iade edilen, geri alınan ya da onarımdan dönen nüsha "bulundu"
+      sayılır. Toplanamayan ödünçteki, öğretmendeki ya da onarımdaki (ödüncü, teslimi
+      ya da onarım kaydı hâlâ açık) nüsha kayda göre alınır; geri alınamayan SINIF
+      KİTAPLIĞI nüshası ise yerinde aranır — bulunmazsa noksandır (F9 ekleri K3).
+    - **Yerinde sayılır** (yalnız sınıf kitaplığı teslimi): kurul sınıf kitaplığında
+      okutur — TMY 32/5'in birinci cümlesine KIYASEN (ortak kullanım alanı; teslim
+      listesi Dayanıklı Taşınırlar Listesi işlevini görür, 23/6'ya kıyasen).
+    - **Kayda göre alınır:** sayılmaksızın kayıt esas alınır — öğretmene teslimde
+      32/5'in ikinci cümlesi (Taşınır Teslim Belgesi düzenlendiyse) ya da 32/5'e
+      kıyasen (23/4); ödünçteki nüshada "32/5'e kıyasen; 23/4" (ödünç TMY'de
+      giriş-çıkış değildir, ödünç takip sistemiyle izlenir); onarımdaki nüshada
+      ("Kayda göre alınır — onarımda") sayım kurulunun kararıdır — TMY'de onarıma
+      gönderilmiş taşınırın sayımına ilişkin doğrudan hüküm yoktur (F9 ekleri K2).
+      Sınıf kitaplığında bu seçenek YOKTUR (25.09.2026 ana oturum kararı, K3):
+      32/5'in birinci cümlesi ortak kullanım alanındaki taşınırın SAYILMASINI
+      öngörür; "sayım yapılmaksızın" yalnız ikinci cümlededir.
+
+    "Kütüphanede sayılır" seçilebilir değildir: rafta ya da kayıpta görünen nüsha
+    kütüphanede aranır. Onarımdaki nüsha için kurul "Sayımdan önce geri alınır" ya da
+    "Kayda göre alınır — onarımda" der (`REPAIR_BASIS_LABELS`; F7 bilinen sınır c).
+    """
+
+    LIBRARY = "LIBRARY", "Kütüphanede sayılır"
+    COLLECT = "COLLECT", "Sayımdan önce toplanır"
+    IN_PLACE = "IN_PLACE", "Yerinde sayılır"
+    BY_RECORD = "BY_RECORD", "Kayda göre alınır"
+
+
+#: Kurulun her kategori için seçebildikleri (tek kaynak — servis ve DB kısıtı).
+LOAN_BASIS_CHOICES: tuple[str, ...] = (CountBasis.COLLECT, CountBasis.BY_RECORD)
+#: Sınıf kitaplığı: yerinde sayım ya da sayımdan önce toplama; "Kayda göre alınır" YOK
+#: (K3 — 32/5 birinci cümle ortak kullanım alanını sayar).
+SECTION_DELIVERY_BASIS_CHOICES: tuple[str, ...] = (CountBasis.IN_PLACE, CountBasis.COLLECT)
+TEACHER_DELIVERY_BASIS_CHOICES: tuple[str, ...] = (CountBasis.COLLECT, CountBasis.BY_RECORD)
+#: Onarımdaki nüsha (K2 — F9 ekleri, 25.09.2026 ana oturum kararı).
+REPAIR_BASIS_CHOICES: tuple[str, ...] = (CountBasis.COLLECT, CountBasis.BY_RECORD)
+#: Onarımdaki nüshanın seçeneklerinin ekrandaki ve tutanaktaki adları (kararın sözcükleri).
+REPAIR_BASIS_LABELS: dict[str, str] = {
+    CountBasis.COLLECT: "Sayımdan önce geri alınır",
+    CountBasis.BY_RECORD: "Kayda göre alınır — onarımda",
+}
+
+
+class StockTakeResult(models.TextChoices):
+    """Kalemin sayım sonucu (Sayım Tutanağı — TMY 32/4-32/6).
+
+    - Sayılmadı: sayım sürerken okutulmamış kalem (tamamlanınca kalmaz).
+    - Bulundu: okutuldu ya da sayım sırasında kütüphaneye döndü (iade, geri alma,
+      bulunma, onarımdan dönüş — Md. 23/1-c: iade hiçbir durumda kilitlenmez ve
+      o turda "bulundu" sayılır).
+    - Kayda göre alındı: ödünçte ya da teslimde, kayıt esas alındı (32/5'e kıyasen).
+    - Noksan: bulunamadı — ikinci sayımdan (32/6) sonra da; düşüm teklifine
+      girer (32/7).
+    - Fazla: sayım başladığında kayıtta olmayan kitap (TMY 17 ile kayda alınır).
+    - Sayım sırasında kayıttan çıktı: TMY 32/3 durdurması seçilmemişken sayım
+      sürerken kayıttan düşülen ya da devredilen nüsha — ne bulunan ne noksandır.
+    """
+
+    PENDING = "PENDING", "Sayılmadı"
+    FOUND = "FOUND", "Bulundu"
+    BY_RECORD = "BY_RECORD", "Kayda göre alındı"
+    MISSING = "MISSING", "Noksan"
+    SURPLUS = "SURPLUS", "Fazla"
+    EXITED = "EXITED", "Sayım sırasında kayıttan çıktı"
+
+
+class StockTakeFoundVia(models.TextChoices):
+    """Bulunan kalemin nasıl bulunduğu."""
+
+    SCAN = "SCAN", "Okutuldu"
+    RETURN = "RETURN", "Sayım sırasında kütüphaneye döndü"
+
+
+class StockTakeOutcome(models.TextChoices):
+    """Onayda kaleme ne olduğu (harcama yetkilisinin onayı — TMY 10/1-e, 32/7, 17)."""
+
+    WRITTEN_OFF = "WRITTEN_OFF", "Kayıttan düşüldü"
+    NOT_APPROVED = "NOT_APPROVED", "Onaylanmadı"
+    STATE_CHANGED = "STATE_CHANGED", "Onayda durumu değişmişti — düşülmedi"
+    RECONCILED = "RECONCILED", "Kayıp kaydı kapandı"
+    ENTERED = "ENTERED", "Kayda alındı"
+    NOT_ENTERED = "NOT_ENTERED", "Kayda alınmadı"
+
+
+class StockTakeWriteOffPath(models.TextChoices):
+    """Onayda kayıttan düşülen kalemin TMY yolu (D1: noksan 32/6 değil 32/7)."""
+
+    MISSING_32_7 = "MISSING_32_7", "Sayım noksanı (TMY 32/7)"
+    DAMAGE_27_1 = "DAMAGE_27_1", "Kullanılmaz hâle gelme — hasar (TMY 27/1, 10/1-e)"
+
+
+class StockTake(BaseModel):
+    """Sayım — TMY 32; OYS `StockTake` UYARLA (tasarım §6.2, §9-10; D1, D4, D16-D18).
+
+    **İki AYRI seçenek** (§9-10; sözlük: "sayım kilidi" ve "dondurma" denmez),
+    taslakta seçilir, birbirinden bağımsızdır ve tutanakta ayrı satırlarda durur:
+
+    1. **TMY 32/3 durdurması** (`tmy_stop`, isteğe bağlı): "Sayım süresince,
+       hizmetin aksamaması ... kaydıyla, taşınır giriş ve çıkışları sayım kurulunun
+       talebi üzerine harcama yetkilisince durdurulabilir." Kurulun talep tarihi,
+       harcama yetkilisinin adı (ŞİFRELİ) ve durdurma tarihi zorunludur. Kapsadığı
+       işlemler `services.tmy_kapisi`'dedir: edinim ve yeni nüsha (programa aktarım
+       da kapalıdır, ileti TMY'ye dayandırılmaz — K4), kayıttan düşme, devir, kayıp
+       bildirimi ve kayıp dosyası çözümü (bulunma ve bedel adımları hariç — D4; F7
+       ekleri 17, K1). Ödüncü KAPSAMAZ.
+    2. **Sayım için hizmet arası** (`service_pause`, okul kararı): yeni ödüncü ve
+       yeni teslimi durdurur (madde 27, 25.09.2026 kullanıcı kararı). TMY'ye
+       dayandırılmaz (ödünç TMY'de giriş-çıkış değildir — 13/1, 23/4); en fazla
+       32/3'ün ikinci cümlesi (kurulun önlem alma görevi) anılabilir.
+
+    **İade ve teslimden geri alma hiçbir durumda kilitlenmez** (Md. 23/1-c; D18).
+    Seçilen kilitler "Sürüyor"dan onaya ya da iptale dek sürer (D17;
+    `LOCKING_STOCKTAKE_STATUSES`). Seçenekler başlatmadan sonra değişmez.
+
+    Sayım kurulu (32/2): harcama yetkilisinin ya da görevlendirdiği kişinin
+    başkanlığında, taşınır kayıt yetkilisinin de katıldığı en az üç kişi — adlar
+    ŞİFRELİDİR. Onaydaki harcama yetkilisinin adı da şifrelidir. Anahtar yokken
+    boş olmayan ad yazılmaz (fail-closed, 409 `parola_gerekli`).
+
+    Aynı anda tek canlı sayım (taslak dahil): `open_slot` yalnız canlı durumlarda
+    `True`, sonra `NULL`dır; kısmi teklik kısıtı iki canlı sayımı keser.
+    """
+
+    fiscal_year = models.PositiveSmallIntegerField(
+        "mali yıl",
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(2000), MaxValueValidator(2999)],
+        help_text="TMY 34/1 büyüklüklerinin yılı; boşsa sayımın başladığı yıl yazılır.",
+    )
+    status = models.CharField(
+        "durum", max_length=12, choices=StockTakeStatus.choices, default=StockTakeStatus.DRAFT
+    )
+    open_slot = models.BooleanField("canlı sayım işareti", null=True, default=True)
+    committee_chair = EncryptedCharField(
+        "kurul başkanı",
+        max_length=120,
+        blank=True,
+        default="",
+        help_text="Harcama yetkilisi ya da görevlendirdiği kişi (TMY 32/2).",
+    )
+    committee_property_officer = EncryptedCharField(
+        "taşınır kayıt yetkilisi",
+        max_length=120,
+        blank=True,
+        default="",
+        help_text="Sayım kurulunda taşınır kayıt yetkilisi de bulunur (TMY 32/2).",
+    )
+    committee_members = EncryptedTextField(
+        "kurul üyeleri",
+        blank=True,
+        default="",
+        help_text="Diğer üyeler; satır başına bir kişi. Kurul en az üç kişidir (TMY 32/2).",
+    )
+    tmy_stop = models.BooleanField("TMY 32/3 durdurması", default=False)
+    tmy_stop_requested_on = models.DateField(
+        "kurulun durdurma talebinin tarihi", null=True, blank=True
+    )
+    tmy_stop_by_name = EncryptedCharField(
+        "durduran harcama yetkilisi", max_length=120, blank=True, default=""
+    )
+    tmy_stop_on = models.DateField("durdurma tarihi", null=True, blank=True)
+    service_pause = models.BooleanField("sayım için hizmet arası", default=False)
+    service_pause_decision = models.CharField(
+        "hizmet arası okul kararı",
+        max_length=120,
+        blank=True,
+        default="",
+        help_text="Okul kararının tarihi ve sayısı (isteğe bağlı). Kişi adı yazmayın.",
+    )
+    loan_basis = models.CharField(
+        "ödünçteki nüsha", max_length=10, choices=CountBasis.choices, default=CountBasis.BY_RECORD
+    )
+    section_delivery_basis = models.CharField(
+        "sınıf kitaplığındaki nüsha",
+        max_length=10,
+        choices=CountBasis.choices,
+        default=CountBasis.IN_PLACE,
+    )
+    teacher_delivery_basis = models.CharField(
+        "öğretmene teslim edilen nüsha",
+        max_length=10,
+        choices=CountBasis.choices,
+        default=CountBasis.BY_RECORD,
+    )
+    repair_basis = models.CharField(
+        "onarımdaki nüsha",
+        max_length=10,
+        choices=CountBasis.choices,
+        default=CountBasis.BY_RECORD,
+        help_text=(
+            "Sayımdan önce geri alınır ya da kayda göre alınır — onarımda (sayım kurulunun "
+            "kararı; F9 ekleri K2)."
+        ),
+    )
+    round = models.PositiveSmallIntegerField(
+        "sayım turu", default=1, help_text="2: farklı çıkanların yeniden sayımı (TMY 32/6)."
+    )
+    started_at = models.DateTimeField("başlama zamanı (anlık görüntü)", null=True, blank=True)
+    round2_started_at = models.DateTimeField("ikinci sayımın başlangıcı", null=True, blank=True)
+    completed_at = models.DateTimeField("tamamlanma zamanı", null=True, blank=True)
+    approved_by_name = EncryptedCharField(
+        "onaylayan harcama yetkilisi",
+        max_length=120,
+        blank=True,
+        default="",
+        help_text="Noksanın ve hasar önerilerinin kayıttan düşülmesini onaylar (TMY 10/1-e).",
+    )
+    approved_on = models.DateField("onay tarihi", null=True, blank=True)
+    approved_at = models.DateTimeField("onayın işlendiği zaman", null=True, blank=True)
+    surplus_acquisition = models.ForeignKey(
+        Acquisition,
+        on_delete=models.PROTECT,
+        related_name="+",
+        verbose_name="sayım fazlası edinimi",
+        null=True,
+        blank=True,
+        help_text="Onayda fazlanın kayda alındığı “Sayım fazlası (kayda giriş)” edinimi.",
+    )
+    cancelled_at = models.DateTimeField("iptal zamanı", null=True, blank=True)
+    cancel_reason = models.CharField("iptal gerekçesi", max_length=255, blank=True, default="")
+    notes = models.TextField(
+        "notlar", blank=True, default="", help_text="Sayıma ilişkin notlar. Kişi adı yazmayın."
+    )
+
+    class Meta:
+        verbose_name = "sayım"
+        verbose_name_plural = "sayımlar"
+        ordering = ["-created_at", "-pk"]
+        indexes = [
+            models.Index(fields=["status"], name="kutuphane_st_status_idx"),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                name="ck_stocktake_status",
+                condition=models.Q(status__in=StockTakeStatus.values),
+            ),
+            # Aynı anda tek canlı sayım (taslak dahil).
+            models.CheckConstraint(
+                name="ck_stocktake_open_slot",
+                condition=models.Q(status__in=list(OPEN_STOCKTAKE_STATUSES), open_slot=True)
+                | (
+                    ~models.Q(status__in=list(OPEN_STOCKTAKE_STATUSES))
+                    & models.Q(open_slot__isnull=True)
+                ),
+            ),
+            models.UniqueConstraint(
+                fields=["open_slot"],
+                condition=models.Q(open_slot=True, deleted_at__isnull=True),
+                name="uq_stocktake_single_open",
+            ),
+            # Kurulun seçenekleri kategoriye göre (yerinde sayım yalnız sınıf kitaplığında).
+            models.CheckConstraint(
+                name="ck_stocktake_loan_basis",
+                condition=models.Q(loan_basis__in=list(LOAN_BASIS_CHOICES)),
+            ),
+            models.CheckConstraint(
+                name="ck_stocktake_section_basis",
+                condition=models.Q(section_delivery_basis__in=list(SECTION_DELIVERY_BASIS_CHOICES)),
+            ),
+            models.CheckConstraint(
+                name="ck_stocktake_teacher_basis",
+                condition=models.Q(teacher_delivery_basis__in=list(TEACHER_DELIVERY_BASIS_CHOICES)),
+            ),
+            models.CheckConstraint(
+                name="ck_stocktake_repair_basis",
+                condition=models.Q(repair_basis__in=list(REPAIR_BASIS_CHOICES)),
+            ),
+            # TMY 32/3: durdurma seçilmemişse alanları boş; başlamış sayımda seçildiyse
+            # kurulun talebi, harcama yetkilisinin adı ve tarihi dolu.
+            models.CheckConstraint(
+                name="ck_stocktake_tmy_stop",
+                condition=(
+                    models.Q(
+                        tmy_stop=False,
+                        tmy_stop_requested_on__isnull=True,
+                        tmy_stop_by_name="",
+                        tmy_stop_on__isnull=True,
+                    )
+                    | models.Q(tmy_stop=True, status__in=["DRAFT", "CANCELLED"])
+                    | (
+                        models.Q(
+                            tmy_stop=True,
+                            tmy_stop_requested_on__isnull=False,
+                            tmy_stop_on__isnull=False,
+                        )
+                        & ~models.Q(tmy_stop_by_name="")
+                    )
+                ),
+            ),
+            models.CheckConstraint(
+                name="ck_stocktake_started",
+                condition=models.Q(status="DRAFT", started_at__isnull=True)
+                | models.Q(
+                    status__in=["IN_PROGRESS", "COMPLETED", "APPROVED"],
+                    started_at__isnull=False,
+                    fiscal_year__isnull=False,
+                )
+                | models.Q(status="CANCELLED"),
+            ),
+            models.CheckConstraint(
+                name="ck_stocktake_round",
+                condition=models.Q(round=1, round2_started_at__isnull=True)
+                | models.Q(round=2, round2_started_at__isnull=False),
+            ),
+            models.CheckConstraint(
+                name="ck_stocktake_completed",
+                condition=models.Q(status__in=["COMPLETED", "APPROVED"], completed_at__isnull=False)
+                | models.Q(status__in=["DRAFT", "IN_PROGRESS"], completed_at__isnull=True)
+                | models.Q(status="CANCELLED"),
+            ),
+            # Onay: harcama yetkilisinin adı, onay tarihi ve işlenme zamanı birlikte.
+            models.CheckConstraint(
+                name="ck_stocktake_approval",
+                condition=(
+                    models.Q(
+                        status="APPROVED", approved_on__isnull=False, approved_at__isnull=False
+                    )
+                    & ~models.Q(approved_by_name="")
+                )
+                | (
+                    ~models.Q(status="APPROVED")
+                    & models.Q(
+                        approved_by_name="",
+                        approved_on__isnull=True,
+                        approved_at__isnull=True,
+                        surplus_acquisition__isnull=True,
+                    )
+                ),
+            ),
+            models.CheckConstraint(
+                name="ck_stocktake_cancelled_at",
+                condition=models.Q(status="CANCELLED", cancelled_at__isnull=False)
+                | (~models.Q(status="CANCELLED") & models.Q(cancelled_at__isnull=True)),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Sayım #{self.pk} ({self.get_status_display()})"
+
+    @property
+    def is_open(self) -> bool:
+        return self.status in OPEN_STOCKTAKE_STATUSES
+
+    @property
+    def locks_active(self) -> bool:
+        """Seçilen kilitler bu durumda sürüyor mu? (D17)"""
+        return self.status in LOCKING_STOCKTAKE_STATUSES
+
+
+class StockTakeItem(BaseModel):
+    """Sayım kalemi — anlık görüntünün bir nüshası ya da bir sayım fazlası. KİŞİSİZDİR.
+
+    **Anlık görüntü** (başlatmada, `services.stocktake.start_stocktake`): o anda
+    kayıtlı her nüsha (kayıttan düşülmüş ve devredilmiş hariç) bir kalem olur;
+    beklenen durum (`expected_status`), teslim türü, bölüm ve sınıf kitaplığı o
+    anki değerleriyle yazılır. Sayım sırasındaki değişiklikler anlık görüntüyü
+    değiştirmez; sayım başladıktan sonra kayda giren nüsha bu sayımın kapsamında
+    değildir.
+
+    **Sayım fazlası** (`copy` boş): sayım başladığında kayıtta olmayan kitap.
+    Okutulan kod `surplus_barcode`'da durur (D16: OYS onu raf alanına yazıyordu;
+    burada nüshanın hiçbir alanına yazılmaz). Kayıttan düşülmüş, devredilmiş ya da
+    silinmiş bir nüshanın etiketiyse o nüsha `surplus_copy`'dedir — numarası asla
+    yeniden kullanılmaz, kitap onayda YENİ numarayla kayda alınır (TMY 17).
+    Hiçbir kitaba bağlanmamış boş etiketse onayda o numarayla bağlanır.
+
+    Ödünç alanın ya da teslim alanın kimliği bu tabloda YOKTUR (E10: fazla/noksan
+    sayfaları VİF'e bağlanıp muhasebe birimine gider — TMY 10/1-g, 32/8).
+    """
+
+    stocktake = models.ForeignKey(
+        StockTake, on_delete=models.CASCADE, related_name="items", verbose_name="sayım"
+    )
+    copy = models.ForeignKey(
+        Copy,
+        on_delete=models.PROTECT,
+        related_name="stocktake_items",
+        verbose_name="nüsha",
+        null=True,
+        blank=True,
+        help_text="Boş = sayım fazlası.",
+    )
+    expected_status = models.CharField(
+        "kayda göre durum (anlık görüntü)",
+        max_length=20,
+        choices=CopyStatus.choices,
+        blank=True,
+        default="",
+    )
+    delivery_kind = models.CharField(
+        "teslim türü (anlık görüntü)",
+        max_length=8,
+        choices=DeliveryRecipientKind.choices,
+        blank=True,
+        default="",
+    )
+    basis = models.CharField(
+        "nasıl sayılır", max_length=10, choices=CountBasis.choices, blank=True, default=""
+    )
+    section = models.ForeignKey(
+        Section,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="bölüm (anlık görüntü)",
+        null=True,
+        blank=True,
+    )
+    class_section = models.ForeignKey(
+        "okul.ClassSection",
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="sınıf kitaplığı (anlık görüntü)",
+        null=True,
+        blank=True,
+    )
+    result = models.CharField(
+        "sonuç",
+        max_length=10,
+        choices=StockTakeResult.choices,
+        default=StockTakeResult.PENDING,
+    )
+    found_in_round = models.PositiveSmallIntegerField("bulunduğu tur", null=True, blank=True)
+    found_via = models.CharField(
+        "nasıl bulundu", max_length=8, choices=StockTakeFoundVia.choices, blank=True, default=""
+    )
+    scanned_at = models.DateTimeField("okutma zamanı", null=True, blank=True)
+    basis_fallback = models.BooleanField(
+        "sayılamadı — kayda göre alındı",
+        default=False,
+        help_text=(
+            "Toplanması ya da kütüphanede sayılması gereken nüsha açık ödünçte, öğretmende "
+            "ya da onarımda."
+        ),
+    )
+    status_at_completion = models.CharField(
+        "tamamlanırken durum",
+        max_length=20,
+        choices=CopyStatus.choices,
+        blank=True,
+        default="",
+        help_text="Onayda yeniden doğrulama bununla karşılaştırır (D17).",
+    )
+    damage_write_off = models.BooleanField(
+        "hasar önerisi (TMY 27/1)",
+        default=False,
+        help_text="Hasar dosyasında kayıttan düşme önerilen, kütüphanede bulunan nüsha.",
+    )
+    case = models.ForeignKey(
+        LossDamageCase,
+        on_delete=models.SET_NULL,
+        related_name="stocktake_items",
+        verbose_name="kayıp/hasar dosyası",
+        null=True,
+        blank=True,
+    )
+    outcome = models.CharField(
+        "onay sonucu", max_length=14, choices=StockTakeOutcome.choices, blank=True, default=""
+    )
+    write_off_path = models.CharField(
+        "kayıttan düşme yolu",
+        max_length=14,
+        choices=StockTakeWriteOffPath.choices,
+        blank=True,
+        default="",
+    )
+    outcome_note = models.CharField(
+        "onay notu",
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Onaylanmama gerekçesi ya da onaydaki durum. Kişi adı yazmayın.",
+    )
+    surplus_barcode = models.CharField(
+        "okutulan kod (sayım fazlası)", max_length=32, blank=True, default=""
+    )
+    surplus_copy = models.ForeignKey(
+        Copy,
+        on_delete=models.PROTECT,
+        related_name="+",
+        verbose_name="etiketin ait olduğu eski kayıt",
+        null=True,
+        blank=True,
+    )
+    surplus_work = models.ForeignKey(
+        Work,
+        on_delete=models.PROTECT,
+        related_name="+",
+        verbose_name="kayda alınacağı eser",
+        null=True,
+        blank=True,
+    )
+    surplus_note = models.CharField(
+        "fazla açıklaması",
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Kitabın adı ve bulunduğu yer. Kişi adı yazmayın.",
+    )
+    surplus_excluded = models.BooleanField(
+        "kayda alınmayacak",
+        default=False,
+        help_text="Kütüphaneye ait değil ya da kayıttan çıkmış (ör. imhayı bekleyen); gerekçe zorunlu.",
+    )
+    created_copy = models.ForeignKey(
+        Copy,
+        on_delete=models.PROTECT,
+        related_name="+",
+        verbose_name="onayda açılan nüsha",
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = "sayım kalemi"
+        verbose_name_plural = "sayım kalemleri"
+        ordering = ["stocktake", "pk"]
+        indexes = [
+            models.Index(fields=["stocktake", "result"], name="kutuphane_sti_result_idx"),
+        ]
+        constraints = [
+            # Bir sayımda bir nüsha tek kalem; aynı fazla kodu tek kalem.
+            models.UniqueConstraint(
+                fields=["stocktake", "copy"],
+                condition=models.Q(copy__isnull=False, deleted_at__isnull=True),
+                name="uq_stocktakeitem_copy",
+            ),
+            models.UniqueConstraint(
+                fields=["stocktake", "surplus_barcode"],
+                condition=~models.Q(surplus_barcode="") & models.Q(deleted_at__isnull=True),
+                name="uq_stocktakeitem_surplus_barcode",
+            ),
+            models.CheckConstraint(
+                name="ck_stocktakeitem_result",
+                condition=models.Q(result__in=StockTakeResult.values),
+            ),
+            models.CheckConstraint(
+                name="ck_stocktakeitem_outcome",
+                condition=models.Q(outcome="") | models.Q(outcome__in=StockTakeOutcome.values),
+            ),
+            # Anlık görüntü kalemi ile fazla kalemi ayrık (D16: fazla alanları yalnız fazlada).
+            models.CheckConstraint(
+                name="ck_stocktakeitem_kind",
+                condition=(
+                    models.Q(
+                        copy__isnull=False,
+                        surplus_barcode="",
+                        surplus_copy__isnull=True,
+                        surplus_work__isnull=True,
+                        surplus_note="",
+                        surplus_excluded=False,
+                        created_copy__isnull=True,
+                    )
+                    & ~models.Q(expected_status="")
+                    & ~models.Q(basis="")
+                    & ~models.Q(result="SURPLUS")
+                )
+                | models.Q(
+                    copy__isnull=True,
+                    expected_status="",
+                    basis="",
+                    result="SURPLUS",
+                    status_at_completion="",
+                    damage_write_off=False,
+                ),
+            ),
+            # Fazla ya bir esere kayda alınır ya da gerekçesiyle kayda alınmaz — ikisi birden olmaz.
+            models.CheckConstraint(
+                name="ck_stocktakeitem_surplus_choice",
+                condition=~models.Q(surplus_work__isnull=False, surplus_excluded=True)
+                & (~models.Q(surplus_excluded=True) | ~models.Q(surplus_note="")),
+            ),
+            # Bulunan kalem nasıl ve hangi turda bulunduğunu taşır; ötekiler taşımaz.
+            models.CheckConstraint(
+                name="ck_stocktakeitem_found",
+                condition=(
+                    models.Q(result="FOUND", found_in_round__isnull=False) & ~models.Q(found_via="")
+                )
+                | (~models.Q(result="FOUND") & models.Q(found_via="", found_in_round__isnull=True)),
+            ),
+            models.CheckConstraint(
+                name="ck_stocktakeitem_write_off_path",
+                condition=(models.Q(outcome="WRITTEN_OFF") & ~models.Q(write_off_path=""))
+                | (~models.Q(outcome="WRITTEN_OFF") & models.Q(write_off_path="")),
+            ),
+            models.CheckConstraint(
+                name="ck_stocktakeitem_not_approved_note",
+                condition=~models.Q(outcome="NOT_APPROVED") | ~models.Q(outcome_note=""),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Sayım kalemi #{self.pk} ({self.get_result_display()})"
+
+    @property
+    def is_surplus(self) -> bool:
+        return self.copy_id is None

@@ -39,6 +39,7 @@ from apps.kutuphane.models import (
 from apps.kutuphane.services import deliveries, loss_damage, memberships, tmy_kapisi
 from apps.kutuphane.services.yonetici_kipi import KipYetkisiz
 from apps.kutuphane.tests.dolasim_ortak import odunc_nushasi, odunc_ver, ogrenci, uye
+from apps.kutuphane.tests.sayim_ortak import kapi_kaydi
 from apps.kutuphane.tests.teslim_ortak import (
     kademe_yaz,
     ogretmen,
@@ -284,12 +285,18 @@ class TestKayipBildirimi:
     def test_tmy_kapisi_kayip_bildirimi_ve_cozumde_sorulur(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """D4: TMY 32/3 durdurması (F9) kayıp bildirimini ve dosya çözümünü kapsar."""
+        """D4: TMY 32/3 durdurması (F9) kayıp bildirimini ve dosya çözümünü kapsar; kayıp
+        dosyasında kitabın bulunması kapsam dışıdır (F9 ekleri K1, 25.09.2026)."""
         sorulan: list[str] = []
-        monkeypatch.setattr(tmy_kapisi, "ensure_open", sorulan.append)
+        monkeypatch.setattr(tmy_kapisi, "ensure_open", kapi_kaydi(sorulan))
         dosya = _kayip_dosyasi()
-        loss_damage.resolve_case(dosya, resolution=R.FOUND_RETURNED)
+        loss_damage.resolve_case(dosya, resolution=R.REPLACED_SAME)
         assert sorulan == [tmy_kapisi.KAYIP_BILDIRIMI, tmy_kapisi.DOSYA_COZUMU]
+        sorulan.clear()
+        bulunan = _kayip_dosyasi()
+        sorulan.clear()
+        loss_damage.resolve_case(bulunan, resolution=R.FOUND_RETURNED)
+        assert sorulan == []
 
     def test_tmy_kapisi_onarim_ve_bedel_kaydini_kapsamaz(
         self, monkeypatch: pytest.MonkeyPatch
@@ -304,7 +311,7 @@ class TestKayipBildirimi:
         """
         kademe_yaz(SchoolLevel.ORTAOGRETIM)
         sorulan: list[str] = []
-        monkeypatch.setattr(tmy_kapisi, "ensure_open", sorulan.append)
+        monkeypatch.setattr(tmy_kapisi, "ensure_open", kapi_kaydi(sorulan))
 
         hasar = loss_damage.open_damage_case(copy=odunc_nushasi())
         loss_damage.resolve_case(hasar, resolution=R.PRICE_DETERMINED, market_price=Decimal("50"))
@@ -325,11 +332,12 @@ class TestKayipBildirimi:
     @pytest.mark.parametrize(
         ("tur", "cozum", "kapsamda"),
         [
-            (CaseType.LOST, R.FOUND_RETURNED, True),
+            # K1 (25.09.2026): kayıptaki kitabın bulunması taşınır giriş-çıkışı değildir.
+            (CaseType.LOST, R.FOUND_RETURNED, False),
             (CaseType.LOST, R.REPLACED_SAME, True),
             (CaseType.LOST, R.CLOSED_SAME_REPURCHASED, True),
             (CaseType.LOST, R.CLOSED_OTHER_REPURCHASED, True),
-            (CaseType.LOST, R.FOUND_AFTER_PRICE, True),
+            (CaseType.LOST, R.FOUND_AFTER_PRICE, False),
             (CaseType.LOST, R.WRITE_OFF_PROPOSED, True),
             (CaseType.LOST, R.PRICE_DETERMINED, False),
             (CaseType.LOST, R.PRICE_RECEIVED, False),
@@ -693,12 +701,14 @@ class TestBedeldenSonraBulunma:
         dosya = _bedel_teslim_alinmis(loss_damage.report_lost(copy=loan.copy), "95")
         assert R.FOUND_AFTER_PRICE in loss_damage.allowed_resolutions(dosya)
         sorulan: list[str] = []
-        monkeypatch.setattr(tmy_kapisi, "ensure_open", sorulan.append)
+        monkeypatch.setattr(tmy_kapisi, "ensure_open", kapi_kaydi(sorulan))
 
         loss_damage.resolve_case(dosya, resolution=R.FOUND_AFTER_PRICE)
 
         dosya = tazele_dosya(dosya)
-        assert sorulan == [tmy_kapisi.DOSYA_COZUMU]  # nüsha envanterde yer değiştirir
+        # K1 (F9 ekleri, 25.09.2026): bulunma TMY 32/3 durdurmasının kapsamında değildir —
+        # kayıptaki kitabın rafa dönüşü taşınır giriş-çıkışı değildir.
+        assert sorulan == []
         assert dosya.resolution == R.FOUND_AFTER_PRICE and not dosya.is_open
         assert dosya.resolved_at is not None and dosya.write_off_proposed_at is None
         # Bedel kaydı dosyada kalır (yalnız kayıt; program para tutmaz).

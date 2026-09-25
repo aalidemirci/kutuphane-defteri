@@ -41,6 +41,7 @@ import UyariBandi from "../../ui/UyariBandi";
 import type { DosyaTuru } from "../kayip/api";
 import DosyaAcDiyalogu, { dosyaAcildiIletisi } from "../kayip/DosyaAcDiyalogu";
 import NushaIslemleri from "../kayip/NushaIslemleri";
+import { DurdurmaBandi } from "../sayim/SayimKarti";
 import { ACQUISITION_METHOD_TR, KATALOG_SAYFA_BOYUTU, kutuphaneApi } from "./api";
 import type { Acquisition, Copy, CopyBody, Section, Work } from "./api";
 import EserFormu from "./EserFormu";
@@ -128,6 +129,9 @@ export default function EserDetayPage() {
           )
         }
       />
+
+      {/* F9: TMY 32/3 durdurması sürerken "Nüsha ekle" yapılamaz. */}
+      <DurdurmaBandi islem="yeni nüsha kaydı" />
 
       {hata && <ErrorBand hata={hata} />}
 

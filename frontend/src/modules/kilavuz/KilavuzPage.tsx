@@ -142,13 +142,40 @@
 // karşılık seçimi eklendi. Adlar `modules/ayiklama` ve `modules/kutuphane/BagisPaneli`
 // sabitlerinden. Komisyonun bileşimi yazılmaz, yalnız Md. 4/1-ı'ya gönderilir: bentteki
 // "zümre" sözcüğü kılavuzun kalıntı taramasına takılır. Kayıp nüshanın kaydını sayım
-// kapatır; sayım ekranı henüz olmadığı için iki cümle de "sonraki bir sürümde" der.
+// kapatır; F9'dan beri o cümleler Sayım bölümüne gönderir ("sonraki bir sürümde" sözü kalktı).
 // 25.09.2026 kullanıcı kararları (tasarım F8 ekleri 13, 14, 34, 35): Katalog bölümüne
 // "Bağış değerlendirme sonucu" ve TMY'de "bağış kabul tutanağı" olmadığını söyleyen TEK
 // olumsuz cümle (test yasak listesinde yalnız bu cümleye izin verir), birim fiyatın 13/2-c
 // açıklaması; Kayıp, Hasar ve Onarım'a "Bulundu (bedel teslim alınmıştı)" ve kayıttan
 // düşülmüş nüshada "Sayım fazlası" yolu; Ayıklama'da kayıp ve hasar önerisinin ayıklamaya
 // konmadığı (iki bilgi kutusu); Yıl Sonu Raporu'na ekranın dönem uyarısı.
+//
+// F9 bölümü "Sayım" Yıl Sonu Raporu'nun ardından gelir (TMY 32/1: yıl sonlarında sayım). Sıra
+// kullanıcının sorusunun sırasıdır: sayımı kim yapar (md. 32/1, 32/2; program sayımı mali yıla
+// bağlar) → iki AYRI seçenek (TMY 32/3 durdurması — md. 32/3'ün ilk cümlesi alıntı; kapsadığı ve
+// kapsamadığı işler `services/tmy_kapisi.py`'deki listeyle birebir: kayıpta bedelin iki adımı,
+// hasarda öneri yazmayan çözümler, onarım, teslim, ödünç ve iade durmaz; sayım için hizmet arası
+// — okul kararı, TMY'ye dayandırılmaz: ödünç md. 13/1'in giriş-çıkış hâllerinden değildir, md.
+// 23/4'e göre ödünç takip sistemiyle izlenir; tutanağın "Dayanak" sütunu en fazla 32/3'ün ikinci
+// cümlesini anar) ve iadenin hiç durmaması (Yönetmelik md. 23/1-c, alıntısız: fıkra kılavuzun
+// yasak sözcüğünü taşır) → ödünçteki ve teslimdeki kitap (kurulun seçicileri ve seçenekleri
+// `CountBasis`; md. 32/5'e kıyasen, 23/4; 32/5'in metni kalıntı taramasına takılan bir sözcük
+// taşıdığı için alıntılanmaz) → sayım adım adım (ekrandaki adlarla) → onayda ne olur (32/7;
+// 27/1; 10/1-e TAKDİR diliyle — "onaylanabilir … harcama yetkilisi değerlendirir", F8 ekleri
+// 27; 27/3; 17/1 ilk cümle alıntı, ikinci cümle sade) → sayım fazlası → Sayım tutanağı ve eki
+// (10/1-g, 32/8; 34/1 alıntı; cetveli program düzenlemez, TKYS'de düzenlenir — 32/9 kurul
+// düzenler ve kurul ile taşınır kayıt yetkilisi imzalar; 10/1-ğ "Gelecek Yıla Devir" = "Sayımda
+// Bulunan Miktar") → iptal → sayımdan önce dosyaları gözden geçirme ipucu. "imha" bu bölümde
+// geçmez (yalnız Ayıklama'da — test). Dolaşım Masası, Kipler, Katalog (edinim), Kayıp ve Hasar
+// ile Ayıklama bölümlerine birer cümlelik gönderme eklendi. Adlar `modules/sayim` sabitlerinden;
+// "sayım kilidi" ve "dondurma" kılavuzda geçmez (sözlük §1). Sunucu tarafı
+// `test_sayim_kilavuz_metinleri.py` (atıflar fıkranın metninde, adlar koddan).
+// 25.09.2026 kararları (tasarım F9 ekleri 24-27, K1-K7): sayım okutması görevli kipinde de
+// açıktır (Kipler ve Sayım bölümleri); hizmet arası yeni teslimi de durdurur ve masada
+// açılışta görünür (Dolaşım Masası, Teslimler, Sayım); kayıp dosyasında "Bulundu" durdurmanın
+// kapsamında değildir (Kayıp ve Hasar, Sayım); onarımdaki nüsha için kurulun seçimi, sınıf
+// kitaplığında "Kayda göre alınır" yok; programa aktarım durdurma süresince kapalı ama TMY'ye
+// dayanmaz (İçe Aktarma, Sayım); ekin gelecek yıla devrinden onayda hasarla düşülen çıkarılır.
 //
 // Ad kaynakları: tepsi menüsü `desktop/tray.py` sabitleri, durum satırı
 // `desktop/katalog_kontrol.py::tepsi_satiri`, adres uyarısı `ip_denetle`,
@@ -169,11 +196,13 @@
 // 16/1, 17/1 (yalnız "üye olmak isteyen" parçası), 18/1, 19/1 ve 23/1-a
 // (meb-okul-kutuphaneleri-yonetmeligi.md), Uygulama Kılavuzu 2.4
 // (…-uygulama-kilavuzu.md), TBK 93 (6098-…-md92-93.md), KVKK 10/1 (yalnız "elde
-// edilmesi sırasında" parçası) ve 12/1 (6698-kvkk.md). Alıntısız atıflar: Yönetmelik
-// 4/1-c, 4/1-ı, 10/1-b, 10/4; Taşınır Mal Yönetmeliği 5/8, 10/1-e, 16/1, 23/6, 24,
-// 24/2, 27/1, 27/3, 28 (1, 4, 5), 31 ve 32/5 (tasinir-mal-yonetmeligi.md; 23/6 ve
-// 32/5'in metni kılavuzun kalıntı taramasına takılan bir sözcük taşır) ve Ortaöğretim
-// Kurumları Yönetmeliği 164/1-g (…-ilgili-maddeler.md).
+// edilmesi sırasında" parçası) ve 12/1 (6698-kvkk.md); Taşınır Mal Yönetmeliği 17/1 (ilk
+// cümle), 32/3 (ilk cümle) ve 34/1 (ikinci cümle). Alıntısız atıflar: Yönetmelik 4/1-c,
+// 4/1-ı, 10/1-b, 10/4, 23/1-c; Taşınır Mal Yönetmeliği 5/8, 10/1-e, 10/1-g, 10/1-ğ, 13/1,
+// 16/1, 17/1 (ikinci cümle), 23/4, 23/6, 24, 24/2, 27/1, 27/3, 28 (1, 4, 5), 31, 32/1,
+// 32/2, 32/3 (ikinci cümle), 32/5, 32/6, 32/7, 32/8 ve 32/9 (tasinir-mal-yonetmeligi.md;
+// 23/6 ve 32/5'in metni kılavuzun kalıntı taramasına takılan bir sözcük taşır) ve
+// Ortaöğretim Kurumları Yönetmeliği 164/1-g (…-ilgili-maddeler.md).
 
 import { useEffect } from "react";
 import type { ReactNode } from "react";
@@ -202,6 +231,7 @@ const BOLUMLER = {
   "yil-akislari": { baslik: "Yıl Sonu ve Yıl Başı", ikon: "event_upcoming" },
   ayiklama: { baslik: "Ayıklama ve Nadir Eserler", ikon: "inventory" },
   "yil-sonu-raporu": { baslik: "Yıl Sonu Raporu", ikon: "summarize" },
+  sayim: { baslik: "Sayım", ikon: "inventory_2" },
   "katalog-sablonu": { baslik: "Katalog Excel Şablonu", ikon: "table_view" },
   "ice-aktarma": { baslik: "İçe Aktarma", ikon: "upload_file" },
   yedek: { baslik: "Yedek ve Güvenlik Dosyası", ikon: "backup" },
@@ -526,8 +556,12 @@ export default function KilavuzPage() {
             “Doğrulama okutmasını aç” düğmesiyle okutup doğrulayabilir; etiket basmak, basım
             işaretini geri almak ve “Doğrulanmamış Etiketler” listesi yönetici kipindedir. Sınıf
             kitaplığından ya da öğretmenden dönen kitapları da “Teslimden geri al” düğmesiyle açılan
-            bölümde okutarak geri alabilir; teslim vermek, kayıp ve hasar dosyaları ve İlişik
-            Listesi yönetici kipindedir.
+            bölümde okutarak geri alabilir. Süren bir sayım varken sayfada “Sayım okutmasını aç”
+            düğmesi de durur: görevli kitapların etiketini açılan “Sayım Okutması” bölümünde okutur,
+            ekranda yalnız okutmanın sonucu, barkod ve kitabın adı görünür (bkz. “Sayım” bölümü).
+            Teslim vermek, kayıp ve hasar dosyaları, İlişik Listesi ve sayımın okutma dışındaki
+            bütün işleri (başlatma, ilerleme, sayım fazlasının kararı, tamamlama, onay) yönetici
+            kipindedir.
           </li>
         </ul>
 
@@ -1003,7 +1037,15 @@ export default function KilavuzPage() {
           Parti “Edinim ekle” ile açılır. “Edinim yolu” seçenekleri: Bakanlık gönderimi, Satın alma,
           Bağış, Değişim, Sayım fazlası (kayda giriş), Mevcut koleksiyon (programa aktarım). İlk
           dördü Yönetmeliğin saydığı yollardır; son ikisi kayıt içi girişlerdir — sayımda çıkan
-          fazlanın kayda alınması ve raftaki eski koleksiyonun programa aktarılmasıdır.
+          fazlanın kayda alınması ve raftaki eski koleksiyonun programa aktarılmasıdır. Sayım
+          fazlası kitaplar sayım onaylanınca kendiliğinden bir “Sayım fazlası (kayda giriş)”
+          edinimiyle kayda girer (bkz. Sayım bölümü). Sayımda TMY 32/3 durdurması sürerken edinim
+          partisi açılmaz ve yeni nüsha kaydedilmez; Edinimler ve Bağışlar, Hızlı Kayıt ve Eser
+          Ayrıntısı ekranlarında “TMY 32/3 durdurması sürüyor” bandı durur. Programa aktarım taşınır
+          girişi değildir ama durdurma sürerken o da yapılmaz; iletisi Taşınır Mal Yönetmeliğine
+          dayanmaz: “Sayım sürerken programa aktarım yapılamaz; sayım bitince aktarın.” İçe Aktarma
+          ekranında ve Hızlı Kayıt&apos;ta “Mevcut koleksiyon (programa aktarım)” edinimi seçiliyken
+          bant “Sayım sürüyor” der.
         </p>
         <Mevzuat kaynak={`${YONETMELIK}, md. 10/5`}>
           “Kütüphane kaynakları; Bakanlıktan gönderilen kaynaklar ile satın alma, bağış ve imkânlara
@@ -1839,7 +1881,10 @@ export default function KilavuzPage() {
           de ellerindeki kitabı iade edebilir. “Yıl sonu son ödünç tarihi” geçtiyse yeni ödünç
           verilmez, iade alınmaya devam eder. Görevli kipinde bu ileti tarih yazmaz (“Yıl sonu son
           ödünç tarihi geçti — yeni ödünç verilmez. İade alınabilir.”): son sınıflara ayrı tarih
-          tanımlıysa tarih, kartın sahibinin son sınıfta olduğunu gösterirdi.
+          tanımlıysa tarih, kartın sahibinin son sınıfta olduğunu gösterirdi. Sayım için hizmet
+          arası sürerken de yeni ödünç verilmez, iade alınır: okutma kutusunun üstünde “Sayım için
+          hizmet arası — yeni ödünç ve teslim yapılamıyor. İade ve teslimden geri alma açık.” şeridi
+          durur (iki kipte de masa açılırken çıkar; bkz. Sayım bölümü).
         </p>
 
         <AltBaslik>Ödünç vermek</AltBaslik>
@@ -1940,9 +1985,10 @@ export default function KilavuzPage() {
           Üye kartı okutmadan kitabın kütüphane etiketini okutun: kitap ödünçteyse iadesi alınır
           (“İade alındı.”). Kitap ödünçte değilse program durumunu söyler: “Rafta — ödünç değil.”,
           “Kayıp kaydında.”, “Onarımda.”, “Sınıf kitaplığında.” İade hiçbir durumda kilitlenmez:
-          üyeliği sonlanmış ya da okuldan ayrılmış kişinin kitabı da, gecikmiş kitap da, kart okutma
-          durdurulmuşken gelen kitap da iade edilir. Üye bağlamı açıkken iade almak için önce
-          “Bitti” deyin; bağlam açıkken okutulan kitap o üyeye ödünç verilmek istenir.
+          üyeliği sonlanmış ya da okuldan ayrılmış kişinin kitabı da, gecikmiş kitap da, sayım
+          sürerken gelen kitap da, kart okutma durdurulmuşken gelen kitap da iade edilir. Üye
+          bağlamı açıkken iade almak için önce “Bitti” deyin; bağlam açıkken okutulan kitap o üyeye
+          ödünç verilmek istenir.
         </p>
         <p>
           Sınıf kitaplığına ya da öğretmene teslim edilmiş bir kitap ödünçte değildir; okutulunca
@@ -2245,13 +2291,16 @@ export default function KilavuzPage() {
 
         <AltBaslik>Sayımdaki yeri</AltBaslik>
         <p>
-          Sayım ekranı sonraki bir sürümde gelecek. Teslimdeki kitabın sayımda yerinde mi
-          sayılacağına, kayda göre mi alınacağına sayım kurulu karar verir. Sınıf kitaplığındaki
-          kitaplar ortak kullanım alanındaki taşınırlar gibi yerinde sayılabilir (Taşınır Mal
-          Yönetmeliği md. 32/5&apos;e kıyasen); o zaman şubenin teslim listesi Dayanıklı Taşınırlar
-          Listesi yerine kullanılır. Öğretmene teslim edilen kitap için TKYS&apos;de Taşınır Teslim
-          Belgesi düzenlendiyse kitap kayda göre alınır; düzenlenmediyse yine aynı maddeye kıyasen
-          işlem yapılır.
+          Teslimdeki kitabın sayımda nasıl sayılacağına sayım kurulu karar verir (ayrıntı Sayım
+          bölümünde). Sınıf kitaplığındaki kitaplar ortak kullanım alanındaki taşınırlar gibi
+          yerinde sayılır ya da sayımdan önce toplanır (Taşınır Mal Yönetmeliği md. 32/5&apos;e
+          kıyasen); yerinde sayımda şubenin teslim listesi Dayanıklı Taşınırlar Listesi yerine
+          kullanılır, toplanamayan kitap sınıf kitaplığında aranır. Sınıf kitaplığındaki kitap kayda
+          göre alınmaz. Öğretmene teslim edilen kitap için TKYS&apos;de Taşınır Teslim Belgesi
+          düzenlendiyse kitap kayda göre alınır; düzenlenmediyse yine aynı maddeye kıyasen işlem
+          yapılır. Sayımda “Sayım için hizmet arası” seçildiyse sayım süresince yeni teslim
+          yapılmaz: Yeni Teslim sekmesinin üstünde masadakiyle aynı şerit durur ve “Teslim et”
+          kapalıdır. Teslimden geri alma hiçbir durumda durmaz.
         </p>
       </Bolum>
 
@@ -2349,7 +2398,7 @@ export default function KilavuzPage() {
             <strong>“Kayıttan düşme önerildi”</strong>: dosya kapanır ve nüsha için kayıttan düşme
             önerilir. Nüshanın durumu değişmez; kayıttan düşme Taşınır Mal Yönetmeliğine göre
             yapılan ayrı bir işlemdir. Kayıp ve hasarlı kitap ayıklamaya konmaz: kaydı sayımda,
-            kayıp/hasar tutanağına dayanarak kapanır (sayım ekranı sonraki bir sürümde gelecek).
+            kayıp/hasar tutanağına dayanarak harcama yetkilisinin onayıyla kapanır (Sayım bölümü).
             Öneri kayıttan düşme değildir: kayıp dosyası bu çözümle kapandıktan sonra kitap
             bulunursa dosya penceresinde “Bulundu” düğmesi durur; öneri geri alınır ve kitap rafa
             döner.
@@ -2366,7 +2415,20 @@ export default function KilavuzPage() {
           henüz kayıttan düşülmemişse). Nüsha sayımda kayıttan düşülmüşse bulunan kitap o dosyadan
           rafa dönmez: pencere “Sayım fazlası (kayda giriş)” yoluyla açılan bir edinimle, Eser
           Ayrıntısı&apos;nda “Nüsha ekle” diyerek yeni nüsha olarak kaydetmenizi söyler; eski kayıt
-          kayıttan düşülmüş olarak kalır.
+          kayıttan düşülmüş olarak kalır. Dosya açıkken nüsha sayımda kayıttan düşüldüyse pencerede
+          bulunma çözümü yoktur; aynısı temin edilir ya da bedelle alınırsa dosya kapanır ve alınan
+          kitap Eser Ayrıntısı&apos;nda “Nüsha ekle” diyerek yeni nüsha olarak kaydedilir.
+        </p>
+        <p>
+          Sayımda TMY 32/3 durdurması sürerken kayıp bildirilemez ve dosyalar yalnız durdurmanın
+          kapsamadığı adımlarla ilerler: kayıp dosyasında kitabın bulunması (“Bulundu”, “Bulundu
+          (bedel teslim alınmıştı)”) ve bedelin iki adımı, hasar dosyasında kayıttan düşme önerisi
+          yazmayan çözümler. Kayıptaki kitabın rafa dönüşü taşınır giriş ve çıkışı değildir: nüsha
+          kayıttan düşülmediyse kayıtta zaten vardır. Sayfada “TMY 32/3 durdurması sürüyor” bandı
+          durur. Bulunan kayıp kitabı sayım sürerken okutabilirsiniz, sayım onaylanınca dosyası
+          kapanır. Sayım tamamlandıktan sonra getirilen kayıp kitap okutulamaz: onaydan önce dosyada
+          “Bulundu”yu seçin; onay kalemi yeniden denetler ve kitabı kayıttan düşmez (bkz. Sayım
+          bölümü).
         </p>
 
         <AltBaslik>Bedel yalnız ortaöğretimde</AltBaslik>
@@ -2828,7 +2890,8 @@ export default function KilavuzPage() {
             belgelerin imzalandığını denetledim.” kutusu işaretlenmeden düğme etkinleşmez. Nüshalar
             katalogdan ve Ağ Kataloğundan çıkar, kayıt defterinde kalır. İşlem geri alınamaz.
             Uygulama her kalemi yeniden denetler: bu arada ödünç verilen ya da kaybolan bir kitap
-            varsa hiçbir nüshaya dokunulmaz.
+            varsa hiçbir nüshaya dokunulmaz. Sayımda TMY 32/3 durdurması sürerken teklif
+            uygulanamaz; teklifte “TMY 32/3 durdurması sürüyor” bandı durur (bkz. Sayım bölümü).
           </li>
         </ol>
         <p>
@@ -2852,12 +2915,11 @@ export default function KilavuzPage() {
           Kayıp ve Hasar&apos;da kayıttan düşme önerisiyle kapanan dosyaların kitapları da
           ayıklamaya konmaz. Kayıp ve hasar, Md. 12/1&apos;in ayıklama gerekçelerinden değildir: bu
           kitapların kaydı sayımda, kayıp/hasar tutanağına dayanarak kapanır ve bunun için Seçim ve
-          Ayıklama Komisyonu kararı gerekmez (sayım ekranı sonraki bir sürümde gelecek). “Kalem
-          ekle” penceresinin altında iki bilgi kutusu bu kitapları gerekçesiyle yazar: “Kayıp
-          nüshaların kayıttan düşme önerileri” ve “Hasar dosyalarının kayıttan düşme önerileri”. Bu
-          kitaplar aday listesinde yoktur; numarasını okutursanız pencere “Hasar dosyasında kayıttan
-          düşme önerilen nüsha ayıklamaya konmaz (Md. 12/1 gerekçelerinden değildir); sayımda
-          kayıttan düşülür.” yazar.
+          Ayıklama Komisyonu kararı gerekmez (Sayım bölümü). “Kalem ekle” penceresinin altında iki
+          bilgi kutusu bu kitapları gerekçesiyle yazar: “Kayıp nüshaların kayıttan düşme önerileri”
+          ve “Hasar dosyalarının kayıttan düşme önerileri”. Bu kitaplar aday listesinde yoktur;
+          numarasını okutursanız pencere “Hasar dosyasında kayıttan düşme önerilen nüsha ayıklamaya
+          konmaz (Md. 12/1 gerekçelerinden değildir); sayımda kayıttan düşülür.” yazar.
         </p>
 
         <AltBaslik>Ayıklama belgeleri</AltBaslik>
@@ -3009,6 +3071,358 @@ export default function KilavuzPage() {
       </Bolum>
 
       {/* ------------------------------------------------------------------ */}
+      <Bolum id="sayim">
+        <p>
+          Kütüphane materyali taşınırdır: yıl sonlarında ve harcama yetkilisinin gerekli gördüğü
+          durum ve zamanlarda sayılır (Taşınır Mal Yönetmeliği md. 32/1). Sayımı, harcama
+          yetkilisinin ya da görevlendirdiği kişinin başkanlığında, taşınır kayıt yetkilisinin de
+          katıldığı en az üç kişilik <strong>sayım kurulu</strong> yapar (md. 32/2). Program
+          okutmayı, sonuçları ve Sayım tutanağını hazırlar; ekran Katalog sayfasının sağ üstündeki{" "}
+          <Ekran to="/katalog/sayim">Sayım</Ekran> bağlantısıyla açılır. Sayım ekranı yalnız
+          yönetici kipinde açılır. Kitaplar görevli kipinde de okutulur: sayım sürerken Görevli Kipi
+          sayfasındaki “Sayım okutmasını aç” düğmesi okutma bölümünü açar; görevlinin ekranında
+          yalnız okutmanın sonucu, barkod ve kitabın adı görünür. Sayımı başlatmak, ilerlemesine
+          bakmak, sayım fazlasına karar vermek, tamamlamak ve onaylamak yönetici kipindedir.
+          Onaylanmamış bir sayım varken Genel Bakış&apos;taki “Sayım” kartı sayımın durumunu,
+          bulunan kitap sayısını ve süren seçenekleri gösterir; kartın “Sayım&apos;ı aç” bağlantısı
+          sayımı açar.
+        </p>
+        <p>
+          Program sayımı bir mali yıla bağlar: taslaktaki “Mali yıl (isteğe bağlı)” boş bırakılırsa
+          sayımın başladığı yıl yazılır ve tutanağın ekindeki sayılar o yılın 1 Ocak-31 Aralık
+          dönemi için hesaplanır. Ders yılı sonundaki Yıl Sonu ekranı sayım değildir.
+        </p>
+
+        <AltBaslik>İki ayrı seçenek</AltBaslik>
+        <p>
+          Sayımı başlatmadan önce “Sayım Sırasındaki Seçenekler” kartında iki seçenek ayrı ayrı
+          işaretlenir ya da boş bırakılır. İkisi birbirinden bağımsızdır ve Sayım tutanağında ayrı
+          satırlarda yazılır; iade üçüncü satırdadır.
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong>“TMY 32/3 durdurması”</strong> isteğe bağlıdır:
+            <Mevzuat kaynak="Taşınır Mal Yönetmeliği, md. 32/3">
+              “Sayım süresince, hizmetin aksamaması ve bozulabilecek nitelikteki taşınırlar için
+              gerekli tedbirlerin alınması kaydıyla, taşınır giriş ve çıkışları sayım kurulunun
+              talebi üzerine harcama yetkilisince durdurulabilir.”
+            </Mevzuat>
+            Seçerseniz “Kurulun talep tarihi”ni, durdurmayı yapan harcama yetkilisinin adını
+            (“Harcama yetkilisinin adı”; şifreli saklanır) ve “Durdurma tarihi”ni yazarsınız; üçü de
+            zorunludur. Durdurma sürerken şu işler yapılamaz: edinim ve yeni nüsha kaydı (Hızlı
+            Kayıt, içe aktarma ve bağış kataloglaması dahil), kayıttan düşme ve devir (onaylanmış
+            ayıklama teklifinde “Uygula”), kayıp bildirimi ve kayıp/hasar dosyası çözümü. Bu işlerin
+            ekranlarında (Edinimler ve Bağışlar, Hızlı Kayıt, Eser Ayrıntısı, Ayıklama, Kayıp ve
+            Hasar) “TMY 32/3 durdurması sürüyor” bandı durur; Hızlı Kayıt&apos;ta “Nüshayı aç”
+            düğmesi kapalıdır ve okutulan boş etiket bağlanamaz. Raftaki eski koleksiyonun programa
+            aktarımı taşınır girişi değildir ama durdurma sürerken o da yapılmaz; iletisi Taşınır
+            Mal Yönetmeliğine dayanmaz: “Sayım sürerken programa aktarım yapılamaz; sayım bitince
+            aktarın.” İçe Aktarma ekranında ve Hızlı Kayıt&apos;ta “Mevcut koleksiyon (programa
+            aktarım)” edinimi seçiliyken bant “Sayım sürüyor” der. Durmayanlar: kayıp dosyasında
+            kitabın bulunması (“Bulundu”, “Bulundu (bedel teslim alınmıştı)”) ve bedelin iki adımı
+            (“Bedel belirlendi”, “Bedel teslim alındı”); hasar dosyasında kayıttan düşme önerisi
+            yazmayan çözümler (“Onarıldı”, “Aynısı temin edildi”, “Bedelle aynısı alındı”); onarıma
+            gönderme ve onarımdan dönüş; teslim ve teslimden geri alma. Durdurma ödüncü ve iadeyi
+            kapsamaz. Yeni ödünç ve teslim yalnız “Sayım için hizmet arası” seçildiyse durur.
+            Kayıptaki kitabın rafa dönüşü taşınır giriş ve çıkışı değildir: nüsha kayıttan
+            düşülmediyse kayıtta zaten vardır, bu yüzden kayıp dosyası durdurma sürerken de
+            “Bulundu” ile kapatılır. Bulunan kitabı sayım sürerken okutabilirsiniz; sayım
+            onaylanınca dosyası kapanır. Sayım tamamlandıktan sonra okutma kapanır: o arada
+            getirilen kayıp kitap için onaydan önce kayıp dosyasında “Bulundu”yu seçin (onay
+            penceresi kayıtta kayıp görünen noksanlar için uyarır); onay kalemi yeniden denetler ve
+            kitabı kayıttan düşmez. Seçilmez ve onaylanırsa kitap “Kayıp (kayıttan düşüldü)” olur.
+          </li>
+          <li>
+            <strong>“Sayım için hizmet arası”</strong> okulun kararıdır ve yeni ödüncü ve yeni
+            teslimi durdurur: masada ödünç verilmez, sınıf kitaplığına ve öğretmene teslim yapılmaz;
+            iade alınır, teslimden geri alınır. İsterseniz “Okul kararı (isteğe bağlı)” alanına
+            kararın tarihini ve sayısını yazın. Taşınır Mal Yönetmeliğine dayanmaz: ödünç,
+            yönetmeliğin saydığı giriş ve çıkış hâllerinden değildir (md. 13/1); okuyucuya verilen
+            kütüphane materyali Taşınır Teslim Belgesi düzenlenmeden ödünç takip sistemiyle izlenir
+            (md. 23/4). Tutanağın “Dayanak” sütununda “Okul kararı” yazar; yanında yalnız, sayım
+            yapılırken gerekli önlemleri almanın sayım kurulunun görevi olduğu anılır (md. 32/3,
+            ikinci cümle). Dolaşım Masası&apos;nda ve Teslimler → Yeni Teslim&apos;de “Sayım için
+            hizmet arası — yeni ödünç ve teslim yapılamıyor. İade ve teslimden geri alma açık.”
+            şeridi durur; şerit iki kipte de ekran açılırken çıkar, Yeni Teslim&apos;de “Teslim et”
+            kapalıdır. Hizmet arası kalkınca şerit de dakika içinde kalkar (masada ilk başarılı
+            ödünçte hemen). Hizmet arası teslimden geri almayı durdurmaz.
+          </li>
+          <li>
+            <strong>İade hiçbir durumda durmaz</strong> (Yönetmelik Md. 23/1-c): iki seçenekte de ve
+            sayım tamamlandıktan sonra da iade alınır; teslimden geri alma da durmaz. Sayım
+            sırasında iade edilen, teslimden geri alınan, kayıp dosyasında bulunan ya da aynısı
+            temin edilen ya da onarımdan dönen kitap bulunmuş sayılır; sayım başlamadan önce (aynı
+            gün de olsa) onarımdan dönen kitap ise okutulmalıdır.
+          </li>
+        </ul>
+        <p>
+          Seçilen seçenekler sayım başlayınca başlar, sayım tamamlandıktan sonra da sürer ve ancak
+          harcama yetkilisinin onayıyla ya da sayımın iptaliyle kalkar. Sayım ekranının “Seçenekler”
+          bölümünde süren seçeneğin yanında “Sürüyor” yazar.
+        </p>
+
+        <AltBaslik>Ödünçteki, teslimdeki ve onarımdaki kitaplar</AltBaslik>
+        <p>
+          Sayım kurulu “Ödünçteki, Teslimdeki ve Onarımdaki Nüshalar” kartında dört seçici için
+          karar verir: “Ödünçteki nüsha” ve “Öğretmene teslim edilen nüsha” için “Sayımdan önce
+          toplanır” ya da “Kayda göre alınır”; “Sınıf kitaplığına teslim edilen nüsha” için “Yerinde
+          sayılır” ya da “Sayımdan önce toplanır”; “Onarımdaki nüsha” için “Sayımdan önce geri
+          alınır” ya da “Kayda göre alınır — onarımda”. “Kaydet” dedikten sonra seçimin dayanağı
+          seçicinin altında yazar ve Sayım tutanağına geçer.
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong>Ödünçteki kitap</strong> ödünç takip sistemiyle izlenir (md. 23/4); toplanmayan
+            kitap 32/5&apos;e kıyasen kayda göre alınır.
+          </li>
+          <li>
+            <strong>Sınıf kitaplığındaki kitaplar</strong> ortak kullanım alanındaki taşınırlar gibi
+            yerinde sayılır (md. 32/5&apos;in birinci cümlesine kıyasen); o zaman şubenin teslim
+            listesi Dayanıklı Taşınırlar Listesi yerine kullanılır. Sınıf kitaplığındaki kitap kayda
+            göre alınmaz: 32/5&apos;in birinci cümlesi ortak kullanım alanındaki taşınırın
+            sayılmasını öngörür; sayılmaksızın kayıt esas almak yalnız ikinci cümlededir ve kamu
+            görevlilerine teslim belgesiyle verilen taşınır içindir. “Sayımdan önce toplanır”
+            seçilirse geri alınamayan kitap sınıf kitaplığında yerinde aranır; bulunmazsa noksandır.
+          </li>
+          <li>
+            <strong>Öğretmene teslim edilen kitap</strong> için TKYS&apos;de Taşınır Teslim Belgesi
+            düzenlendiyse kitap md. 32/5&apos;in ikinci cümlesiyle kayda göre alınır;
+            düzenlenmediyse 32/5&apos;e kıyasen işlem yapılır (md. 23/4).
+          </li>
+          <li>
+            <strong>Onarımdaki kitap</strong> onarımcıda olabilir. “Sayımdan önce geri alınır”
+            seçilirse kitaplar sayımdan önce onarımdan geri alınır ve kütüphanede okutulur; geri
+            alınamayan kitap kayda göre alınır ve kalemde “Onarımdan geri alınamadı; kayda göre
+            alındı.” yazar. “Kayda göre alınır — onarımda” seçilirse okutulmayan onarımdaki kitap
+            kayda göre alınır. İki seçim de sayım kurulunun kararıdır: Taşınır Mal Yönetmeliğinde
+            onarıma gönderilmiş taşınırın sayımına ilişkin doğrudan hüküm yoktur. Tutanağın
+            “Dayanak” sütunu bunu yazar; onarımda kayda göre alınanlar sonuçlarda ayrı satırdadır.
+            Sayım sırasında onarıma gönderilen (sayım başladığında rafta olan) kitap okutulmazsa
+            noksan çıkar.
+          </li>
+        </ul>
+        <p>
+          “Sayımdan önce toplanır” seçilirse kitaplar sayımdan önce geri çağrılır; sayım sırasında
+          iade edilen, teslimden geri alınan ya da onarımdan dönen kitap bulunmuş sayılır.
+          Ödünçteki, öğretmendeki ya da onarımdaki kitap noksan sayılmaz: toplanamayan kitap kayda
+          göre alınır ve kalemde “Toplanamadı; kayda göre alındı.” yazar. Sınıf kitaplığında
+          bulunmayan kitap noksandır; onayda kayıttan düşülür ve teslimi “Kayba dönüştü” ile
+          kapanır. Tutanak ödünçteki ve teslimdeki kitapları yalnız sayıyla gösterir.
+        </p>
+
+        <AltBaslik>Sayım adım adım</AltBaslik>
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>
+            Sayım listesinde “Yeni sayım” ile taslak açın. Aynı anda tek sayım yürütülür:
+            onaylanmamış bir sayım varken düğmenin yerinde “Süren sayımı aç” durur. “Sayım Kurulu”
+            kartına “Kurul başkanı”nı (harcama yetkilisi ya da görevlendirdiği kişi), “Taşınır kayıt
+            yetkilisi”ni ve “Kurul üyeleri”ni (satır başına bir kişi) yazın. Kurul en az üç farklı
+            kişidir. Adlar şifreli saklanır ve yalnız Sayım tutanağına basılır.
+          </li>
+          <li>
+            “Sayım Sırasındaki Seçenekler” kartında iki seçeneği işaretleyin ya da boş bırakın;
+            “Ödünçteki, Teslimdeki ve Onarımdaki Nüshalar” kartında kurulun seçimini işaretleyin ve
+            “Kaydet”e basın.
+          </li>
+          <li>
+            “Sayımı başlat”: “Sayım başlatılsın mı?” penceresi seçtiğiniz seçeneklerin sonucunu
+            yazar. Başlatınca o anki kayıtlar sayımın anlık görüntüsü olur. Sayım sürerken yapılan
+            değişiklikler onu değiştirmez; sayım başladıktan sonra kayda giren kitap bu sayımda
+            sayılmaz. Kurul ve seçenekler bundan sonra değişmez.
+          </li>
+          <li>
+            “Kitapları Okutun” kartında “Kütüphane etiketi” kutusuna rafta ve onarımda duran
+            kitapların, “Yerinde sayılır” seçildiyse sınıf kitaplıklarındaki kitapların da etiketini
+            okutun. Okuyucuyla arka arkaya okutabilirsiniz: kodlar sırayla işlenir, hiçbiri
+            kaybolmaz; ekranda bir pencere açıkken (sayım fazlası, onay kutusu) okutulan kod da
+            bekletilir ve pencere kapanınca işlenir. Aynı kitabı ikinci kez okutmak zararsızdır (“Bu
+            kitap bu sayımda zaten okutuldu.”). Kayıtta ödünçte ya da teslimde görünen kitap
+            kütüphanede çıkarsa ileti onu bulunmuş yazar ve iadesini almanızı ya da teslimden geri
+            almanızı söyler. ISBN barkodu ve üye kartı kabul edilmez; üye kartının numarası sayıma
+            yazılmaz. Onarımcıdaki kitap okutulamaz; kurulun seçimine göre kayda göre alınır
+            (yukarıda). “Bölümlere Göre İlerleme” bölüm bölüm ve yerinde sayılan sınıf kitaplığı
+            sınıf kitaplığı kaç kitabın bulunduğunu gösterir. Okutmayı masadaki görevli de
+            yapabilir: görevli kipinde Görevli Kipi sayfasındaki “Sayım okutmasını aç” düğmesi aynı
+            okutmayı açar; görevlinin ekranında ilerleme ve sayım fazlası kartı yoktur, yanlış
+            okutulan kodu yönetici bu ekranda görür ve çıkarır.
+          </li>
+          <li>
+            “Sayımı tamamla”: okutulmayan kitaplar sınıflanır (ödünçte ve teslimde olan kayda göre
+            alınır, sayım sırasında kütüphaneye dönen bulunmuş sayılır). Bulunamayan kitap varsa
+            ikinci sayım başlar ve “İkinci Sayım: Bulunamayan Nüshalar” listesindeki kitaplar bir
+            kez daha aranır (md. 32/6). “İkinci sayımı tamamla”dan sonra yine bulunamayanlar
+            “Noksan” olarak yazılır. Tamamlanan sayımda “Sonuçlar” ve “Kalemler” bölümleri durur;
+            “Kalemler” açılışta noksanları gösterir, “Sonuç” süzgeci ve “Ara” kutusuyla öbür
+            kalemlere bakılır. Sırada işlenmeyi bekleyen okutma varken tamamlama düğmesi kapalıdır.
+          </li>
+          <li>
+            “Sayım Belgeleri” kartından Sayım tutanağını basın (“Önizle” · “PDF&apos;i indir” ·
+            “Excel&apos;i indir”); sayım kurulu ve harcama yetkilisi imzalar. Kararı bekleyen sayım
+            fazlası varken tutanağın sayıları kesin değildir (başlığın altındaki not ve ekteki
+            “Gelecek yıla devir” bunu söyler); tutanağı kararlardan sonra imzaya basın.
+          </li>
+          <li>
+            “Harcama yetkilisinin onayını işle”: “Sayım onaylansın mı?” penceresinde “Harcama
+            yetkilisinin adı”nı ve imzalı tutanağın tarihini (“Onay tarihi”; sayımın tamamlandığı
+            günden önce ve bugünden sonra olamaz) yazın. Harcama yetkilisinin onaylamadığı noksan ya
+            da hasar önerisi kalemini “Onaylanmadı” ile işaretleyip gerekçesini yazın (kişi adı
+            yazmayın: gerekçe tutanağa basılır); o kalem kayıttan düşülmez. Pencere, kayıtta kayıp
+            görünen noksanlar için uyarır (kitap sayım tamamlandıktan sonra getirildiyse önce kayıp
+            dosyasında “Bulundu”yu seçin) ve sayım sırasında onarıma gönderilen noksanlar için
+            uyarır (kitap onarımcıdaysa “Onaylanmadı” ile işaretleyin). “Harcama yetkilisinin
+            imzaladığı sayım tutanağını denetledim.” kutusunu işaretleyip “Onayla”ya basın. Onay
+            geri alınmaz.
+          </li>
+        </ol>
+
+        <AltBaslik>Onayda ne olur</AltBaslik>
+        <p>
+          Onay tek işlemdir. Önce seçilen durdurma ve hizmet arası kalkar, sonra kalemler işlenir:
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            Noksan kitap “Sayım noksanı (kayıttan düşüldü)” olur; kayıtta kayıp görünen noksan kitap
+            “Kayıp (kayıttan düşüldü)” olur. Noksan için Kayıttan Düşme Teklif ve Onay Tutanağı ve
+            Varlık İşlem Fişi, fazla için Varlık İşlem Fişi düzenlettirilerek kayıtların sayım
+            sonuçlarıyla uygunluğu sağlanır (md. 32/7); bu belgeler TKYS&apos;de düzenlenir.
+          </li>
+          <li>
+            Onayda her noksan yeniden denetlenir: sayım tamamlandıktan sonra iade edilen, bulunan,
+            ödünç verilen ya da durumu başka türlü değişen kitap düşülmez; kalemde “Onayda durumu
+            değişmişti — düşülmedi” yazar.
+          </li>
+          <li>
+            Hasar dosyasında kayıttan düşme önerilen ve sayımda bulunan kitap “Hasar (kayıttan
+            düşüldü)” olur: kullanılamaz hâle gelen taşınır olarak kayıtlardan çıkarılır (TMY 27/1);
+            durumu kayıp/hasar tutanağı belgeler. Bu kitaplar ayıklamaya konmaz. Önerisi olan kitap
+            sayımda bulunamazsa noksandır.
+          </li>
+          <li>
+            Durumu belgeleyen tutanak varsa Kayıttan Düşme Teklif ve Onay Tutanağı komisyon
+            kurulmadan harcama yetkilisince onaylanabilir (TMY md. 10/1-e); Sayım tutanağının ve
+            kayıp/hasar tutanağının o belge sayılıp sayılmayacağını harcama yetkilisi değerlendirir.
+            Kasıt, kusur, ihmal ya da tedbirsizlik olup olmadığını da harcama yetkilisi
+            değerlendirir (md. 27/3).
+          </li>
+          <li>
+            Sınıf kitaplığında bulunmayan kitabın teslimi “Kayba dönüştü” ile kapanır; onarımdaki
+            kitap kayıttan düşülürse onarım kaydı kapanır.
+          </li>
+          <li>
+            Kayıtta kayıp görünüp sayımda okutulan kitabın kayıp dosyası “Bulundu” ile (bedel teslim
+            alınmışsa “Bulundu (bedel teslim alınmıştı)” ile) kapanır ve kitap rafa döner; kalemde
+            “Kayıp kaydı kapandı” yazar.
+          </li>
+          <li>
+            Sayım fazlası tek bir “Sayım fazlası (kayda giriş)” edinimiyle kayda alınır:
+            <Mevzuat kaynak="Taşınır Mal Yönetmeliği, md. 17/1">
+              “Yapılan sayım sonucunda fazla bulunan taşınırlar, Varlık İşlem Fişi düzenlenerek
+              kayıtlara alınır.”
+            </Mevzuat>
+            Eski bir kaydın (kayıttan düşülmüş, devredilmiş ya da silinmiş) etiketini taşıyan kitap
+            yeni numara alır: numara asla yeniden kullanılmaz. Hiçbir kitaba bağlanmamış boş etiket
+            o numarayla bağlanır; numarası iptal edilmiş etiketi taşıyan kitap yeni numara alır ve
+            eski etiket sökülür. Yeni numara alan kitabın etiketi Etiketler ekranındaki Basım
+            Kuyruğu&apos;ndan basılır. Kayda esas değer, aynı nitelikte son bir yıl içinde girişi
+            yapılan taşınır varsa onun değeri, yoksa değer tespit komisyonunca belirlenecek değerdir
+            (md. 17/1, ikinci cümle); program değer yazmaz.
+          </li>
+          <li>
+            Harcama yetkilisinin onaylamadığı kalem kayıtta kalır; kalemde “Onaylanmadı” ve
+            gerekçesi yazar.
+          </li>
+          <li>
+            Kayıttan düşülen kitap katalogdan ve Ağ Kataloğundan çıkar, kayıt defterinde kalır.
+          </li>
+        </ul>
+
+        <AltBaslik>Sayım fazlası</AltBaslik>
+        <p>
+          Okutulan kod sayımın anlık görüntüsünde yoksa kitap “Sayım Fazlası” kartına düşer:
+          kayıttan düşülmüş, devredilmiş ya da silinmiş bir kaydın etiketi, hiçbir kitaba
+          bağlanmamış ya da numarası iptal edilmiş etiket ya da programın etiket biçiminde olmayan
+          bir kod. Harf içeren kod (ör. eski bir sistemin etiketi) okutulmaz ve yazılmaz; o kitabı
+          “Etiketsiz kitap ekle” ile yazın. Sayım başladıktan sonra kayda giren kitap fazla
+          değildir, bu sayımda sayılmaz. Etiketi olmayan kitap için “Etiketsiz kitap ekle”yi
+          kullanın. Onaydan önce her fazla kitap için “Eseri seç” ile kayda alınacağı eseri seçin
+          (eser katalogda yoksa önce Katalog&apos;da açın) ya da “Kayda alınmayacak” deyip
+          gerekçesini yazın (kütüphaneye ait olmayan ya da kayıttan çıkmış kitap). Kararı verilmemiş
+          fazla varken onay işlenmez; kartın “Göster” seçicisiyle yalnız kararı bekleyenler
+          listelenir. Sayım fazlası olarak okutulan boş etiket sayım sürerken Hızlı Kayıt&apos;ta
+          bağlanırsa kitap kayda girmiştir: kartta “Sayım sırasında kayda girdi” yazar ve onay onu
+          yeniden kayda almaz. Yanlış okutulan kod sayım sürerken “Çıkar” ile listeden kalkar.
+        </p>
+
+        <AltBaslik>Sayım tutanağı ve eki</AltBaslik>
+        <p>
+          Sayım tutanağı kütüphane materyalinin nüsha düzeyindeki dökümüdür. Taşınır kodu
+          düzeyindeki resmî Sayım Tutanağı (md. 10/1-g), Kayıttan Düşme Teklif ve Onay Tutanağı ve
+          Varlık İşlem Fişi TKYS&apos;de düzenlenir. Tutanak sayım kurulunu, tarihleri, iki seçeneği
+          ve iadeyi ayrı satırlarda, sonuçları (kayıtlara göre miktar, bulunan, kayda göre alınan,
+          fazla, sayımda bulunan miktar, noksan), ödünçteki, teslimdeki ve onarımdaki kitap için
+          kurulun seçimini ve dayanağını, bölümlere göre sayımı, noksanın kayıttan düşme teklifini,
+          hasar önerilerini, kayıtta kayıp görünüp bulunan kitapları ve sayım fazlasını gösterir.
+          “Kayıp/hasar tutanağı” sütunu kayıp ya da hasar dosyası olan kalemde dosyanın tespit
+          tarihini yazar; o kayıp/hasar tutanağı sayım tutanağına eklenir.
+        </p>
+        <p>
+          Tutanak taslakta basılmaz. Sayım sürerken “TASLAK” ibaresiyle ara döküm olarak basılır;
+          tamamlanınca kurulun imzasına ve harcama yetkilisinin “OLUR”una hazırdır; onaydan sonra
+          harcama yetkilisinin onaylamadığı ve onayda durumu değişen kalemler de yazılır. İptal
+          edilmiş sayımın tutanağı basılmaz. Excel dosyası tutanağın sayılarını, bütün kalemleri ve
+          eki ayrı sayfalarda verir.
+        </p>
+        <p>
+          Ödünç alanın ve teslim alanın kimliği tutanağa yazılmaz: tutanağın sayım fazlası ve
+          noksanına ilişkin sayfaları Varlık İşlem Fişine eklenir ve muhasebe birimine gönderilir
+          (TMY md. 10/1-g, 32/8).
+        </p>
+        <p>
+          Tutanağın ekinde, yeni sayfada “Taşınır Sayım ve Döküm Cetveline aktarılacak sayılar” yer
+          alır: önceki yıldan devir, yıl içinde giren (edinim yoluna göre; programa aktarım ayrı
+          satırda — raftaki eski koleksiyonun programa girişi yıl içinde girenlere katılmaz), yıl
+          içinde çıkan (nüsha durumuna göre), kayda göre yıl sonu, gelecek yıla devir, aradaki fark,
+          sayım fazlası ve noksanı; ödünçteki, teslimdeki ve onarımdaki kitabın sayılışı ayrı
+          tablodadır. Gelecek yıla devir sayımda bulunan miktardır; sayımda bulunup onayda hasar
+          nedeniyle kayıttan düşülen kitap sayımın kendi çıkışı olduğu için ondan çıkarılır ve
+          altında ayrı satırda yazar (tutanağın “Sayımda bulunan miktar”ı değişmez). Hasar önerisi
+          onaylanmadan ekteki gelecek yıla devir yazılmaz. Excel dosyasında bu sayılar sayı
+          hücresidir. Cetvel yıl sonu hesabı için düzenlenir; yıl sonu dışında, harcama yetkilisinin
+          gerekli gördüğü bir sayımda ekteki sayılar yılın o güne kadarki durumunu gösterir ve
+          cetvele aktarılmaz (ek bunu da yazar).
+        </p>
+        <Mevzuat kaynak="Taşınır Mal Yönetmeliği, md. 34/1">
+          “Taşınır mal yönetim hesabında; önceki yıldan devredilen, yılı içinde giren, çıkan ve
+          ertesi yıla devredilen taşınırlar ile yıl sonu sayımında bulunan fazla ve noksanlar
+          gösterilir.”
+        </Mevzuat>
+        <p>
+          Program Taşınır Sayım ve Döküm Cetvelini düzenlemez; ek de “Bu döküm Taşınır Sayım ve
+          Döküm Cetveli değildir; resmî cetvel TKYS&apos;de düzenlenir.” ibaresini taşır. Ekteki
+          sayılar TKYS&apos;deki cetvele aktarılır. Cetveli, kayıtların sayım sonuçlarıyla uygunluğu
+          sağlandıktan sonra sayım kurulu düzenler; sayım kurulu ile taşınır kayıt yetkilisi imzalar
+          (md. 32/9). Cetvelin “Gelecek Yıla Devir” sütunundaki miktar, yıl sonu Sayım Tutanağının
+          “Sayımda Bulunan Miktar” sütunundakine eşit olmalıdır (md. 10/1-ğ).
+        </p>
+
+        <AltBaslik>İptal</AltBaslik>
+        <p>
+          Onaylanmamış sayım her adımda “İptal et” ile kapatılır; “Sayım iptal edilsin mi?”
+          penceresi “İptal gerekçesi (isteğe bağlı)”ni sorar. Seçilen durdurma ve hizmet arası
+          kalkar, nüshalara dokunulmaz, okutmalar iz olarak kalır. Başlatılmamış taslak “Taslağı
+          sil” ile de kaldırılır. Yeni sayım, süren sayım onaylanınca ya da iptal edilince açılır.
+        </p>
+        <Ipucu>
+          <p>
+            Sayımdan önce Kayıp ve Hasar&apos;daki dosyaları gözden geçirin: kayıttan düşülmesini
+            istediğiniz hasarlı kitabın dosyasını “Kayıttan düşme önerildi” ile kapatın; öneri
+            sayımda ancak kitap bulunursa hasar nedeniyle düşülür. TMY 32/3 durdurması seçilecekse
+            bunu sayımı başlatmadan yapın: durdurma sürerken kayıttan düşme önerisi yazılamaz.
+          </p>
+        </Ipucu>
+      </Bolum>
+
+      {/* ------------------------------------------------------------------ */}
       <Bolum id="katalog-sablonu">
         <p>
           Çok sayıda kitabı tek tek yazmak yerine listenizi Excel&apos;de hazırlayabilirsiniz;
@@ -3116,6 +3530,12 @@ export default function KilavuzPage() {
           nüshaların hiçbiri etiketli değildir: “Bu partinin etiketlerini bas” düğmesi Etiketler →
           Basım Kuyruğu&apos;nu bu edinim partisine süzülmüş açar. Yer numarası sırasında basıp raf
           raf yapıştırın (bkz. Etiketler bölümü).
+        </p>
+        <p>
+          Sayımda TMY 32/3 durdurması sürerken içe aktarma yapılmaz; önizleme de reddedilir. Ekranın
+          üstünde “Sayım sürüyor” bandı durur ve “Sayım sürerken programa aktarım yapılamaz; sayım
+          bitince aktarın.” der: programa aktarım taşınır girişi değildir, bu yüzden ileti Taşınır
+          Mal Yönetmeliğine dayanmaz (bkz. Sayım bölümü).
         </p>
         <p>
           Toplu aktarımda program <strong>internetten künye getirmez</strong>: dosyada ne yazıyorsa

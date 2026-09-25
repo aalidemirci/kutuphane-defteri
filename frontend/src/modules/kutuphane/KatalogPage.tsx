@@ -57,6 +57,8 @@ const YAN_EKRANLAR: { to: string; label: string; icon: string }[] = [
   // F8: ayıklama (Md. 12/1) ve nadir eserler (Md. 12/2) — yönetici işi.
   { to: "/katalog/ayiklama", label: "Ayıklama", icon: "inventory" },
   { to: "/katalog/nadir-eserler", label: "Nadir Eserler", icon: "history_edu" },
+  // F9: sayım (TMY 32) — yönetici işi.
+  { to: "/katalog/sayim", label: "Sayım", icon: "inventory_2" },
 ];
 
 /** Bir eserin ayrıntı adresi. */

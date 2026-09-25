@@ -80,7 +80,10 @@ Mal Yönetmeliği · **OKY** Ortaöğretim Kurumları Yönetmeliği. Bölüm num
 | §3 TMY, §9-10 | TMY 13/1 · 23/4 | Ödünç TMY anlamında giriş ya da çıkış değildir; kütüphane materyali "ödünç takip sistemleri ile takip edilir" |
 | §3, §8.4, E11 | TMY 9/1-ç · 10/1-a-4 · 15/4 | Taşınır Kütüphane Defteri; süreli yayına VİF düzenlenmez, ciltletildikten sonra kayda alınır |
 | E11 | TMY 34/2-c · 34/3-a | Müze/Kütüphane Yönetim Hesabı Cetveli |
-| §9-10, E10 | TMY 32/3 | Giriş ve çıkışların durdurulması **isteğe bağlıdır** (kurul talebi + harcama yetkilisi), "hizmetin aksamaması" kaydıyla |
+| §9-10, E10 | TMY 32/3 | Giriş ve çıkışların durdurulması **isteğe bağlıdır** (kurul talebi + harcama yetkilisi), "hizmetin aksamaması" kaydıyla. İkinci cümle ("Sayım yapılırken gerekli önlemlerin alınması, sayım kurulunun görev ve sorumluluğu altındadır") "sayım için hizmet arası"nın anılabilecek en uzak dayanağıdır; hizmet arası okul kararıdır (§4) |
+| F9 sayım — kurul, zaman, iki seçenek (kılavuzun Sayım bölümü; tasarım F9 ekleri) | TMY 32/1 · 32/2 · 32/3 · 13/1 · 23/4 · Yön. 23/1-c | Sayım yıl sonlarında ve harcama yetkilisinin gerekli gördüğü durum ve zamanlarda yapılır (32/1). Kurul: harcama yetkilisinin ya da görevlendireceği kişinin başkanlığında, taşınır kayıt yetkilisinin de katılımıyla en az üç kişi (32/2 — program başkan + taşınır kayıt yetkilisi + en az bir üye ister). Ödünç TMY'de giriş-çıkış değildir (13/1, 23/4): 32/3 durdurması ödüncü ve iadeyi kapsamaz; iade hiçbir durumda durmaz (Yön. 23/1-c) |
+| F9 sayım — sayılış ve sonuç (kılavuzun Sayım bölümü; E10) | TMY 32/5 · 32/6 · 32/7 · 27/1 · 27/3 · 10/1-a · 10/1-e · 17/1 | Sınıf kitaplığı yerinde sayılır: 32/5 birinci cümleye **kıyasen** (ortak kullanım alanı, Dayanıklı Taşınırlar Listesi — 23/6'ya kıyasen); şubeyi sayılmadan **kayda göre** almanın dayanağı YOKTUR (kıyasın sonucu "sayılır"dır; "sayım yapılmaksızın" yalnız ikinci cümlededir ve kamu görevlilerine teslim belgesiyle verilen taşınır içindir) — seçenek kaldırıldı, toplanamayan şube nüshası yerinde aranır (F9 ekleri K3, 25.09.2026); onarımdaki nüsha kayda göre alınır ya da sayımdan önce geri alınır: TMY'de hüküm yok, sayım kurulunun kararı (K2 — §4); öğretmene teslim kayda göre: 32/5 ikinci cümle (Taşınır Teslim Belgesi varsa) ya da 32/5'e kıyasen (23/4); ödünçteki nüsha "32/5'e kıyasen; 23/4". Farklı çıkanın sayımı bir kez daha tekrarlanır (32/6 — program yalnız noksanı yeniden aratır). Noksan için Kayıttan Düşme Teklif ve Onay Tutanağı ve VİF, fazla için VİF (32/7); 27/1 "sayımda noksan çıkan" ve "kullanılamaz hâle gelen" taşınırı sayar (hasar önerisinin düşülmesi); kasıt, kusur, ihmal ya da tedbirsizliği harcama yetkilisi değerlendirir (27/3). Durumu belgeleyen tutanak varsa komisyonsuz onay (10/1-e — tutanağın o belge sayılması harcama yetkilisinin takdiridir, metinler böyle yazar). Onay tarihi tamamlanma gününden önce olamaz: VİF dayanağından önceki tarihi taşıyamaz (10/1-a). Sayım fazlası VİF ile kayda alınır; değer son bir yıldaki aynı nitelikte girişin değeri, yoksa değer tespit komisyonununki (17/1 — program değer yazmaz) |
+| F9 E10 — kişisel veri ve ek | TMY 10/1-g · 32/8 · 32/9 · 34/1 · 10/1-ğ · 32/1 | Sayım Tutanağının fazla/noksan sayfaları VİF'e bağlanır ve muhasebe birimine gider (10/1-g, 32/8): tutanakta ödünç alanın ve teslim alanın kimliği yoktur. Taşınır Sayım ve Döküm Cetvelini sayım kurulu düzenler, kurul ile taşınır kayıt yetkilisi imzalar (32/9) — program üretmez, TKYS'dedir; ekte 34/1'in dört büyüklüğü ("Gelecek Yıla Devir" = "Sayımda Bulunan Miktar", 10/1-ğ; sayımda bulunup onayda 27/1 ile düşülen sayımın kendi çıkışıdır — ekte devirden çıkarılır ve ayrı satırda yazılır, F9 ekleri madde 25 a). Cetvel "yıl sonu hesaplarına ilişkin işlemlerinde" düzenlenir (10/1-ğ) ve kayıt yetkilisinin yıl sonu hesabını oluşturur (32/9); 32/1 yıl sonu sayımını harcama yetkilisinin gerekli gördüğü sayımdan ayırır — ekin ara sayım notu buna dayanır (F9 düzeltme turu) |
 | §9-11, E15 (kılavuzun Sınıf Kitaplığına ve Öğretmene Teslim bölümü) | TMY 32/5 · 23/6 | Ortak kullanım alanı sayımı ve Dayanıklı Taşınırlar Listesi; kişilere verilen miktar (kıyasen) |
 | E10 | TMY 32/7 · 32/8 · 32/9 · 10/1-g | Noksan düşüm teklifi, belgelerin muhasebe birimine gidişi, Sayım ve Döküm Cetveli |
 | E7 (kılavuzun Ayıklama ve Nadir Eserler bölümü) | TMY 5/8 · 10/1-a · 10/1-e · 24/1 · 24/2 · 27/1 · 27/3 · 28 (1, 3, 4, 5, 7, 8) · 31 | Kayıttan düşme, komisyon (28/1: biri işin uzmanı), imha tutanağı (kalem düzeyinde), ekonomik değeri olan hurda (28/8), devir. 10/1-e: "durumu belgeleyen tutanak" varsa komisyonsuz onay — Ayıklama tutanağının bu belge sayılması yorumdur, metinler harcama yetkilisinin takdiri olarak yazar. 10/1-a: VİF dayanağından önceki tarihi taşıyamaz (onay, gönderim ve bağış edinimi karardan önce olamaz; karar tarihi sonradan onlardan sonraya alınamaz) |
@@ -142,8 +145,20 @@ mevzuat hükmü gibi sunulmaz:
   metninde TBK 93 kıyası altında anılmaz.
 - **Diğer personele ödünç için müdürlük kararı şartı ve sayı sınırı**
   (tasarım §6.2, §9-1). Yönetmelik diğer personele ödüncü düzenlemez.
-- **"Sayım için hizmet arası"** (tasarım §9-10). Yeni ödüncü durduran okul
-  kararıdır, TMY'ye dayandırılmaz; en fazla 32/3'ün ikinci cümlesi anılabilir.
+- **"Sayım için hizmet arası"** (tasarım §9-10). Yeni ödüncü ve yeni teslimi
+  durduran okul kararıdır (teslim — F9 ekleri madde 27, 25.09.2026 kullanıcı
+  kararı), TMY'ye dayandırılmaz; en fazla 32/3'ün ikinci cümlesi anılabilir.
+- **Onarımdaki nüshanın sayımda kayda göre alınması** (tasarım F9 ekleri K2).
+  TMY'de onarıma gönderilmiş taşınırın sayımına ilişkin hüküm yoktur: onarım
+  bakım yükümlülüğü (5/3), esaslı onarımın değer artışı ve VİF'siz yedek parça
+  (10/1-a), iç imkânla onarımın iş talep belgesi (10/1-c), değer artırıcı
+  harcamanın dışında kalan bakım-onarım (14/1) ve binayla teslim alınan taşınır
+  (15/5) bağlamında geçer; md. 32'nin hiçbir fıkrası onarımı anmaz. Seçim sayım
+  kurulunun kararı olarak yazılır, 32/5 atfedilmez.
+- **Programa aktarımın sayım sırasında kapalı tutulması** (tasarım F9 ekleri
+  K4). Mevcut koleksiyonun programa aktarımı taşınır girişi değildir (13/1'in
+  giriş hâllerinden değildir); TMY 32/3 durdurması süresince kapalı tutulması
+  programın kuralıdır ve ret iletisi TMY'ye dayandırılmaz.
 - **"İlişiği yoktur" belgesi** (E5) karne ya da diploma için ön koşul diye
   sunulmaz; Yönetmelikte yalnız "iadesi sağlanır" hükmü vardır (md. 18).
 

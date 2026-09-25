@@ -140,6 +140,8 @@ DIGER_UCLAR = frozenset(
         "library-desk-member",
         "library-desk-copy-status",
         "library-desk-card-unlock",
+        # F9 (madde 24, 26): masanın kişisiz durumu yalnız okur (hizmet arası, süren sayım).
+        "library-desk-state",
         # F7: teslim listesine okutmanın ön denetimi yazmaz; onarım kaydı kişisizdir
         # (nüsha durumu + tarih; serbest metin yok). Hepsi yönetici kipi işidir.
         "library-delivery-check",
@@ -205,6 +207,27 @@ DIGER_UCLAR = frozenset(
         "library-annual-review-detail",
         "library-annual-review-finalize",
         "library-annual-review-reopen",
+        # F9 sayım (TMY 32): kalemler kişisizdir — kişi SİCİLİ yazılmaz. Sayım kurulu
+        # ile durduran ve onaylayan harcama yetkilisinin adları şifreli alandır; parola
+        # kurulmadan izin sınıfı OLMADAN da 409 alır (fail-closed) ve servis
+        # `require_password_set` sorar. Hepsi yönetici kipi işidir.
+        "library-stocktake-list",
+        "library-stocktake-state",
+        "library-stocktake-detail",
+        "library-stocktake-start",
+        "library-stocktake-scan",
+        "library-stocktake-items",
+        "library-stocktake-item-detail",
+        "library-stocktake-surplus",
+        "library-stocktake-progress",
+        "library-stocktake-complete",
+        "library-stocktake-approve",
+        "library-stocktake-cancel",
+        "library-stocktake-tmy-34-1",
+        # F9 sayım tutanağı (E10): yalnız okur ve PDF/XLSX üretir; kurul ve harcama
+        # yetkilisi adları şifreli alandan yalnız belgenin kendisine çözülür.
+        "library-stocktake-documents",
+        "library-stocktake-document",
         # F8 belgeleri (E7, E8, E9, E16): yalnız okur ve PDF/XLSX üretir; adlar
         # şifreli alandan yalnız belgenin kendisine çözülür. Yönetici kipi işidir.
         "library-weeding-batch-documents",

@@ -50,7 +50,7 @@ from apps.kutuphane.models import (
     ReservedBarcode,
     Work,
 )
-from apps.kutuphane.services import catalog, label_render, numbering
+from apps.kutuphane.services import catalog, label_render, numbering, tmy_kapisi
 
 # ---------------------------------------------------------------------------
 # Okutulan kodun çözümü (classify_scan + veritabanı)
@@ -189,11 +189,16 @@ def check_label(value: object) -> dict[str, Any]:
 
     Ret ipucu ("Etiket yok — yeni numara ver") numara başka bir CANLI nüshaya
     bağlıyken verilmez: kitap büyük olasılıkla zaten kayıtlıdır (`_bound_message`).
+
+    F9: TMY 32/3 durdurması sürerken etiket bağlanabilir DEĞİLDİR (nüsha açma kapısı
+    `catalog.validate_new_copy`'dedir; ön denetim onu önceden söyler — eser açılıp
+    nüshasız kalmasın). Yeni numara ipucu da verilmez: o yol da aynı kapıya takılır.
     """
     info = describe_scan(value)
-    gerekce = bind_rejection(info)
+    durdurma = tmy_kapisi.durdurma_iletisi(tmy_kapisi.EDINIM)
+    gerekce = durdurma or bind_rejection(info)
     bagli = info.copy if info.copy is not None and info.copy.deleted_at is None else None
-    ipucu = NEW_NUMBER_HINT if gerekce and bagli is None else ""
+    ipucu = NEW_NUMBER_HINT if gerekce and not durdurma and bagli is None else ""
     return {
         "bindable": not gerekce,
         "kind": str(info.kind),

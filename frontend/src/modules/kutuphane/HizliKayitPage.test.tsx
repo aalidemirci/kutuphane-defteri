@@ -73,6 +73,13 @@ vi.mock("./etiketApi", async (importOriginal) => {
   return { ...actual, etiketApi: { ...actual.etiketApi, ...etiket } };
 });
 
+const sayimKapisi = vi.hoisted(() => ({ durum: vi.fn() }));
+vi.mock("../sayim/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../sayim/api")>();
+  return { ...actual, sayimApi: { ...actual.sayimApi, ...sayimKapisi } };
+});
+
+import { PROGRAMA_AKTARIM_KAPALI } from "../sayim/api";
 import HizliKayitPage from "./HizliKayitPage";
 
 const ISBN = "9789750812345";
@@ -121,6 +128,13 @@ beforeEach(() => {
   etiket.sablonlar.mockResolvedValue(sayfa(hazirSablonlar()));
   etiket.kalibrasyonlar.mockResolvedValue(sayfa([]));
   etiket.partiAc.mockResolvedValue(basimPartisiAyrintisi({ copy_count: 1 }));
+  // Varsayılan: süren sayım ve TMY 32/3 durdurması yok.
+  sayimKapisi.durum.mockResolvedValue({
+    live: null,
+    tmy_stop_active: false,
+    service_pause_active: false,
+    returns_open: true,
+  });
 });
 
 describe("Hızlı Kayıt — künye getirme kapalı", () => {
@@ -686,5 +700,49 @@ describe("Hızlı Kayıt — sırt etiketi kısayolu (etiket yolu)", () => {
 
     expect(await screen.findByText("Sırt etiketi basıldı olarak işaretlendi.")).toBeInTheDocument();
     expect(screen.queryByText(/Doğrulama Okutması'nda okutabilirsiniz/)).toBeNull();
+  });
+});
+
+describe("Hızlı Kayıt — TMY 32/3 durdurması (F9 düzeltme turu)", () => {
+  it("durdurma sürerken “Nüshayı aç” kapalıdır; eser açılıp nüshasız kalmaz", async () => {
+    const user = userEvent.setup();
+    sayimKapisi.durum.mockResolvedValue({
+      live: null,
+      tmy_stop_active: true,
+      service_pause_active: false,
+      returns_open: true,
+    });
+    ekranaBas();
+    expect(
+      await screen.findByRole("status", { name: "TMY 32/3 durdurması sürüyor" }),
+    ).toBeInTheDocument();
+    const dugme = screen.getByRole("button", { name: "Nüshayı aç" });
+    await waitFor(() => expect(dugme).toBeDisabled());
+    await user.click(dugme);
+    expect(kapi.createWork).not.toHaveBeenCalled();
+    expect(etiket.etiketDenetle).not.toHaveBeenCalled();
+  });
+
+  it("programa aktarım ediniminde bant TMY'ye dayanmaz (K4); “Nüshayı aç” yine kapalıdır", async () => {
+    kapi.listAcquisitions.mockResolvedValue(
+      sayfa([
+        edinim({
+          method: "EXISTING_STOCK",
+          method_display: "Mevcut koleksiyon (programa aktarım)",
+        }),
+      ]),
+    );
+    sayimKapisi.durum.mockResolvedValue({
+      live: null,
+      tmy_stop_active: true,
+      service_pause_active: false,
+      returns_open: true,
+    });
+    ekranaBas();
+    const bant = await screen.findByRole("status", { name: "Sayım sürüyor" });
+    expect(bant).toHaveTextContent(PROGRAMA_AKTARIM_KAPALI);
+    expect(bant).not.toHaveTextContent("TMY");
+    expect(screen.queryByRole("status", { name: "TMY 32/3 durdurması sürüyor" })).toBeNull();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Nüshayı aç" })).toBeDisabled());
   });
 });

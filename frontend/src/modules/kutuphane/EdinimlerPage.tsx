@@ -12,6 +12,7 @@ import { useTabParam } from "../../hooks/useTabParam";
 import ModuleHeader from "../../ui/ModuleHeader";
 import Tabs, { tabPanelProps } from "../../ui/Tabs";
 import type { TabItem } from "../../ui/Tabs";
+import { DurdurmaBandi } from "../sayim/SayimKarti";
 import BagisPaneli from "./BagisPaneli";
 import EdinimPaneli from "./EdinimPaneli";
 import KomisyonPaneli from "./KomisyonPaneli";
@@ -40,6 +41,9 @@ export default function EdinimlerPage() {
         Kütüphaneye giren her kaynak bir edinim partisine bağlıdır. Bağışta kitaplar önce ön kayda
         yazılır; Seçim ve Ayıklama Komisyonu kararı girilinceye kadar nüsha açılmaz.
       </p>
+
+      {/* F9: TMY 32/3 durdurması sürerken edinim ve yeni nüsha kaydı yapılamaz. */}
+      <DurdurmaBandi islem="edinim ve yeni nüsha kaydı" />
 
       <Tabs
         items={TABS}

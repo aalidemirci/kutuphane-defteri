@@ -56,6 +56,7 @@ from apps.kutuphane.tests.ayiklama_ortak import (
 )
 from apps.kutuphane.tests.dolasim_ortak import odunc_ver, uye
 from apps.kutuphane.tests.ortak import karar
+from apps.kutuphane.tests.sayim_ortak import kapi_kaydi
 from apps.kutuphane.tests.teslim_ortak import teslim_et
 from apps.okul.kip import KIP
 
@@ -614,7 +615,7 @@ class TestKapilar:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         sorulan: list[str] = []
-        monkeypatch.setattr(tmy_kapisi, "ensure_open", sorulan.append)
+        monkeypatch.setattr(tmy_kapisi, "ensure_open", kapi_kaydi(sorulan))
         batch = teklif()
         kalem_ekle(batch, raftaki("Düşülecek"), "WORN")
         kalem_ekle(batch, raftaki("Devredilecek"), "LEVEL_MISMATCH", transfer_target=DEVRALAN_OKUL)

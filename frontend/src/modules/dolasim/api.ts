@@ -147,6 +147,8 @@ export const RED = {
   personel: "personel_odunc_kapali",
   sonTarih: "son_odunc_tarihi",
   sinir: "sinir_dolu",
+  /** F9: sayım için hizmet arası (okul kararı) — yeni ödünç ve teslim durur; iade açıktır. */
+  hizmetArasi: "sayim_hizmet_arasi",
 } as const;
 
 /**
@@ -171,6 +173,17 @@ export interface UyeAramaSatiri {
   student_number: string;
   status: "ACTIVE" | "TERMINATED";
   remaining_quota: number;
+}
+
+/**
+ * Masanın kişisiz durumu — `GET library/desk/state/` (F9; iki kipte aynı, görevli kipinde de
+ * açık). `service_pause`: sayım için hizmet arası (şerit açılışta çizilir — madde 26);
+ * `stocktake_scan`: okutması açık süren sayım (görevli ekranının "Sayım okutmasını aç"
+ * düğmesi — madde 24). Sayımın ayrıntısı YOKTUR.
+ */
+export interface MasaDurumu {
+  service_pause: boolean;
+  stocktake_scan: { id: number; round: number } | null;
 }
 
 export interface OduncGovdesi {
@@ -200,6 +213,10 @@ export const dolasimApi = {
 
   nushaDurumu: (barcode: string): Promise<NushaDurumu> =>
     api.get<NushaDurumu>(`/library/desk/copy-status/?barcode=${encodeURIComponent(barcode)}`),
+
+  /** Masanın kişisiz durumu (kullanıcı eylemi değildir — `X-KD-Etkinlik` gitmez). */
+  masaDurumu: (): Promise<MasaDurumu> =>
+    api.get<MasaDurumu>("/library/desk/state/", { etkinlik: false }),
 
   /** GA-7: art arda geçersiz kart okutmasından sonra yönetici parolasıyla sürdürme. */
   kartKilidiniAc: (password: string): Promise<{ message: string }> =>

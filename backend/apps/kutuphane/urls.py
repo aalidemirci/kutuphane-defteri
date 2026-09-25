@@ -13,10 +13,11 @@ bu dosyadaki adlar `apps.okul.urls` ile AYNI düz ad uzayındadır.
 Görevli kipi izin listesinde bu dosyadan `library-label-verify` POST (etiket
 doğrulama okutması; kullanıcı kararı 24.09.2026), F6 dolaşım masası uçları
 (`library-desk-member`, `library-checkout`, `library-return`,
-`library-desk-copy-status`, `library-desk-card-unlock`) ve katalog okuma
-(`library-work-list`, `library-work-detail`, `library-copy-list` — yalnız GET,
-sorgu parametresi kuralıyla; yanıt görevli kipinde daralır) ve F7 teslimden geri
-alma okutması (`library-delivery-take-back` POST) vardır. Geri kalan
+`library-desk-copy-status`, `library-desk-card-unlock`, F9: kişisiz masa durumu
+`library-desk-state`) ve katalog okuma (`library-work-list`, `library-work-detail`,
+`library-copy-list` — yalnız GET, sorgu parametresi kuralıyla; yanıt görevli kipinde
+daralır), F7 teslimden geri alma okutması (`library-delivery-take-back` POST) ve F9
+sayım okutması (`library-stocktake-scan` POST — madde 24; yanıt daralır) vardır. Geri kalan
 uçlar kapalıdır (varsayılan kapalı — CLAUDE.md §2-4): katalog düzenlemek,
 edinim açmak, bağış kararı işlemek, etiket basmak ve üyelik yönetimi (F6:
 üyelik açma, kartı yenile, sonlandırma, istek listesi, ödünç geçmişi)
@@ -39,6 +40,8 @@ from apps.kutuphane import (
     views_kunye,
     views_kuyruk,
     views_masa,
+    views_sayim,
+    views_sayim_belgeleri,
     views_teslim,
     views_uyelik,
 )
@@ -465,6 +468,9 @@ urlpatterns = [
         views_masa.MasaKartKilidiView.as_view(),
         name="library-desk-card-unlock",
     ),
+    # F9 (madde 24, 26): masanın ve görevli ekranının kişisiz durumu — hizmet arası ve
+    # süren sayımın okutması (görevli kipinde de açık; yalnız GET, sorgu dizesi yok).
+    path("library/desk/state/", views_masa.MasaDurumuView.as_view(), name="library-desk-state"),
     # --- F7: toplu teslim (U11). Teslim VERME yönetici kipinde; görevli kipi izin
     # listesinde YALNIZ geri alma okutması (`take-back/` POST, yanıt daralır — §4.4).
     path(
@@ -683,6 +689,85 @@ urlpatterns = [
         "library/annual-reviews/<int:pk>/pdf/",
         views_komisyon_belgeleri.AnnualLibraryReviewPdfView.as_view(),
         name="library-annual-review-pdf",
+    ),
+    # --- F9: sayım (TMY 32; §9-10 iki ayrı seçenek) — yönetici kipi (§4.4); izin
+    # listesinde YALNIZ okutma (`scan/` POST, yanıt daralır — madde 24, kullanıcı kararı).
+    path(
+        "library/stocktakes/",
+        views_sayim.StockTakeListCreateView.as_view(),
+        name="library-stocktake-list",
+    ),
+    path(
+        "library/stocktakes/state/",
+        views_sayim.StockTakeStateView.as_view(),
+        name="library-stocktake-state",
+    ),
+    path(
+        "library/stocktakes/<int:pk>/",
+        views_sayim.StockTakeDetailView.as_view(),
+        name="library-stocktake-detail",
+    ),
+    path(
+        "library/stocktakes/<int:pk>/start/",
+        views_sayim.StockTakeStartView.as_view(),
+        name="library-stocktake-start",
+    ),
+    path(
+        "library/stocktakes/<int:pk>/scan/",
+        views_sayim.StockTakeScanView.as_view(),
+        name="library-stocktake-scan",
+    ),
+    path(
+        "library/stocktakes/<int:pk>/items/",
+        views_sayim.StockTakeItemsView.as_view(),
+        name="library-stocktake-items",
+    ),
+    path(
+        "library/stocktakes/<int:pk>/items/<int:item_pk>/",
+        views_sayim.StockTakeItemDetailView.as_view(),
+        name="library-stocktake-item-detail",
+    ),
+    path(
+        "library/stocktakes/<int:pk>/surplus/",
+        views_sayim.StockTakeSurplusView.as_view(),
+        name="library-stocktake-surplus",
+    ),
+    path(
+        "library/stocktakes/<int:pk>/progress/",
+        views_sayim.StockTakeProgressView.as_view(),
+        name="library-stocktake-progress",
+    ),
+    path(
+        "library/stocktakes/<int:pk>/complete/",
+        views_sayim.StockTakeCompleteView.as_view(),
+        name="library-stocktake-complete",
+    ),
+    path(
+        "library/stocktakes/<int:pk>/approve/",
+        views_sayim.StockTakeApproveView.as_view(),
+        name="library-stocktake-approve",
+    ),
+    path(
+        "library/stocktakes/<int:pk>/cancel/",
+        views_sayim.StockTakeCancelView.as_view(),
+        name="library-stocktake-cancel",
+    ),
+    # TMY 34/1 büyüklükleri (E10 eki — A8 kararı; cetvel TKYS'dedir) — kayıt YAZMAZ.
+    path(
+        "library/stocktakes/<int:pk>/tmy-34-1/",
+        views_sayim.StockTakeTmy341View.as_view(),
+        name="library-stocktake-tmy-34-1",
+    ),
+    # Sayım tutanağı (E10; PDF + XLSX, ekinde TMY 34/1) — kayıt YAZMAZ; yönetici kipi.
+    path(
+        "library/stocktakes/<int:pk>/documents/",
+        views_sayim_belgeleri.StockTakeDocumentsView.as_view(),
+        name="library-stocktake-documents",
+    ),
+    path(
+        "library/stocktakes/<int:pk>/documents/<slug:belge>/",
+        views_sayim_belgeleri.StockTakeDocumentView.as_view(),
+        name="library-stocktake-document",
     ),
 ]
 

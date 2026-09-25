@@ -74,6 +74,17 @@ export const KAYITTAN_DUSULMUS_NOTU =
   "(kayda giriş)” yoluyla açılan bir edinimle, Eser Ayrıntısı'nda “Nüsha ekle” diyerek yeni " +
   "nüsha olarak kaydedin.";
 
+/**
+ * Açık dosyanın nüshası sayımda kayıttan düşülmüşse (F9 — noksan 32/7 ya da hasar 27/1):
+ * sunucu bulunma çözümlerini listeden çıkarır; temin ve bedel yolları açık kalır (Md. 19
+ * yükümlülüğü sürer) ama eski kayda dokunmaz.
+ */
+export const SAYIMDA_DUSULMUS_NOTU =
+  "Nüsha sayımda kayıttan düşüldü; bu dosyadan rafa dönmez. Kitap bulunursa “Sayım fazlası " +
+  "(kayda giriş)” yoluyla açılan bir edinimle yeni nüsha olarak kaydedin. Aynısı temin edilir ya " +
+  "da bedelle alınırsa dosya kapanır; alınan kitabı Eser Ayrıntısı'nda “Nüsha ekle” diyerek yeni " +
+  "nüsha olarak kaydedin. Eski kayıt kayıttan düşülmüş olarak kalır.";
+
 /** Öneriyle kapanan çözümler (sunucu `WRITE_OFF_RESOLUTIONS`). */
 const ONERI_COZUMLERI: ReadonlySet<Cozum> = new Set<Cozum>([
   "CLOSED_OTHER_REPURCHASED",
@@ -319,6 +330,8 @@ export default function DosyaAyrintisi({
     guncel.case_type === "LOST" &&
     ONERI_COZUMLERI.has(guncel.resolution) &&
     guncel.copy_status.startsWith("WITHDRAWN_");
+  // F9: açık dosyanın nüshası sayımda kayıttan düşüldü (bulunma yolları sunucuda kalktı).
+  const sayimdaDusulmus = guncel.is_open && guncel.copy_status.startsWith("WITHDRAWN_");
 
   return (
     <Dialog
@@ -422,6 +435,15 @@ export default function DosyaAyrintisi({
                 <Icon name="info" size="sm" className="mt-0.5 shrink-0" />
                 {BEDEL_IADESI_NOTU}
               </p>
+            )}
+
+            {sayimdaDusulmus && (
+              <section aria-label="Bulunan kitap" className="space-y-2">
+                <p className="flex items-start gap-2 rounded-shape-sm bg-surface-container-high px-3 py-2 text-body-small text-on-surface">
+                  <Icon name="info" size="sm" className="mt-0.5 shrink-0" />
+                  {SAYIMDA_DUSULMUS_NOTU}
+                </p>
+              </section>
             )}
 
             {kayittanDusulmus && (

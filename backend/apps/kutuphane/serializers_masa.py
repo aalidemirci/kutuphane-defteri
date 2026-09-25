@@ -126,6 +126,11 @@ RETURN_LOAN_FIELDS: Final[tuple[str, ...]] = (
 STAFF_STATUS_FIELDS: Final[tuple[str, ...]] = ("kind", "message", "copy")
 ADMIN_STATUS_FIELDS: Final[tuple[str, ...]] = ("kind", "message", "copy", "loan")
 
+#: F9 — masanın kişisiz durumu (`GET library/desk/state/`, iki kipte aynı): sayım için
+#: hizmet arası ve okutması açık süren sayım (`{id, round}` ya da `null`). Madde 24, 26.
+DESK_STATE_FIELDS: Final[tuple[str, ...]] = ("service_pause", "stocktake_scan")
+DESK_STOCKTAKE_FIELDS: Final[tuple[str, ...]] = ("id", "round")
+
 #: Görevli kipinde katalog okuma — Ağ Kataloğunun künye alanlarına denk (§4.4).
 STAFF_WORK_FIELDS: Final[tuple[str, ...]] = (
     "id",

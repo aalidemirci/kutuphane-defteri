@@ -25,6 +25,10 @@ Onarım kaydı kişisizdir.
 Okutma bir OLAYDIR: geri alma her zaman 200 gövde döner (`result`, `message`);
 toplu teslim bir EYLEMDİR — listedeki bir kitap teslim edilemiyorsa hiçbiri
 yapılmaz ve gerekçeler `fields.barcodes` altında döner (400).
+
+F9 (madde 27, 25.09.2026 kullanıcı kararı): sayım için hizmet arası sürerken toplu teslim
+400 `sayim_hizmet_arasi` alır (ödünç reddiyle aynı ileti) ve ön denetim her okutmayı
+`rejected` + hizmet arası iletisiyle döndürür. Geri alma hiçbir durumda durmaz.
 """
 
 from __future__ import annotations

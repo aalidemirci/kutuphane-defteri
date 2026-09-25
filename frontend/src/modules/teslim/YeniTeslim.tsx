@@ -17,6 +17,10 @@
 // okutmada silinmeyen "Listeye girmeyen kitaplar" listesinde durur. Okutma kutusu
 // odakta değilse (ör. "Şube" seçicisi) uyarı çıkar: seçicideki okutma kodu kaybolur
 // ve şube seçimini değiştirebilir. Öğretmen seçilince odak kutuya döner.
+//
+// F9 (madde 27, 25.09.2026 kullanıcı kararı): sayım için hizmet arası yeni teslimi de
+// durdurur. Sürerken ekranın üstünde masadakiyle aynı şerit durur ve "Teslim et" kapalıdır;
+// ön denetim her okutmayı hizmet arasının iletisiyle reddeder. Teslimden geri alma açıktır.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -38,7 +42,9 @@ import type { SelectOption } from "../../ui/Select";
 import { useSnackbar } from "../../ui/SnackbarProvider";
 import TextField from "../../ui/TextField";
 import type { MasaNushasi } from "../dolasim/api";
+import { useMasaDurumu } from "../dolasim/masaDurumu";
 import { PdfDugmeleri } from "../kutuphane/etiketOrtak";
+import { HizmetArasiSeridi } from "../sayim/SayimKarti";
 import { okulApi } from "../okul/api";
 import type { Personnel } from "../okul/api";
 import { GERI_ALMA_DOKUMU_ADI, TESLIM_ALAN_TURU_TR, TESLIM_LISTESI_ADI, teslimApi } from "./api";
@@ -48,6 +54,10 @@ export const TESLIM_KUTUSU = "Kütüphane etiketi";
 export const TESLIM_ET_DUGMESI = "Teslim et";
 export const ZATEN_LISTEDE = "Bu kitap zaten listede.";
 export const LISTEYE_GIRMEYENLER = "Listeye girmeyen kitaplar";
+
+/** Hizmet arası şeridinin teslim ekranındaki ipucu (madde 27). */
+export const TESLIM_HIZMET_ARASI_IPUCU =
+  "Sayım onaylanınca ya da iptal edilince teslim yeniden açılır. Dönen kitapları Geri Alma sekmesinde okutun.";
 
 /** Öğretmen seçicisinde diğer personelin gerekçesi (sunucu da reddeder). */
 export const DIGER_PERSONEL_GEREKCESI = "diğer personele teslim yapılmaz";
@@ -137,6 +147,8 @@ export default function YeniTeslim({
   const [sonuc, setSonuc] = useState<TeslimSonucu | null>(null);
   const [pdfHatasi, setPdfHatasi] = useState<SayfaHatasi | null>(null);
   const { errors, clearErrors, applyApiError, setFieldError } = useFormErrors();
+  // F9 (madde 27): sayım için hizmet arası sürerken yeni teslim yapılmaz (kural sunucudadır).
+  const hizmetArasi = useMasaDurumu()?.service_pause ?? false;
 
   const listeyiYaz = useCallback((yeni: Satir[]) => {
     listeRef.current = yeni;
@@ -305,6 +317,7 @@ export default function YeniTeslim({
 
   return (
     <div className="space-y-4">
+      {hizmetArasi && <HizmetArasiSeridi ipucu={TESLIM_HIZMET_ARASI_IPUCU} />}
       <Card elevation={0} className="space-y-4 p-[var(--kd-panel-padding)] shadow-elevation-1">
         <p className="text-title-medium text-on-surface">Teslim Alan</p>
         <fieldset className="flex flex-wrap gap-4">
@@ -490,7 +503,7 @@ export default function YeniTeslim({
           <Button
             icon="outbox"
             onClick={() => void teslimEt()}
-            disabled={busy || liste.length === 0}
+            disabled={busy || liste.length === 0 || hizmetArasi}
           >
             {busy ? "Teslim ediliyor…" : TESLIM_ET_DUGMESI}
           </Button>

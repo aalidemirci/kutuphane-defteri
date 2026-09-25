@@ -158,6 +158,12 @@ export interface BarcodeInputProps extends Omit<
   odakUyarisi?: boolean;
   /** Diyalog açık: tuş yakalanmaz, uyarı çıkmaz; kapanınca odak kutuya döner. */
   beklemede?: boolean;
+  /**
+   * `sira` davranışında sırada bekleyen ve işlenmekte olan okutma sayısı her değiştiğinde
+   * çağrılır (ebeveyn, okutmalar bitmeden geri dönüşü olmayan bir işi başlatmasın — ör.
+   * sayımı tamamlamak; F9 düzeltme turu).
+   */
+  onBekleyenDegisti?: (bekleyen: number) => void;
   helperText?: ReactNode;
   error?: string;
 }
@@ -173,6 +179,7 @@ const BarcodeInput = forwardRef<HTMLInputElement, BarcodeInputProps>(function Ba
     tusYakala,
     odakUyarisi,
     beklemede = false,
+    onBekleyenDegisti,
     helperText,
     error,
     className = "",
@@ -208,6 +215,13 @@ const BarcodeInput = forwardRef<HTMLInputElement, BarcodeInputProps>(function Ba
   beklemedeRef.current = beklemede;
   // Diyalog açıkken odak yazı alanında değilse okuyucunun gönderdiği karakterler.
   const tampon = useRef("");
+  // İşlenmekte olan okutma (0 ya da 1) ve bekleyen sayısının bildirimi.
+  const islemde = useRef(0);
+  const onBekleyenRef = useRef(onBekleyenDegisti);
+  onBekleyenRef.current = onBekleyenDegisti;
+  const bekleyeniBildir = useCallback(() => {
+    onBekleyenRef.current?.(sira.current.length + islemde.current);
+  }, []);
 
   useEffect(() => {
     acik.current = true;
@@ -248,20 +262,28 @@ const BarcodeInput = forwardRef<HTMLInputElement, BarcodeInputProps>(function Ba
       while (sira.current.length > 0 && acik.current && !beklemedeRef.current) {
         const siradaki = sira.current.shift() as string;
         setBekleyen(sira.current.length);
-        await calistir(siradaki);
+        islemde.current = 1;
+        bekleyeniBildir();
+        try {
+          await calistir(siradaki);
+        } finally {
+          islemde.current = 0;
+          bekleyeniBildir();
+        }
       }
     } finally {
       isleniyor.current = false;
     }
-  }, [calistir]);
+  }, [calistir, bekleyeniBildir]);
 
   const kuyrugaAl = useCallback(
     (kod: string) => {
       sira.current.push(kod);
       setBekleyen(sira.current.length);
+      bekleyeniBildir();
       void isle();
     },
-    [isle],
+    [isle, bekleyeniBildir],
   );
 
   // Diyalog kapanınca odak kutuya döner (diyalog odağı açan düğmeye verdikten SONRA)

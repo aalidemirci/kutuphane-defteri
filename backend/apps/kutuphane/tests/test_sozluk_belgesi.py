@@ -296,3 +296,124 @@ def test_ayiklama_ekranlarinda_imha_yalniz_28_5_baglaminda() -> None:
                 assert izinli.search(" ".join(parca.split())), f"{yol.name}: {parca.strip()}"
     assert taranan >= 5
     assert bulunan > 0
+
+
+# ---------------------------------------------------------------------------
+# Sayım (F9): durumlar, kurulun seçimi, sonuçlar, onay sonuçları ve okutma iletileri
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    ("baslangic", "secenekler"),
+    [
+        ("| Sayım durumları", "StockTakeStatus"),
+        ("| Kurulun seçimi", "CountBasis"),
+        ("| Sayım sonuçları", "StockTakeResult"),
+        ("| Onay sonuçları", "StockTakeOutcome"),
+    ],
+)
+def test_sayim_satirlari_kodun_secenekleriyle_birebir(baslangic: str, secenekler: str) -> None:
+    from apps.kutuphane import models as kutuphane_modelleri
+
+    secim: type[models.TextChoices] = getattr(kutuphane_modelleri, secenekler)
+    hucreler = _satir(baslangic).split("|")
+    assert _ETIKET.findall(hucreler[2]) == [etiket for _kod, etiket in secim.choices]
+
+
+def test_sayim_okutma_iletileri_servisle_birebir() -> None:
+    from apps.kutuphane.services import stocktake
+
+    hucre = _satir("| Okutma iletileri").split("|")[2]
+    for ileti in (
+        stocktake.SCAN_FOUND,
+        stocktake.SCAN_FOUND_ROUND2,
+        stocktake.SCAN_ALREADY,
+        stocktake.SCAN_OUT_OF_SCOPE,
+        stocktake.SCAN_MEMBER_CARD,
+    ):
+        assert f'**"{ileti}"**' in hucre, ileti
+    fazla_iletileri = [
+        deger
+        for ad, deger in vars(stocktake).items()
+        if ad.startswith("SCAN_SURPLUS_") and isinstance(deger, str)
+    ]
+    assert fazla_iletileri
+    assert all(
+        ileti.startswith("Sayım fazlası") or ileti == stocktake.SCAN_SURPLUS_AGAIN
+        for ileti in fazla_iletileri
+    )
+
+
+def test_sayim_sozlugunde_yasak_sozcukler_kullanilmaz_sutununda() -> None:
+    """ "Sayım kilidi" ve "dondurma" yalnız "Kullanılmaz" sütununda geçer (sözlük §1)."""
+    satir = _satir("| `StockTake`")
+    hucreler = satir.split("|")
+    assert "sayım kilidi" in hucreler[3] and "dondurma" in hucreler[3]
+    kullanilir = hucreler[2] + hucreler[4]
+    assert "sayım kilidi" not in kullanilir.casefold() and "dondurma" not in kullanilir.casefold()
+
+
+# ---------------------------------------------------------------------------
+# Sayım (F9, kılavuz ve sözlük turu): bulunma ve düşme yolları, seçeneklerin iletileri,
+# kurul ve noksan satırlarının yasak sözcükleri
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    ("baslangic", "secenekler"),
+    [
+        ("| Bulunma yolu", "StockTakeFoundVia"),
+        ("| Düşme yolu", "StockTakeWriteOffPath"),
+    ],
+)
+def test_sayim_bulunma_ve_dusme_yolu_kodla_birebir(baslangic: str, secenekler: str) -> None:
+    from apps.kutuphane import models as kutuphane_modelleri
+
+    secim: type[models.TextChoices] = getattr(kutuphane_modelleri, secenekler)
+    hucreler = _satir(baslangic).split("|")
+    assert _ETIKET.findall(hucreler[2]) == [etiket for _kod, etiket in secim.choices]
+
+
+def test_sayim_okutma_iletilerinin_hepsi_sozlukte() -> None:
+    """Bulundu'nun üç özel iletisi, çıkan nüsha, tekrar eden fazla ve ISBN reddi de satırda."""
+    from apps.kutuphane import barcode
+    from apps.kutuphane.services import stocktake
+
+    hucre = _satir("| Okutma iletileri").split("|")[2]
+    for ileti in (
+        stocktake.SCAN_FOUND_ON_LOAN,
+        stocktake.SCAN_FOUND_DELIVERED,
+        stocktake.SCAN_FOUND_LOST,
+        stocktake.SCAN_EXITED,
+        stocktake.SCAN_SURPLUS_AGAIN,
+        stocktake.SCAN_LETTERS,
+        barcode.ISBN_SCAN_MESSAGE,
+    ):
+        assert f'**"{ileti}"**' in hucre, ileti
+
+
+def test_sayim_secenekleri_satiri_iletileri_sunucudan_birebir() -> None:
+    """Durdurmanın ret iletisi (yer tutucusu "…") ve masadaki hizmet arası iletisi."""
+    from apps.kutuphane.services import circulation, tmy_kapisi
+
+    hucreler = _satir("| Sayım sırasındaki seçenekler").split("|")
+    bas, son = tmy_kapisi.STOP_MESSAGE.split("{islem}")
+    assert f'**"{bas}…{son}"**' in hucreler[2]
+    assert f'**"{circulation.SERVICE_PAUSE_MESSAGE}"**' in hucreler[2]
+    masa = _satir("| Sayım için hizmet arası (masada)").split("|")
+    assert f'**"{circulation.SERVICE_PAUSE_MESSAGE}"**' in masa[2]
+
+
+@pytest.mark.parametrize(
+    ("baslangic", "yasaklar"),
+    [
+        ("| Sayım kurulu (", ("sayım komisyonu", "sayım ekibi")),
+        ("| Sayım sırasındaki seçenekler", ("sayım kilidi", "dondurma", "sayım modu")),
+        ("| Noksan ve sayım fazlası", ("eksik", "noksanlık", "fazlalık")),
+        ("| Sayım için hizmet arası (masada)", ("sayım kilidi", "dondurma")),
+    ],
+)
+def test_f9_yasak_sozcukler_kullanilmaz_sutununda(
+    baslangic: str, yasaklar: tuple[str, ...]
+) -> None:
+    """Yasak sözcük "Kullanılmaz" sütunundadır; "Kullanılır" sütununda geçmez."""
+    hucreler = _satir(baslangic).split("|")
+    for yasak in yasaklar:
+        assert yasak in hucreler[3], f"{baslangic}: {yasak}"
+        assert yasak not in hucreler[2].casefold(), f"{baslangic}: {yasak}"

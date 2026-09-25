@@ -77,6 +77,7 @@ export type CopyStatus =
   | "WITHDRAWN_WEEDED"
   | "WITHDRAWN_MISSING"
   | "WITHDRAWN_LOST"
+  | "WITHDRAWN_DAMAGED"
   | "TRANSFERRED";
 
 export const COPY_STATUS_TR: Record<CopyStatus, string> = {
@@ -88,6 +89,8 @@ export const COPY_STATUS_TR: Record<CopyStatus, string> = {
   WITHDRAWN_WEEDED: "Ayıklandı (kayıttan düşüldü)",
   WITHDRAWN_MISSING: "Sayım noksanı (kayıttan düşüldü)",
   WITHDRAWN_LOST: "Kayıp (kayıttan düşüldü)",
+  // F9: hasar dosyasında kayıttan düşme önerilen nüsha sayımda TMY 27/1 yolundan düşülür.
+  WITHDRAWN_DAMAGED: "Hasar (kayıttan düşüldü)",
   TRANSFERRED: "Devredildi",
 };
 

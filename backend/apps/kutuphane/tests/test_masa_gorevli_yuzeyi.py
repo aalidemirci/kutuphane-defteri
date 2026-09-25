@@ -10,7 +10,9 @@ ağacı (noktalı yollar; listelerde `[]`) anlık görüntüyle karşılaştır�
 * nüsha durum sorgusunda ödünç kimde YOK;
 * teslimden geri alma okutmasında (F7) teslim alanın kimliği YOK;
 * katalog okuma Ağ Kataloğunun alan listesine denk (edinim, fiyat, bağışçı, TKYS,
-  etiket damgaları YOK).
+  etiket damgaları YOK);
+* F9: masa durumu yalnız hizmet arası ve süren sayımın kimliği ile turu; sayım okutması
+  yalnız sonuç, ileti, barkod ve eser adı (kalem, özet, kayda göre durum YOK).
 
 Listeye yeni bir kütüphane ucu eklenirse `test_her_acik_ucun_anlik_goruntusu_var`
 düşer: görevli yüzeyine giren her uç burada bilinçli olarak tarif edilir. Genel
@@ -29,6 +31,7 @@ from rest_framework.test import APIClient
 
 from apps.kutuphane.tests import ortak
 from apps.kutuphane.tests.dolasim_ortak import odunc_nushasi, odunc_ver, ogrenci, uye
+from apps.kutuphane.tests.sayim_ortak import baslat
 from apps.kutuphane.tests.teslim_ortak import teslim_et
 from apps.okul.kip import KIP
 from apps.okul.kip_izinleri import IZIN_LISTESI
@@ -106,6 +109,16 @@ GOREVLI_YANITLARI: dict[tuple[str, str], set[str]] = {
     # F7: teslimden geri alma okutması — teslim alanın kimliği (şube, öğretmen), belge
     # no ve tarihler YOK (§4.4).
     ("library-delivery-take-back", "POST"): {"result", "kind", "message", *NUSHA_OZETI},
+    # F9 (madde 26, 24 — 25.09.2026 kullanıcı kararları): masanın kişisiz durumu ve sayım
+    # okutması. Sayımın ayrıntısı, ilerlemesi, kalemi, kayda göre durumu ve kurulu YOK.
+    ("library-desk-state", "GET"): {"service_pause", "stocktake_scan.id", "stocktake_scan.round"},
+    ("library-stocktake-scan", "POST"): {
+        "results[].code",
+        "results[].message",
+        "results[].barcode",
+        "results[].barcode_display",
+        "results[].work_title",
+    },
 }
 
 
@@ -132,12 +145,15 @@ def veri(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     rafta = odunc_nushasi(title="Raftaki Eser")
     # F7: 9/A sınıf kitaplığına teslim (şube etiketi görevli yanıtında geçmemeli).
     teslimde = teslim_et([odunc_nushasi(title="Teslimdeki Eser")]).deliveries[0]
+    # F9: süren sayım (hizmet arası YOK — ödünç ucu da sınanır).
+    sayim = baslat()
     KIP.gorevliye_gec()
     return {
         "uyelik": uyelik,
         "oduncte": oduncte,
         "rafta": rafta,
         "teslimde": teslimde,
+        "sayim": sayim,
         "eser": ortak.eser(title="Katalogdaki Eser"),
     }
 
@@ -176,6 +192,12 @@ def _istekler(veri: dict[str, Any]) -> dict[tuple[str, str], Callable[[APIClient
         ),
         ("library-label-verify", "POST"): json_post(
             "library-label-verify", {"code": rafta.barcode}
+        ),
+        ("library-desk-state", "GET"): lambda c: c.get(reverse("library-desk-state")),
+        ("library-stocktake-scan", "POST"): lambda c: c.post(
+            reverse("library-stocktake-scan", args=[veri["sayim"].pk]),
+            {"barcode": oduncte.copy.barcode},
+            format="json",
         ),
     }
 

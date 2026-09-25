@@ -45,6 +45,7 @@ import Select from "../../ui/Select";
 import BarcodeInput from "../../ui/BarcodeInput";
 import { useSnackbar } from "../../ui/SnackbarProvider";
 import TextField from "../../ui/TextField";
+import { AktarimBandi, DurdurmaBandi, useSayimDurumu } from "../sayim/SayimKarti";
 import { CLASSIFICATION_SOURCE_TR, RESOURCE_TYPE_TR, kutuphaneApi } from "./api";
 import type {
   Acquisition,
@@ -174,6 +175,9 @@ export default function HizliKayitPage() {
   const [busy, setBusy] = useState(false);
   const [hata, setHata] = useState<SayfaHatasi | null>(null);
   const [sonuc, setSonuc] = useState<KayitSonucu | null>(null);
+  // F9 düzeltme turu: TMY 32/3 durdurması sürerken "Nüshayı aç" KAPALIDIR — eser açılıp
+  // nüshasız kalmasın (nüsha kapısı sunucudadır; etiket ön denetimi de durdurmayı söyler).
+  const durduruldu = useSayimDurumu()?.tmy_stop_active ?? false;
   // Tek etiket kısayolu: sonuç kartından açılır, sıradaki kitap okutulunca da kalır.
   const [basim, setBasim] = useState<{ nushalar: Copy[]; icerik: EtiketIcerigi } | null>(null);
 
@@ -403,7 +407,7 @@ export default function HizliKayitPage() {
 
   const kaydet = async (): Promise<void> => {
     // Okuyucunun Enter'ı ile tıklama üst üste gelirse ikinci istek gitmesin.
-    if (busy) return;
+    if (busy || durduruldu) return;
     clearErrors();
     setHata(null);
     setEtiketIpucu("");
@@ -517,6 +521,14 @@ export default function HizliKayitPage() {
         numarayla açılır; etiketsiz kitaba program yeni numara verir. Numara asla yeniden
         kullanılmaz.
       </p>
+
+      {/* F9: TMY 32/3 durdurması sürerken yeni nüsha kaydedilmez. "Mevcut koleksiyon
+          (programa aktarım)" ediniminde bant TMY'ye dayanmaz (F9 ekleri K4). */}
+      {edinimler.find((a) => String(a.id) === edinim)?.method === "EXISTING_STOCK" ? (
+        <AktarimBandi />
+      ) : (
+        <DurdurmaBandi islem="yeni nüsha kaydı" />
+      )}
 
       {hata && <ErrorBand hata={hata} />}
 
@@ -874,7 +886,7 @@ export default function HizliKayitPage() {
           Danışma kaynağı (ödünç verilmez)
         </label>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button icon="check" onClick={() => void kaydet()} disabled={busy}>
+          <Button icon="check" onClick={() => void kaydet()} disabled={busy || durduruldu}>
             {busy ? "Kaydediliyor…" : "Nüshayı aç"}
           </Button>
         </div>

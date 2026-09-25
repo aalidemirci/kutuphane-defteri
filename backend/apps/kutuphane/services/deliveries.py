@@ -25,6 +25,12 @@ teslim alanın ödünç hakkından bir şey eksilmez. Kurallar:
    durumda kilitlenmez (sayım dahil — iade gibi).
 5. Kayıp bildirimi teslimdeki nüshanın teslimini "Kayba dönüştü" ile kapatır
    (`services.loss_damage.report_lost`).
+6. **Sayım için hizmet arası** (F9, okul kararı) yeni TESLİMİ de durdurur (madde 27,
+   25.09.2026 kullanıcı kararı): toplu teslim ve teslim listesine okutmanın ön
+   denetimi hizmet arası sürerken reddeder — ödünç reddiyle AYNI kod ve ileti
+   (`circulation.RED_HIZMET_ARASI`, `circulation.SERVICE_PAUSE_MESSAGE`). Teslimden
+   geri alma ve iade hiçbir durumda durmaz. TMY 32/3 durdurması teslimi kapsamaz
+   (teslim TMY'de giriş-çıkış değildir).
 
 Hata ve günlük metinleri KİŞİ ADI İÇERMEZ.
 """
@@ -43,7 +49,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.kutuphane import barcode as barcode_module
-from apps.kutuphane import selectors_teslim
+from apps.kutuphane import selectors_sayim, selectors_teslim
 from apps.kutuphane.barcode import ScanKind
 from apps.kutuphane.models import (
     TERMINAL_COPY_STATUSES,
@@ -166,6 +172,17 @@ def delivery_obstacle(copy: Copy) -> str:
     return ""
 
 
+def ensure_no_service_pause() -> None:
+    """Sayım için hizmet arası sürüyorsa yeni teslim yapılmaz (kural 6; madde 27).
+
+    Ödünç reddiyle aynı kod ve ileti: masa ve teslim ekranı aynı cümleyi yazar.
+    """
+    if selectors_sayim.service_pause_active():
+        raise circulation.DolasimReddi(
+            circulation.SERVICE_PAUSE_MESSAGE, code=circulation.RED_HIZMET_ARASI
+        )
+
+
 def _alan(
     *, section: ClassSection | None, personnel: Personnel | None
 ) -> tuple[str, ClassSection | None, Personnel | None]:
@@ -270,10 +287,12 @@ def deliver(
     Md. 18 sayı sınırı UYGULANMAZ (teslim ödünç değildir). Listedeki nüshalardan
     biri teslim edilemiyorsa hiçbir teslim yapılmaz ve bütün gerekçeler
     `{"barcodes": [...]}` olarak döner (400). Tekrar okutulan nüsha bir kez
-    sayılır. Yalnız yönetici kipinde (görevli kipinde `KipYetkisiz`).
+    sayılır. Yalnız yönetici kipinde (görevli kipinde `KipYetkisiz`). Sayım için
+    hizmet arası sürerken reddedilir (kural 6; 400 `sayim_hizmet_arasi`).
     """
     require_admin_mode()
     app_password.require_password_set()
+    ensure_no_service_pause()
     tur, sube, ogretmen = _alan(section=section, personnel=personnel)
     teslim_tarihi, beklenen = _tarihler(delivered_on, expected_return)
     kodlar = list(barcodes)
@@ -323,7 +342,8 @@ def deliver(
 def delivery_check_scan(value: object) -> dict[str, Any]:
     """Teslim listesine okutulan kodun ön denetimi — yazma YOK (yalnız yönetici kipi).
 
-    `{result, kind, message, copy}`; `result` = `deliverable` · `rejected`.
+    `{result, kind, message, copy}`; `result` = `deliverable` · `rejected`. Sayım için
+    hizmet arası sürerken her okutma reddedilir ve ileti hizmet arasınınkidir (kural 6).
     """
     require_admin_mode()
     okutma = masa.kitap_coz(value, staff=False)
@@ -334,7 +354,12 @@ def delivery_check_scan(value: object) -> dict[str, Any]:
             "message": okutma.message,
             "copy": None,
         }
-    engel = okutma.message or delivery_obstacle(okutma.copy)
+    hizmet_arasi = selectors_sayim.service_pause_active()
+    engel = (
+        circulation.SERVICE_PAUSE_MESSAGE
+        if hizmet_arasi
+        else okutma.message or delivery_obstacle(okutma.copy)
+    )
     return {
         "result": REDDEDILDI if engel else TESLIM_EDILEBILIR,
         "kind": str(okutma.kind),

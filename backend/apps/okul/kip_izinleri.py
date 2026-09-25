@@ -201,6 +201,27 @@ IZIN_LISTESI: tuple[IzinKurali, ...] = (
         "POST",
         gerekce="GA-7 kart okutma kilidini açma; gövdede yönetici parolası (görünüm denetler)",
     ),
+    # --- F9: sayım. Sayım uçlarından YALNIZ okutma açıktır (madde 24, 25.09.2026
+    # kullanıcı kararı); başlatma, tamamlama, onay, iptal, kalem listesi, ilerleme, fazla
+    # kararı ve belgeler kapalıdır. Masanın kişisiz durumu hizmet arasını açılışta
+    # gösterir ve süren sayımın okutmasını açar (madde 26).
+    IzinKurali(
+        "library-desk-state",
+        "GET",
+        parametre=yalniz_sorgu(),
+        gerekce=(
+            "masanın kişisiz durumu: hizmet arası sürüyor mu, okutması açık süren sayım "
+            "(yalnız kimlik ve tur) — sayımın ayrıntısı, ilerlemesi ve kurulu YOK"
+        ),
+    ),
+    IzinKurali(
+        "library-stocktake-scan",
+        "POST",
+        gerekce=(
+            "sayım okutması (emsal etiket doğrulama okutması); yanıt görevli kipinde yalnız "
+            "okutma sonucu, ileti, barkod ve eser adı — kalem, özet ve kayda göre durum YOK"
+        ),
+    ),
     # --- F7: teslimden geri alma okutması (§4.4 tablosu "Açık" sütunu, U11). Teslim
     # VERME, teslim listesi, kayıp/hasar dosyaları ve onarım kapalıdır.
     IzinKurali(

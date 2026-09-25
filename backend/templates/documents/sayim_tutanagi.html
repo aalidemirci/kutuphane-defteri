@@ -1,0 +1,113 @@
+{% extends "documents/base.html" %}
+{% comment %}Sayım tutanağı (F9; tasarım §10 E10, TMY md. 32) — bağlam
+apps/kutuphane/sayim_belgeleri.py'den gelir.
+
+Bölümler, sırasıyla: başlık (+ alt başlık ve durum notu), künye ızgarası (`info`),
+açıklama paragrafları, tablolar (sonuçlar · iki seçenek ve iade AYRI satırlarda · kurulun
+ödünçteki ve teslimdeki nüsha seçimi · bölümler · noksan · hasar · kayıpta görünüp
+bulunanlar · fazla · onaylanmayan ve onayda durumu değişen kalemler), KAPANIŞ (notlar,
+sayım kurulunun imzaları, harcama yetkilisinin OLUR'u, TKYS dipnotu — tek bölünmez kutu)
+ve YENİ SAYFADA ek: "Taşınır Sayım ve Döküm Cetveline aktarılacak sayılar" (TMY 34/1).
+
+WeasyPrint kuralları (komisyon_listesi.html ile aynı): tablolar `table-layout: fixed` +
+`box-sizing: border-box`; hücreye blok kutu konmaz, satır sayfa arasında bölünmez; başlık
+satırı her sayfada yinelenir. Barkod hücresi (`tek`) KIRILABİLİR: 10 haneli barkod %15'lik
+sütuna tek satırda sığar, 32 haneye kadar sayım fazlası kodu satır satır kırılır — `nowrap`
+kodu yandaki sütunun üstüne taşırıyordu (F9 düzeltme turu; yatay taşma testi). `text-transform` YOK: büyük harfli başlıklar bağlamda
+doğrudan büyük harfle gelir. Kişi adı yalnız imza alanlarında ve OLUR'dadır (şifreli
+alandan); ödünç alanın ya da teslim alanın kimliği bağlamda hiç yoktur.{% endcomment %}
+{% block extra_style %}
+<style>
+  body { font-size: 9.5pt; }
+  .doc-title { margin: 10pt 0 2pt; }
+  .doc-subtitle { margin-bottom: 4pt; }
+  .durum-notu { margin: 2pt 0 4pt; padding: 3pt 6pt; font-size: 8.8pt; font-weight: bold;
+    color: var(--pr-ink); border: 0.75pt solid var(--pr-line); text-align: center; }
+  .info { margin: 6pt 0 6pt; }
+  .info td { padding: 3pt 8pt; font-size: 9pt; }
+  .info td.label { width: 32%; }
+  .para { margin: 4pt 0; font-size: 9pt; line-height: 1.35; text-align: justify; }
+  .tablo-basligi { font-size: 9pt; font-weight: bold; color: var(--pr-ink); margin: 8pt 0 3pt;
+    padding: 0 0 2pt 2pt; border-bottom: 1.2pt solid var(--pr-ink); break-after: avoid;
+    page-break-after: avoid; }
+  table.liste { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 8.4pt;
+    margin-bottom: 4pt; }
+  table.liste th, table.liste td { box-sizing: border-box; border: 0.5pt solid var(--pr-line);
+    padding: 2.5pt 4pt; vertical-align: top; overflow-wrap: break-word; }
+  table.liste th { background: var(--pr-fill-head); color: var(--pr-ink); text-align: left;
+    font-weight: bold; font-size: 8.1pt; }
+  table.liste tr { break-inside: avoid; page-break-inside: avoid; }
+  table.liste td.sayi, table.liste th.sayi { text-align: right; }
+  table.liste td.tek { overflow-wrap: anywhere; word-break: break-all; }
+  table.liste td.kalin { font-weight: bold; }
+  table.liste td.bos { color: var(--pr-muted); font-style: italic; }
+  .tablo-notu { margin: 0 0 4pt; font-size: 8.2pt; color: var(--pr-secondary); }
+  .kapanis { break-inside: avoid; page-break-inside: avoid; }
+  .not { margin-top: 4pt; font-size: 8.2pt; color: var(--pr-secondary); text-align: justify; }
+  .imza-basligi { margin-top: 8pt; font-size: 9pt; font-weight: bold; color: var(--pr-ink);
+    text-align: center; }
+  .sig-grid { table-layout: fixed; margin-top: 6pt; }
+  .sig-grid td { vertical-align: top; padding-bottom: 4pt; }
+  .sig-grid .space { height: 18pt; }
+  .sig-grid .name { font-size: 8.6pt; }
+  .sig-grid .role { font-size: 8pt; }
+  .olur { margin-top: 4pt; width: 46%; margin-left: auto; text-align: center; break-inside: avoid;
+    page-break-inside: avoid; }
+  .olur .baslik { font-size: 10pt; font-weight: bold; letter-spacing: 1pt; }
+  .olur .tarih { font-size: 9pt; color: var(--pr-label); margin: 2pt 0 14pt; }
+  .olur .cizgi { border-top: 0.75pt solid var(--pr-secondary); width: 75%; margin: 0 auto 3pt; }
+  .olur .ad { font-size: 9.5pt; font-weight: bold; }
+  .olur .rol { font-size: 8.5pt; color: var(--pr-secondary); }
+  .dipnot { margin-top: 6pt; font-size: 7.8pt; color: var(--pr-muted); text-align: justify; }
+  .ek { break-before: page; page-break-before: always; }
+  .ek .doc-title { margin-top: 0; }
+</style>
+{% endblock %}
+{% block content %}
+  <div class="doc-title">{{ document_title }}</div>
+  {% if subtitle %}<div class="doc-subtitle">{{ subtitle }}</div>{% endif %}
+  {% if status_note %}<p class="durum-notu">{{ status_note }}</p>{% endif %}
+  <table class="info">
+    <tr><td class="label">Düzenlenme tarihi</td><td>{{ issued_on }}</td></tr>
+    {% for r in info %}<tr><td class="label">{{ r.label }}</td><td>{{ r.value }}</td></tr>
+    {% endfor %}
+  </table>
+  {% for p in paragraphs %}<p class="para">{{ p }}</p>
+  {% endfor %}
+  {% for t in tables %}{% include "documents/_sayim_tablosu.html" with t=t %}{% endfor %}
+  <div class="kapanis">
+    {% for n in notes %}<p class="not">{{ n }}</p>
+    {% endfor %}
+    {% if signature_title %}<div class="imza-basligi">{{ signature_title }}</div>{% endif %}
+    {% if signature_rows %}
+    <table class="sig-grid">
+      {% for satir in signature_rows %}<tr>
+        {% for k in satir %}<td><div class="space"></div><div class="line"></div><div class="name">{% if k.name %}{{ k.name }}{% else %}&nbsp;{% endif %}</div><div class="role">{{ k.role }}</div></td>{% endfor %}
+      </tr>{% endfor %}
+    </table>
+    {% endif %}
+    {% if approval %}
+    <div class="olur">
+      <div class="baslik">{{ approval.heading }}</div>
+      <div class="tarih">{{ approval.date }}</div>
+      <div class="cizgi"></div>
+      <div class="ad">{% if approval.name %}{{ approval.name }}{% else %}&nbsp;{% endif %}</div>
+      <div class="rol">{{ approval.role }}</div>
+    </div>
+    {% endif %}
+    {% if footnote %}<p class="dipnot">{{ footnote }}</p>{% endif %}
+  </div>
+  {% if annex %}
+  <div class="ek">
+    <div class="doc-title">{{ annex.title }}</div>
+    {% if annex.subtitle %}<div class="doc-subtitle">{{ annex.subtitle }}</div>{% endif %}
+    {% for p in annex.paragraphs %}<p class="para">{{ p }}</p>
+    {% endfor %}
+    {% for t in annex.tables %}{% include "documents/_sayim_tablosu.html" with t=t %}{% endfor %}
+    <div class="kapanis">
+      {% for n in annex.notes %}<p class="not">{{ n }}</p>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+{% endblock %}

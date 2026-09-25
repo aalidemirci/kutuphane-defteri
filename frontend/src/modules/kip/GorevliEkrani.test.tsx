@@ -8,6 +8,9 @@
 //   3) Sunucunun görevliye döndürdüğü daraltılmış özet (barkod + eser adı) yazılır.
 //   4) "Okutmayı bitir" görevli ekranına döner; yönetici kipine geçiş iki görünümde
 //      de açıktır.
+//   5) F9 (madde 24, 26 — 25.09.2026 kullanıcı kararları): "Sayım okutmasını aç" yalnız
+//      süren sayım varken görünür ve yalnız okutma ucunu çağırır; hizmet arası şeridi
+//      masada açılışta görünür.
 
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -29,10 +32,29 @@ const katalog = vi.hoisted(() => ({
   eserAra: vi.fn(),
   nushalar: vi.fn(),
 }));
+// F9 (madde 24, 26): masanın kişisiz durumu — hizmet arası ve süren sayımın okutması.
+const masa = vi.hoisted(() => ({ masaDurumu: vi.fn() }));
 
 vi.mock("../dolasim/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../dolasim/api")>();
-  return { ...actual, katalogOkumaApi: { ...actual.katalogOkumaApi, ...katalog } };
+  return {
+    ...actual,
+    katalogOkumaApi: { ...actual.katalogOkumaApi, ...katalog },
+    dolasimApi: { ...actual.dolasimApi, ...masa },
+  };
+});
+
+// F9 (madde 24): sayım okutması — görevli kipinde yalnız okutma ucu çağrılır.
+const sayimKapisi = vi.hoisted(() => ({
+  gorevliOkut: vi.fn(),
+  okut: vi.fn(),
+  ilerleme: vi.fn(),
+  kalemler: vi.fn(),
+  durum: vi.fn(),
+}));
+vi.mock("../sayim/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../sayim/api")>();
+  return { ...actual, sayimApi: { ...actual.sayimApi, ...sayimKapisi } };
 });
 
 // F7: teslimden geri alma okutması (görevli kipinde açık tek teslim ucu).
@@ -55,10 +77,14 @@ import GorevliEkrani, {
   GOREVLI_KATALOG_DUGMESI,
   GOREVLI_MASA_BASLIGI,
   GOREVLI_MASAYA_DON,
+  GOREVLI_SAYIM_BASLIGI,
+  GOREVLI_SAYIM_DUGMESI,
 } from "./GorevliEkrani";
+import { HIZMET_ARASI_SURUYOR } from "../sayim/SayimKarti";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  masa.masaDurumu.mockResolvedValue({ service_pause: false, stocktake_scan: null });
   // Görevli kipinde sunucu nüsha özetinden yalnız barkodu ve eser adını döndürür.
   etiket.dogrula.mockResolvedValue(
     dogrulamaSonucu({
@@ -219,5 +245,67 @@ describe("GorevliEkrani — teslimden geri alma (F7)", () => {
 
     await user.click(screen.getByRole("button", { name: GOREVLI_DOGRULAMA_BITIR }));
     expect(screen.getByRole("heading", { level: 2, name: GOREVLI_MASA_BASLIGI })).toBeVisible();
+  });
+});
+
+describe("GorevliEkrani — sayım okutması ve hizmet arası (F9)", () => {
+  it("süren sayım yoksa “Sayım okutmasını aç” görünmez", async () => {
+    render(<GorevliEkrani onGecti={vi.fn()} />);
+    await vi.waitFor(() => expect(masa.masaDurumu).toHaveBeenCalled());
+    expect(GOREVLI_SAYIM_DUGMESI).toBe("Sayım okutmasını aç");
+    expect(screen.queryByRole("button", { name: GOREVLI_SAYIM_DUGMESI })).toBeNull();
+  });
+
+  it("süren sayımda okutma açılır; yalnız okutma ucu çağrılır, yanıt kişisizdir", async () => {
+    const user = userEvent.setup();
+    masa.masaDurumu.mockResolvedValue({
+      service_pause: false,
+      stocktake_scan: { id: 7, round: 1 },
+    });
+    // Görevli kipinde sunucu yalnız sonuç, ileti, barkod ve eser adını döndürür (madde 24).
+    sayimKapisi.gorevliOkut.mockResolvedValue({
+      results: [
+        {
+          code: "bulundu",
+          message: "Bulundu.",
+          barcode: "2026000123",
+          barcode_display: "2026-000123",
+          work_title: "Sayım Kitabı",
+        },
+      ],
+    });
+    render(<GorevliEkrani onGecti={vi.fn()} />);
+
+    await user.click(await screen.findByRole("button", { name: GOREVLI_SAYIM_DUGMESI }));
+    expect(screen.getByRole("heading", { level: 1, name: "Görevli Kipi" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 2, name: GOREVLI_SAYIM_BASLIGI })).toBeVisible();
+    const kutu = screen.getByLabelText("Kütüphane etiketi");
+    await user.type(kutu, "2026000123{Enter}");
+
+    expect(await screen.findByText("Bulundu.")).toBeInTheDocument();
+    expect(screen.getByText("2026-000123 — Sayım Kitabı")).toBeInTheDocument();
+    expect(sayimKapisi.gorevliOkut).toHaveBeenCalledWith(7, "2026000123");
+    // Yönetici uçları (ilerleme, kalemler, durum) görevli kipinde istenmez.
+    for (const uc of [
+      sayimKapisi.okut,
+      sayimKapisi.ilerleme,
+      sayimKapisi.kalemler,
+      sayimKapisi.durum,
+    ]) {
+      expect(uc).not.toHaveBeenCalled();
+    }
+    // Sayımı tamamlamak ve onaylamak görevli ekranında yoktur.
+    expect(screen.queryByRole("button", { name: /Sayımı tamamla/ })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: GOREVLI_DOGRULAMA_BITIR }));
+    expect(screen.getByRole("heading", { level: 2, name: GOREVLI_MASA_BASLIGI })).toBeVisible();
+  });
+
+  it("hizmet arası masada AÇILIŞTA görünür (madde 26)", async () => {
+    masa.masaDurumu.mockResolvedValue({ service_pause: true, stocktake_scan: null });
+    render(<GorevliEkrani onGecti={vi.fn()} />);
+    expect(
+      await screen.findByRole("status", { name: "Sayım için hizmet arası" }),
+    ).toHaveTextContent(HIZMET_ARASI_SURUYOR);
   });
 });

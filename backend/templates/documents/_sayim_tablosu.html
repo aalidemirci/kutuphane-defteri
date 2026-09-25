@@ -1,0 +1,14 @@
+{% comment %}Sayım tutanağının tablo parçası (sayim_tutanagi.html'den `include` edilir): başlık,
+sütun genişlikleri (toplamı %100), başlık satırı (her sayfada yinelenir), satırlar, boş
+listede açıklama ve isteğe bağlı tablo notu. Hücre: {v: metin, c: sınıf}.{% endcomment %}
+{% if t.title %}<div class="tablo-basligi">{{ t.title }}</div>{% endif %}
+<table class="liste">
+  <colgroup>{% for c in t.columns %}<col style="width:{{ c.width }}%">{% endfor %}</colgroup>
+  <thead><tr>{% for c in t.columns %}<th{% if c.cls %} class="{{ c.cls }}"{% endif %}>{{ c.header }}</th>{% endfor %}</tr></thead>
+  <tbody>
+    {% for r in t.rows %}<tr>{% for h in r %}<td{% if h.c %} class="{{ h.c }}"{% endif %}>{{ h.v }}</td>{% endfor %}</tr>
+    {% empty %}<tr><td class="bos" colspan="{{ t.columns|length }}">{{ t.empty }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% if t.note %}<p class="tablo-notu">{{ t.note }}</p>{% endif %}

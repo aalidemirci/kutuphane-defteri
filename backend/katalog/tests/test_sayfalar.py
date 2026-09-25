@@ -415,6 +415,68 @@ def test_teslim_ve_kayip_hasar_verisi_hicbir_katalog_sayfasinda_gecmez(
         assert parca in eser_sayfasi, parca
 
 
+def test_sayim_verisi_hicbir_katalog_sayfasinda_gecmez(katalog: KatalogIstemcisi) -> None:
+    """F9 (§5.10-5 yeniden koşar): sayım kurulunun, durduran ve onaylayan harcama
+    yetkilisinin adları, hizmet arası kararı, sayım fazlasının okutulan kodu ve açıklaması,
+    onaylanmama gerekçesi ve sayımın iç sözcükleri hiçbir katalog sayfasında geçmez.
+    Sayımla kayıttan düşülen nüsha görünmez; kayda alınan fazla rafta sayılır; onaylanmayan
+    noksan kayıtta kaldığı için rafta sayılmaya devam eder."""
+    from apps.kutuphane.models import StockTakeItem
+    from apps.kutuphane.services import stocktake
+    from apps.kutuphane.tests.sayim_ortak import durdurma_alanlari, onayla, tamamla
+
+    work = eser(title="Sayım Eseri", authors="Deneme Yazar", subjects="Tarih")
+    kalan = nusha(work)
+    nusha(work)  # noksan — kayıttan düşülür
+    onaylanmayan = nusha(work)
+    sayim = stocktake.create_stocktake(
+        committee_chair="Kurulsayfadeneme Başkan",
+        committee_property_officer="Kurulsayfadeneme Taşınır",
+        committee_members="Kurulsayfadeneme Üye",
+        service_pause=True,
+        service_pause_decision="Kararsayfadeneme 2026/44",
+        **{**durdurma_alanlari(), "tmy_stop_by_name": "Durdurransayfadeneme"},
+    )
+    stocktake.start_stocktake(sayim)
+    stocktake.scan_many(sayim, [kalan.barcode, "55667788"])
+    stocktake.add_surplus(sayim, note="Fazlanotsayfadeneme", work=work)
+    kodlu = StockTakeItem.objects.get(stocktake=sayim, surplus_barcode="55667788")
+    stocktake.update_surplus(kodlu, excluded=True, note="Haricnotsayfadeneme")
+    tamamla(sayim)
+    kalem = StockTakeItem.objects.get(stocktake=sayim, copy=onaylanmayan)
+    onayla(
+        sayim,
+        approved_by_name="Onaylayansayfadeneme",
+        not_approved={kalem.pk: "Gerekcesayfadeneme"},
+    )
+
+    sayfalar = _gez(katalog, ["/", "/ara", "/ara?q=sayım", "/ara?q=tarih", "/konular"])
+    eser_sayfasi = sayfalar.get(f"/eser/{work.pk}")
+
+    assert eser_sayfasi is not None  # gezinti gerçekten esere ulaştı
+    yasaklar = [
+        "Kurulsayfadeneme",
+        "Durdurransayfadeneme",
+        "Onaylayansayfadeneme",
+        "Kararsayfadeneme",
+        "Fazlanotsayfadeneme",
+        "Haricnotsayfadeneme",
+        "Gerekcesayfadeneme",
+        "55667788",
+        "kayıttan düşüldü",
+        "Sayım noksanı",
+        "Sayım fazlası",
+        "hizmet arası",
+        "32/3",
+    ]
+    for adres, metin in sayfalar.items():
+        for yasak in yasaklar:
+            assert yasak.casefold() not in metin.casefold(), f"“{yasak}” {adres} sayfasında geçti"
+    # 4 nüshadan biri noksan diye düşüldü; kalan, onaylanmayan ve kayda alınan fazla rafta.
+    for parca in ("3 nüsha", "3 rafta"):
+        assert parca in eser_sayfasi, parca
+
+
 # ======================================= §5.10-9 program kilitliyken katalog çalışır
 
 
