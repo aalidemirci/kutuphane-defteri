@@ -29,7 +29,7 @@ from typing import Any
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from apps.kutuphane import keys
+from apps.kutuphane import keys, selectors_ayiklama
 from apps.kutuphane.models import (
     DIGITAL_RESOURCE_TYPES,
     TERMINAL_COPY_STATUSES,
@@ -332,6 +332,48 @@ def create_copies(
     return [create_copy(work=work, acquisition=acquisition, **fields) for _ in range(count)]
 
 
+#: F8 (Md. 12/2, D14): komisyonun tespit ettiği nüshanın nadir eser işareti kalıcıdır.
+RARE_FLAG_LOCKED_MESSAGE = (
+    "Bu nüsha Genel Müdürlüğe gönderilmiş el yazması ve nadir eserler listesinde; "
+    "nadir eser işareti kaldırılamaz."
+)
+RARE_FLAG_DECIDED_MESSAGE = (
+    "Bu nüsha, Seçim ve Ayıklama Komisyonunun kararı bağlanmış el yazması ve nadir eserler "
+    "listesinde: nadir eser olduğu komisyonun tespitidir, işaret kaldırılamaz. İşaret yanlışsa "
+    "önce nüshayı listeden çıkarın."
+)
+#: F8: bir teklife ya da nadir eserler listesine girmiş nüsha yanlış açılmış kayıt değildir.
+DELETE_RARE_LISTED_MESSAGE = (
+    "El yazması ve nadir eserler listesindeki nüsha silinemez. Liste hazırlanıyorsa önce "
+    "nüshayı listeden çıkarın; gönderilmiş listedeki nüsha kayıtta kalır."
+)
+DELETE_IN_WEEDING_MESSAGE = (
+    "Ayıklama teklifine girmiş nüsha silinemez: teklif ve tutanakları nüshayı gösterir. "
+    "Taslak teklifteyse önce kalemi çıkarın; kitap kayıttan düşülecekse ayıklama yolunu "
+    "kullanın."
+)
+
+
+def ensure_rare_flag_change(copy: Copy, new_value: bool) -> None:
+    """Nadir eser işaretinin kaldırılması, komisyonun tespit ettiği nüshada reddedilir.
+
+    İşaret nüshanın kalıcı özelliğidir (Md. 12/2) ve ayıklamada engeldir
+    (`services.weeding`). Md. 12/2 listeyi "Seçim ve Ayıklama Komisyonu tarafından
+    tespit edilen" diye tanımlar: liste Genel Müdürlüğe gönderilmişse ya da
+    hazırlanırken komisyon kararı bağlanmışsa işaret artık veri girişi değil,
+    komisyonun tespitidir ve kaldırılamaz. Karar bağlanmamış ya da hiçbir listede
+    olmayan işaret veri giriş hatası olarak düzeltilebilir; kararı bağlanmış
+    listedeki nüsha için yol önce listeden çıkarmaktır (bilinçli ve listede görünen
+    bir adım).
+    """
+    if copy.pk is None or new_value or not copy.is_rare_or_manuscript:
+        return
+    if selectors_ayiklama.sent_rare_items_for_copy(copy.pk).exists():
+        raise ValidationError({"is_rare_or_manuscript": RARE_FLAG_LOCKED_MESSAGE})
+    if selectors_ayiklama.decided_rare_items_for_copy(copy.pk).exists():
+        raise ValidationError({"is_rare_or_manuscript": RARE_FLAG_DECIDED_MESSAGE})
+
+
 @transaction.atomic
 def update_copy(copy: Copy, **fields: Any) -> Copy:
     """Nüshanın katalog alanlarını günceller.
@@ -345,6 +387,8 @@ def update_copy(copy: Copy, **fields: Any) -> Copy:
             raise ValidationError(
                 {alan: "Bu alan program tarafından yönetilir, elle değiştirilemez."}
             )
+    if "is_rare_or_manuscript" in fields:
+        ensure_rare_flag_change(copy, bool(fields["is_rare_or_manuscript"]))
     for name, value in fields.items():
         setattr(copy, name, value)
     if copy.section_id is not None:
@@ -377,6 +421,12 @@ def delete_copy(copy: Copy) -> None:
     - Kayıttan düşülmüş ya da devredilmiş nüsha silinemez: kayıttan düşme bir
       taşınır işlemidir, nüsha defterde ve tutanakta görünmeye devam eder
       (yumuşak silme onun karşılığı DEĞİLDİR).
+    - F8: bir ayıklama teklifine (süren, uygulanmış ya da iptal edilmiş) ya da
+      el yazması ve nadir eserler listesine girmiş nüsha silinemez. Teklif ve
+      liste komisyonun önüne gitmiş, Md. 12/2 ile Genel Müdürlüğe bildirilmiş
+      olabilir; silme bu kaydı ve E7/E8 belgelerini kayıttan düşme yapılmadan
+      dayanaksız bırakırdı. Taslak teklifteki kalem ve hazırlanan listedeki satır
+      önce çıkarılır (bilinçli, belgede görünen bir adım).
 
     Barkod ve kayıt no teklik kısıtı DÜZ `unique`'tir: silinen nüshanın numarası
     başka nüshaya asla verilmez — bu yüzden defterde izahı olmayan boşluk
@@ -422,6 +472,10 @@ def delete_copy(copy: Copy) -> None:
                 )
             }
         )
+    if selectors_ayiklama.rare_items_for_copy(copy.pk).exists():
+        raise ValidationError({"status": DELETE_RARE_LISTED_MESSAGE})
+    if selectors_ayiklama.weeding_items_for_copy(copy.pk).exists():
+        raise ValidationError({"status": DELETE_IN_WEEDING_MESSAGE})
     copy.delete()
 
 
@@ -461,12 +515,32 @@ def create_acquisition(**fields: Any) -> Acquisition:
     return acquisition
 
 
+#: F8 ekleri 9: bağış ediniminin tarihi kabul tarihidir, komisyon kararından önce olamaz.
+DONATION_DATE_BEFORE_DECISION_MESSAGE = (
+    "Bağış ediniminin tarihi komisyon kararının tarihinden önce olamaz: giriş kaydı "
+    "dayanağından önceki tarihi taşıyamaz (TMY 10/1-a)."
+)
+
+
 @transaction.atomic
 def update_acquisition(acquisition: Acquisition, **fields: Any) -> Acquisition:
-    """Edinimi günceller (komisyon kararı kuralı yeniden denetlenir)."""
+    """Edinimi günceller (komisyon kararı kuralı yeniden denetlenir).
+
+    Bağış ediniminde tarih kararın tarihinden önceye çekilemez (F8 ekleri 9; kararın
+    tarihi değişirken aynı kural `services.commissions` tarafından denetlenir).
+    """
     for name, value in fields.items():
         setattr(acquisition, name, value)
     ensure_acquisition_decision(acquisition.method, acquisition.commission_decision)
+    karar = acquisition.commission_decision
+    if (
+        {"date", "commission_decision", "method"} & set(fields)
+        and acquisition.method == AcquisitionMethod.DONATION
+        and karar is not None
+        and acquisition.date is not None
+        and acquisition.date < karar.decision_date
+    ):
+        raise ValidationError({"date": DONATION_DATE_BEFORE_DECISION_MESSAGE})
     acquisition.full_clean()
     acquisition.save()
     return acquisition

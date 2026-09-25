@@ -103,6 +103,7 @@ describe("KayipHasarPage", () => {
       "Bedel teslim alındı",
       "Bedelle aynısı alındı",
       "Bedelle başka eser alındı",
+      "Bulundu (bedel teslim alınmıştı)",
     ])
       expect(secenekler).not.toContain(bedel);
     expect(document.body).not.toHaveTextContent(/bedel teslim alınınca/);

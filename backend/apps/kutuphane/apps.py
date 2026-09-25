@@ -11,7 +11,8 @@ F6: üyelik, kart ve ödünç modelleri. Kişi kayıt defterlerine (açık yük�
 işaretlenir (beklenmedik kapanıştan sonra "son oturumdaki işlemler" listesinin
 sınırı — T15). F7: teslim ve kayıp/hasar dosyasının kişi ve şube kayıt
 defterlerine kancaları; yönetici kipi sürelerinin kaynağı (`LibraryPolicy`).
-Ayıklama ve sayım modelleri kendi fazlarında (F8-F9) eklenir.
+F8: ayıklama, nadir eserler listesi ve yıl sonu raporu (kancasız; servisler kendi
+modüllerinde). Sayım modelleri F9'da eklenir.
 
 F5: Ağ Kataloğu görünümlerinin (`kd_katalog_*`) yaşam döngüsü kancaları burada
 bağlanır — göçten önce düşürülür, bütün göçler bitince yeniden kurulur

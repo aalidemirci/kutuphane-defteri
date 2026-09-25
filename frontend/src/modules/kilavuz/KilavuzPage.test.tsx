@@ -117,7 +117,7 @@ import {
   KAYIP_BASLIGI,
   KAYIP_DUGMESI,
 } from "../kayip/DosyaAcDiyalogu";
-import { BEDEL_YOK_NOTU } from "../kayip/DosyaAyrintisi";
+import { BEDEL_IADESI_NOTU, BEDEL_YOK_NOTU } from "../kayip/DosyaAyrintisi";
 import {
   KAYIP_HASAR_ADRESI,
   KAYIP_HASAR_BASLIGI,
@@ -134,6 +134,7 @@ import {
   GOREVLI_MASAYA_DON,
 } from "../kip/GorevliEkrani";
 import { GOREVLI_KISAYOLU } from "../kip/KipGostergesi";
+import { BAGIS_BIRIM_FIYAT_YARDIMI } from "../kutuphane/BagisPaneli";
 import { EDINIMLER_BASLIGI } from "../kutuphane/EdinimlerPage";
 import { ESER_DETAY_BASLIGI } from "../kutuphane/EserDetayPage";
 import { BASIM_SIRASI_TR, ETIKET_ICERIGI_TR, PARTI_DURUMU_TR } from "../kutuphane/etiketApi";
@@ -189,6 +190,20 @@ import {
   YIL_SONU_ADRESI,
   YIL_SONU_BASLIGI,
 } from "../yil/api";
+import {
+  AYIKLAMA_ADRESI,
+  AYIKLAMA_BASLIGI,
+  BAGIS_SONUCU_BELGESI,
+  GEREKCE_TR,
+  KALEM_DURUMU_TR,
+  NADIR_ESERLER_ADRESI,
+  NADIR_ESERLER_BASLIGI,
+  TMY_YOLU_TR,
+  YIL_SONU_RAPORU_ADRESI,
+  YIL_SONU_RAPORU_BASLIGI,
+} from "../ayiklama/api";
+import { HASAR_ONERILERI_BASLIGI, KAYIP_ONERILERI_BASLIGI } from "../ayiklama/TeklifDiyaloglari";
+import { TESPIT_YARDIMI, YAZ_DONEMI_UYARISI } from "../ayiklama/YilSonuRaporuPage";
 import KilavuzPage, { KILAVUZ_BOLUMLERI } from "./KilavuzPage";
 
 function renderPage() {
@@ -226,6 +241,8 @@ const BEKLENEN_BASLIKLAR = [
   "Kayıp, Hasar ve Onarım",
   "İlişik Listesi",
   "Yıl Sonu ve Yıl Başı",
+  "Ayıklama ve Nadir Eserler",
+  "Yıl Sonu Raporu",
   "Katalog Excel Şablonu",
   "İçe Aktarma",
   "Yedek ve Güvenlik Dosyası",
@@ -1448,6 +1465,19 @@ describe("KilavuzPage — sözlük ve kalıntı denetimi", () => {
       /yıl devri/i,
       /yıl kapanışı/i,
       /mezun listesi/i,
+      // Ayıklama, nadir eser ve yıl sonu raporu sözlüğünün "kullanılmaz" sütunu (docs/sozluk.md
+      // §1, §4.14; F8). "Hurda" yalnız "hurdaya ayırma"da geçer; "bağış kabul tutanağı" TMY'de
+      // bir belge değildir — ad yalnız bunu söyleyen tek olumsuz cümlede geçer (25.09.2026
+      // kullanıcı kararı, F8 ekleri 13); resmî tutanak ve fiş kısaltmasız, tam adıyla yazılır.
+      /hurdaya çıkar/iu,
+      /hurda listesi/iu,
+      /işe yaramaz/iu,
+      /bağış kabul tutanağı(?!” diye bir belge yoktur)/iu,
+      /kayıttan düşme tutanağı/iu,
+      /(^|[^\p{L}])VİF(?!\p{L})/u,
+      /okuma raporu/iu,
+      /faaliyet raporu/iu,
+      /(?<!Seçim ve )Ayıklama Komisyon/iu,
     ]) {
       expect(metin).not.toMatch(yasak);
     }
@@ -2134,7 +2164,7 @@ describe("KilavuzPage — Kayıp, Hasar ve Onarım (F7)", () => {
     expect(notunIlkCumlesi).toMatch(/\(Yönetmelik Md\. 19\)\.$/u);
     expect(metin).toContain(`“${notunIlkCumlesi} …”`);
     expect(metin).toContain("dosya açık kalır");
-    expect(metin).toContain("son ikisi bedel teslim alındıktan sonra");
+    expect(metin).toContain("son üçü bedel teslim alındıktan sonra");
     expect(metin).toContain("Program tahsilat yapmaz.");
     expect(metin).toContain("Program disiplin sürecini de başlatmaz");
     expect(metin).toContain("Ortaöğretim Kurumları Yönetmeliği'nde (md. 164/1-g)");
@@ -2145,7 +2175,7 @@ describe("KilavuzPage — Kayıp, Hasar ve Onarım (F7)", () => {
     const kayip = bolumMetni("kayip-hasar");
     const ilisik = bolumMetni("ilisik");
 
-    expect(kayip).toContain("Ortaöğretimde dört çözüm daha vardır; ilk ikisi bedelin iki adımıdır");
+    expect(kayip).toContain("Ortaöğretimde beş çözüm daha vardır; ilk ikisi bedelin iki adımıdır");
     expect(kayip).toContain(`“${COZUM_TR.PRICE_DETERMINED}”: pencere “O günkü piyasa bedeli (TL)”`);
     expect(kayip).toContain("kişinin kütüphaneyle açık işi sürer");
     expect(kayip).toContain(`“${COZUM_TR.PRICE_RECEIVED}”: kişiden bedelin teslim alındığı`);
@@ -2174,7 +2204,10 @@ describe("KilavuzPage — Kayıp, Hasar ve Onarım (F7)", () => {
     // Öneri kayıttan düşme değildir: kayıp dosyasında "Bulundu" kalır.
     expect(kayip).toContain("Öneri kayıttan düşme değildir");
     expect(kayip).toContain(`“${COZUM_TR.FOUND_RETURNED}” düğmesi durur`);
-    expect(kayip).toContain(`“${COZUM_TR.FOUND_RETURNED}” seçilemez`);
+    // 25.09.2026 kullanıcı kararı (F8 ekleri 14): bedelle başka eser alınmış dosyada da kitap
+    // kayıttan düşülmemişse rafa döner; "seçilemez" kuralı kalktı.
+    expect(kayip).not.toContain(`“${COZUM_TR.FOUND_RETURNED}” seçilemez`);
+    expect(kayip).toContain(`“${COZUM_TR.FOUND_AFTER_PRICE}” düğmesi durur`);
     // Açık hasar dosyalı kitap kaybolunca hasar dosyası "Kayba dönüştü" ile kapanır.
     expect(kayip).toContain(`hasar dosyası “${COZUM_TR.CONVERTED_TO_LOSS}” olarak kapanır`);
     expect(kayip).toContain("bu bir düğme değildir");
@@ -2290,7 +2323,7 @@ describe("KilavuzPage — Yıl Sonu ve Yıl Başı (F7)", () => {
     expect(metin).toContain("“Geri” ve “Devam”");
   });
 
-  it("yıl sonunun dört adımı adım rayındaki adlarla; pusula ve belgeler", () => {
+  it("yıl sonunun beş adımı adım rayındaki adlarla; pusula ve belgeler", () => {
     renderPage();
     const metin = bolumMetni("yil-akislari");
 
@@ -2300,6 +2333,8 @@ describe("KilavuzPage — Yıl Sonu ve Yıl Başı (F7)", () => {
       "Kitap Toplama.",
       "Son Sınıflar ve Ayrılanlar.",
       "İlişik ve Belgeler.",
+      // F8: yıl sonu raporu adımı rapor ekranına götürür.
+      "Yıl Sonu Raporu.",
     ]);
     for (const ad of [
       "“Yıl sonu son ödünç tarihi”",
@@ -2372,5 +2407,393 @@ describe("KilavuzPage — F7 ekran bağlantıları", () => {
     );
     expect(hedef(YIL_SONU_BASLIGI)).toEqual([YIL_SONU_ADRESI]);
     expect(hedef(YIL_BASI_BASLIGI)).toEqual([YIL_BASI_ADRESI]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F8: Ayıklama ve Nadir Eserler, Yıl Sonu Raporu. Adlar `modules/ayiklama`
+// sabitlerinden; Md. 12/1 ve 12/2 alıntıları docs/mevzuat/meb-okul-kutuphaneleri-
+// yonetmeligi.md'den birebir (sunucu tarafı `test_komisyon_belgeleri.py` ve
+// `test_yil_raporu_belgesi.py` aynı alıntıları depodaki metinle sınar).
+// ---------------------------------------------------------------------------
+describe("KilavuzPage — Ayıklama ve Nadir Eserler (F8)", () => {
+  it("ayıklama ≠ kayıttan düşme; gerekçeden TMY yoluna, ekrandaki adlarla", () => {
+    renderPage();
+    const metin = bolumMetni("ayiklama");
+
+    expect(metin).toContain("Ayıklama Seçim ve Ayıklama Komisyonunun kararıdır");
+    expect(metin).toContain("kayıttan düşme ve devir ise harcama yetkilisinin onayıyla");
+    for (const gerekce of Object.values(GEREKCE_TR)) expect(metin).toContain(gerekce);
+    for (const yol of Object.values(TMY_YOLU_TR)) expect(metin).toContain(yol);
+    for (const durum of ["Komisyon ayıklanmasına karar vermedi", "Onaylanmadı"]) {
+      expect(Object.values(KALEM_DURUMU_TR)).toContain(durum);
+      expect(metin).toContain(`“${durum}”`);
+    }
+    // 10/1-b gerekçeli kalem hurdaya ayrılamaz; devir yalnız düzeye uygunsuzlukla.
+    expect(metin).toContain("Devir yalnız bu gerekçeyle yapılır");
+    expect(metin).toContain("hurdaya ayrılamaz: ölçüt listesinde bu seçenek yoktur");
+    expect(metin).toContain("Md. 10/4'e aykırı kitap okul kütüphanelerinde");
+    expect(metin).not.toContain("hiçbir kütüphanede");
+    expect(metin).toContain("program bu gerekçedeki kaynağı devir yoluna bağlamaz");
+  });
+
+  it("teklifin adımları ve düğmeleri ekrandakiyle aynıdır; uygulama geri alınamaz", () => {
+    renderPage();
+    const metin = bolumMetni("ayiklama");
+    const adimlar = Array.from(document.querySelectorAll("#ayiklama ol > li > strong")).map(
+      (s) => s.textContent,
+    );
+    expect(adimlar).toEqual([
+      "Taslak.",
+      "Komisyona sunuldu.",
+      "Komisyon kararı.",
+      "Harcama yetkilisi onayı.",
+      "Uygulandı.",
+    ]);
+    for (const ad of [
+      "“Yeni teklif”",
+      "“Kalem ekle”",
+      "“Aday Nüshalar”",
+      "“Kütüphane etiketleri”",
+      "“Düzenle”",
+      "“Çıkar”",
+      "“Komisyona sun”",
+      "“Komisyon kararını bağla”",
+      "“Harcama yetkilisinin onayını işle”",
+      "“Komisyon üyeleri”",
+      "“İmha kararı verildi”",
+      "“Uygula”",
+      "“Teklifi geri çek”",
+      "“İptal et”",
+      `“${KAYIP_ONERILERI_BASLIGI}”`,
+      `“${HASAR_ONERILERI_BASLIGI}”`,
+      "“Ayıklama Belgeleri”",
+      "“Excel'i indir”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+    expect(metin).toContain("İşlem geri alınamaz.");
+    expect(metin).toContain("en az üç kişidir (TMY md. 28/1)");
+    // 10/1-e yorumu kesin hüküm değil, harcama yetkilisinin takdiridir.
+    expect(metin).toContain("komisyon kurulmadan onaylayabilir (TMY md. 10/1-e)");
+    expect(metin).not.toContain("komisyon gerekmez");
+    expect(metin).toContain("biri işin uzmanıdır, onu ilk satıra yazın");
+    expect(metin).toContain("(TMY md. 28/8)");
+    expect(metin).toContain("İmha kararı kalem kalem verilir");
+    expect(metin).toContain("için yeni komisyon kararı gerekir");
+    expect(metin).toContain(
+      "Kayıp ve Hasar'da kayıttan düşme önerisiyle kapanan dosyaların kitapları da ayıklamaya konmaz",
+    );
+  });
+
+  it("belgeler TMY yoluna göre; imha yalnız imha tutanağı bağlamında; TKYS hazırlığı", () => {
+    renderPage();
+    const metin = bolumMetni("ayiklama");
+
+    for (const belge of [
+      "Ayıklama teklif listesi",
+      "Ayıklama tutanağı",
+      "Kayıttan düşme teklif listesi",
+      "İmha tutanağı",
+      "Devir listesi",
+    ]) {
+      expect(metin).toContain(belge);
+    }
+    expect(metin).toContain("TKYS'de düzenlenir");
+    // "imha" geçen her cümle imha kararı ya da imha tutanağıyla (TMY 28/5) ilgilidir.
+    const cumleler = metin.split(/(?<=\.)\s(?=\p{Lu})/u).filter((c) => /imha/iu.test(c));
+    expect(cumleler.length).toBeGreaterThan(0);
+    for (const cumle of cumleler) {
+      expect(cumle).toMatch(/İmha tutanağı|imha kararı|İmha kararı|imhaya karar|28\/5/u);
+    }
+    expect(bolumMetni("yil-sonu-raporu")).not.toMatch(/imha/iu);
+  });
+
+  it("nadir eserler: Md. 12/2 birebir, liste ve gönderim ekrandaki adlarla", () => {
+    renderPage();
+    const metin = bolumMetni("ayiklama");
+
+    expect(metin).toContain(
+      "“Seçim ve Ayıklama Komisyonu tarafından tespit edilen el yazmaları ve nadir eserler listesi, Genel Müdürlüğe gönderilir.”",
+    );
+    expect(metin).toContain("Destek Hizmetleri Genel Müdürlüğüdür (md. 4/1-c)");
+    for (const ad of [
+      "“El yazması / nadir eser”",
+      "“Yeni liste”",
+      "“Bildirilmemiş Nadir Eserler”",
+      "“Seçilenleri listeye ekle”",
+      "“Kararı kaydet”",
+      "“Gönderildi olarak işaretle”",
+      "“Nadir Eser İşaretli Nüshalar”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+    expect(metin).toContain("gönderilmiş liste değişmez");
+    // Md. 12/1 alıntısı (ortası "…" ile).
+    expect(metin).toContain(
+      "10 uncu maddenin birinci fıkrasının (b) bendine uygun olmayan kaynaklar uygun okullara veya kurumlara devredilir.”",
+    );
+  });
+
+  it("katalog bölümünde 'sonraki sürüm' sözü kalmaz; bağış kararının F8 kuralları", () => {
+    renderPage();
+    const metin = bolumMetni("katalog");
+
+    // Nadir eser, ayıklama kararı ve kayıttan düşme artık işler (saklama taraması hâlâ
+    // sonraki sürümdedir; o cümle kalır).
+    for (const eskiCumle of [
+      "(sonraki sürüm)",
+      "ayıklama kararı sonraki sürümde",
+      "kayıttan düşme yolu sonraki sürümlerde",
+    ]) {
+      expect(metin).not.toContain(eskiCumle);
+    }
+    expect(bolumMetni("kayip-hasar")).not.toContain("ayrı bir işlemdir ve sonraki sürümlerde");
+    expect(metin).toContain("“Katalogdaki karşılığı”");
+    expect(metin).toContain("“Yeni eser aç”");
+    expect(metin).toContain("“… eserine nüsha ekle”");
+    expect(metin).toContain("komisyon kararının tarihi ile bağışın geliş tarihinden geç olanı");
+    expect(metin).toContain("“Kabul / Ret” sütunu");
+  });
+
+  it("25.09.2026 kullanıcı kararları: bağış sonucu, bedelden sonra bulunma, öneriler sayımda", () => {
+    const { container } = renderPage();
+    const katalog = bolumMetni("katalog");
+    const kayip = bolumMetni("kayip-hasar");
+    const ayiklama = bolumMetni("ayiklama");
+
+    // F8 ekleri 13: karardan sonraki döküm; TMY'de "bağış kabul tutanağı" yoktur (tek olumsuz
+    // cümle), VİF'i taşınır kayıt yetkilisi düzenler (TMY 16/1), değer 13/2-c'dedir.
+    expect(katalog).toContain(`${BAGIS_SONUCU_BELGESI} basılır`);
+    expect(katalog).toContain(
+      "Taşınır Mal Yönetmeliği'nde “bağış kabul tutanağı” diye bir belge yoktur",
+    );
+    expect(sayfaMetni(container).match(/bağış kabul tutanağı/giu) ?? []).toHaveLength(1);
+    expect(katalog).toContain("(Taşınır Mal Yönetmeliği md. 16/1)");
+    expect(katalog).toContain("(Taşınır Mal Yönetmeliği md. 13/2-c)");
+    expect(BAGIS_BIRIM_FIYAT_YARDIMI).toContain("(Taşınır Mal Yönetmeliği md. 13/2-c)");
+
+    // F8 ekleri 14: bedel teslim alındıktan sonra bulunma; kayıttan düşülmüşse sayım fazlası.
+    expect(kayip).toContain(`“${COZUM_TR.FOUND_AFTER_PRICE}” (yalnız kayıp dosyasında)`);
+    expect(kayip).toContain(`“${BEDEL_IADESI_NOTU}”`);
+    expect(kayip).toContain("“Sayım fazlası (kayda giriş)” yoluyla açılan bir edinimle");
+
+    // F8 ekleri 34: kayıp ve hasar önerisi ayıklamaya konmaz, sayımda düşülür.
+    expect(kayip).not.toContain("hasarlı kitap Ayıklama ekranında teklife konur");
+    expect(kayip).toContain("Kayıp ve hasarlı kitap ayıklamaya konmaz");
+    expect(ayiklama).not.toContain("Yalnız kayıttan düşme önerileri");
+    expect(ayiklama).toContain("Seçim ve Ayıklama Komisyonu kararı gerekmez");
+  });
+});
+
+describe("KilavuzPage — Yıl Sonu Raporu (F8)", () => {
+  it("Md. 12/1 birebir; adımlar ekrandaki adlarla; rapor kişisizdir", () => {
+    renderPage();
+    const metin = bolumMetni("yil-sonu-raporu");
+
+    expect(metin).toContain(
+      "“Her ders yılı sonunda kütüphane kaynakları, kütüphaneci veya görevlendirilen öğretmen tarafından gözden geçirilir ve tespit edilen hususlar raporla okul müdürlüğüne bildirilir.”",
+    );
+    for (const ad of [
+      "“Raporu hazırla”",
+      "“Sayı”",
+      "“Tarih”",
+      "“Tespit edilen hususlar”",
+      "“Kaydet”",
+      "“Önizle”",
+      "“OKUL MÜDÜRLÜĞÜNE”",
+      "“Raporu sonlandır”",
+      "“Sonlandırmayı geri al”",
+      "“TASLAK”",
+      "“Çok okunanlar için en az üye sayısı”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+    // Ekranın yardım metniyle aynı uyarı.
+    expect(TESPIT_YARDIMI).toContain("Kişi adı yazmayın.");
+    expect(metin).toContain("kişi adı yazmayın");
+    expect(metin).toContain("Rapor kişisizdir");
+    expect(metin).toContain("imza satırında ad basılmaz");
+    // Dönem: yaz ayıklaması rapora ancak yeni ders yılı tanımlandıktan sonra sonlandırılırsa girer.
+    expect(metin).not.toContain("yaz aylarında yapılan ayıklama da rapora girer");
+    expect(metin).toContain("raporu yeni ders yılı tanımlandıktan sonra sonlandırın");
+    // 25.09.2026 kullanıcı kararı (F8 ekleri 35 — a): ekranın uyarısı kılavuzda birebir (ilk
+    // iki cümlesi; son cümle "…" ile atlanır).
+    const ilkIki = YAZ_DONEMI_UYARISI.slice(0, YAZ_DONEMI_UYARISI.indexOf(" Gerekirse"));
+    expect(ilkIki).toMatch(/bu rapora girmez\.$/u);
+    expect(metin).toContain(`“${ilkIki} …”`);
+    expect(metin).toContain("“kayıt içi giriş”");
+    expect(metin).toContain("bir grup daha gizlenir");
+  });
+
+  it("F8 ekranlarına sabit adreslerle bağlanılır", () => {
+    renderPage();
+    const hedef = (ad: string) =>
+      screen.getAllByRole("link", { name: ad }).map((a) => a.getAttribute("href"));
+
+    expect(hedef(AYIKLAMA_BASLIGI)).toEqual([AYIKLAMA_ADRESI]);
+    expect(hedef(NADIR_ESERLER_BASLIGI)).toEqual([NADIR_ESERLER_ADRESI]);
+    expect(new Set(hedef(YIL_SONU_RAPORU_BASLIGI))).toEqual(
+      new Set(["#yil-sonu-raporu", YIL_SONU_RAPORU_ADRESI]),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F8 kılavuz ve sözlük kolu: ayıklama ≠ kayıttan düşme, Seçim ve Ayıklama Komisyonu ve
+// kararları, TMY yollarının sade anlatımı, imha yalnız 28/5 bağlamında, nadir eserlerin
+// adımları, yıl sonu raporunun kişisizliği. Mevzuat alıntıları ve alıntısız atıfların
+// fıkra metni sunucu tarafında `test_ayiklama_kilavuz_metinleri.py` ile depodaki metinden
+// sınanır; burada ekranın adları ve kılavuzun kurgusu kilitlenir.
+// ---------------------------------------------------------------------------
+describe("KilavuzPage — Seçim ve Ayıklama Komisyonu ve TMY yolları (F8)", () => {
+  it("bölümün kurgusu: ayıklama ≠ kayıttan düşme önce, komisyon sonra, yollar ondan sonra", () => {
+    renderPage();
+    const altBasliklar = Array.from(document.querySelectorAll("#ayiklama h3")).map(
+      (h) => h.textContent,
+    );
+    expect(altBasliklar).toEqual([
+      "Ayıklama kayıttan düşme değildir",
+      "Seçim ve Ayıklama Komisyonu ve kararları",
+      "Gerekçe ve Taşınır Mal Yönetmeliği yolu",
+      "Teklif adım adım",
+      "Ayıklamaya konamayan kitaplar",
+      "Ayıklama belgeleri",
+      "El yazması ve nadir eserler",
+    ]);
+  });
+
+  it("ayıklama kayıttan düşme değildir: iki ayrı adım, nüsha yalnız uygulamada değişir", () => {
+    renderPage();
+    const metin = bolumMetni("ayiklama");
+
+    expect(metin).toContain(
+      "Programda bu yüzden iki ayrı adım vardır: “Komisyon kararı” ve “Harcama yetkilisi onayı”.",
+    );
+    expect(metin).toContain("(Taşınır Mal Yönetmeliği md. 10/1-e, 28/4)");
+    expect(metin).toContain("Nüshanın durumu yalnız teklif uygulanınca değişir");
+    expect(metin).toContain("Ayıklanan ya da devredilen nüsha silinmez");
+  });
+
+  it("komisyon: Md. 10/1 birebir, bileşim yalnız bende gönderilir, üç karar türü ekrandaki adla", () => {
+    renderPage();
+    const metin = bolumMetni("ayiklama");
+
+    expect(metin).toContain(
+      "“Kütüphane kaynaklarının tespiti ve seçimi için Seçim ve Ayıklama Komisyonu, ilçe millî eğitim şube müdürü başkanlığında kurulur. Şube müdürünün katılamadığı durumlarda okul müdürü komisyona başkanlık eder.”",
+    );
+    expect(metin).toContain("Yönetmeliğin 4. maddesinin (ı) bendinde sayılır");
+    for (const ad of ["“Karar ekle”", "“Başkan adı”", "“Katılımcılar”", "“Karar türü”"]) {
+      expect(metin).toContain(ad);
+    }
+    for (const tur of Object.values(COMMISSION_DECISION_TYPE_TR)) {
+      expect(metin).toContain(`${tur}:`);
+    }
+    // Bağış kararı ve toplu kataloglama: özet burada, adımlar Katalog bölümünde.
+    expect(metin).toContain("“Komisyon kararını uygula”");
+    expect(metin).toContain("“Kararı uygula”");
+    expect(metin).toContain("kabul edilen kitaplar tek işlemde kataloglanır");
+    expect(metin).toContain("katalogda zaten bulunan kitabın nüshaları var olan esere eklenir");
+    expect(metin).toContain("Adımlar Katalog bölümünün “Edinimler ve bağışlar” kısmındadır.");
+    expect(bolumMetni("katalog")).toContain(
+      "Komisyonun başkanlığı ve karar türlerinin neye bağlandığı Ayıklama ve Nadir Eserler bölümündedir.",
+    );
+    // Kataloglama taşınır kaydı değildir; hurdaya ayırma komisyonu ayrı komisyondur.
+    expect(metin).toContain("Kataloglama taşınır kaydı değildir");
+    expect(metin).toContain("(Taşınır Mal Yönetmeliği md. 16/1)");
+    expect(metin).toContain(
+      "Hurdaya ayırmada kaynağı değerlendiren komisyon da Seçim ve Ayıklama Komisyonu değildir",
+    );
+  });
+
+  it("TMY yolları sade dille ve fıkra atfıyla; devir yalnız düzeye uygunsuzlukta", () => {
+    renderPage();
+    const metin = bolumMetni("ayiklama");
+
+    for (const atif of [
+      "(TMY md. 5/8)",
+      "(TMY md. 27/3)",
+      "(TMY md. 28/1, 28/4)",
+      "(TMY md. 24)",
+      "(TMY md. 28/5)",
+      "(md. 10/1-b)",
+    ]) {
+      expect(metin).toContain(atif);
+    }
+    expect(metin).toContain("Olağan kullanımdan doğan yıpranmada kimseden sorumluluk aranmaz");
+    expect(metin).toContain("biri işin uzmanı en az üç kişilik bir komisyon");
+    expect(metin).toContain("aynı kamu idaresinin başka bir harcama birimine devirdir");
+    expect(metin).toContain("kayıttan düşülmez, devredilir");
+    expect(metin).toContain(
+      "program bu kaynağı kurumun düzeyine uygun olmayan kaynakla aynı gerekçede toplar",
+    );
+  });
+
+  it("imha: ayıklanan kitap kendiliğinden imha edilmez; kılavuzun başka bölümü imha demez", () => {
+    const { container } = renderPage();
+    const metin = bolumMetni("ayiklama");
+
+    expect(metin).toContain("Ayıklanan kitap kendiliğinden imha edilmez");
+    const imha = /[iİ]mha/gu;
+    const tumu = sayfaMetni(container).match(imha) ?? [];
+    const bolumde = metin.match(imha) ?? [];
+    expect(bolumde.length).toBeGreaterThan(0);
+    expect(tumu).toHaveLength(bolumde.length);
+  });
+
+  it("onay ve uygulama ekrandaki alan ve kutu adlarıyla", () => {
+    renderPage();
+    const metin = bolumMetni("ayiklama");
+
+    for (const ad of [
+      "“Harcama yetkilisinin adı”",
+      "“Onay tarihi”",
+      "“Harcama yetkilisinin onayını ve belgelerin imzalandığını denetledim.”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+    expect(metin).toContain("kutu yalnız hurdaya ayırma kalemi olan teklifte çıkar");
+    // Sayım ekranı henüz yok: kayıp nüshanın kaydını sayım kapatır, iki bölüm de bunu söyler.
+    expect(metin).toContain("sayım ekranı sonraki bir sürümde gelecek");
+    expect(bolumMetni("kayip-hasar")).toContain("sayım ekranı sonraki bir sürümde gelecek");
+  });
+
+  it("nadir eserler: dört adım ekrandaki adlarla; nadir eser ayıklanmaz", () => {
+    renderPage();
+    const metin = bolumMetni("ayiklama");
+
+    expect(metin).toContain("El yazması ve nadir eser ayıklanmaz");
+    for (const ad of [
+      "“Listeler”",
+      "“Çıkar”",
+      "“Komisyon kararı”",
+      "“Önizle”",
+      "“PDF'i indir”",
+      "“Genel Müdürlüğe Gönderim”",
+      "“Gönderim tarihi”",
+      "“Bildirildi” / “Bildirilmedi”",
+      "“Yalnız bildirilmemişler”",
+    ]) {
+      expect(metin).toContain(ad);
+    }
+    expect(metin).toContain("Bu işaret geri alınmaz.");
+    expect(metin).toContain("Genel Müdürlüğe bildirilmemiş nüshanın işareti");
+    expect(metin).toContain("kararı bağlanmış listedeyse önce nüshayı listeden çıkarın");
+    expect(metin).toContain("Bir listedeki nüsha silinemez.");
+  });
+});
+
+describe("KilavuzPage — Yıl Sonu Raporu kişisizdir (F8)", () => {
+  it("Uygulama Kılavuzu 2.4 birebir; kişisel veri ve adlı kırılım yok", () => {
+    renderPage();
+    const metin = bolumMetni("yil-sonu-raporu");
+
+    expect(metin).toContain(
+      "“Her eğitim öğretim yılı sonunda kütüphanedeki kitap durumu, kazandırılan ve ayıklanan kaynaklar okul yönetimine raporlanır.”",
+    );
+    expect(metin).toContain("Uygulama Kılavuzu, 2.4");
+    expect(metin).toContain("kişisel veri içermez");
+    expect(metin).toContain("şube ile konu kırılımı yapmaz");
+    expect(metin).toContain("öğrenci, öğretmen ya da personel adı yazmayın");
   });
 });

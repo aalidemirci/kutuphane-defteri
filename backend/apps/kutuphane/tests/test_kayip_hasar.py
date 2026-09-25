@@ -60,8 +60,11 @@ BEDEL_YOLLARI = (
     R.PRICE_RECEIVED,
     R.CLOSED_SAME_REPURCHASED,
     R.CLOSED_OTHER_REPURCHASED,
+    R.FOUND_AFTER_PRICE,
 )
 KAPANIS_YOLLARI = (R.CLOSED_SAME_REPURCHASED, R.CLOSED_OTHER_REPURCHASED)
+#: Bedeli teslim alınmış KAYIP dosyasının yolları: iki kapanış ve bulunma (F8 ekleri 14).
+KAYIP_KAPANIS_YOLLARI = (*KAPANIS_YOLLARI, R.FOUND_AFTER_PRICE)
 
 
 def _kayip_dosyasi() -> LossDamageCase:
@@ -130,7 +133,7 @@ class TestKademeKapisi:
         assert dosya.is_open and dosya.resolved_at is None
         assert dosya.price_received_at is not None
         assert tazele_nusha(dosya.copy).status == CopyStatus.LOST
-        assert loss_damage.allowed_resolutions(dosya) == KAPANIS_YOLLARI
+        assert loss_damage.allowed_resolutions(dosya) == KAYIP_KAPANIS_YOLLARI
 
         loss_damage.resolve_case(dosya, resolution=R.CLOSED_SAME_REPURCHASED)
         dosya = tazele_dosya(dosya)
@@ -196,7 +199,7 @@ class TestKademeKapisi:
         dosya = _bedel_teslim_alinmis(_kayip_dosyasi())
         kademe_yaz(SchoolLevel.ILKOKUL)
         dosya = tazele_dosya(dosya)
-        assert loss_damage.allowed_resolutions(dosya) == KAPANIS_YOLLARI
+        assert loss_damage.allowed_resolutions(dosya) == KAYIP_KAPANIS_YOLLARI
         with pytest.raises(ValidationError, match="seçilemez"):
             loss_damage.resolve_case(dosya, resolution=R.REPLACED_SAME)
         loss_damage.resolve_case(dosya, resolution=R.CLOSED_OTHER_REPURCHASED)
@@ -326,6 +329,7 @@ class TestKayipBildirimi:
             (CaseType.LOST, R.REPLACED_SAME, True),
             (CaseType.LOST, R.CLOSED_SAME_REPURCHASED, True),
             (CaseType.LOST, R.CLOSED_OTHER_REPURCHASED, True),
+            (CaseType.LOST, R.FOUND_AFTER_PRICE, True),
             (CaseType.LOST, R.WRITE_OFF_PROPOSED, True),
             (CaseType.LOST, R.PRICE_DETERMINED, False),
             (CaseType.LOST, R.PRICE_RECEIVED, False),
@@ -363,13 +367,15 @@ class TestKayipBildirimi:
         assert loan.status == LoanStatus.LOST_CONVERTED  # ödünç yeniden açılmaz
         odunc_ver(uye(), tazele_nusha(loan.copy))  # kitap yeniden dolaşımda
 
-    def test_bedelle_baska_eser_alinan_dosyada_bulundu_yolu_yoktur(self) -> None:
-        """Md. 19: "kaybedilenin kaydı silinerek başka eser satın alınır" — öneri geri alınmaz."""
+    def test_bedelle_baska_eser_alinan_dosyada_yalniz_bedelli_bulunma_secilir(self) -> None:
+        """25.09.2026 kullanıcı kararı (F8 ekleri 14 b): Md. 19'un "kaydı silinerek" hükmü
+        kayıttan düşmeyle yerine gelir; nüsha hâlâ "Kayıp"ken kitap bulunursa öneri geri
+        alınır. Bedel teslim alınmış olduğu için çözüm bedel kaydını taşıyan biçimdir."""
         kademe_yaz(SchoolLevel.ORTAOGRETIM)
         dosya = _bedel_teslim_alinmis(_kayip_dosyasi())
         loss_damage.resolve_case(dosya, resolution=R.CLOSED_OTHER_REPURCHASED)
         dosya = tazele_dosya(dosya)
-        assert loss_damage.allowed_resolutions(dosya) == ()
+        assert loss_damage.allowed_resolutions(dosya) == (R.FOUND_AFTER_PRICE,)
         with pytest.raises(ValidationError, match="zaten kapanmış"):
             loss_damage.resolve_case(dosya, resolution=R.FOUND_RETURNED)
 
@@ -583,7 +589,7 @@ class TestBedelIkiAdim:
         assert tazele_nusha(dosya.copy).status == CopyStatus.LOST
         with pytest.raises(ValidationError, match="zaten kayıp"):
             loss_damage.report_lost(copy=dosya.copy)
-        # Yalnız iki kapanış yolu; sorumlu notu açık dosyada düzeltilebilir.
+        # Yalnız iki kapanış yolu ve bedelli bulunma; sorumlu notu açık dosyada düzeltilebilir.
         with pytest.raises(ValidationError, match="seçilemez"):
             loss_damage.resolve_case(dosya, resolution=R.FOUND_RETURNED)
         loss_damage.update_case_note(dosya, responsible_note="Düzeltilmiş not.")
@@ -656,6 +662,108 @@ class TestBedelIkiAdim:
             dosyalar.update(
                 resolution=R.PRICE_RECEIVED, market_price=Decimal("5"), price_determined_at=simdi
             )
+        # "Bulundu (bedel teslim alınmıştı)" bedel teslim kaydını taşır (F8 ekleri 14).
+        with pytest.raises(IntegrityError), transaction.atomic():
+            dosyalar.update(
+                resolution=R.FOUND_AFTER_PRICE,
+                resolved_at=simdi,
+                market_price=Decimal("5"),
+                price_determined_at=simdi,
+            )
+
+
+# ============================================================ bedelden sonra bulunan kitap
+
+
+class TestBedeldenSonraBulunma:
+    """25.09.2026 kullanıcı kararı (tasarım F8 ekleri 14): bedeli teslim alınmış kayıp
+    dosyasında kitap bulunursa "Bulundu (bedel teslim alınmıştı)" — nüsha rafa döner, dosya
+    kapanır, bedel kaydı kalır. Bedelin iadesi okul yönetiminin kararıdır; program para
+    tutmaz. Kayıttan düşülmüş nüsha bu yoldan dönmez ("Sayım fazlası" edinimiyle yeni
+    nüsha olarak alınır)."""
+
+    def test_bedel_teslim_alindi_adiminda_kitap_bulunursa_rafa_doner(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from apps.kutuphane import teslim_belgeleri
+
+        kademe_yaz(SchoolLevel.ORTAOGRETIM)
+        ogr = ogrenci()
+        loan = odunc_ver(uye(ogr))
+        dosya = _bedel_teslim_alinmis(loss_damage.report_lost(copy=loan.copy), "95")
+        assert R.FOUND_AFTER_PRICE in loss_damage.allowed_resolutions(dosya)
+        sorulan: list[str] = []
+        monkeypatch.setattr(tmy_kapisi, "ensure_open", sorulan.append)
+
+        loss_damage.resolve_case(dosya, resolution=R.FOUND_AFTER_PRICE)
+
+        dosya = tazele_dosya(dosya)
+        assert sorulan == [tmy_kapisi.DOSYA_COZUMU]  # nüsha envanterde yer değiştirir
+        assert dosya.resolution == R.FOUND_AFTER_PRICE and not dosya.is_open
+        assert dosya.resolved_at is not None and dosya.write_off_proposed_at is None
+        # Bedel kaydı dosyada kalır (yalnız kayıt; program para tutmaz).
+        assert dosya.market_price == Decimal("95")
+        assert dosya.price_determined_at is not None and dosya.price_received_at is not None
+        assert tazele_nusha(loan.copy).status == CopyStatus.AVAILABLE
+        assert loss_damage.allowed_resolutions(dosya) == ()
+        loan.refresh_from_db()
+        assert loan.status == LoanStatus.LOST_CONVERTED  # ödünç yeniden açılmaz
+        assert persons.open_obligations(ogr) == []
+        odunc_ver(uye(), tazele_nusha(loan.copy))  # kitap yeniden dolaşımda
+        # E6: durum yeni çözümün adıyla, bedel iki adımın tarihleriyle basılır.
+        cozum = teslim_belgeleri.case_report_context(dosya)["resolution"]
+        assert {"label": "Durum", "value": "Bulundu (bedel teslim alınmıştı)"} in cozum
+        assert any(s["label"] == "Piyasa bedeli" and "teslim alındı" in s["value"] for s in cozum)
+
+    def test_hasar_dosyasinda_ve_bedel_teslim_alinmadan_secilemez(self) -> None:
+        kademe_yaz(SchoolLevel.ORTAOGRETIM)
+        hasar = _bedel_teslim_alinmis(loss_damage.open_damage_case(copy=odunc_nushasi()))
+        assert loss_damage.allowed_resolutions(hasar) == KAPANIS_YOLLARI
+        with pytest.raises(ValidationError, match="seçilemez"):
+            loss_damage.resolve_case(hasar, resolution=R.FOUND_AFTER_PRICE)
+        kayip = _kayip_dosyasi()
+        with pytest.raises(ValidationError, match="seçilemez"):
+            loss_damage.resolve_case(kayip, resolution=R.FOUND_AFTER_PRICE)
+        loss_damage.resolve_case(kayip, resolution=R.PRICE_DETERMINED, market_price=Decimal("9"))
+        with pytest.raises(ValidationError, match="seçilemez"):
+            loss_damage.resolve_case(kayip, resolution=R.FOUND_AFTER_PRICE)
+        # Bedelsiz yolda bulunma yine "Bulundu"dur.
+        assert R.FOUND_RETURNED in loss_damage.allowed_resolutions(tazele_dosya(kayip))
+
+    def test_bedelle_baska_eser_alinmis_dosyada_kitap_bulunursa_oneri_kalkar(self) -> None:
+        from apps.kutuphane import selectors_ayiklama
+
+        kademe_yaz(SchoolLevel.ORTAOGRETIM)
+        dosya = _bedel_teslim_alinmis(_kayip_dosyasi())
+        loss_damage.resolve_case(dosya, resolution=R.CLOSED_OTHER_REPURCHASED)
+        assert [c.pk for c in selectors_ayiklama.lost_write_off_proposals()] == [dosya.copy_id]
+        # Kademe sonradan değişse de yol açıktır (bedel alınmıştır).
+        kademe_yaz(SchoolLevel.ORTAOKUL)
+
+        loss_damage.resolve_case(tazele_dosya(dosya), resolution=R.FOUND_AFTER_PRICE)
+
+        dosya = tazele_dosya(dosya)
+        assert dosya.resolution == R.FOUND_AFTER_PRICE and not dosya.is_open
+        assert dosya.write_off_proposed_at is None  # öneri kalktı
+        assert dosya.price_received_at is not None
+        assert tazele_nusha(dosya.copy).status == CopyStatus.AVAILABLE
+        assert list(selectors_ayiklama.lost_write_off_proposals()) == []
+        assert loss_damage.allowed_resolutions(dosya) == ()
+
+    def test_kayittan_dusulmus_nusha_bu_yoldan_donmez(self) -> None:
+        """Asıl kayıttan düşme (F9) yapılmışsa eski kayıt terminal kalır; kitap "Sayım
+        fazlası (kayda giriş)" edinimiyle yeni nüsha olarak alınır."""
+        from apps.kutuphane.models import Copy
+
+        kademe_yaz(SchoolLevel.ORTAOGRETIM)
+        dosya = _bedel_teslim_alinmis(_kayip_dosyasi())
+        loss_damage.resolve_case(dosya, resolution=R.CLOSED_OTHER_REPURCHASED)
+        Copy.all_objects.filter(pk=dosya.copy_id).update(status=CopyStatus.WITHDRAWN_LOST)
+        dosya = tazele_dosya(dosya)
+        assert loss_damage.allowed_resolutions(dosya) == ()
+        with pytest.raises(ValidationError, match="zaten kapanmış"):
+            loss_damage.resolve_case(dosya, resolution=R.FOUND_AFTER_PRICE)
+        assert tazele_nusha(dosya.copy).status == CopyStatus.WITHDRAWN_LOST
 
 
 # ============================================================ hasar ve onarım (D3)

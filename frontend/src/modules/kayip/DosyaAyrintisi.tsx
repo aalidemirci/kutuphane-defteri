@@ -8,8 +8,15 @@
 // bir pencere değildir: pencere onay kipine geçer — başlığı soru olur, gövdesi
 // sonucu anlatır, bedel yollarında piyasa bedeli sorulur. Böylece iki pencere üst
 // üste açılmaz (Esc ikisini birden kapatmaz). Kapanan dosya yeniden açılmaz; TEK
-// istisna sunucunun listesinden gelir: "Kayıttan düşme önerildi" ile kapanmış kayıp
-// dosyasında kitap bulununca "Bulundu" (öneri geri alınır, nüsha rafa döner).
+// istisna sunucunun listesinden gelir: kayıttan düşme önerisiyle kapanmış kayıp
+// dosyasında nüsha hâlâ "Kayıp"sa kitap bulununca "Bulundu" ("Bedelle başka eser
+// alındı"dan "Bulundu (bedel teslim alınmıştı)") — öneri geri alınır, nüsha rafa döner.
+// Nüsha kayıttan düşülmüşse kitap yeni nüsha olarak alınır; pencere yolu söyler.
+//
+// Bedelden sonra bulunan kitap (25.09.2026 kullanıcı kararı, tasarım F8 ekleri 14): "Bedel
+// teslim alındı" dosyasında da "Bulundu (bedel teslim alınmıştı)" durur. İki durumda da
+// pencere bedelin iadesinin okul yönetiminin kararı olduğunu tek cümleyle söyler
+// (`BEDEL_IADESI_NOTU`); program para tutmaz.
 //
 // Program TAHSİLAT YAPMAZ ve disiplin süreci başlatmaz: bedel yalnız kaydedilir
 // (sözlük "bedel belirlendi", "bedel teslim alındı" — asla borç, ceza ya da tahsilat).
@@ -51,6 +58,28 @@ export const ONERI_GERI_ALMA_NOTU =
   "Kayıttan düşme yalnız önerildi; nüsha hâlâ “Kayıp”. Kitap bulunduysa “Bulundu” seçin: " +
   "öneri geri alınır ve nüsha rafa döner.";
 
+/** "Bedelle başka eser alındı" ile kapanmış kayıp dosyasında bulunma düğmesinin açıklaması. */
+export const BEDELLI_ONERI_GERI_ALMA_NOTU =
+  "Kayıttan düşme yalnız önerildi; nüsha hâlâ “Kayıp”. Kitap bulunduysa “Bulundu (bedel teslim " +
+  "alınmıştı)” seçin: öneri geri alınır ve nüsha rafa döner; bedelle alınan eser kayıtta kalır.";
+
+/** Bedel teslim alındıktan sonra bulunan kitapta (F8 ekleri 14) — tek cümle. */
+export const BEDEL_IADESI_NOTU =
+  "Teslim alınan bedelin kişiye iadesi ya da başka kaynak alımında kullanılması okul " +
+  "yönetiminin kararıdır; program para tutmaz.";
+
+/** Öneriyle kapanmış kayıp dosyasının nüshası kayıttan düşülmüşse (sayım) bulunan kitabın yolu. */
+export const KAYITTAN_DUSULMUS_NOTU =
+  "Nüsha kayıttan düşülmüş; kitap bulunursa bu dosyadan rafa dönmez. Kitabı “Sayım fazlası " +
+  "(kayda giriş)” yoluyla açılan bir edinimle, Eser Ayrıntısı'nda “Nüsha ekle” diyerek yeni " +
+  "nüsha olarak kaydedin.";
+
+/** Öneriyle kapanan çözümler (sunucu `WRITE_OFF_RESOLUTIONS`). */
+const ONERI_COZUMLERI: ReadonlySet<Cozum> = new Set<Cozum>([
+  "CLOSED_OTHER_REPURCHASED",
+  "WRITE_OFF_PROPOSED",
+]);
+
 /** Çözümün sonucu — onay penceresinin gövdesi (dosya türüne ve açıklığına göre). */
 export function cozumSonucu(
   cozum: Cozum,
@@ -61,6 +90,13 @@ export function cozumSonucu(
     return (
       "Kayıttan düşme önerisi geri alınır: nüsha rafa döner ve dosya “Bulundu” olarak " +
       "kapanır. Kayba dönüşen ödünç ya da teslim yeniden açılmaz."
+    );
+  }
+  if (cozum === "FOUND_AFTER_PRICE" && dosya.is_open === false) {
+    return (
+      "Kayıttan düşme önerisi geri alınır: nüsha rafa döner ve dosya “Bulundu (bedel teslim " +
+      "alınmıştı)” olarak kapanır. Bedelle alınan eser kayıtta kalır; kaydedilen bedel dosyada " +
+      `kalır. ${BEDEL_IADESI_NOTU}`
     );
   }
   switch (cozum) {
@@ -75,13 +111,20 @@ export function cozumSonucu(
         "Bedelin kişiden teslim alındığı kaydedilir. Kişinin kütüphaneyle açık işi biter: " +
         "İlişik Listesi'nden çıkar ve “Kütüphaneden ilişiği yoktur” belgesi basılabilir. " +
         "Dosya okul için açık kalır; kaynak bedelle alınınca “Bedelle aynısı alındı” ya da " +
-        "“Bedelle başka eser alındı” seçilir. Program tahsilat yapmaz, yalnız kaydeder. Bu " +
-        "adım geri alınmaz ve kaydedilen bedel artık değişmez."
+        "“Bedelle başka eser alındı” seçilir" +
+        (kayip ? ", kitap bulunursa “Bulundu (bedel teslim alınmıştı)”. " : ". ") +
+        "Program tahsilat yapmaz, yalnız kaydeder. Bu adım geri alınmaz ve kaydedilen bedel " +
+        "artık değişmez."
       );
     case "FOUND_RETURNED":
       return (
         "Nüsha rafa döner ve dosya kapanır. Kayba dönüşen ödünç ya da teslim yeniden " +
         "açılmaz. Kapanan dosya yeniden açılmaz."
+      );
+    case "FOUND_AFTER_PRICE":
+      return (
+        "Kitap bulundu: nüsha rafa döner ve dosya kapanır; kaydedilen bedel ve teslim tarihi " +
+        `dosyada kalır. ${BEDEL_IADESI_NOTU} Kayba dönüşen ödünç ya da teslim yeniden açılmaz.`
       );
     case "REPLACED_SAME":
       return kayip
@@ -102,11 +145,11 @@ export function cozumSonucu(
     case "CLOSED_OTHER_REPURCHASED":
       return (
         "Teslim alınan bedelle başka bir eser alındı. Dosya kapanır ve bu nüsha için kayıttan " +
-        "düşme önerilir; nüshanın durumu değişmez, kayıttan düşme ayrı bir işlemdir. Alınan " +
+        "düşme önerilir; nüshanın durumu değişmez, kayıttan düşme sayımda yapılır. Alınan " +
         "eseri katalogda ayrıca kaydedin." +
         (kayip
-          ? " Kitap sonradan bulunsa da bu dosyada “Bulundu” seçilemez (Md. 19 bu yolda " +
-            "kaybedilenin kaydının silinmesini ister)."
+          ? " Kitap sonradan bulunursa ve nüsha henüz kayıttan düşülmemişse bu dosyada " +
+            "“Bulundu (bedel teslim alınmıştı)” seçilir; öneri geri alınır ve nüsha rafa döner."
           : "")
       );
     case "WRITE_OFF_PROPOSED":
@@ -268,6 +311,14 @@ export default function DosyaAyrintisi({
   const hasarAcik = guncel.is_open && guncel.case_type === "DAMAGED";
   // Kapanmış dosyada da sunucu bir çözüm verebilir (öneriyle kapanan kayıpta "Bulundu").
   const cozumVar = guncel.is_open || guncel.allowed_resolutions.length > 0;
+  const bedelliBulunmaVar = guncel.allowed_resolutions.some((c) => c.value === "FOUND_AFTER_PRICE");
+  // Öneriyle kapanmış kayıp dosyasının nüshası kayıttan düşülmüşse (sayım) bulunan kitap
+  // bu dosyadan dönmez; yeni nüsha olarak alınır (F8 ekleri 14).
+  const kayittanDusulmus =
+    !guncel.is_open &&
+    guncel.case_type === "LOST" &&
+    ONERI_COZUMLERI.has(guncel.resolution) &&
+    guncel.copy_status.startsWith("WITHDRAWN_");
 
   return (
     <Dialog
@@ -366,11 +417,37 @@ export default function DosyaAyrintisi({
               )
             )}
 
+            {guncel.resolution === "FOUND_AFTER_PRICE" && (
+              <p className="flex items-start gap-2 rounded-shape-sm bg-surface-container-high px-3 py-2 text-body-small text-on-surface">
+                <Icon name="info" size="sm" className="mt-0.5 shrink-0" />
+                {BEDEL_IADESI_NOTU}
+              </p>
+            )}
+
+            {kayittanDusulmus && (
+              <section aria-label="Bulunan kitap" className="space-y-2">
+                <p className="text-body-small text-on-surface-variant">{KAYITTAN_DUSULMUS_NOTU}</p>
+                {guncel.resolution === "CLOSED_OTHER_REPURCHASED" && (
+                  <p className="text-body-small text-on-surface-variant">{BEDEL_IADESI_NOTU}</p>
+                )}
+              </section>
+            )}
+
             {cozumVar && (
               <section aria-label="Çözüm" className="space-y-2">
                 <p className="text-title-small text-on-surface">Çözüm</p>
                 {!guncel.is_open && (
-                  <p className="text-body-small text-on-surface-variant">{ONERI_GERI_ALMA_NOTU}</p>
+                  <p className="text-body-small text-on-surface-variant">
+                    {guncel.resolution === "CLOSED_OTHER_REPURCHASED"
+                      ? BEDELLI_ONERI_GERI_ALMA_NOTU
+                      : ONERI_GERI_ALMA_NOTU}
+                  </p>
+                )}
+                {bedelliBulunmaVar && (
+                  <p className="flex items-start gap-2 rounded-shape-sm bg-surface-container-high px-3 py-2 text-body-small text-on-surface">
+                    <Icon name="info" size="sm" className="mt-0.5 shrink-0" />
+                    {BEDEL_IADESI_NOTU}
+                  </p>
                 )}
                 {guncel.is_open && !guncel.is_person_open_work && (
                   <p className="flex items-start gap-2 rounded-shape-sm bg-surface-container-high px-3 py-2 text-body-small text-on-surface">

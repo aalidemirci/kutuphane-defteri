@@ -393,9 +393,19 @@ export interface CommissionDecision {
   chair_title: string;
   participants_text: string;
   notes: string;
-  /** Karara bağlı edinim ya da bağış ön kaydı var mı? (türü kilitler, silmeyi engeller) */
+  /** Karara bağlı kayıt var mı? (türü kilitler, silmeyi engeller — D7) */
   in_use: boolean;
+  /** F8: karara bağlı kayıtların kişisiz sayıları (edinim, bağış, ayıklama, nadir eser). */
+  usage: KararKullanimi;
   created_at: string;
+}
+
+/** Komisyon kararının kullanımı — `selectors_ayiklama.decision_usage`. */
+export interface KararKullanimi {
+  acquisitions: number;
+  donation_intakes: number;
+  weeding_batches: number;
+  rare_works_submissions: number;
 }
 
 export interface CommissionDecisionBody {
@@ -494,6 +504,12 @@ export interface DonationDecisionBody {
   acquisition_date?: string | null;
   section?: number | null;
   unit_price?: string | null;
+  /**
+   * F8: kalem kimliği → katalogdaki eser (nüshalar o esere eklenir) ya da `null` (yeni
+   * eser aç). Verilmeyen kalemde birebir eşleşme kendiliğinden bağlanır; şüpheli aday
+   * bağlanmaz.
+   */
+  work_links?: Record<string, number | null>;
 }
 
 export interface DonationDecisionResult {
@@ -503,6 +519,26 @@ export interface DonationDecisionResult {
   acquisition: number | null;
   work_count: number;
   copy_count: number;
+  /** F8: nüshaları katalogda var olan esere eklenen kalem sayısı. */
+  linked_work_count: number;
+}
+
+/** Bağış kaleminin katalogdaki karşılığı (F8) — `GET donation-intakes/<pk>/matches/`. */
+export interface BagisEslesmeEseri {
+  id: number;
+  title: string;
+  authors: string;
+  publisher: string;
+  publish_year: number | null;
+  isbn13: string;
+}
+
+export interface BagisEslesmesi {
+  item: number;
+  /** Birebir eşleşme: kabul edilirse nüshalar bu esere eklenir. */
+  exact: BagisEslesmeEseri | null;
+  /** Şüpheli adaylar: kendiliğinden bağlanmaz, kullanıcı seçer. */
+  suspects: BagisEslesmeEseri[];
 }
 
 /** Koleksiyon özeti — kişisel veri İÇERMEZ. */
@@ -1053,6 +1089,10 @@ export const kutuphaneApi = {
     body: DonationDecisionBody,
   ): Promise<DonationDecisionResult> =>
     api.post<DonationDecisionResult>(`/library/donation-intakes/${intakeId}/decision/`, body),
+
+  /** F8: kalemlerin katalogdaki eşleşmeleri (kayıt yazmaz). */
+  donationMatches: (intakeId: number): Promise<{ results: BagisEslesmesi[] }> =>
+    api.get<{ results: BagisEslesmesi[] }>(`/library/donation-intakes/${intakeId}/matches/`),
 
   cancelDonationIntake: (intakeId: number, reason: string): Promise<DonationIntake> =>
     api.post<DonationIntake>(`/library/donation-intakes/${intakeId}/cancel/`, { reason }),

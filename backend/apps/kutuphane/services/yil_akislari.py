@@ -35,7 +35,7 @@ from typing import Any, Final
 from django.utils import timezone
 
 from apps.kutuphane import selectors_ilisik
-from apps.kutuphane.models import LibraryPolicy
+from apps.kutuphane.models import AnnualLibraryReview, LibraryPolicy
 from apps.okul import selectors as okul_selectors
 from apps.okul.models import (
     Holiday,
@@ -117,6 +117,10 @@ class YearEndSummary:
     graduating_students: int
     graduating_clear_students: int
     counts: selectors_ilisik.ClearanceCounts
+    #: F8: etkin ders yılının yıl sonu kütüphane raporu (Md. 12/1, E9) — `{id,
+    #: is_finalized}` ya da henüz açılmadıysa None. Adım rayına bilinçli olarak
+    #: GİRMEZ (`steps` değişmedi); Genel Bakış kartı ve Yıl Sonu ekranı okur.
+    annual_review: dict[str, Any] | None = None
 
     @property
     def steps(self) -> dict[str, bool]:
@@ -158,7 +162,18 @@ def year_end_summary(*, on: date | None = None) -> YearEndSummary:
         # Havuzdaki son sınıf öğrencisi "ayrılan" grubundadır; son sınıf sayısında da yoktur.
         graduating_clear_students=max(0, son_sinif - sayilar.graduating_persons),
         counts=sayilar,
+        annual_review=_yil_sonu_raporu(yil),
     )
+
+
+def _yil_sonu_raporu(yil: SchoolYear | None) -> dict[str, Any] | None:
+    """Etkin yılın yıl sonu kütüphane raporunun kişisiz durumu (F8)."""
+    if yil is None:
+        return None
+    rapor: AnnualLibraryReview | None = AnnualLibraryReview.objects.filter(school_year=yil).first()
+    if rapor is None:
+        return None
+    return {"id": rapor.pk, "is_finalized": rapor.is_finalized}
 
 
 # ---------------------------------------------------------------------------

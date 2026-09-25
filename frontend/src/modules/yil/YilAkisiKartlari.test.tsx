@@ -81,6 +81,38 @@ describe("YilAkisiKartlari", () => {
     expect(screen.getByText("Bu yılın ders yılı henüz açılmadı.")).toBeInTheDocument();
   });
 
+  it("yıl sonu raporu kartı: hazırlanmadı · taslak · sonlandırılınca kart yok (F8)", async () => {
+    yilApiMock.akislar.mockResolvedValue(akislar());
+    const { unmount } = ciz();
+    expect(await screen.findByRole("heading", { name: "Yıl Sonu Raporu" })).toBeInTheDocument();
+    expect(screen.getByText("Bu ders yılının raporu henüz hazırlanmadı.")).toBeInTheDocument();
+    // Md. 12/1'e yalnız maddenin söylediği atfedilir (Kılavuz 2.4'ün cümlesi değil).
+    expect(
+      screen.getByText(
+        "Kaynaklar gözden geçirilir ve tespit edilen hususlar raporla okul müdürlüğüne bildirilir (Yönetmelik Md. 12/1).",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Yıl Sonu Raporu'nu aç" })).toHaveAttribute(
+      "href",
+      "/yil-sonu-raporu",
+    );
+    unmount();
+
+    yilApiMock.akislar.mockResolvedValue(
+      akislar({ yilSonu: { annual_review: { id: 4, is_finalized: false } } }),
+    );
+    const ikinci = ciz();
+    expect(await screen.findByText("Rapor taslak; sonlandırılmadı.")).toBeInTheDocument();
+    ikinci.unmount();
+
+    yilApiMock.akislar.mockResolvedValue(
+      akislar({ yilSonu: { annual_review: { id: 4, is_finalized: true } } }),
+    );
+    ciz();
+    expect(await screen.findByRole("heading", { name: "Yıl Sonu" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Yıl Sonu Raporu" })).not.toBeInTheDocument();
+  });
+
   it("pencere dışında ya da özet okunamazsa kart yok", async () => {
     yilApiMock.akislar.mockRejectedValue(new Error("x"));
     const { container } = ciz();

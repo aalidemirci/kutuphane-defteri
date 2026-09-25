@@ -278,11 +278,13 @@ class TestDosyaUclari:
         alindi = yanit.json()
         assert alindi["resolution_display"] == "Bedel teslim alındı"
         assert alindi["price_received_at"] is not None
-        # Okulun açık işi: dosya açık, kişinin açık işi değil; yalnız iki kapanış yolu.
+        # Okulun açık işi: dosya açık, kişinin açık işi değil; iki kapanış yolu ve kayıpta
+        # bedelden sonra bulunma (25.09.2026 kullanıcı kararı, F8 ekleri 14).
         assert alindi["is_open"] is True and alindi["is_person_open_work"] is False
         assert [s["label"] for s in alindi["allowed_resolutions"]] == [
             "Bedelle aynısı alındı",
             "Bedelle başka eser alındı",
+            "Bulundu (bedel teslim alınmıştı)",
         ]
         acik = istemci.get(DOSYA, {"open": "1"}).json()
         assert [d["id"] for d in acik["results"]] == [dosya["id"]]

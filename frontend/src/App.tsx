@@ -30,6 +30,9 @@ import HizliKayitPage from "./modules/kutuphane/HizliKayitPage";
 import IceAktarmaPage from "./modules/kutuphane/IceAktarmaPage";
 import KatalogPage from "./modules/kutuphane/KatalogPage";
 import PanelPage from "./modules/panel/PanelPage";
+import AyiklamaPage from "./modules/ayiklama/AyiklamaPage";
+import NadirEserlerPage from "./modules/ayiklama/NadirEserlerPage";
+import YilSonuRaporuPage from "./modules/ayiklama/YilSonuRaporuPage";
 import TeslimlerPage from "./modules/teslim/TeslimlerPage";
 import GecikmisOdunclerPage from "./modules/uyelik/GecikmisOdunclerPage";
 import IlisikListesiPage from "./modules/yil/IlisikListesiPage";
@@ -68,6 +71,9 @@ export default function App() {
               <Route path="/ilisik-listesi" element={<IlisikListesiPage />} />
               <Route path="/yil-sonu" element={<YilSonuPage />} />
               <Route path="/yil-basi" element={<YilBasiPage />} />
+              {/* F8: yıl sonu kütüphane raporu (Md. 12/1, E9); menüde yok, Genel Bakış'ın
+                  yıl sonu kartından ve Yıl Sonu'nun son adımından açılır. */}
+              <Route path="/yil-sonu-raporu" element={<YilSonuRaporuPage />} />
               {/* Katalog: eser ve nüsha listeleri, eser ayrıntısı, edinimler ve bağışlar. */}
               <Route path="/katalog" element={<KatalogPage />} />
               <Route path="/katalog/eser/:id" element={<EserDetayPage />} />
@@ -78,6 +84,10 @@ export default function App() {
               <Route path="/katalog/hizli-kayit" element={<HizliKayitPage />} />
               {/* Sırt ve barkod etiketi, basım kaydı, doğrulama, boş barkod aralığı (F4). */}
               <Route path="/katalog/etiketler" element={<EtiketlerPage />} />
+              {/* F8: ayıklama (Md. 12/1; TMY yolu, E7) ve nadir eserler (Md. 12/2, E8);
+                  Katalog'un sağ üstünden açılır. Yalnız yönetici kipinde. */}
+              <Route path="/katalog/ayiklama" element={<AyiklamaPage />} />
+              <Route path="/katalog/nadir-eserler" element={<NadirEserlerPage />} />
               {/* Ders yılı, şubeler, okul künyesi, güvenlik, güncelleme, Ağ Kataloğu. */}
               <Route path="/ayarlar" element={<AyarlarPage />} />
               {/* Ağ Doktoru (F5): Ağ Kataloğu denetimi ve belgeleri; yalnız yönetici kipinde. */}

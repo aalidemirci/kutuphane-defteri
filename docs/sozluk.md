@@ -78,16 +78,19 @@ iç kavramları (karar, faz, evrak kodları) yüzeye çıkmaz.
 | `Holiday` diğer türler | **resmî tatil**, **dini bayram**, **idari izin / diğer**; hepsinin üst adı **kapalı gün** (sayfa: "Kapalı Günler") | tatil günü (genel anlamda) | İdari izin kütüphanenin de kapalı olduğu gündür; iade tarihi hesabında resmî tatil gibi her zaman kapalı sayılır. Bu programın kuralıdır, TBK 93 kıyası altında anılmaz (`docs/mevzuat/BENIOKU.md` §4). Tahmini bayram tarihinde **"tahmini"** rozeti |
 | `Delivery` (U11) | **teslim**: "sınıf kitaplığına teslim", "öğretmene teslim"; **teslim alan** (**Sınıf kitaplığı** · **Öğretmen**); **belge no**; **beklenen dönüş**; geri dönüşü **geri alma** (masada ve görevli ekranında düğme **"Teslimden geri al"**); belgeler **Teslim listesi** · **Geri alma dökümü** | ödünç, emanet, zimmet, zimmetli, "teslim alındı" (geri alma anlamında; Md. 19 adımı **"Bedel teslim alındı"** bunun dışındadır), iade (geri alma anlamında), gecikme (teslimde) | **Teslim ödünç değildir**: Md. 18 sayı sınırı ve on beş günlük süre uygulanmaz, üyelik gerekmez, teslim alanın ödünç hakkından düşmez ("kalan hak" dili yok). Yalnız etkin ders yılının şubesine ya da aktif öğretmene; diğer personele teslim yapılmaz. Toplu teslim tek işlemdir (bir kitap reddedilirse hiçbiri). Nüsha **Sınıf kitaplığında** görünür (öğretmene teslimde de); kime teslim edildiği Ağ Kataloğunda ve görevliye görünmez. Beklenen dönüşün geçmesi gecikme değildir (rozet **"beklenen dönüş geçti"**). Şube teslim listesi Dayanıklı Taşınırlar Listesi işlevini görür (TMY 23/6'ya **kıyasen**); sayımdaki yerini sayım kurulu seçer (32/5'e kıyasen). Teslim verme yönetici kipinde, geri alma görevli kipinde de |
 | İlişik | **ilişik listesi**; **açık iş** ("kütüphaneyle açık işi olan kişi": iade edilmemiş ödünç, geri alınmamış teslim, çözülmemiş kayıp/hasar dosyası — **"Bedel teslim alındı"** dosyası hariç: o, kişinin değil **okulun açık işi**dir); **"Kütüphaneden ilişiği yoktur" belgesi** | borç, borçlu, ilişik kesme, ilişiği kesilmiştir, kara liste, yükümlülük (kullanıcı metninde; kod yorumunda serbest) | Karne ya da diplomanın ön koşulu diye SUNULMAZ; dayanağı yok (Md. 18 yalnız "iadesi sağlanır" der). Belgede ve ekranlarda "karne", "diploma" geçmez; kılavuz bunu tek bir olumsuz cümleyle söyler. Okuldan ayrılanlar listede kalır; sıra son sınıf → okuldan ayrılan → diğerleri. Ayrıntı §4.13 |
-| `LossDamageCase` | **kayıp** (eylem **"Kayıp bildir"**), **hasar** (eylem **"Hasar dosyası aç"**), **kayıp dosyası** / **hasar dosyası**; **sorumlu** ("Sorumlu üye", "Sorumlu notu"); **tespit tarihi**; **bedel belirlendi**, **bedel teslim alındı**, **o günkü piyasa bedeli** (yalnız kayıt); **okulun açık işi**; **kayıttan düşme önerisi**; belge **Kayıp/hasar tutanağı** | zayi, telef, borç, ceza, tahsil edildi, ödendi, tazminat, "kayıp ödünç" | Bedel seçenekleri yalnız ortaöğretimde (Md. 19). Program tahsilat yapmaz ve disiplin sürecini başlatmaz (OKY 164/1-g okulun işidir). Bedel iki adımdır (25.09.2026 kullanıcı kararı): **"Bedel belirlendi"** kişinin açık işini sürdürür; **"Bedel teslim alındı"** bitirir (ilişik listesinden çıkar, "Kütüphaneden ilişiği yoktur" belgesi basılabilir), dosya ise **okulun açık işi** olarak "Bedelle aynısı alındı" ya da "Bedelle başka eser alındı" ile kapanana dek açık kalır. İki adım da yalnız kayıttır ve dosyayı kapatmaz; ikincisi geri alınmaz. Kayıp bildirimi ödüncü ya da teslimi **Kayba dönüştü** ile kapatır; "Bulundu" onları yeniden açmaz. Kayıttan düşme burada yalnız önerilir; asıl işlem TMY yoludur. Öneri geri alınabilir: "Kayıttan düşme önerildi" ile kapanan kayıp dosyasında kitap bulunursa "Bulundu" seçilir ("Bedelle başka eser alındı"da seçilemez). Açık hasar dosyalı kitap kaybolunca hasar dosyası **Kayba dönüştü** ile kapanır. Dosyanın kişisi önce üyeliktir, üyelik yoksa teslim alan. Çözüm adları §4.12 |
+| `LossDamageCase` | **kayıp** (eylem **"Kayıp bildir"**), **hasar** (eylem **"Hasar dosyası aç"**), **kayıp dosyası** / **hasar dosyası**; **sorumlu** ("Sorumlu üye", "Sorumlu notu"); **tespit tarihi**; **bedel belirlendi**, **bedel teslim alındı**, **o günkü piyasa bedeli** (yalnız kayıt); **okulun açık işi**; **kayıttan düşme önerisi**; belge **Kayıp/hasar tutanağı** | zayi, telef, borç, ceza, tahsil edildi, ödendi, tazminat, "kayıp ödünç" | Bedel seçenekleri yalnız ortaöğretimde (Md. 19). Program tahsilat yapmaz ve disiplin sürecini başlatmaz (OKY 164/1-g okulun işidir). Bedel iki adımdır (25.09.2026 kullanıcı kararı): **"Bedel belirlendi"** kişinin açık işini sürdürür; **"Bedel teslim alındı"** bitirir (ilişik listesinden çıkar, "Kütüphaneden ilişiği yoktur" belgesi basılabilir), dosya ise **okulun açık işi** olarak "Bedelle aynısı alındı", "Bedelle başka eser alındı" ya da (kayıpta) "Bulundu (bedel teslim alınmıştı)" ile kapanana dek açık kalır. İki adım da yalnız kayıttır ve dosyayı kapatmaz; ikincisi geri alınmaz. Kayıp bildirimi ödüncü ya da teslimi **Kayba dönüştü** ile kapatır; "Bulundu" onları yeniden açmaz. Kayıttan düşme burada yalnız önerilir; asıl işlem TMY yoludur. Öneri geri alınabilir: öneriyle kapanan kayıp dosyasında nüsha henüz kayıttan düşülmemişse kitap bulununca "Bulundu" ("Bedelle başka eser alındı"da **"Bulundu (bedel teslim alınmıştı)"**) seçilir; kayıttan düşülmüşse kitap "Sayım fazlası (kayda giriş)" edinimiyle yeni nüsha olarak alınır. Bedel teslim alındıktan sonra bulunan kitapta teslim alınan bedelin iadesi okul yönetiminin kararıdır; program para tutmaz (25.09.2026 kullanıcı kararı). Kayıp ve hasar dosyasının kayıttan düşme önerisi ayıklamaya konmaz, sayımda düşülür. Açık hasar dosyalı kitap kaybolunca hasar dosyası **Kayba dönüştü** ile kapanır. Dosyanın kişisi önce üyeliktir, üyelik yoksa teslim alan. Çözüm adları §4.12 |
 | Onarım (`CopyRepair`, `IN_REPAIR`) | **onarım**; eylemler **"Onarıma gönder"** · **"Onarımdan dön"**; nüsha durumu **Onarımda**; hasar dosyasının çözümü **Onarıldı** | tamir, bakım, servis | Hasar dosyası olmadan da onarıma gönderilir (Eser Ayrıntısı → **Kayıp, Hasar ve Onarım** bölümü). Onarımdaki nüsha ödünç ve teslim edilmez. Onarımdan dönüş hasar dosyasını kendiliğinden kapatmaz |
 | Yıl akışları (§8.3) | **yıl sonu**, **yıl başı**, **kitap toplama**, **son sınıf**, **okuldan ayrılan** | yıl devri, yıl kapanışı, sınıf atlatma (program işi olarak), mezun listesi (belge adı olarak) | Son sınıf kademenin son sınıfıdır (4 · 8 · 12). Programda yeni yıla geçiş işlemi yoktur; sınıf atlama ve mezunların ayrılışı e-Okul aktarımı ve Ayrılış Havuzu'yla olur. Ekran ve adım adları §4.13 |
-| `WeedingBatch` | **ayıklama** (Md. 12) | silme, temizleme, imha (genel anlamda) | Kütüphane kararıdır |
-| TMY işlemi | **kayıttan düşme**; imha yalnız **"imha tutanağı"** (TMY 28/5) bağlamında; **devir** | silme | Ayıklama ≠ kayıttan düşme: biri komisyon kararı, öbürü taşınır işlemidir |
+| `WeedingBatch` | **ayıklama** (Md. 12); kayıt **ayıklama teklifi**; ekran ve belge adları §4.14 | silme, temizleme, imha (genel anlamda), hurdaya çıkarma, ayıklama partisi | Seçim ve Ayıklama Komisyonunun kararıdır (Md. 12/1); kayıttan düşme ve devir harcama yetkilisinin onayıyla yapılan taşınır işlemidir. Nüsha durumu yalnız teklif uygulanınca değişir |
+| TMY işlemi | **kayıttan düşme**; **hurdaya ayırma** (TMY 28); imha yalnız **"imha tutanağı"** ve onaydaki **"İmha kararı verildi"** kutusu (TMY 28/5) bağlamında; **devir** (TMY 24/2, 31), devralan **"devralacak okul ya da kurum"** | silme | Ayıklama ≠ kayıttan düşme: biri komisyon kararı, öbürü taşınır işlemidir. Resmî Kayıttan Düşme Teklif ve Onay Tutanağı ve Varlık İşlem Fişi TKYS'dedir; programın çıktıları onların hazırlığıdır. Kılavuz yolları sade dille ve fıkra atfıyla anlatır: yıpranma 27/1 (olağan yıpranmada sorumluluk aranmaz, 5/8; kusuru harcama yetkilisi değerlendirir, 27/3), hurdaya ayırma 28/1-28/4 (ekonomik değeri olan hurdada 28/8), devir 24/2 ve 31. Ayıklanan kitap kendiliğinden imha edilmez; imha kararı kalem kalem verilir |
+| Harcama yetkilisi ve TMY komisyonu (`approved_by_name`, `tmy_commission_members`) | **harcama yetkilisi**, **harcama yetkilisinin onayı** (adım **Harcama yetkilisi onayı**; alanlar **"Harcama yetkilisinin adı"**, **"Onay tarihi"**); kayıttan düşmeyi değerlendiren komisyon için alan **"Komisyon üyeleri"**; belgede onay bloğu **"OLUR"** | müdür onayı (harcama yetkilisinin onayı anlamında), amir onayı, Seçim ve Ayıklama Komisyonu (TMY komisyonu anlamında), sayım kurulu (bu anlamda) | Taşınır Mal Yönetmeliğindeki adı aynen (10/1-e, 28/4). İki ayrı komisyon vardır: ayıklamaya **Seçim ve Ayıklama Komisyonu** karar verir (Md. 12/1); hurdaya ayırmayı harcama yetkilisinin belirlediği, biri işin uzmanı **en az üç kişilik** komisyon değerlendirir (28/1); işin uzmanı "Komisyon üyeleri"nin ilk satırına yazılır ve belgede **"Komisyon üyesi (işin uzmanı)"** diye basılır. Yalnız 27/1 yolunda bu komisyon isteğe bağlıdır: durumu belgeleyen tutanak varsa harcama yetkilisi komisyon kurulmadan onaylayabilir (10/1-e); ayıklama tutanağının bu tutanak sayılmasını harcama yetkilisi değerlendirir — metinler bunu kesin hüküm gibi yazmaz ("onaylanabilir"). Ad ve üyeler kişi adıdır, şifreli saklanır. Onay tarihi imzalı belgenin tarihidir; komisyon kararından önce ve bugünden sonra olamaz |
+| El yazması ve nadir eser (`Copy.is_rare_or_manuscript`, `RareWorksSubmission`) | kutu **"El yazması / nadir eser"**; **el yazması ve nadir eser**; belge **El yazması ve nadir eserler listesi**; **Genel Müdürlük** (Destek Hizmetleri Genel Müdürlüğü, Md. 4/1-c); rozetler **Bildirildi** · **Bildirilmedi** | antika, değerli kitap, özel koleksiyon, arşiv (bu anlamda), nadir kitap envanteri | Md. 12/2: liste Seçim ve Ayıklama Komisyonunca tespit edilir ve Genel Müdürlüğe gönderilir. Nadir eser **ayıklanmaz**; işaret ödünç verilebilirliği değiştirmez. Liste "Ayıklama" türündeki karara bağlanır; gönderilmiş liste değişmez. Gönderilmiş ya da kararı bağlanmış (komisyonun tespit ettiği) listedeki nüshanın işareti kaldırılamaz; hiçbir listede ya da kararı bağlanmamış listede olan işaret veri giriş hatası olarak kaldırılabilir. Listedeki nüsha silinemez. Ekran adları §4.14 |
+| Yıl sonu kütüphane raporu (`AnnualLibraryReview`) | belge **yıl sonu kütüphane raporu**; ekran **Yıl Sonu Raporu**; alan **"Tespit edilen hususlar"**; eylemler **"Raporu hazırla"** · **"Raporu sonlandır"** · **"Sonlandırmayı geri al"** | faaliyet raporu (bu belge için), okuma raporu, istatistik raporu, öğrenci listesi | Md. 12/1 ve Uygulama Kılavuzu 2.4 (bağlayıcı değildir). Ders yılı başına tek rapordur; sonlandırma sayıları dondurur ve geri alınabilir. **Kişisel veri içermez** (kod kapısı): üye bazında bilgi, adlı sıralama ve şube × konu kırılımı yoktur; üye türü ve sınıf düzeyi kırılımında eşiğin ("Çok okunanlar için en az üye sayısı") altındaki grup "—" yazılır; imzada ad basılmaz. Tespit alanının yardımı: "Kaynakların durumu ve öneriler. Kişi adı yazmayın." Ekran ve belge adları §4.14 |
 | `Acquisition` | **edinim**, **edinim partisi**; **edinim yolu**: Bakanlık gönderimi · Satın alma · Bağış · Değişim · Sayım fazlası (kayda giriş) · Mevcut koleksiyon (programa aktarım) | alım, temin, kaynak girişi, sağlama (tek başına) | İlk dördü Md. 10/5'in saydığı yollardır; son ikisi kayıt içi girişlerdir ve öyle adlandırılır. Bağışçı/satıcı adı **"kaynak notu"**dur ve şifreli saklanır |
-| `CommissionDecision` | **Seçim ve Ayıklama Komisyonu**, **komisyon kararı** | kurul (bu anlamda) | Yönetmelikteki adı aynen |
-| `decision_type` | **karar türü**: Kaynak seçimi · Bağış değerlendirme · Ayıklama; kullanılmış kararda rozet **"Kullanımda"** | karar tipi, kategori | Tür bağlayıcıdır: bağış yalnız bağış değerlendirme kararıyla kataloglanır. Kullanılmış kararın türü değişmez, kaydı silinmez |
+| `CommissionDecision` | **Seçim ve Ayıklama Komisyonu**, **komisyon kararı**; alanlar **"Karar türü"** · **"Karar tarihi"** · **"Karar sayısı"** · **"Başkan adı"** · **"Katılımcılar"**; eylem **"Karar ekle"** | kurul (bu anlamda), ayıklama komisyonu (tek başına), seçim komisyonu (tek başına) | Yönetmelikteki adı aynen. Başkanı ilçe millî eğitim şube müdürüdür, katılamadığı durumlarda okul müdürü başkanlık eder (Md. 10/1); bileşimi Md. 4/1-ı'dadır (kılavuz üyeleri saymaz, bende gönderir). Program komisyonu kurmaz, kararını kaydeder; başkan ve katılımcı adları şifreli saklanır. TMY 28/1 komisyonu ayrı bir komisyondur (yukarıda "Harcama yetkilisi ve TMY komisyonu") |
+| `decision_type` | **karar türü**: Kaynak seçimi · Bağış değerlendirme · Ayıklama; kullanılmış kararda rozet **"Kullanımda"** ve altında kullanan kayıtların sayısı ("2 ayıklama teklifi · 1 nadir eserler listesi") | karar tipi, kategori | Tür bağlayıcıdır: bağış yalnız bağış değerlendirme kararıyla kataloglanır; ayıklama teklifi ve el yazması ve nadir eserler listesi yalnız "Ayıklama" kararına bağlanır. Kullanılmış kararın türü değişmez, kaydı silinmez |
 | `DonationIntake` | **bağış ön kaydı** | bağış listesi (tek başına), taslak | Komisyon kararına kadar nüsha açılmaz |
-| Bağış durumları | ön kayıt: **Karar bekliyor** · **Karar işlendi** · **İptal edildi**; kalem: **Kabul edildi** · **Reddedildi**; eylemler **"Komisyon kararını uygula"**, **"Kararı uygula"**, **"İptal et"** | onaylandı, kapandı, silindi | Karar geri alınamaz; onay diyaloğu kaç kalemin kabul, kaç kalemin ret edileceğini yazar. Reddedilen her kalemde **"ret gerekçesi"** zorunludur |
+| Bağış durumları | ön kayıt: **Karar bekliyor** · **Karar işlendi** · **İptal edildi**; kalem: **Kabul edildi** · **Reddedildi**; eylemler **"Komisyon kararını uygula"**, **"Kararı uygula"**, **"İptal et"**; kabul edilen kalemde seçici **"Katalogdaki karşılığı"** (**"… eserine nüsha ekle"** · **"Yeni eser aç"**) | onaylandı, kapandı, silindi, bağış kabul tutanağı | Karar geri alınamaz; onay diyaloğu kaç kalemin kabul, kaç kalemin ret edileceğini yazar. Reddedilen her kalemde **"ret gerekçesi"** zorunludur. Edinim tarihi boşsa komisyon kararının tarihi ile geliş tarihinin geç olanıdır. Bağışta "Birim fiyat" bağışçının belgesindeki değer ya da değer tespit komisyonunun belirlediği değerdir (TMY 13/2-c). Karar uygulanınca ön kaydın penceresinden **Bağış değerlendirme sonucu** basılır (25.09.2026 kullanıcı kararı). "Bağış kabul tutanağı" TMY'de bir belge değildir, kullanılmaz (tasarım F8 ekleri 13) |
 | `StockTake` | **sayım**; seçenekler **"TMY 32/3 durdurması"** ve **"sayım için hizmet arası"**; **sayım kurulu** | sayım kilidi, dondurma | İki seçenek ayrı adlarla ve tutanakta ayrı satırlarda geçer. **İade hiçbir durumda durmaz** |
 | Ağ kataloğu | **Ağ Kataloğu** (özel ad, büyük harfle) | **OPAC**, web sitesi, sunucu, LAN, portal | Kişisel veri göstermez; bunu "Hakkında" sayfası söyler |
 | Vitrin | **yeni gelenler**, **çok okunanlar** | popüler, en çok ödünç alınanlar | Çok okunanlarda sayı gösterilmez, yalnız sıra |
@@ -120,7 +123,7 @@ kimlikler (`id=…`, `pk`) de geçmez. Evrak kodunun yerine belgenin adı yazıl
 | E4 | İade hatırlatma pusulası · Gecikmiş ödünç listesi |
 | E5 | "Kütüphaneden ilişiği yoktur" belgesi · İlişik listesi |
 | E6 | Kayıp/hasar tutanağı |
-| E7 | Ayıklama belgeleri |
+| E7 | Ayıklama belgeleri: Ayıklama teklif listesi · Ayıklama tutanağı · Kayıttan düşme teklif listesi · İmha tutanağı · Devir listesi |
 | E8 | El yazması ve nadir eserler listesi |
 | E9 | Yıl sonu kütüphane raporu |
 | E10 | Sayım tutanağı |
@@ -129,7 +132,7 @@ kimlikler (`id=…`, `pk`) de geçmez. Evrak kodunun yerine belgenin adı yazıl
 | E13 | Kütüphane aydınlatma metni |
 | E14 | Kurtarma anahtarı çıktısı |
 | E15 | Teslim listesi · Geri alma dökümü |
-| E16 | Bağış ön kayıt listesi |
+| E16 | Bağış ön kayıt listesi · Bağış değerlendirme sonucu |
 | E17 | Alfabetik katalog dökümü |
 | E18 | Görev devri notu |
 | E19 | Masa kartı |
@@ -196,7 +199,7 @@ Düzenindedir; sekme adreste `?tab=` ile tutulur, böylece başka ekranlar ve
 kılavuz doğrudan sekmeye bağlanır. Kılavuzda ekran, sekme ve düğme adları
 buradaki ve ekrandaki metinle birebir yazılır ("Ayarlar → Güvenlik").
 
-*Aşağıdaki tablolar F7 sonundaki durumdur (25.09.2026); kaynak `AppShell.tsx`
+*Aşağıdaki tablolar F8 sonundaki durumdur (25.09.2026); kaynak `AppShell.tsx`
 (`NAV_ITEMS`, `PAGE_TITLES`), sayfaların h1'leri ve sekme tanımlarıdır.*
 
 ### 4.1 Sayfalar
@@ -211,6 +214,7 @@ buradaki ve ekrandaki metinle birebir yazılır ("Ayarlar → Güvenlik").
 | — | Gecikmiş Ödünçler | `/gecikmis-oduncler` | Menüde yoktur; Genel Bakış'taki **Gecikmiş Ödünçler** kartından açılır (kart yalnız gecikme varken görünür). İade hatırlatma pusulası ve gecikmiş ödünç listesi buradan basılır. Yalnız yönetici kipinde |
 | — | İlişik Listesi | `/ilisik-listesi` | Menüde yoktur; Genel Bakış'taki **İlişik Listesi** kartından açılır. Kütüphaneyle açık işi olan kişiler, sınıf kitaplıkları, ilişik listesi ve "Kütüphaneden ilişiği yoktur" belgesi (F7, §4.13). Sağ üstte **Yıl Sonu** ve **Yıl Başı** bağlantıları. Yalnız yönetici kipinde |
 | — | Yıl Sonu | `/yil-sonu` | Menüde yoktur; Genel Bakış'taki **Yıl Sonu** kartından (Mayıs-Haziran) ya da İlişik Listesi'nin sağ üstünden açılır. Adım adım ekran (§4.13). Yalnız yönetici kipinde |
+| — | Yıl Sonu Raporu | `/yil-sonu-raporu` | Menüde yoktur; Genel Bakış'taki **Yıl Sonu Raporu** kartından (yıl sonu penceresinde, rapor sonlandırılana dek) ya da Yıl Sonu ekranının son adımından açılır. Yıl sonu kütüphane raporu (Md. 12/1). Yalnız yönetici kipinde (F8, §4.14) |
 | — | Yıl Başı | `/yil-basi` | Menüde yoktur; Genel Bakış'taki **Yıl Başı** kartından (yıl başı penceresinde) ya da İlişik Listesi'nin sağ üstünden açılır. Adım adım ekran; kayıt yazmaz, işin yapıldığı ekrana götürür (§4.13). Yalnız yönetici kipinde |
 | Katalog | Katalog | `/katalog` | Eser ve nüsha listelerinin tek ekranı |
 | — | Eser Ayrıntısı | `/katalog/eser/:id` | Menüde yoktur; katalog listesindeki satıra tıklanarak açılır. Başlıkta modül adı geri bağlantısıdır ("Katalog / Eser Ayrıntısı") |
@@ -218,6 +222,8 @@ buradaki ve ekrandaki metinle birebir yazılır ("Ayarlar → Güvenlik").
 | — | Hızlı Kayıt | `/katalog/hizli-kayit` | Menüde yoktur; Katalog sayfasının sağ üstündeki **Hızlı Kayıt** bağlantısıyla açılır. Kitap elde, ISBN okutarak tek tek giriş |
 | — | Etiketler | `/katalog/etiketler` | Menüde yoktur; Katalog sayfasının sağ üstündeki **Etiketler** bağlantısıyla açılır. Sırt ve barkod etiketi basımı, basım kaydı, boş barkod aralığı, doğrulama okutması, şablon ve kalibrasyon. İçe aktarmanın **"Bu partinin etiketlerini bas"** kısayolu buraya gelir |
 | — | İçe Aktarma | `/katalog/ice-aktarma` | Menüde yoktur; Katalog sayfasının sağ üstündeki **İçe Aktarma** bağlantısıyla açılır. Toplu giriş, yapay zekâ köprüsü, çevrimdışı künye ve aktarım geçmişi |
+| — | Ayıklama | `/katalog/ayiklama` | Menüde yoktur; Katalog sayfasının sağ üstündeki **Ayıklama** bağlantısıyla açılır. Ayıklama teklifleri; `?teklif=<kimlik>` teklifi açar (iç kimlik ekrana yazılmaz, teklif ders yılı ve açılış tarihiyle tanınır). Başlıkta "Katalog / Ayıklama". Yalnız yönetici kipinde (F8, §4.14) |
+| — | Nadir Eserler | `/katalog/nadir-eserler` | Menüde yoktur; Katalog sayfasının ve Ayıklama'nın sağ üstündeki **Nadir Eserler** bağlantısıyla açılır. El yazması ve nadir eserler listeleri ve nadir eser işaretli nüshalar. Yalnız yönetici kipinde (F8, §4.14) |
 | Ayarlar | Ayarlar | `/ayarlar` | |
 | — | Ağ Doktoru | `/ag-doktoru` | Menüde yoktur; **Ayarlar → Ağ Kataloğu** sekmesindeki **Ağ Doktoru** bağlantısıyla açılır. Yalnız yönetici kipinde (görevli kipinde her adreste görevli ekranı durur) |
 | Kılavuz | Kullanım Kılavuzu | `/kilavuz` | |
@@ -256,6 +262,7 @@ kipine geç**, **Kilitle**.
 | Edinimler ve Bağışlar | **Edinim Partileri** (`partiler`) · **Bağış Ön Kayıtları** (`bagislar`) · **Komisyon Kararları** (`kararlar`) |
 | Teslimler | **Teslim Kayıtları** (`kayitlar`) · **Yeni Teslim** (`yeni`) · **Geri Alma** (`geri-alma`) |
 | Etiketler | **Basım Kuyruğu** (`kuyruk`) · **Basım Geçmişi** (`gecmis`) · **Boş Barkod Aralığı** (`bos-barkod`) · **Doğrulama Okutması** (`dogrulama`) · **Şablonlar ve Kalibrasyon** (`sablonlar`) |
+| Nadir Eserler | **Listeler** (`listeler`) · **Nadir Eser İşaretli Nüshalar** (`nushalar`) |
 | İçe Aktarma | **Excel Aktarımı** (`excel`) · **Yapay Zekâ Köprüsü** (`kopru`) · **Çevrimdışı Künye** (`cevrimdisi`) · **Aktarım Geçmişi** (`gecmis`) |
 | Ayarlar | **Ders Yılları** (`ders-yillari`) · **Kapalı Günler** (`kapali-gunler`) · **Şubeler** (`subeler`) · **Kütüphane Politikası** (`politika`) · **Bölümler** (`bolumler`) · **Okul Bilgileri** (`okul`) · **Güvenlik** (`guvenlik`) · **Güncelleme** (`guncelleme`) · **Ağ Kataloğu** (`ag-katalogu`) |
 
@@ -285,7 +292,9 @@ kapanmadıysa; son ödünç ve iadeler, "Kontrol ettim") · **Gecikmiş Ödünç
 Ödünçler) · **Ayrılış Havuzu** (yalnız havuz boş değilken: "N kişi ayrılış
 kararı bekliyor" → Kişiler → Ayrılış Havuzu) · **Yıl Sonu** (yalnız yıl sonu
 penceresinde — 1 Mayıs'tan 30 Haziran'a, ders yılı daha geç biterse bitişten iki
-hafta sonrasına dek; yalnız sayı → Yıl Sonu) · **Yıl Başı** (yalnız yıl başı
+hafta sonrasına dek; yalnız sayı → Yıl Sonu) · **Yıl Sonu Raporu** (yıl sonu
+penceresinde, etkin yılın raporu sonlandırılana dek: "Bu ders yılının raporu henüz
+hazırlanmadı." / "Rapor taslak; sonlandırılmadı." → Yıl Sonu Raporu) · **Yıl Başı** (yalnız yıl başı
 penceresinde — 15 Ağustos-31 Ekim ya da ders yılı başlangıcının çevresi — ve adımları
 bitmemişken → Yıl Başı) · **Kişiler** · **Ayarlar** · **İlişik Listesi** ·
 **Katalog Excel Şablonu** (bir sayfaya gitmez, şablonu indirir).
@@ -620,7 +629,15 @@ görünmez ve “Kütüphaneden ilişiği yoktur” belgesi basılabilir. Dosya 
 kalır; bedelle alınan kaynak kaydedilince kapanır."**; kayıttan düşme
 önerisiyle kapanmış kayıp dosyasında yalnız **"Bulundu"** ve açıklama **"Kayıttan düşme
 yalnız önerildi; nüsha hâlâ “Kayıp”. Kitap bulunduysa “Bulundu” seçin: öneri geri alınır ve
-nüsha rafa döner."**); bölüm **Onarım**
+nüsha rafa döner."**; "Bedelle başka eser alındı" ile kapanmış kayıp dosyasında yalnız
+**"Bulundu (bedel teslim alınmıştı)"** ve açıklama **"Kayıttan düşme yalnız önerildi; nüsha
+hâlâ “Kayıp”. Kitap bulunduysa “Bulundu (bedel teslim alınmıştı)” seçin: öneri geri alınır ve
+nüsha rafa döner; bedelle alınan eser kayıtta kalır."**; bedelden sonra bulunmada bilgi
+**"Teslim alınan bedelin kişiye iadesi ya da başka kaynak alımında kullanılması okul
+yönetiminin kararıdır; program para tutmaz."**); nüshası kayıttan düşülmüş öneri dosyasında
+bölüm **Bulunan kitap** (**"Nüsha kayıttan düşülmüş; kitap bulunursa bu dosyadan rafa dönmez.
+Kitabı “Sayım fazlası (kayda giriş)” yoluyla açılan bir edinimle, Eser Ayrıntısı'nda “Nüsha
+ekle” diyerek yeni nüsha olarak kaydedin."**); bölüm **Onarım**
 (**"Onarıma gönder"** / **"Onarımdan dön"**); **Kayıp/hasar tutanağı** basımı. Çözüm
 onayı pencerenin kendisidir: başlık **"“…” işlensin mi?"**, düğme **"İşle"**; yalnız
 "Bedel belirlendi"de alan **"O günkü piyasa bedeli (TL)"** (yardım **"Yalnız kayıt içindir;
@@ -632,7 +649,7 @@ program tahsilat yapmaz."**; teslim alınan bedel sonradan değişmez). Onarım 
 | Teslim durumu | **Teslimde** · **Geri alındı** · **Kayba dönüştü** | iade edildi, emanette, zimmette | `DeliveryStatus` ile birebir |
 | Teslim alan | **Sınıf kitaplığı** · **Öğretmen** | sınıf (tek başına), zimmetli | Teslim yalnız etkin ders yılının şubesine ya da aktif öğretmene yapılır |
 | Dosya türü | **Kayıp** · **Hasar** (pencere başlıkları "Kayıp dosyası" / "Hasar dosyası") | zayi, telef | `CaseType` ile birebir. Bir nüshanın aynı anda tek çözülmemiş dosyası olur |
-| Çözüm durumları | **Çözüm bekliyor** · **Bedel belirlendi** · **Bedel teslim alındı** · **Bulundu** · **Aynısı temin edildi** · **Onarıldı** · **Bedelle aynısı alındı** · **Bedelle başka eser alındı** · **Kayıttan düşme önerildi** · **Kayba dönüştü** | borç, ceza, tahsil edildi, ödendi, zayi, kayıttan düşüldü, bedel kaydedildi (iki adım ayrıdır) | `CaseResolution` ile birebir. Bedel yolları yalnız ortaöğretimde ve sırayla: "Bedel belirlendi" → "Bedel teslim alındı" → "Bedelle aynısı / başka eser alındı". Açık dosyalar "Çözüm bekliyor", "Bedel belirlendi" ve "Bedel teslim alındı"dır; kişinin açık işi yalnız ilk ikisidir. Kayıttan düşme burada yalnız öneridir. "Kayba dönüştü" düğme değildir: yalnız hasar dosyasında, kayıp bildiriminin kapattığı dosyada görünür |
+| Çözüm durumları | **Çözüm bekliyor** · **Bedel belirlendi** · **Bedel teslim alındı** · **Bulundu** · **Aynısı temin edildi** · **Onarıldı** · **Bedelle aynısı alındı** · **Bedelle başka eser alındı** · **Bulundu (bedel teslim alınmıştı)** · **Kayıttan düşme önerildi** · **Kayba dönüştü** | borç, ceza, tahsil edildi, ödendi, zayi, kayıttan düşüldü, bedel kaydedildi (iki adım ayrıdır), bedel iade edildi | `CaseResolution` ile birebir. Bedel yolları yalnız ortaöğretimde ve sırayla: "Bedel belirlendi" → "Bedel teslim alındı" → "Bedelle aynısı / başka eser alındı" ya da (kayıpta) "Bulundu (bedel teslim alınmıştı)" — sonuncusu "Bedelle başka eser alındı" ile kapanmış dosyada da, nüsha kayıttan düşülmemişse seçilir (25.09.2026 kullanıcı kararı). Açık dosyalar "Çözüm bekliyor", "Bedel belirlendi" ve "Bedel teslim alındı"dır; kişinin açık işi yalnız ilk ikisidir. Kayıttan düşme burada yalnız öneridir. "Kayba dönüştü" düğme değildir: yalnız hasar dosyasında, kayıp bildiriminin kapattığı dosyada görünür |
 | Ödünç durumu (F7) | **Kayba dönüştü** (Üyelik → Ödünç Kaydı satırında "kayba dönüştü") | kayıp ödünç, iptal | Kayıp bildirimiyle kapanan ödünç; sayı sınırına ve gecikmeye sayılmaz |
 | Teslim, dosya ve onarım iletileri | **"Teslim edilebilir."** (teslim listesine okutma ön denetimi) · **"Geri alındı."** · **"Bu kitap teslimde değil (…)."** · **"Bu kitap teslimde değil (Ödünçte). İade için dolaşım masasını kullanın."** · **"Teslim yalnız etkin ders yılının şubesine yapılır."** · **"Teslim yalnız sınıf kitaplığına ya da öğretmene yapılır; diğer personele teslim yapılmaz."** · **"Nüsha onarıma gönderildi."** · **"Nüsha onarımdan döndü; rafta."** · **"Onarıma yalnız raftaki nüsha gönderilir (…)."** · **"Onarımdaki nüsha için kayıp bildirilemez; önce onarımdan dönüşünü işleyin."** · **"Ödünçteki nüsha için önce iade alın; hasar dosyası iadeden sonra açılır."** · **"Teslimdeki nüsha için önce geri alın; hasar dosyası geri almadan sonra açılır."** · silme engelleri **"Bu şubede N açık teslim var; önce geri alın."**, **"Bu şubenin tesliminden doğan N çözülmemiş kayıp/hasar dosyası var; önce dosyayı çözün."** ve **"Bu kişiye kütüphaneden teslim yapılmış; kaydı silinemez. Okuldan ayrıldıysa “Ayrıldı olarak işaretle” eylemini kullanın."** · birleştirme engeli **"Birleştirilecek kaydın N açık teslimi var; teslim yalnız öğretmene yapılır. Kalacak kaydın üye türü “Öğretmen” olmalıdır ya da önce teslimleri geri alın."** | iade edildi (geri alma iletisi olarak), teslim alındı, tamir edildi | Kaynak `services/deliveries.py`, `services/loss_damage.py`, `views_teslim.py`; hiçbiri kişi adı taşımaz. Görevli kipindeki geri almada da aynı iletiler yazılır, teslim alanın kimliği yazılmaz |
 
@@ -669,7 +686,8 @@ iki kartı ekrandaki başlığıyla anar; belgelerin kendisini cümle içinde §
 ("İlişik listesi", "Kütüphaneden ilişiği yoktur" belgesi) anlatır.
 
 **Yıl Sonu** (sayfa). Adım rayı: **Son Ödünç Tarihleri** · **Kitap Toplama** ·
-**Son Sınıflar ve Ayrılanlar** · **İlişik ve Belgeler**; düğmeler **"Geri"**,
+**Son Sınıflar ve Ayrılanlar** · **İlişik ve Belgeler** · **Yıl Sonu Raporu** (F8; adım
+kayıt yazmaz, bağlantısı **"Yıl Sonu Raporu'nu aç"**, rapor sonlandırılınca tamamdır); düğmeler **"Geri"**,
 **"Devam"**. Adım 1'de alanlar **"Yıl sonu son ödünç tarihi"** ve **"Son sınıflar için
 son ödünç tarihi"** (yardım "İsteğe bağlı; daha erken bir tarih."), düğme **"Kaydet"**,
 ileti **"Son ödünç tarihleri kaydedildi."**; eski yılın tarihi için **"Kayıtlı … son
@@ -698,6 +716,82 @@ Genel Bakış kartının bağlantısı **"Yıl Başı'nı aç"**.
 | Yıl sonu pusulası | belge adı **İade hatırlatma pusulası** (E4 biçimi); iç başlık **"İADE HATIRLATMASI"**, kaynak başlığı **"İADE EDİLECEK KAYNAKLAR"**; metin **"Ders yılı sona eriyor. Kütüphaneden ödünç aldığınız, sağda yazılı kaynakları ders yılı bitmeden (ya da: en geç gg.aa.yyyy tarihine kadar) kütüphaneye getirin."** | ihtar, son uyarı | Kişinin BÜTÜN açık ödünçleri (gecikmemişler dahil); dış yüz E4'le aynıdır |
 | E15 belgeleri | **"TESLİM LİSTESİ"** (şubede not: "… Dayanıklı Taşınırlar Listesinin işlevini görür (Taşınır Mal Yönetmeliği md. 23/6'ya kıyasen). Teslim ödünç değildir."; imza **"Teslim eden — Kütüphane yöneticisi"** / **"Teslim alan — Sınıf kitaplığı sorumlusu"** ya da **"— Öğretmen"**) · **"GERİ ALMA DÖKÜMÜ"** (durumlar **"Geri alındı · gg.aa.yyyy"** · **"Teslimde"** · **"Kayba dönüştü · gg.aa.yyyy"**; özet **"N kitap geri alındı · N kitap teslimde · N kitap kayba dönüştü"**) | zimmet, emanet | Şubenin güncel teslim listesi de basılabilir (Sınıf Kitaplıkları kartı) |
 | E6 belgesi | başlık **"KAYIP/HASAR TUTANAĞI"**; bölümler **KAYNAK** · **İLGİLİ KİŞİ** · **ÇÖZÜM**; imza **Kütüphane yöneticisi** · **İlgili kişi** · **Okul müdürü**; bedel **"… TL (kayıt); gg.aa.yyyy tarihinde belirlendi, gg.aa.yyyy tarihinde teslim alındı"** (iki adımın tarihleri; teslim alınmamışsa yalnız ilki) | zayi, telef, borç, ceza, tahsil edildi | Md. 19 alıntısı ve **"Bu tutanak bir ödeme ya da tahsilat belgesi değildir."** YALNIZ ortaöğretimde |
+
+### 4.14 Ayıklama, nadir eser ve yıl sonu raporu ekranlarının ve belgelerinin adları
+
+Kılavuz bu adları birebir kullanır; ekrandaki metin değişirse buradaki de değişir
+(kaynak `frontend/src/modules/ayiklama`, iletiler `services/weeding.py`,
+`services/rare_works.py`, `services/annual_review.py`, belgeler
+`apps/kutuphane/komisyon_belgeleri.py` ve `yil_raporu_belgesi.py`). F8'de eklendi.
+
+**Ayıklama** (sayfa). Liste: süzgeç "Durum", düğme **"Yeni teklif"**; tablo Ders yılı ·
+Açılış · Durum · Kalem · Kayıttan düşme · devir · Komisyon kararı. Teklif ayrıntısı:
+başlık **"Ayıklama teklifi · <ders yılı> · gg.aa.yyyy"**, dönüş düğmesi **"Tekliflere
+dön"**, adım rayı **Taslak** · **Komisyona sunuldu** · **Komisyon kararı** · **Harcama
+yetkilisi onayı** · **Uygulandı**; bilgi satırları Ders yılı · Kalem · Komisyon kararı ·
+Harcama yetkilisinin onayı · Komisyon üyeleri · İmha kararı · Uygulanma. Eylemler adıma
+göre: **"Kalem ekle"** · **"Komisyona sun"** (onay "Teklif komisyona sunulsun mu?") ·
+**"Teklifi sil"** (yalnız taslak) · **"Komisyon kararını bağla"** · **"Harcama yetkilisinin
+onayını işle"** · **"Uygula"** (onay "Teklif uygulansın mı?" + ikinci doğrulama kutusu
+"Harcama yetkilisinin onayını ve belgelerin imzalandığını denetledim.") · **"Teklifi geri
+çek"** (onay "Teklif geri çekilsin mi?") · **"İptal et"** (pencere "Teklif iptal edilsin
+mi?", alan "İptal gerekçesi (isteğe bağlı)"). Bölüm **Kalemler** (tablo Barkod · Kaynak adı ·
+Gerekçe · TMY yolu · Kalem durumu; satırda **"Düzenle"** ve **"Çıkar"** yalnız taslakta,
+sunulmuş teklifin devir kaleminde **"Devralacak kurum"**; devralacak kurum yoksa
+**"Devralacak kurum yazılmadı"**). Kart **Ayıklama
+Belgeleri** (belge başına "Önizle" · "PDF'i indir", devir listesinde ayrıca **"Excel'i
+indir"**; basılamayan belgenin yanında sunucunun nedeni, ör. "Komisyon kararı bağlandıktan
+sonra basılır.").
+
+Pencereler: **Kalem ekle** (alanlar "Ayıklama gerekçesi", "TMY yolu" — gerekçeden
+kendiliğinden, "Uyulmayan ölçüt" — yalnız 12/1-ç'de, "Devralacak okul ya da kurum" — yalnız
+devirde, "Kütüphane etiketleri"; bölüm **Aday Nüshalar** (kutu "Ara", sayaç "N nüsha
+seçildi"), alttaki iki bilgi kutusu **"Kayıp nüshaların kayıttan düşme önerileri"** ve
+**"Hasar dosyalarının kayıttan düşme önerileri"** (seçilemez; ileti **"Hasar dosyasında
+kayıttan düşme önerilen nüsha ayıklamaya konmaz (Md. 12/1 gerekçelerinden değildir); sayımda
+kayıttan düşülür."** — 25.09.2026 kullanıcı kararı); düğme **"Teklife ekle (N)"**; engelli
+nüshalar liste olarak) ·
+**Kalemi düzenle** / **Devralacak kurumu düzenle** · **Komisyon kararını bağla** (alan
+"Komisyon kararı" — yalnız "Ayıklama" türü; kalem başına kutu **"Komisyon ayıklanmasına
+karar vermedi"** ve "Gerekçe"; düğme **"Kararı bağla"**) · **Harcama yetkilisinin onayı**
+(alanlar "Harcama yetkilisinin adı", "Onay tarihi", "Komisyon üyeleri"; kutu **"İmha kararı
+verildi (TMY md. 28/5)"** yalnız hurdaya ayırma yolunda; kalem başına kutu **"Onaylanmadı"**
+ve "Gerekçe"; imha kararı işaretlenince liste **"İmha kararının kapsadığı kalemler"** — kalem
+başına kutu, varsayılan seçili; düğme **"Onayı işle"**). Kalem tablosunda rozet **"Nadir eser
+— ayıklanamaz"** ve kalem satırı **"İmha kararı (TMY 28/5)"**. "İmha" sözcüğü ekranda yalnız bu
+kutuda, bu listede, bilgi satırlarında ve İmha tutanağının adında geçer (28/5 bağlamı).
+
+**Nadir Eserler** (sayfa). Sekmeler **Listeler** · **Nadir Eser İşaretli Nüshalar**.
+Listeler: **"Yeni liste"**; tablo Ders yılı · Durum · Eser · Komisyon kararı · Gönderim;
+pencere başlığı belge adıdır (**El yazması ve nadir eserler listesi**): "Komisyon kararı"
+seçicisi ve **"Kararı kaydet"**, bölüm **Listedeki Eserler** (satırda "Çıkar"), bölüm
+**Bildirilmemiş Nadir Eserler** (**"Seçilenleri listeye ekle (N)"**), bölüm **Genel
+Müdürlüğe Gönderim** (alanlar "Gönderim tarihi", "Gönderme yazısının sayısı (isteğe
+bağlı)", düğme **"Gönderildi olarak işaretle"**, onay "Liste gönderildi olarak işaretlensin
+mi?"), **"Listeyi sil"** (yalnız hazırlanan listede). Nüshalar sekmesi: kutu **"Yalnız
+bildirilmemişler"**, rozet **"Bildirildi"** / **"Bildirilmedi"**.
+
+**Yıl Sonu Raporu** (sayfa). Etkin yılın raporu yoksa kart **"<ders yılı> ders yılının
+raporu henüz hazırlanmadı."** ve **"Raporu hazırla"**; birden çok raporda seçici "Ders
+yılı". Alanlar **"Sayı"**, **"Tarih"**, **"Tespit edilen hususlar"** (yardım **"Kaynakların
+durumu ve öneriler. Kişi adı yazmayın."**); düğmeler **"Kaydet"**, **"Raporu sonlandır"**
+(onay "Rapor sonlandırılsın mı?"), **"Sonlandırmayı geri al"** (onay "Sonlandırma geri
+alınsın mı?"); rozet **Taslak** / **"Sonlandırıldı · gg.aa.yyyy"**; kart **Rapordaki
+Sayılar** (kişisiz); bilgi **"Raporu yeni ders yılı tanımlandıktan sonra sonlandırmanız önerilir; Haziran'da sonlandırırsanız yaz aylarındaki işler (ör. Ağustos'taki ayıklama) bu rapora girmez. Gerekirse sonlandırmayı geri alıp yeni ders yılı tanımlandıktan sonra yeniden sonlandırın."** (dönem kuralı değişmedi — 25.09.2026 kullanıcı kararı). Sağ üstte **Yıl Sonu** ve **İlişik Listesi** bağlantıları.
+
+| Kavram | Kullanılır | Kullanılmaz | Not |
+|---|---|---|---|
+| Teklif durumları | **Taslak** · **Komisyona sunuldu** · **Komisyon kararı bağlandı** · **Harcama yetkilisi onayladı** · **Uygulandı** · **İptal edildi** | onaylandı (tek başına), kapandı, silindi | `WeedingBatchStatus` ile birebir. Adım rayında kısa adlar ("Komisyon kararı", "Harcama yetkilisi onayı") kullanılır |
+| Ayıklama gerekçesi | **Aşırı kullanımdan yıpranmış** · **Bilimsel değeri kalmamış** · **Kurumun düzeyine uygun değil** · **10. maddedeki ölçütlere uygun değil** | eskimiş, işe yaramaz, hurda | `WeedingReason` ile birebir; Md. 12/1'in a-ç bentleri (ekranda bentle birlikte, ör. "(Md. 12/1-a)"). Yaş ve gelişim düzeyine uygunsuzluk (10/1-b) "Kurumun düzeyine uygun değil"dedir ve devredilir |
+| Uyulmayan ölçüt | **Türk millî eğitiminin genel amaçları ve temel ilkelerine uygun değil** · **Millî, manevi, kültürel, ahlâki ve insani değerlere uygun değil** · **Dengeli ve sağlıklı kişilik gelişimini desteklemiyor** · **Türkçenin doğru ve güzel kullanımını desteklemiyor** · **Eleştirel ve özgün düşünme becerilerini desteklemiyor** · **Farklı okuryazarlıkları desteklemiyor** · **Kütüphanede bulundurulamaz (Md. 10/4)** | — | Yalnız "10. maddedeki ölçütlere uygun değil" gerekçesinde; 10/1-b listede YOKTUR (sunucu ve DB kısıtı reddeder) |
+| TMY yolu | **Kullanılmaz hâle gelme nedeniyle kayıttan düşme (TMY 27/1)** · **Hurdaya ayırma nedeniyle kayıttan düşme (TMY 28)** · **Başka bir MEB okuluna devir (TMY 24/2)** · **Başka bir kamu idaresine bedelsiz devir (TMY 31)** | imha (yol adı olarak), hurdaya çıkarma, bağış (devir anlamında) | `WeedingTmyPath` ile birebir; gerekçeden kendiliğinden gelir (tasarım §10 E7 tablosu). Belgelerde kısa biçim: "Kayıttan düşme (TMY md. 27/1)", "Hurdaya ayırma (TMY md. 28)", "Devir: MEB okulu (TMY md. 24/2)", "Devir: başka kamu idaresi (TMY md. 31)" |
+| Kalem durumu | **Teklif listesinde** · **Komisyon ayıklanmasına karar vermedi** · **Onaylanmadı** · **Uygulandı** | reddedildi, silindi | `WeedingItemState` ile birebir. Dışarıda bırakılan kalem silinmez, gerekçesiyle belgede ayrı tabloda durur |
+| Nadir eser listesi durumu | **Hazırlanıyor** · **Genel Müdürlüğe gönderildi** | onaylandı, kapandı | `RareWorksSubmissionStatus` ile birebir. Genel Müdürlük, Destek Hizmetleri Genel Müdürlüğüdür (Md. 4/1-c) |
+| E7 belgeleri | başlıklar **"AYIKLAMA TEKLİF LİSTESİ"** · **"AYIKLAMA TUTANAĞI"** · **"KAYITTAN DÜŞME TEKLİF LİSTESİ"** (alt başlık "Kayıttan Düşme Teklif ve Onay Tutanağına esas hazırlık çıktısı") · **"İMHA TUTANAĞI"** · **"DEVİR LİSTESİ"** (+ Excel); imza **"Teklif eden — Kütüphane yöneticisi"**, **"SEÇİM VE AYIKLAMA KOMİSYONU"** (Komisyon başkanı · Üye), **"KOMİSYON"** (Komisyon üyesi; hurdaya ayırmada ilk satır **Komisyon üyesi (işin uzmanı)**), **"OLUR"** (Harcama yetkilisi), **"Devreden — Kütüphane yöneticisi"** / **"Devralan — …"** | kayıttan düşme tutanağı (resmî tutanak anlamında), VİF, hurda listesi | Resmî Kayıttan Düşme Teklif ve Onay Tutanağı ve Varlık İşlem Fişi TKYS'dedir; dipnot bunu söyler. "İmha" yalnız İmha tutanağındadır (testli). İmha tutanağı şablondur, yalnız imha kararının kapsadığı kalemleri basar: imha tarihi, yeri ve yöntemi elle yazılır. Kalemler yalnız Md. 12/1 gerekçelidir: kayıp ve hasar dosyasının kayıttan düşme önerisi ayıklamaya konmaz, sayımda kayıp/hasar tutanağıyla düşülür (25.09.2026 kullanıcı kararı). Kurumu yazılmamış devir kaleminde künye **"Yazılmadı"**, imza **"Devralan okul ya da kurum"** |
+| E8 belgesi | başlık **"EL YAZMASI VE NADİR ESERLER LİSTESİ"**; Md. 12/2 alıntısı; imza **"SEÇİM VE AYIKLAMA KOMİSYONU"** | nadir kitap envanteri | Karar bağlanmamışsa imza satırları boştur |
+| E9 belgesi | **"Sayı :"**, tarih, **"Konu : Yıl sonu kütüphane raporu (<ders yılı> ders yılı)"**, muhatap **"OKUL MÜDÜRLÜĞÜNE"**, bölümler **1. TESPİT EDİLEN HUSUSLAR** · **2. KOLEKSİYON ÖZETİ (RAPOR TARİHİNDE)** · **3. YIL İÇİNDE KAZANDIRILAN KAYNAKLAR** · **4. AYIKLANAN VE DEVREDİLEN KAYNAKLAR** · **5. ÖDÜNÇ İSTATİSTİĞİ**, kapanış **"Bilgilerinize arz ederim."**, imza **Kütüphane yöneticisi** (ad basılmaz); taslakta **"TASLAK — Rapor sonlandırılmadı; sayılar basım anındaki kayıtlardandır."** | okuma raporu, öğrenci listesi | KİŞİSEL VERİ YOK (testli): eşiğin altındaki grup "—" yazılır; toplamdan geri hesaplanamasın diye gerekirse bir grup daha gizlenir (tamamlayıcı gizleme); aktif üye sayısı da eşiğin altındaysa "—". Kazandırılan yalnız Md. 10/5 yollarıdır; **"Kayıt içi girişler (kazandırılan sayılmaz)"** ayrı alt başlıktır |
+| E16 belgesi | başlık **"BAĞIŞ ÖN KAYIT LİSTESİ"**; Md. 10/3 alıntısı; sütun **"Kabul / Ret"** (komisyonda doldurulur); imza **"Hazırlayan — Kütüphane yöneticisi"** | bağış kabul tutanağı | Kararın sonucu bu listeye yazılmaz; onu **Bağış değerlendirme sonucu** verir |
+| Bağış değerlendirme sonucu (E16) | başlık **"BAĞIŞ DEĞERLENDİRME SONUCU"**; künye Geliş tarihi · Bağışçı · Seçim ve Ayıklama Komisyonu kararı · Edinim tarihi · Sonuç (**"Kabul: … · Ret: …"**); tablolar **"KABUL EDİLEN KAYNAKLAR"** · **"REDDEDİLEN KAYNAKLAR"** (sütun **"Ret gerekçesi"**); Md. 10/3 alıntısı; TMY 16/1 ve 13/2-c notu; imza **"Hazırlayan — Kütüphane yöneticisi"**; dipnot TKYS | bağış kabul tutanağı, bağış tutanağı, kabul belgesi | 25.09.2026 kullanıcı kararı (tasarım F8 ekleri 13). Yalnız komisyon kararı uygulanmış ön kayıtta basılır (öncesinde **"Komisyon kararı uygulandıktan sonra basılır."**). Taşınır kayıt yetkilisinin Varlık İşlem Fişine dayanak ve bağışçıya bilgidir; resmî belge değildir. TMY'de "bağış kabul tutanağı" diye bir belge yoktur — kılavuz bunu tek olumsuz cümleyle söyler |
 
 ## 5. Kişisel veri ve metin
 
@@ -739,3 +833,14 @@ Genel Bakış kartının bağlantısı **"Yıl Başı'nı aç"**.
   notuna sağlık ya da aile bilgisi yazılmaz.
 - Ağ kataloğunun hiçbir sayfasında üye, ödünç, iade tarihi ya da kişi adı
   geçmez. "Hakkında" sayfası bunu açıkça söyler.
+- Yıl sonu kütüphane raporu kişisel veri içermez: üye bazında bilgi, adlı
+  sıralama ve şube × konu kırılımı yoktur; eşiğin altındaki grup "—" yazılır ve
+  basılan toplamdan çıkarılarak bulunamasın diye gerekirse bir grup daha gizlenir;
+  imzada ad basılmaz. "Tespit edilen hususlar" serbest metindir ve program
+  onu denetleyemez: ekran ve kılavuz oraya kişi adı yazılmamasını söyler.
+- Ayıklama belgelerinde ve nadir eserler listesinde geçen adlar yalnız
+  komisyon başkanı, katılımcılar, TMY komisyonu üyeleri ve harcama
+  yetkilisidir (şifreli alanlardan, yalnız belgenin kendisine çözülür);
+  kalemlerde üye ya da ödünç bilgisi yoktur. Devralacak kurum okulun ya da
+  kurumun adıdır, kişi adı yazılmaz. Bağış ön kayıt listesi ve Bağış
+  değerlendirme sonucu yalnız bağışçının adını taşır (aynı biçimde şifreli alandan).

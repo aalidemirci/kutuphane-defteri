@@ -10,6 +10,10 @@
 //    pusulası (kişinin BÜTÜN açık ödünçleri) ve sınıf kitaplıkları.
 // 3. Son sınıflar ve okuldan ayrılanlar — açık ödünç ve teslim listesi (ilişik listesi).
 // 4. İlişik ve belgeler — mezuniyetten önce "Kütüphaneden ilişiği yoktur" belgeleri.
+// 5. Yıl sonu raporu (F8) — Md. 12/1: kaynaklar gözden geçirilir, tespit edilen hususlar
+//    raporla okul müdürlüğüne bildirilir. Adım kayıt yazmaz; Yıl Sonu Raporu ekranına
+//    götürür. "Tamam" işareti rapor sonlandırılınca konur (sunucunun `steps`'ine girmez,
+//    `annual_review` alanından okunur).
 //
 // Ekranın hiçbir yerinde belge başka bir işlemin ön koşulu diye sunulmaz (§8.3).
 
@@ -33,6 +37,7 @@ import { useSnackbar } from "../../ui/SnackbarProvider";
 import Stepper from "../../ui/Stepper";
 import type { StepperItem } from "../../ui/Stepper";
 import TextField from "../../ui/TextField";
+import { YIL_SONU_RAPORU_ADRESI } from "../ayiklama/api";
 import { kutuphaneApi } from "../kutuphane/api";
 import { PdfDugmeleri } from "../kutuphane/etiketOrtak";
 import { subeOku, useSubeSecenekleri } from "../uyelik/ortak";
@@ -61,12 +66,23 @@ import {
 /** Kitap Toplama adımındaki listenin GÖRÜNÜR başlığı (kılavuz ve sözlük bu adla anar). */
 export const TOPLAMA_TABLOSU = "Toplanacak kitaplar";
 
-const ADIMLAR: Array<{ key: YilSonuAdimi; label: string; icon: string }> = [
+/** Beşinci adım (F8) sunucunun adım işaretlerinde yoktur; rapor durumundan türer. */
+type Adim = YilSonuAdimi | "review";
+
+const ADIMLAR: Array<{ key: Adim; label: string; icon: string }> = [
   { key: "dates", label: "Son Ödünç Tarihleri", icon: "event_busy" },
   { key: "collection", label: "Kitap Toplama", icon: "assignment_return" },
   { key: "graduating", label: "Son Sınıflar ve Ayrılanlar", icon: "school" },
   { key: "clearance", label: "İlişik ve Belgeler", icon: "verified" },
+  { key: "review", label: "Yıl Sonu Raporu", icon: "summarize" },
 ];
+
+/** Adımın "tamam" işareti: dört adım sunucudan, rapor adımı raporun sonlandırılmasından. */
+function adimTamam(ozet: YilSonuOzeti | null, key: Adim): boolean {
+  if (ozet === null) return false;
+  if (key === "review") return ozet.annual_review?.is_finalized ?? false;
+  return ozet.steps[key];
+}
 
 const PAGE_SIZE = 50;
 
@@ -79,7 +95,7 @@ export default function YilSonuPage() {
     key: a.key,
     label: a.label,
     icon: a.icon,
-    status: i === adim ? "current" : ozet?.steps[a.key] ? "done" : "upcoming",
+    status: i === adim ? "current" : adimTamam(ozet, a.key) ? "done" : "upcoming",
   }));
 
   return (
@@ -115,6 +131,7 @@ export default function YilSonuPage() {
           {adim === 1 && <ToplamaAdimi ozet={ozet} />}
           {adim === 2 && <SonSiniflarAdimi ozet={ozet} />}
           {adim === 3 && <IlisikAdimi ozet={ozet} />}
+          {adim === 4 && <RaporAdimi ozet={ozet} />}
           <div className="flex flex-wrap justify-between gap-2">
             <Button
               variant="outlined"
@@ -549,6 +566,36 @@ function IlisikAdimi({ ozet }: { ozet: YilSonuOzeti }) {
           />
         </div>
       </div>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 5. Yıl sonu raporu (F8 — Md. 12/1, E9)
+// ---------------------------------------------------------------------------
+
+function RaporAdimi({ ozet }: { ozet: YilSonuOzeti }) {
+  const rapor = ozet.annual_review;
+  const durum =
+    rapor === null
+      ? "Bu ders yılının raporu henüz hazırlanmadı."
+      : rapor.is_finalized
+        ? "Rapor sonlandırıldı; sayılar dondurulmuş."
+        : "Rapor taslak; sonlandırılmadı.";
+  return (
+    <Card elevation={0} className="space-y-3 p-[var(--kd-panel-padding)] shadow-elevation-1">
+      <AdimBasligi
+        sira={5}
+        baslik="Yıl Sonu Raporu"
+        tamam={rapor?.is_finalized ?? false}
+        durum={durum}
+      />
+      <p className="max-w-3xl text-body-medium text-on-surface">
+        Ders yılı sonunda kütüphane kaynakları gözden geçirilir ve tespit edilen hususlar raporla
+        okul müdürlüğüne bildirilir (Yönetmelik Md. 12/1). Rapor kitap durumunu, yıl içinde
+        kazandırılan, ayıklanan ve devredilen kaynakları ve kişisiz ödünç sayılarını taşır.
+      </p>
+      <MetinBaglantisi to={YIL_SONU_RAPORU_ADRESI}>Yıl Sonu Raporu'nu aç</MetinBaglantisi>
     </Card>
   );
 }

@@ -121,6 +121,35 @@
 // "zayi", "telef", "zimmet", "emanet", "borç", "ilişik kesme", "tahsil edildi" ve
 // "yıl devri" kılavuzda geçmez.
 //
+// F8 iki bölüm yazar ve ikisi de Yıl Sonu ve Yıl Başı'nın ardından gelir (ayıklama
+// kılavuzun takviminde Ağustos'un bakım işidir, rapor ders yılının sonudur):
+// - "Ayıklama ve Nadir Eserler" (Md. 12, tasarım §10 E7): ne ayıklanır (Md. 12/1 alıntısı) →
+//   "Ayıklama kayıttan düşme değildir" (sözlük: ayıklama ≠ kayıttan düşme; komisyon kararı
+//   ile harcama yetkilisinin onayı iki ayrı adım) → "Seçim ve Ayıklama Komisyonu ve
+//   kararları" (Md. 10/1 alıntısı; üç karar türü ve neye bağlandıkları; bağış kararı ve
+//   toplu kataloglama özetle, adımları Katalog bölümünde; kataloglama taşınır kaydı değildir
+//   — TMY 16/1; hurdaya ayırmayı değerlendiren TMY 28/1 komisyonu ayrı komisyondur) →
+//   gerekçeden TMY yoluna sade dille (E7 tablosu; 27/1 · 5/8 · 27/3, 28/1 · 28/4, 24 · 24/2 ·
+//   31; 10/1-b devredilir, hurdaya ayrılamaz; imha yalnız 28/5 bağlamında) → teklif adım adım
+//   (ekrandaki adlarla) → konamayan kitaplar ve kayıp nüshanın önerisi → belgeler ("imha"
+//   yalnız İmha tutanağının adında ve 28/5 bağlamında) → el yazması ve nadir eserler (Md.
+//   12/2 alıntısı; Genel Müdürlük md. 4/1-c; adımlar ekrandaki adlarla).
+// - "Yıl Sonu Raporu" (Md. 12/1 ve Uygulama Kılavuzu 2.4 alıntısı, E9): hazırla → alanlar
+//   ("Kişi adı yazmayın.") → basım (resmî yazı düzeni, ad basılmaz) → sonlandır/geri al;
+//   rapor kişisizdir ve eşik "Çok okunanlar için en az üye sayısı"dır.
+// Katalog bölümündeki "sonraki sürüm" sözleri kalktı: nadir eser ve ayıklama kararı artık
+// işliyor; bağış kararına bağış ön kayıt listesi, edinim tarihinin kuralı ve katalogdaki
+// karşılık seçimi eklendi. Adlar `modules/ayiklama` ve `modules/kutuphane/BagisPaneli`
+// sabitlerinden. Komisyonun bileşimi yazılmaz, yalnız Md. 4/1-ı'ya gönderilir: bentteki
+// "zümre" sözcüğü kılavuzun kalıntı taramasına takılır. Kayıp nüshanın kaydını sayım
+// kapatır; sayım ekranı henüz olmadığı için iki cümle de "sonraki bir sürümde" der.
+// 25.09.2026 kullanıcı kararları (tasarım F8 ekleri 13, 14, 34, 35): Katalog bölümüne
+// "Bağış değerlendirme sonucu" ve TMY'de "bağış kabul tutanağı" olmadığını söyleyen TEK
+// olumsuz cümle (test yasak listesinde yalnız bu cümleye izin verir), birim fiyatın 13/2-c
+// açıklaması; Kayıp, Hasar ve Onarım'a "Bulundu (bedel teslim alınmıştı)" ve kayıttan
+// düşülmüş nüshada "Sayım fazlası" yolu; Ayıklama'da kayıp ve hasar önerisinin ayıklamaya
+// konmadığı (iki bilgi kutusu); Yıl Sonu Raporu'na ekranın dönem uyarısı.
+//
 // Ad kaynakları: tepsi menüsü `desktop/tray.py` sabitleri, durum satırı
 // `desktop/katalog_kontrol.py::tepsi_satiri`, adres uyarısı `ip_denetle`,
 // kurucu görevleri `packaging/windows/kutuphane-defteri.iss` [Tasks], Ağ
@@ -135,13 +164,16 @@
 // Mevzuat atıfları yalnız `docs/mevzuat/`'taki tam metinlerden alınır; alıntılar
 // BİREBİR, madde numarası uydurulmaz: Yönerge 11/6, 11/8, 11/12, 11/22 (yalnız
 // ilk cümlesi) ve 11/23 (meb-bilgi-ve-sistem-guvenligi-yonergesi.md; atıf
-// haritası docs/mevzuat/BENIOKU.md §3.3), Yönetmelik 10/3, 10/5, 11/1, 14/1-a,
+// haritası docs/mevzuat/BENIOKU.md §3.3), Yönetmelik 10/1 (ilk iki cümle), 10/3,
+// 10/5, 11/1, 12/1 (ayıklama: ortası "…"; yıl sonu raporu: ilk cümle), 12/2, 14/1-a,
 // 16/1, 17/1 (yalnız "üye olmak isteyen" parçası), 18/1, 19/1 ve 23/1-a
-// (meb-okul-kutuphaneleri-yonetmeligi.md), TBK 93 (6098-…-md92-93.md), KVKK 10/1
-// (yalnız "elde edilmesi sırasında" parçası) ve 12/1 (6698-kvkk.md). Alıntısız
-// atıflar: Taşınır Mal Yönetmeliği 23/6 ve 32/5 (tasinir-mal-yonetmeligi.md; iki
-// fıkranın metni de kılavuzun kalıntı taramasına takılan bir sözcük taşır) ve
-// Ortaöğretim Kurumları Yönetmeliği 164/1-g (…-ilgili-maddeler.md).
+// (meb-okul-kutuphaneleri-yonetmeligi.md), Uygulama Kılavuzu 2.4
+// (…-uygulama-kilavuzu.md), TBK 93 (6098-…-md92-93.md), KVKK 10/1 (yalnız "elde
+// edilmesi sırasında" parçası) ve 12/1 (6698-kvkk.md). Alıntısız atıflar: Yönetmelik
+// 4/1-c, 4/1-ı, 10/1-b, 10/4; Taşınır Mal Yönetmeliği 5/8, 10/1-e, 16/1, 23/6, 24,
+// 24/2, 27/1, 27/3, 28 (1, 4, 5), 31 ve 32/5 (tasinir-mal-yonetmeligi.md; 23/6 ve
+// 32/5'in metni kılavuzun kalıntı taramasına takılan bir sözcük taşır) ve Ortaöğretim
+// Kurumları Yönetmeliği 164/1-g (…-ilgili-maddeler.md).
 
 import { useEffect } from "react";
 import type { ReactNode } from "react";
@@ -168,6 +200,8 @@ const BOLUMLER = {
   "kayip-hasar": { baslik: "Kayıp, Hasar ve Onarım", ikon: "healing" },
   ilisik: { baslik: "İlişik Listesi", ikon: "fact_check" },
   "yil-akislari": { baslik: "Yıl Sonu ve Yıl Başı", ikon: "event_upcoming" },
+  ayiklama: { baslik: "Ayıklama ve Nadir Eserler", ikon: "inventory" },
+  "yil-sonu-raporu": { baslik: "Yıl Sonu Raporu", ikon: "summarize" },
   "katalog-sablonu": { baslik: "Katalog Excel Şablonu", ikon: "table_view" },
   "ice-aktarma": { baslik: "İçe Aktarma", ikon: "upload_file" },
   yedek: { baslik: "Yedek ve Güvenlik Dosyası", ikon: "backup" },
@@ -911,9 +945,11 @@ export default function KilavuzPage() {
           <strong>Bir numara asla yeniden kullanılmaz.</strong> Yanlış açılmış bir nüshayı
           silerseniz numarası boşta kalır, başka bir kitaba verilmez: taşınır kayıtları ve eski
           defterler geriye doğru okunabilir kalmalıdır. Bu yüzden nüsha penceresindeki “Sil” yalnız
-          veri giriş hatası içindir. Ayıklanan, kaybolan ya da devredilen kitap silinmez: kaybolan
-          kitap için kayıp bildirilir (bkz. Kayıp, Hasar ve Onarım bölümü), kayıttan düşme yolu
-          sonraki sürümlerde gelecek.
+          veri giriş hatası içindir. Bir ayıklama teklifine ya da el yazması ve nadir eserler
+          listesine girmiş nüsha da silinmez. Ayıklanan, kaybolan ya da devredilen kitap silinmez:
+          kaybolan kitap için kayıp bildirilir (bkz. Kayıp, Hasar ve Onarım bölümü); ayıklanan kitap
+          Ayıklama ekranında kayıttan düşülür ya da devredilir ve kayıt defterinde kalır (bkz.
+          Ayıklama ve Nadir Eserler bölümü).
         </p>
         <p>
           Kitabın üzerinde eski bir damga ya da defter numarası varsa “Eski kayıt no” alanına yazın;
@@ -949,11 +985,11 @@ export default function KilavuzPage() {
           yıllıklar, rehberler, bibliyografyalar, kataloglar, listeler ve benzerleri bulundurulur.”
         </Mevzuat>
         <p>
-          “El yazması / nadir eser” kutusu ödünç verilebilirliği değiştirmez; bu nüshalar Genel
-          Müdürlüğe gönderilecek listede toplanır (sonraki sürüm). Kaynak türleri: Kitap, Süreli
-          yayın, Görsel-işitsel materyal, E-kitap, E-veri tabanı. E-kitap ve e-veri tabanında nüsha
-          açılmaz — bu türlerde “Nüsha ekle” düğmesi yerine “E-kitap ve e-veri tabanında nüsha
-          açılmaz.” yazar.
+          “El yazması / nadir eser” kutusu ödünç verilebilirliği değiştirmez; bu nüshalar ayıklanmaz
+          ve Nadir Eserler ekranında Genel Müdürlüğe gönderilecek listede toplanır (bkz. Ayıklama ve
+          Nadir Eserler bölümü). Kaynak türleri: Kitap, Süreli yayın, Görsel-işitsel materyal,
+          E-kitap, E-veri tabanı. E-kitap ve e-veri tabanında nüsha açılmaz — bu türlerde “Nüsha
+          ekle” düğmesi yerine “E-kitap ve e-veri tabanında nüsha açılmaz.” yazar.
         </p>
 
         <AltBaslik>Edinimler ve bağışlar</AltBaslik>
@@ -992,9 +1028,11 @@ export default function KilavuzPage() {
           Komisyon toplanınca kararını “Komisyon Kararları” sekmesinde “Karar ekle” ile yazın:
           “Karar türü”, “Karar tarihi”, “Karar sayısı”, “Başkan adı” ve “Katılımcılar”. Karar
           türleri “Kaynak seçimi”, “Bağış değerlendirme” ve “Ayıklama”dır; bağış ancak bir bağış
-          değerlendirme kararıyla kataloglanır, ayıklama kararı sonraki sürümde ayıklama işinde
-          kullanılacaktır. Başkan adı ile katılımcılar kişi adıdır ve şifreli saklanır. Sonra ön
-          kayda dönüp “Komisyon kararını uygula” düğmesine basın:
+          değerlendirme kararıyla kataloglanır, ayıklama teklifi ile el yazması ve nadir eserler
+          listesi ancak bir “Ayıklama” kararına bağlanır. Başkan adı ile katılımcılar kişi adıdır ve
+          şifreli saklanır. Komisyona sunulacak bağış ön kayıt listesini ön kaydın penceresinden
+          “Önizle” ya da “PDF&apos;i indir” ile basın; listenin “Kabul / Ret” sütunu komisyonda
+          doldurulur. Karardan sonra ön kayda dönüp “Komisyon kararını uygula” düğmesine basın:
         </p>
         <ul className="list-disc space-y-1 pl-5">
           <li>Kabul edilen kalemleri işaretli bırakın.</li>
@@ -1003,16 +1041,43 @@ export default function KilavuzPage() {
             olduğunu buradan söyleyebilir.
           </li>
           <li>
+            “Edinim tarihi” boş bırakılırsa komisyon kararının tarihi ile bağışın geliş tarihinden
+            geç olanı kullanılır; tarih karardan ve gelişten önce, bugünden sonra olamaz.
+          </li>
+          <li>
+            Kabul edilen kitap katalogda zaten varsa kalemin altında “Katalogdaki karşılığı”
+            seçicisi çıkar. Birebir eşleşmede nüshalar var olan esere eklenir (istenirse “Yeni eser
+            aç”); yalnız benzeyen eser varsa ancak “… eserine nüsha ekle” seçilirse eklenir.
+          </li>
+          <li>
             “Kararı uygula” dediğinizde kabul edilenler tek işlemde kataloglanır — künyeleri açılır,
             nüshaları numaralanır. Reddedilenler gerekçesiyle kayıtta kalır.
           </li>
+          <li>
+            “Birim fiyat” bağışta bağışçının belgesindeki değer ya da değer tespit komisyonunun
+            belirlediği değerdir (Taşınır Mal Yönetmeliği md. 13/2-c); program değer tespit
+            komisyonunun tutanağını üretmez.
+          </li>
         </ul>
+        <p>
+          Karar uygulandıktan sonra ön kaydın penceresinde{" "}
+          <strong>Bağış değerlendirme sonucu</strong> basılır (“Önizle”, “PDF&apos;i indir”): kabul
+          edilen ve reddedilen kaynaklar, ret gerekçeleri, komisyon kararının tarihi ve sayısı,
+          edinim tarihi. Çıktı taşınır kayıt yetkilisinin Varlık İşlem Fişine dayanak ve bağışçıya
+          bilgi içindir; bağışçının adını taşır, kişisel veri içeren bir belge gibi saklayın.
+          Taşınır Mal Yönetmeliği&apos;nde “bağış kabul tutanağı” diye bir belge yoktur: bağışlanan
+          kaynağı taşınır kayıt yetkilisi Varlık İşlem Fişi düzenleyerek kayda alır ve fişin bir
+          nüshasını bağışçıya verir (Taşınır Mal Yönetmeliği md. 16/1). Program bu fişi ve Taşınır
+          Geçici Alındısını üretmez; resmî giriş kaydı TKYS&apos;de yapılır.
+        </p>
         <p>
           Bu işlem <strong>geri alınamaz</strong>; onay penceresi kaç kalemin kabul, kaç kalemin ret
           edileceğini yazar. Bağış geri verildiyse ya da liste yanlış girildiyse ön kayıt “İptal et”
-          ile kapatılır ve gerekçe kaydın notlarına yazılır. Bir edinime ya da bağış ön kaydına
-          bağlanmış komisyon kararının türü değiştirilemez, kaydı da silinemez: listede “Kullanımda”
-          rozetiyle görünür.
+          ile kapatılır ve gerekçe kaydın notlarına yazılır. Bir edinime, bağış ön kaydına, ayıklama
+          teklifine ya da nadir eserler listesine bağlanmış komisyon kararının türü değiştirilemez,
+          kaydı da silinemez: listede “Kullanımda” rozetiyle ve onu kullanan kayıtların sayısıyla
+          görünür. Komisyonun başkanlığı ve karar türlerinin neye bağlandığı Ayıklama ve Nadir
+          Eserler bölümündedir.
         </p>
 
         <AltBaslik>Kütüphane Politikası</AltBaslik>
@@ -2283,9 +2348,11 @@ export default function KilavuzPage() {
           <li>
             <strong>“Kayıttan düşme önerildi”</strong>: dosya kapanır ve nüsha için kayıttan düşme
             önerilir. Nüshanın durumu değişmez; kayıttan düşme Taşınır Mal Yönetmeliğine göre
-            yapılan ayrı bir işlemdir ve sonraki sürümlerde gelecek. Öneri kayıttan düşme değildir:
-            kayıp dosyası bu çözümle kapandıktan sonra kitap bulunursa dosya penceresinde “Bulundu”
-            düğmesi durur; öneri geri alınır ve kitap rafa döner.
+            yapılan ayrı bir işlemdir. Kayıp ve hasarlı kitap ayıklamaya konmaz: kaydı sayımda,
+            kayıp/hasar tutanağına dayanarak kapanır (sayım ekranı sonraki bir sürümde gelecek).
+            Öneri kayıttan düşme değildir: kayıp dosyası bu çözümle kapandıktan sonra kitap
+            bulunursa dosya penceresinde “Bulundu” düğmesi durur; öneri geri alınır ve kitap rafa
+            döner.
           </li>
         </ul>
         <p>
@@ -2295,7 +2362,11 @@ export default function KilavuzPage() {
         <p>
           Her çözüm onaydan geçer: pencerenin başlığı ““…” işlensin mi?” olur, gövdesi sonucu
           anlatır; “İşle” çözümü kaydeder, “Vazgeç” geri döner. Kapanan dosya yeniden açılmaz; tek
-          istisna, kayıttan düşme önerisiyle kapanan kayıp dosyasındaki “Bulundu”dur.
+          istisna, kayıttan düşme önerisiyle kapanan kayıp dosyasında kitabın bulunmasıdır (nüsha
+          henüz kayıttan düşülmemişse). Nüsha sayımda kayıttan düşülmüşse bulunan kitap o dosyadan
+          rafa dönmez: pencere “Sayım fazlası (kayda giriş)” yoluyla açılan bir edinimle, Eser
+          Ayrıntısı&apos;nda “Nüsha ekle” diyerek yeni nüsha olarak kaydetmenizi söyler; eski kayıt
+          kayıttan düşülmüş olarak kalır.
         </p>
 
         <AltBaslik>Bedel yalnız ortaöğretimde</AltBaslik>
@@ -2313,7 +2384,7 @@ export default function KilavuzPage() {
           <Ekran to="/ayarlar?tab=okul">Ayarlar → Okul Bilgileri</Ekran>&apos;nde “Ortaöğretim
           (lise)” seçiliyse görünür. İlkokul ve ortaokulda dosya penceresinde “Bedel seçenekleri
           yalnız ortaöğretim okullarında sunulur (Yönetmelik Md. 19). …” notu durur ve dosya
-          yukarıdaki çözümlerle kapanır. Ortaöğretimde dört çözüm daha vardır; ilk ikisi bedelin iki
+          yukarıdaki çözümlerle kapanır. Ortaöğretimde beş çözüm daha vardır; ilk ikisi bedelin iki
           adımıdır:
         </p>
         <ul className="list-disc space-y-2 pl-5">
@@ -2338,14 +2409,24 @@ export default function KilavuzPage() {
           <li>
             <strong>“Bedelle başka eser alındı”</strong>: aynısı bulunamadı, bedelle başka bir eser
             alındı; dosya kapanır ve bu nüsha için kayıttan düşme önerilir. Alınan eseri katalogda
-            ayrıca kaydedin. Bu yolda kitap sonradan bulunsa da “Bulundu” seçilemez: Yönetmelik bu
-            durumda kaybedilenin kaydının silinmesini ister.
+            ayrıca kaydedin. Yönetmelik bu durumda kaybedilenin kaydının silinmesini ister; kayıt
+            sayımda kayıttan düşülünce silinmiş olur. O güne dek kitap bulunursa dosya penceresinde
+            “Bulundu (bedel teslim alınmıştı)” düğmesi durur: öneri geri alınır, kitap rafa döner,
+            bedelle alınan eser de kayıtta kalır.
+          </li>
+          <li>
+            <strong>“Bulundu (bedel teslim alınmıştı)”</strong> (yalnız kayıp dosyasında): bedel
+            teslim alındıktan sonra kitap bulundu; nüsha rafa döner, dosya kapanır, kaydedilen bedel
+            ve tarihleri dosyada kalır.
           </li>
         </ul>
         <p>
-          Adımlar sırayla görünür: “Bedel teslim alındı” bedel belirlendikten sonra, son ikisi bedel
-          teslim alındıktan sonra. Bedeli teslim alınmış dosyada yalnız son iki düğme durur; okulun
-          kademesi sonradan değişse de bu iki düğme kalır.
+          Adımlar sırayla görünür: “Bedel teslim alındı” bedel belirlendikten sonra, son üçü bedel
+          teslim alındıktan sonra. Bedeli teslim alınmış dosyada yalnız “Bedelle aynısı alındı” ve
+          “Bedelle başka eser alındı” düğmeleri, kayıp dosyasında bir de “Bulundu (bedel teslim
+          alınmıştı)” durur; okulun kademesi sonradan değişse de bu düğmeler kalır. Kitap bedelden
+          sonra bulunduğunda pencere şunu da yazar: “Teslim alınan bedelin kişiye iadesi ya da başka
+          kaynak alımında kullanılması okul yönetiminin kararıdır; program para tutmaz.”
         </p>
         <Ipucu>
           <p>
@@ -2386,7 +2467,8 @@ export default function KilavuzPage() {
           (“Dosyayı göster” dosyayı açar). Duruma göre “Onarıma gönder”, “Onarımdan dön”, “Hasar
           dosyası aç” ve “Kayıp bildir” düğmeleri çıkar; çözülmemiş hasar dosyası olan kitapta da
           “Kayıp bildir” durur. Kayıp kitapta son dosya, kapanmış olsa da gösterilir: kayıttan düşme
-          önerisiyle kapanmışsa kitap bulununca “Bulundu” oradan seçilir.
+          önerisiyle kapanmışsa kitap bulununca “Bulundu” (bedelle başka eser alınmışsa “Bulundu
+          (bedel teslim alınmıştı)”) oradan seçilir.
         </p>
       </Bolum>
 
@@ -2531,6 +2613,10 @@ export default function KilavuzPage() {
             belge basılır; fazlaysa şube şube basın. Açık işi olan öğrenci bu basıma girmez; o
             öğrenciler İlişik Listesi&apos;nde görünür.
           </li>
+          <li>
+            <strong>Yıl Sonu Raporu.</strong> Adım rapor ekranına götürür (“Yıl Sonu Raporu&apos;nu
+            aç”); rapor sonlandırılınca adım tamamlanmış sayılır (bkz. Yıl Sonu Raporu bölümü).
+          </li>
         </ol>
 
         <AltBaslik>Yıl başı</AltBaslik>
@@ -2578,6 +2664,346 @@ export default function KilavuzPage() {
             “Sınıf Kitaplıkları” kartında “önceki ders yılı” notuyla görünür. Bu kitapları Teslimler
             → Geri Alma&apos;da okutarak geri alın; sınıf kitaplığında kalacaklarsa yeni şubeye
             yeniden teslim edin.
+          </p>
+        </Ipucu>
+      </Bolum>
+
+      {/* ------------------------------------------------------------------ */}
+      <Bolum id="ayiklama">
+        <p>
+          Yıpranan, bilimsel değeri kalmayan, kurumun düzeyine uygun olmayan ya da Yönetmeliğin 10.
+          maddesindeki ölçütlere uygun olmayan kaynaklar ayıklanır. İş Katalog sayfasının sağ
+          üstündeki <Ekran to="/katalog/ayiklama">Ayıklama</Ekran> bağlantısından yürür ve yalnız
+          yönetici kipinde açılır.
+        </p>
+        <Mevzuat kaynak={`${YONETMELIK}, md. 12/1`}>
+          “Seçim ve Ayıklama Komisyonu tarafından aşağıda belirtilen nedenlerle ayıklanmasına karar
+          verilen kaynaklar, bir tutanakla tespit edilerek … Taşınır Mal Yönetmeliği hükümlerine
+          göre kayıtlardan düşümü yapılır. 10 uncu maddenin birinci fıkrasının (b) bendine uygun
+          olmayan kaynaklar uygun okullara veya kurumlara devredilir.”
+        </Mevzuat>
+
+        <AltBaslik>Ayıklama kayıttan düşme değildir</AltBaslik>
+        <p>
+          Ayıklama Seçim ve Ayıklama Komisyonunun kararıdır; kayıttan düşme ve devir ise harcama
+          yetkilisinin onayıyla yapılan taşınır işlemidir. Komisyon bir kaynağın ayıklanmasına karar
+          verir; kaynak taşınır kayıtlarından ancak harcama yetkilisi onaylayınca çıkar (Taşınır Mal
+          Yönetmeliği md. 10/1-e, 28/4) ya da başka bir okula veya kuruma devredilir. Programda bu
+          yüzden iki ayrı adım vardır: “Komisyon kararı” ve “Harcama yetkilisi onayı”. Nüshanın
+          durumu yalnız teklif uygulanınca değişir; o güne dek kitap rafta kalır ve ödünç
+          verilebilir. Ayıklanan ya da devredilen nüsha silinmez: katalogdan ve Ağ Kataloğundan
+          çıkar, kayıt defterinde kalır.
+        </p>
+
+        <AltBaslik>Seçim ve Ayıklama Komisyonu ve kararları</AltBaslik>
+        <Mevzuat kaynak={`${YONETMELIK}, md. 10/1`}>
+          “Kütüphane kaynaklarının tespiti ve seçimi için Seçim ve Ayıklama Komisyonu, ilçe millî
+          eğitim şube müdürü başkanlığında kurulur. Şube müdürünün katılamadığı durumlarda okul
+          müdürü komisyona başkanlık eder.”
+        </Mevzuat>
+        <p>
+          Komisyonun kimlerden oluştuğu Yönetmeliğin 4. maddesinin (ı) bendinde sayılır. Program
+          komisyonu kurmaz ve üye listesi tutmaz: komisyonun her kararı Edinimler ve Bağışlar →
+          Komisyon Kararları sekmesinde “Karar ekle” ile kaydedilir; kararın “Başkan adı” ve
+          “Katılımcılar” alanları kişi adıdır ve şifreli saklanır. “Karar türü” kararın neye
+          bağlanacağını belirler ve karar kullanılmaya başlayınca değiştirilemez:
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong>Kaynak seçimi</strong>: bağış dışındaki edinim partilerine isteğe bağlı olarak
+            bağlanır.
+          </li>
+          <li>
+            <strong>Bağış değerlendirme</strong>: okula bağışlanan kitaplar komisyonca
+            değerlendirilir (md. 10/3). Bağış ön kaydının “Komisyon kararını uygula” penceresinde bu
+            türdeki karar seçilip “Kararı uygula” denince kabul edilen kitaplar tek işlemde
+            kataloglanır — künyeleri açılır, nüshaları numaralanır; katalogda zaten bulunan kitabın
+            nüshaları var olan esere eklenir. Reddedilenler gerekçesiyle kayıtta kalır. Adımlar
+            Katalog bölümünün “Edinimler ve bağışlar” kısmındadır.
+          </li>
+          <li>
+            <strong>Ayıklama</strong>: ayıklama teklifi ve el yazması ve nadir eserler listesi
+            yalnız bu türdeki karara bağlanır.
+          </li>
+        </ul>
+        <p>
+          Kataloglama taşınır kaydı değildir: bağışı taşınır kaydına taşınır kayıt yetkilisi alır;
+          Varlık İşlem Fişi düzenler ve bir nüshasını bağışçıya verir (Taşınır Mal Yönetmeliği md.
+          16/1). Hurdaya ayırmada kaynağı değerlendiren komisyon da Seçim ve Ayıklama Komisyonu
+          değildir: onu harcama yetkilisi belirler (Taşınır Mal Yönetmeliği md. 28/1) ve üyeleri
+          teklifin onayında “Komisyon üyeleri” alanına yazılır.
+        </p>
+
+        <AltBaslik>Gerekçe ve Taşınır Mal Yönetmeliği yolu</AltBaslik>
+        <p>
+          Her kaleme Md. 12/1&apos;deki gerekçelerden biri seçilir; kaynağın Taşınır Mal
+          Yönetmeliği&apos;ndeki yolu (“TMY yolu”) gerekçeye göre kendiliğinden gelir:
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong>Aşırı kullanımdan yıpranmış</strong> (md. 12/1-a): “Kullanılmaz hâle gelme
+            nedeniyle kayıttan düşme (TMY 27/1)”. Yıpranarak kullanılamaz hâle gelen kaynak Kayıttan
+            Düşme Teklif ve Onay Tutanağı ve Varlık İşlem Fişiyle kayıtlardan çıkarılır. Olağan
+            kullanımdan doğan yıpranmada kimseden sorumluluk aranmaz (TMY md. 5/8); kusur olup
+            olmadığını harcama yetkilisi değerlendirir (TMY md. 27/3). Ekonomik ömrü bittiyse
+            “Hurdaya ayırma nedeniyle kayıttan düşme (TMY 28)” seçilebilir.
+          </li>
+          <li>
+            <strong>Bilimsel değeri kalmamış</strong> (md. 12/1-b) ve{" "}
+            <strong>10. maddedeki ölçütlere uygun değil</strong> (md. 12/1-ç): “Hurdaya ayırma
+            nedeniyle kayıttan düşme (TMY 28)”. Kaynağı, harcama yetkilisinin belirlediği ve biri
+            işin uzmanı en az üç kişilik bir komisyon değerlendirir; hurdaya ayrılmasına karar
+            verilen kaynak harcama yetkilisinin onayıyla kayıtlardan çıkarılır (TMY md. 28/1, 28/4).
+            İkinci gerekçede “Uyulmayan ölçüt” de seçilir. Md. 10/4&apos;e aykırı kitap okul
+            kütüphanelerinde, sınıf kitaplıklarında ve gezici kütüphanelerde bulundurulamaz; program
+            bu gerekçedeki kaynağı devir yoluna bağlamaz.
+          </li>
+          <li>
+            <strong>Kurumun düzeyine uygun değil</strong> (md. 12/1-c; öğrencilerin yaş ve gelişim
+            düzeyine uygunsuzluk da buradadır): kayıttan düşülmez, devredilir. “Başka bir MEB
+            okuluna devir (TMY 24/2)” Millî Eğitim Bakanlığına bağlı başka bir okula, yani aynı kamu
+            idaresinin başka bir harcama birimine devirdir; “Başka bir kamu idaresine bedelsiz devir
+            (TMY 31)” Bakanlık dışında, kaynağa ihtiyacı olan bir kamu idaresine devirdir. Çıkış
+            Varlık İşlem Fişiyle yapılır (TMY md. 24). “Devralacak okul ya da kurum” onaydan önce
+            yazılmış olmalıdır; komisyon kararından sonra da düzeltilebilir.
+          </li>
+        </ul>
+        <p>
+          Devir yalnız bu gerekçeyle yapılır; bu gerekçedeki kaynak da yalnız devredilir.
+          Yönetmelik, yaş ve gelişim düzeyine uygun olmayan kaynağın (md. 10/1-b) uygun okullara
+          veya kurumlara devredileceğini söyler; program bu kaynağı kurumun düzeyine uygun olmayan
+          kaynakla aynı gerekçede toplar. Yaş ve gelişim düzeyine uygun olmayan kaynak “10.
+          maddedeki ölçütlere uygun değil” gerekçesiyle hurdaya ayrılamaz: ölçüt listesinde bu
+          seçenek yoktur.
+        </p>
+        <p>
+          Ayıklanan kitap kendiliğinden imha edilmez: imha yalnız hurdaya ayırma yolunda, hurdaya
+          ayırmayı değerlendiren komisyon ekonomik değeri olmadığına ya da imha edilmesi gerektiğine
+          karar verirse harcama yetkilisinin onayıyla yapılır ve bunun için ayrıca bir imha tutanağı
+          düzenlenir (TMY md. 28/5). İmha kararı kalem kalem verilir: kararın kapsamadığı hurdaya
+          ayırma kalemi İmha tutanağına girmez. Hurdaya ayrılan ve ekonomik değeri olan kitaplar
+          hakkında 7330 sayılı Kanun hükümleri uygulanır (TMY md. 28/8); bu iş taşınır kayıt
+          yetkilisinindir.
+        </p>
+
+        <AltBaslik>Teklif adım adım</AltBaslik>
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>
+            <strong>Taslak.</strong> “Yeni teklif” etkin ders yılına bir teklif açar. “Kalem ekle”
+            penceresinde gerekçeyi seçin; nüshaları “Aday Nüshalar” listesinden işaretleyin ya da
+            kitapların kütüphane etiketlerini “Kütüphane etiketleri” kutusuna okutun. Aynı gerekçe
+            ve yol, pencerede seçilen bütün nüshalara verilir. Kalem “Düzenle” ile değiştirilir,
+            “Çıkar” ile tekliften alınır. Ayıklama teklif listesini basıp komisyona götürün.
+          </li>
+          <li>
+            <strong>Komisyona sunuldu.</strong> “Komisyona sun” kalem listesini kilitler.
+          </li>
+          <li>
+            <strong>Komisyon kararı.</strong> Komisyonun kararını Edinimler ve Bağışlar → Komisyon
+            Kararları&apos;nda “Ayıklama” türüyle yazın, sonra teklifte “Komisyon kararını bağla”.
+            Komisyonun ayıklanmasına karar vermediği kalemi “Komisyon ayıklanmasına karar vermedi”
+            ile işaretleyip gerekçesini yazın; kalem silinmez, Ayıklama tutanağında ayrı tabloda
+            görünür. Teklif sürerken el yazması ya da nadir eser olarak işaretlenen kalem (tabloda
+            “Nadir eser — ayıklanamaz” rozeti) ayıklanamaz; komisyon onu da bu seçenekle işaretler.
+            Ayıklama tutanağını basıp komisyona imzalatın.
+          </li>
+          <li>
+            <strong>Harcama yetkilisi onayı.</strong> İmzalı belgelerden sonra “Harcama yetkilisinin
+            onayını işle”: “Harcama yetkilisinin adı” (şifreli saklanır), “Onay tarihi” (imzalı
+            belgenin tarihi; komisyon kararından önce ve bugünden sonra olamaz) ve “Komisyon
+            üyeleri” (kayıttan düşmeyi değerlendiren komisyon; satır başına bir kişi). Hurdaya
+            ayırma yolunda komisyon zorunludur ve en az üç kişidir (TMY md. 28/1); biri işin
+            uzmanıdır, onu ilk satıra yazın (belgede “Komisyon üyesi (işin uzmanı)” diye basılır).
+            Yalnız yıpranan kaynaklar düşülüyorsa komisyon isteğe bağlıdır: durumu belgeleyen
+            tutanak varsa harcama yetkilisi komisyon kurulmadan onaylayabilir (TMY md. 10/1-e);
+            Ayıklama tutanağının bu tutanak sayılıp sayılmayacağını harcama yetkilisi değerlendirir.
+            Komisyon imhaya karar verdiyse “İmha kararı verildi” işaretlenir; kutu yalnız hurdaya
+            ayırma kalemi olan teklifte çıkar ve açılan listede imha kararının kapsamadığı kalemin
+            işareti kaldırılır. Harcama yetkilisinin onaylamadığı kalem “Onaylanmadı” ile
+            gerekçesiyle işaretlenir; o kalem kayıttan düşülmez ya da devredilmez.
+          </li>
+          <li>
+            <strong>Uygulandı.</strong> “Uygula” nüshaları tek işlemde “Ayıklandı (kayıttan
+            düşüldü)” ya da “Devredildi” yapar; onay penceresindeki “Harcama yetkilisinin onayını ve
+            belgelerin imzalandığını denetledim.” kutusu işaretlenmeden düğme etkinleşmez. Nüshalar
+            katalogdan ve Ağ Kataloğundan çıkar, kayıt defterinde kalır. İşlem geri alınamaz.
+            Uygulama her kalemi yeniden denetler: bu arada ödünç verilen ya da kaybolan bir kitap
+            varsa hiçbir nüshaya dokunulmaz.
+          </li>
+        </ol>
+        <p>
+          Sunulmuş, kararı bağlanmış ya da onaylanmış teklif “Teklifi geri çek” ile taslağa döner;
+          bağlanan karar, onay ve dışarıda bırakma işaretleri silinir, kalemler kalır. Aynı karar
+          ancak kalemler o kararın kapsadığı kalemlerin içinde kaldıysa yeniden bağlanır: yeni
+          kalem, değişen gerekçe ya da yol, ya da komisyonun ayıklanmasına karar vermediği bir kalem
+          için yeni komisyon kararı gerekir. Uygulanmamış teklif “İptal et” ile kapanır; iptal geri
+          alınmaz ve nüshalara dokunmaz.
+        </p>
+
+        <AltBaslik>Ayıklamaya konamayan kitaplar</AltBaslik>
+        <p>
+          Yalnız raftaki nüsha ayıklanır. Ödünçteki kitap önce iade alınır, sınıf kitaplığındaki
+          önce teslimden geri alınır, onarımdaki önce onarımdan döner. Çözülmemiş kayıp/hasar
+          dosyası olan, el yazması ya da nadir eser olan ve süren başka bir teklifte bulunan nüsha
+          konamaz. Seçilenlerden biri konamıyorsa pencere o kitabın numarasını ve nedenini yazar ve
+          hiçbir nüsha eklenmez.
+        </p>
+        <p>
+          Kayıp ve Hasar&apos;da kayıttan düşme önerisiyle kapanan dosyaların kitapları da
+          ayıklamaya konmaz. Kayıp ve hasar, Md. 12/1&apos;in ayıklama gerekçelerinden değildir: bu
+          kitapların kaydı sayımda, kayıp/hasar tutanağına dayanarak kapanır ve bunun için Seçim ve
+          Ayıklama Komisyonu kararı gerekmez (sayım ekranı sonraki bir sürümde gelecek). “Kalem
+          ekle” penceresinin altında iki bilgi kutusu bu kitapları gerekçesiyle yazar: “Kayıp
+          nüshaların kayıttan düşme önerileri” ve “Hasar dosyalarının kayıttan düşme önerileri”. Bu
+          kitaplar aday listesinde yoktur; numarasını okutursanız pencere “Hasar dosyasında kayıttan
+          düşme önerilen nüsha ayıklamaya konmaz (Md. 12/1 gerekçelerinden değildir); sayımda
+          kayıttan düşülür.” yazar.
+        </p>
+
+        <AltBaslik>Ayıklama belgeleri</AltBaslik>
+        <p>
+          Teklifin “Ayıklama Belgeleri” kartında belgeler Taşınır Mal Yönetmeliği yoluna göre
+          basılır; henüz basılamayan belgenin yanında nedeni yazar (ör. “Komisyon kararı
+          bağlandıktan sonra basılır.”).
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong>Ayıklama teklif listesi</strong>: komisyona sunulan liste — gerekçe ve önerilen
+            yol, teklif edenin imzası.
+          </li>
+          <li>
+            <strong>Ayıklama tutanağı</strong>: Md. 12/1&apos;in tutanağı — komisyonun ayıklanmasına
+            karar verdiği ve vermediği kaynaklar, komisyon başkanının ve üyelerinin imzası.
+          </li>
+          <li>
+            <strong>Kayıttan düşme teklif listesi</strong>: Kayıttan Düşme Teklif ve Onay Tutanağına
+            esas hazırlık — TMY 27/1 ve 28 yolundaki kaynaklar ayrı tablolarda, “Komisyon
+            üyeleri”nin imza satırları (hurdaya ayırmada üye yazılmamışsa üç boş satır) ve harcama
+            yetkilisinin “OLUR”u.
+          </li>
+          <li>
+            <strong>İmha tutanağı</strong>: yalnız onayda imha kararı işaretlenmişse (TMY md. 28/5);
+            imha tarihi, yeri ve yöntemi imha sırasında elle yazılır.
+          </li>
+          <li>
+            <strong>Devir listesi</strong>: devredilecek kaynaklar ve devralacak okul ya da kurum;
+            “Excel&apos;i indir” ile Excel dosyası olarak da alınır.
+          </li>
+        </ul>
+        <Ipucu>
+          <p>
+            Kayıttan Düşme Teklif ve Onay Tutanağı ve Varlık İşlem Fişi resmî taşınır belgeleridir
+            ve TKYS&apos;de düzenlenir. Programın çıktıları onların hazırlığıdır; taşınır kayıt
+            yetkilisine verin.
+          </p>
+        </Ipucu>
+
+        <AltBaslik>El yazması ve nadir eserler</AltBaslik>
+        <p>
+          El yazması ve nadir eser ayıklanmaz: Seçim ve Ayıklama Komisyonu bunları tespit eder ve
+          listesi Genel Müdürlüğe gönderilir. Yönetmelikte Genel Müdürlük, Destek Hizmetleri Genel
+          Müdürlüğüdür (md. 4/1-c).
+        </p>
+        <Mevzuat kaynak={`${YONETMELIK}, md. 12/2`}>
+          “Seçim ve Ayıklama Komisyonu tarafından tespit edilen el yazmaları ve nadir eserler
+          listesi, Genel Müdürlüğe gönderilir.”
+        </Mevzuat>
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>
+            Nüshayı Eser Ayrıntısı&apos;nda nüsha penceresindeki “El yazması / nadir eser” kutusuyla
+            işaretleyin. İşaretli nüsha hiçbir ayıklama teklifine konamaz.
+          </li>
+          <li>
+            Katalog sayfasının sağ üstündeki{" "}
+            <Ekran to="/katalog/nadir-eserler">Nadir Eserler</Ekran> ekranında, “Listeler”
+            sekmesinde “Yeni liste” ile bir liste açın. Listenin penceresinde “Bildirilmemiş Nadir
+            Eserler”den eserleri seçip “Seçilenleri listeye ekle”; yanlış eklenen eser “Çıkar” ile
+            listeden alınır.
+          </li>
+          <li>
+            Komisyonun “Ayıklama” türündeki kararını “Komisyon kararı” seçicisinden seçip “Kararı
+            kaydet”. Karar bağlanınca listedeki nüshaların nadir eser olduğu komisyonun tespitidir
+            ve işaretleri kaldırılamaz. El yazması ve nadir eserler listesini “Önizle” ya da
+            “PDF&apos;i indir” ile basın; karar bağlanmamışsa listenin imza satırları boş çıkar.
+          </li>
+          <li>
+            Liste gönderilince “Genel Müdürlüğe Gönderim” bölümünde “Gönderim tarihi”ni (komisyon
+            kararından önce ve bugünden sonra olamaz) ve isteğe bağlı olarak gönderme yazısının
+            sayısını yazıp “Gönderildi olarak işaretle”: gönderilmiş liste değişmez ve içindeki
+            nüshanın işareti kaldırılamaz. Bu işaret geri alınmaz.
+          </li>
+        </ol>
+        <p>
+          “Nadir Eser İşaretli Nüshalar” sekmesi işaretli nüshaları ve Genel Müdürlüğe bildirilip
+          bildirilmediklerini (“Bildirildi” / “Bildirilmedi”) gösterir; “Yalnız bildirilmemişler”
+          kutusu listeyi daraltır. Genel Müdürlüğe bildirilmemiş nüshanın işareti, nüsha kararı
+          bağlanmış bir listede değilse veri giriş hatası olarak kaldırılabilir; kararı bağlanmış
+          listedeyse önce nüshayı listeden çıkarın. Bir listedeki nüsha silinemez.
+        </p>
+      </Bolum>
+
+      {/* ------------------------------------------------------------------ */}
+      <Bolum id="yil-sonu-raporu">
+        <p>
+          Ders yılı sonunda kütüphanenin durumu okul müdürlüğüne raporlanır. Rapor{" "}
+          <Ekran to="/yil-sonu-raporu">Yıl Sonu Raporu</Ekran> ekranında hazırlanır; ekran Genel
+          Bakış&apos;taki “Yıl Sonu Raporu” kartından (yıl sonu penceresinde, rapor sonlandırılana
+          dek) ve Yıl Sonu ekranının son adımından açılır. Yalnız yönetici kipinde çalışır.
+        </p>
+        <Mevzuat kaynak={`${YONETMELIK}, md. 12/1`}>
+          “Her ders yılı sonunda kütüphane kaynakları, kütüphaneci veya görevlendirilen öğretmen
+          tarafından gözden geçirilir ve tespit edilen hususlar raporla okul müdürlüğüne
+          bildirilir.”
+        </Mevzuat>
+        <Mevzuat kaynak={`${YONETMELIK} Uygulama Kılavuzu, 2.4`}>
+          “Her eğitim öğretim yılı sonunda kütüphanedeki kitap durumu, kazandırılan ve ayıklanan
+          kaynaklar okul yönetimine raporlanır.”
+        </Mevzuat>
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>
+            “Raporu hazırla” etkin ders yılının raporunu açar; her ders yılının tek raporu vardır.
+          </li>
+          <li>
+            “Sayı”, “Tarih” ve “Tespit edilen hususlar”ı yazıp “Kaydet” deyin. Tespit alanına
+            kaynakların durumunu ve önerilerinizi yazın; kişi adı yazmayın.
+          </li>
+          <li>
+            Yıl sonu kütüphane raporunu “Önizle” ile denetleyin. Rapor “OKUL MÜDÜRLÜĞÜNE” yazılan
+            resmî yazı düzenindedir; imza satırında ad basılmaz, rapor elle imzalanır.
+          </li>
+          <li>
+            “Raporu sonlandır” sayıları o günkü hâliyle dondurur; yeniden basılan rapor aynı
+            sayıları taşır. Kaydedilmemiş değişiklikler önce kaydedilir; onay penceresi raporun
+            dönemini yazar. Düzeltme gerekirse “Sonlandırmayı geri al”.
+          </li>
+        </ol>
+        <p>
+          Raporun bölümleri: tespit edilen hususlar (onarım, hasar ve kayıp sayılarıyla), koleksiyon
+          özeti, yıl içinde kazandırılan kaynaklar (edinim yoluna göre), ayıklanan ve devredilen
+          kaynaklar, ödünç istatistiği. Sonlandırılmamış rapor “TASLAK” ibaresiyle basılır. Sayılar
+          ders yılının başından bir sonraki ders yılının başına dek sayılır. Sonraki ders yılı henüz
+          tanımlanmamışsa dönem ders yılının sonunda (ya da bugün) biter: yaz aylarında yapılacak
+          ayıklamanın da rapora girmesi için raporu yeni ders yılı tanımlandıktan sonra sonlandırın
+          ya da sonlandırmayı geri alıp yeniden sonlandırın. Ekran da bunu hatırlatır: “Raporu yeni
+          ders yılı tanımlandıktan sonra sonlandırmanız önerilir; Haziran&apos;da sonlandırırsanız
+          yaz aylarındaki işler (ör. Ağustos&apos;taki ayıklama) bu rapora girmez. …”
+        </p>
+        <p>
+          Kazandırılan kaynaklar Yönetmeliğin 10. maddesinin beşinci fıkrasındaki yollardan
+          (Bakanlıktan gönderilen, satın alma, bağış ve değişim) gelen nüshalardır (md. 10/5).
+          Mevcut koleksiyonun programa aktarımı ve sayım fazlasının kayda alınması ayrı satırda
+          “kayıt içi giriş” olarak yazılır ve kazandırılan sayılmaz.
+        </p>
+        <Ipucu>
+          <p>
+            Rapor kişisizdir: kişisel veri içermez, üye bazında hiçbir bilgi taşımaz, adlı sıralama
+            ve şube ile konu kırılımı yapmaz; imza satırında bile ad yoktur. Üye türü ve sınıf
+            düzeyi kırılımında, eşikten az farklı üyenin ödünç aldığı grubun sayısı gösterilmez
+            (“—”); gizlenen sayı toplamdan çıkarılarak bulunamasın diye gerekirse bir grup daha
+            gizlenir. Aktif üye sayısı da eşiğin altındaysa gösterilmez. Eşik Kütüphane
+            Politikası&apos;ndaki “Çok okunanlar için en az üye sayısı”dır. Program “Tespit edilen
+            hususlar” alanına yazılanı denetleyemez: oraya öğrenci, öğretmen ya da personel adı
+            yazmayın.
           </p>
         </Ipucu>
       </Bolum>

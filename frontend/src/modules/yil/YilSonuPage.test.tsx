@@ -239,7 +239,8 @@ describe("YilSonuPage", () => {
       "href",
       "/ilisik-listesi",
     );
-    expect(screen.queryByRole("button", { name: "Devam" })).not.toBeInTheDocument();
+    // F8: dördüncü adımdan sonra yıl sonu raporu adımı gelir.
+    expect(screen.getByRole("button", { name: "Devam" })).toBeInTheDocument();
     // Yalnız son sınıfın şubeleri seçilebilir.
     await screen.findByRole("option", { name: "12/A" });
     expect(screen.queryByRole("option", { name: "9/B" })).not.toBeInTheDocument();
@@ -277,6 +278,37 @@ describe("YilSonuPage", () => {
       await screen.findByText(/en çok 150 belge basılır; şube şube basın/),
     ).toBeInTheDocument();
     expect(yilApiMock.ilisikBelgesiPdf).not.toHaveBeenCalled();
+  });
+
+  it("yıl sonu raporu adımı: durum yazar, rapor ekranına götürür, sonlandırılınca tamamdır", async () => {
+    const user = userEvent.setup();
+    ciz();
+    await screen.findByText("Yıl sonu son ödünç tarihi girilmedi.");
+    const ray = screen.getByRole("list", { name: "Yıl sonu adımları" });
+    expect(within(ray).getByText("Yıl Sonu Raporu")).toBeInTheDocument();
+    await adimaGec(user, 4);
+
+    expect(
+      await screen.findByText("Bu ders yılının raporu henüz hazırlanmadı."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Yıl Sonu Raporu'nu aç" })).toHaveAttribute(
+      "href",
+      "/yil-sonu-raporu",
+    );
+    expect(screen.queryByRole("button", { name: "Devam" })).not.toBeInTheDocument();
+  });
+
+  it("sonlandırılmış raporda son adım tamamdır", async () => {
+    yilApiMock.akislar.mockResolvedValue(
+      akislar({ yilSonu: { annual_review: { id: 3, is_finalized: true } } }),
+    );
+    const user = userEvent.setup();
+    ciz();
+    await screen.findByText("Yıl sonu son ödünç tarihi girilmedi.");
+    await adimaGec(user, 4);
+    expect(
+      await screen.findByText("Rapor sonlandırıldı; sayılar dondurulmuş."),
+    ).toBeInTheDocument();
   });
 
   it("özet okunamazsa hata bandı", async () => {

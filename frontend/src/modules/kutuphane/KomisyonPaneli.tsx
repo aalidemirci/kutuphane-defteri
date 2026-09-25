@@ -4,7 +4,10 @@
 // Kararın TÜRÜ bağlayıcıdır: bağış ancak "bağış değerlendirme" kararıyla
 // kataloglanır, ayıklama ancak "ayıklama" kararıyla yapılır. Kullanılmış bir
 // kararın türü değiştirilemez ve kaydı silinemez — sunucu reddeder, arayüz de
-// "kullanımda" rozetiyle bunu önceden söyler.
+// "kullanımda" rozetiyle bunu önceden söyler. F8: kararı kullanan kayıtlar (edinim,
+// bağış ön kaydı, ayıklama teklifi, nadir eserler listesi) sunucunun kişisiz `usage`
+// sayılarından yazılır; el yazması ve nadir eserler listesi de "Ayıklama" kararına
+// bağlanır (Md. 12 "Bakım, onarım ve ayıklama").
 //
 // Başkan adı ve katılımcılar KİŞİ ADIDIR: sunucuda şifreli saklanır; yönetici
 // parolası kurulmadan yazan istek 409 döner ve bant kullanıcıyı sihirbaza yollar.
@@ -12,7 +15,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useFormErrors } from "../../hooks/useFormErrors";
-import { formatDate, todayIso } from "../../lib/format";
+import { formatDate, formatNumber, todayIso } from "../../lib/format";
 import { emptyPage, geriDusulecekOffset } from "../../lib/pagination";
 import type { Paginated } from "../../lib/pagination";
 import Button from "../../ui/Button";
@@ -31,8 +34,30 @@ import { SkeletonList } from "../../ui/Skeleton";
 import { useSnackbar } from "../../ui/SnackbarProvider";
 import TextField from "../../ui/TextField";
 import { COMMISSION_DECISION_TYPE_TR, KATALOG_SAYFA_BOYUTU, kutuphaneApi } from "./api";
-import type { CommissionDecision, CommissionDecisionBody, CommissionDecisionType } from "./api";
+import type {
+  CommissionDecision,
+  CommissionDecisionBody,
+  CommissionDecisionType,
+  KararKullanimi,
+} from "./api";
 import { MetinAlani, kodSecenekleri } from "./ortak";
+
+/** Kararı kullanan kayıtların özeti: "2 edinim · 1 ayıklama teklifi" (kişisiz sayılar). */
+function kullanimOzeti(usage: KararKullanimi | undefined): string {
+  if (!usage) return "";
+  const parcalar: string[] = [];
+  if (usage.acquisitions > 0) parcalar.push(`${formatNumber(usage.acquisitions)} edinim`);
+  if (usage.donation_intakes > 0) {
+    parcalar.push(`${formatNumber(usage.donation_intakes)} bağış ön kaydı`);
+  }
+  if (usage.weeding_batches > 0) {
+    parcalar.push(`${formatNumber(usage.weeding_batches)} ayıklama teklifi`);
+  }
+  if (usage.rare_works_submissions > 0) {
+    parcalar.push(`${formatNumber(usage.rare_works_submissions)} nadir eserler listesi`);
+  }
+  return parcalar.join(" · ");
+}
 
 export default function KomisyonPaneli() {
   const [tur, setTur] = useState<CommissionDecisionType | "">("");
@@ -84,9 +109,16 @@ export default function KomisyonPaneli() {
       header: "Durum",
       cell: (k) =>
         k.in_use ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-secondary-container px-2 py-0.5 text-label-medium text-on-secondary-container">
-            <Icon name="link" size="sm" />
-            Kullanımda
+          <span className="inline-flex flex-col items-start gap-0.5">
+            <span className="inline-flex items-center gap-1 rounded-full bg-secondary-container px-2 py-0.5 text-label-medium text-on-secondary-container">
+              <Icon name="link" size="sm" />
+              Kullanımda
+            </span>
+            {kullanimOzeti(k.usage) && (
+              <span className="text-body-small text-on-surface-variant">
+                {kullanimOzeti(k.usage)}
+              </span>
+            )}
           </span>
         ) : (
           "—"
@@ -217,7 +249,7 @@ function KararFormu({
     const onay = await confirm({
       title: "Komisyon kararı silinsin mi?",
       message:
-        "Karar kayıttan kalkar. Bir edinime ya da bağış ön kaydına bağlı karar silinemez; o kayıtların dayanağıdır.",
+        "Karar kayıttan kalkar. Bir edinime, bağış ön kaydına, ayıklama teklifine ya da nadir eserler listesine bağlı karar silinemez; o kayıtların dayanağıdır.",
       confirmLabel: "Sil",
     });
     if (!onay) return;
@@ -268,8 +300,8 @@ function KararFormu({
             error={errors.decision_type}
             helperText={
               kullanimda
-                ? "Karara bağlı kayıt olduğu için tür değiştirilemez."
-                : "Bağış kabulü ve ayıklama ayrı karar türleridir."
+                ? `Karara bağlı kayıt olduğu için tür değiştirilemez (${kullanimOzeti(karar?.usage)}).`
+                : "Bağış kabulü ve ayıklama ayrı karar türleridir; el yazması ve nadir eserler listesi de “Ayıklama” kararına bağlanır."
             }
           />
           <TextField

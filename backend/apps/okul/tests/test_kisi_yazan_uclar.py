@@ -176,6 +176,45 @@ DIGER_UCLAR = frozenset(
         "library-donation-intake-item-detail",
         "library-donation-intake-items",
         "library-donation-intake-list",
+        # F8: bağış kalemlerinin katalog eşleşmesi yalnız okur.
+        "library-donation-intake-matches",
+        # F8 ayıklama (Md. 12/1), nadir eserler (Md. 12/2) ve yıl sonu raporu (E9):
+        # kalemler, satırlar ve rapor kişisizdir — kişi SİCİLİ yazılmaz. Teklif
+        # onayındaki harcama yetkilisi ve TMY komisyonu adları şifreli alandır;
+        # parola kurulmadan izin sınıfı OLMADAN da 409 alır (fail-closed) ve servis
+        # `require_password_set` sorar. Hepsi yönetici kipi işidir.
+        "library-weeding-rules",
+        "library-weeding-candidates",
+        "library-weeding-batch-list",
+        "library-weeding-batch-detail",
+        "library-weeding-batch-items",
+        "library-weeding-batch-item-detail",
+        "library-weeding-batch-submit",
+        "library-weeding-batch-withdraw",
+        "library-weeding-batch-decision",
+        "library-weeding-batch-approve",
+        "library-weeding-batch-apply",
+        "library-weeding-batch-cancel",
+        "library-rare-copy-list",
+        "library-rare-works-submission-list",
+        "library-rare-works-submission-detail",
+        "library-rare-works-submission-items",
+        "library-rare-works-submission-item-detail",
+        "library-rare-works-submission-send",
+        "library-annual-review-list",
+        "library-annual-review-detail",
+        "library-annual-review-finalize",
+        "library-annual-review-reopen",
+        # F8 belgeleri (E7, E8, E9, E16): yalnız okur ve PDF/XLSX üretir; adlar
+        # şifreli alandan yalnız belgenin kendisine çözülür. Yönetici kipi işidir.
+        "library-weeding-batch-documents",
+        "library-weeding-batch-document",
+        "library-rare-works-submission-pdf",
+        "library-annual-review-pdf",
+        "library-donation-intake-pdf",
+        # Bağış değerlendirme sonucu (F8 ekleri 13, 25.09.2026 kullanıcı kararı): yalnız okur;
+        # bağışçının adı şifreli alandan yalnız belgeye çözülür.
+        "library-donation-intake-result-pdf",
         # Toplu katalog aktarımı (F3): kitap kaydıdır, kişi sicili değildir.
         # Önizleme de yazar ve geri sarar; ikisi de yönetici kipi işidir ve
         # görevli kipi izin listesinde DEĞİLDİR.

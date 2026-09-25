@@ -7,7 +7,10 @@
 //   2) ret kararları kalem kimliğinden gerekçeye EŞLEMEDİR (uç sözleşmesi);
 //   3) kullanılmış komisyon kararının türü kilitlidir ve "Sil" düğmesi çıkmaz —
 //      sunucu da reddeder, arayüz kullanıcıyı boşuna denemeye göndermez;
-//   4) süzgeçler sunucuya gider (istemcide liste kesilmez).
+//   4) süzgeçler sunucuya gider (istemcide liste kesilmez);
+//   5) F8: kararı kullanan kayıtlar (ayıklama teklifi, nadir eserler listesi dahil)
+//      yazılır; bağış ön kayıt listesi basılır; kabul edilen kalemin katalogdaki
+//      karşılığı seçilir (`work_links`).
 
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -39,7 +42,18 @@ const kapi = vi.hoisted(() => ({
   removeDonationItem: vi.fn(),
   applyDonationDecision: vi.fn(),
   cancelDonationIntake: vi.fn(),
+  donationMatches: vi.fn(),
   listSections: vi.fn(),
+}));
+const ayiklama = vi.hoisted(() => ({ bagisListesiPdf: vi.fn(), bagisSonucuPdf: vi.fn() }));
+vi.mock("../ayiklama/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../ayiklama/api")>();
+  return { ...actual, ayiklamaApi: { ...actual.ayiklamaApi, ...ayiklama } };
+});
+const saveBlobMock = vi.hoisted(() => vi.fn());
+vi.mock("../../lib/download", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/download")>()),
+  saveBlob: saveBlobMock,
 }));
 
 vi.mock("./api", async (importOriginal) => {
@@ -47,6 +61,8 @@ vi.mock("./api", async (importOriginal) => {
   return { ...actual, kutuphaneApi: { ...actual.kutuphaneApi, ...kapi } };
 });
 
+import { BAGIS_SONUCU_BELGESI } from "../ayiklama/api";
+import { BAGIS_SONUCU_ACIKLAMASI } from "./BagisPaneli";
 import EdinimlerPage from "./EdinimlerPage";
 
 function ekranaBas(yol = "/katalog/edinimler") {
@@ -70,6 +86,9 @@ beforeEach(() => {
   kapi.listCommissionDecisions.mockResolvedValue(sayfa([komisyonKarari()]));
   kapi.listDonationIntakes.mockResolvedValue(sayfa([bagisOnKaydi()]));
   kapi.listSections.mockResolvedValue(sayfa([bolum()]));
+  kapi.donationMatches.mockResolvedValue({ results: [] });
+  ayiklama.bagisListesiPdf.mockResolvedValue(new Blob(["%PDF"]));
+  ayiklama.bagisSonucuPdf.mockResolvedValue(new Blob(["%PDF"]));
 });
 
 describe("Edinim partileri", () => {
@@ -247,6 +266,140 @@ describe("Bağış ön kayıtları", () => {
     });
   });
 
+  it("bağış ön kayıt listesi komisyona sunulmak üzere basılır (F8)", async () => {
+    const user = userEvent.setup();
+    ekranaBas();
+    await screen.findByRole("table");
+    await bagisSekmesi(user);
+    await user.click(screen.getByRole("button", { name: /bağış ön kaydını aç/ }));
+    const diyalog = await screen.findByRole("dialog", { name: "Bağış ön kaydı" });
+    expect(within(diyalog).getByText("Bağış ön kayıt listesi")).toBeInTheDocument();
+    await user.click(within(diyalog).getByRole("button", { name: "PDF'i indir" }));
+    await waitFor(() => expect(ayiklama.bagisListesiPdf).toHaveBeenCalledWith(11));
+    expect(saveBlobMock).toHaveBeenCalledWith(
+      expect.any(Blob),
+      expect.stringMatching(/^Bağış-ön-kayıt-listesi_/),
+    );
+  });
+
+  it("karar uygulanmış ön kayıtta bağış değerlendirme sonucu basılır (F8 ekleri 13)", async () => {
+    const user = userEvent.setup();
+    kapi.listDonationIntakes.mockResolvedValue(
+      sayfa([
+        bagisOnKaydi({
+          status: "DECIDED",
+          status_display: "Karar işlendi",
+          commission_decision: 5,
+          decided_at: "2026-09-24T10:00:00+03:00",
+        }),
+      ]),
+    );
+    ekranaBas();
+    await screen.findByRole("table");
+    await bagisSekmesi(user);
+    await user.click(screen.getByRole("button", { name: /bağış ön kaydını aç/ }));
+    const diyalog = await screen.findByRole("dialog", { name: "Bağış ön kaydı" });
+    const baslik = within(diyalog).getByText(BAGIS_SONUCU_BELGESI);
+    const bolum = baslik.parentElement?.parentElement as HTMLElement;
+    expect(within(bolum).getByText(BAGIS_SONUCU_ACIKLAMASI)).toBeInTheDocument();
+    expect(diyalog).not.toHaveTextContent(/kabul tutanağı/i);
+    await user.click(within(bolum).getByRole("button", { name: "PDF'i indir" }));
+    await waitFor(() => expect(ayiklama.bagisSonucuPdf).toHaveBeenCalledWith(11));
+    expect(saveBlobMock).toHaveBeenCalledWith(
+      expect.any(Blob),
+      expect.stringMatching(/^Bağış-değerlendirme-sonucu_/),
+    );
+  });
+
+  it("karar bekleyen ön kayıtta bağış değerlendirme sonucu yoktur", async () => {
+    const user = userEvent.setup();
+    ekranaBas();
+    await screen.findByRole("table");
+    await bagisSekmesi(user);
+    await user.click(screen.getByRole("button", { name: /bağış ön kaydını aç/ }));
+    const diyalog = await screen.findByRole("dialog", { name: "Bağış ön kaydı" });
+    expect(within(diyalog).queryByText(BAGIS_SONUCU_BELGESI)).not.toBeInTheDocument();
+  });
+
+  it("kabul edilen kalemin katalogdaki karşılığı seçilir; seçim work_links olarak gider (F8)", async () => {
+    const user = userEvent.setup();
+    const kayit = bagisOnKaydi({
+      items: [bagisKalemi(), bagisKalemi({ id: 32, title: "Benzer Kitap" })],
+    });
+    kapi.listDonationIntakes.mockResolvedValue(sayfa([kayit]));
+    kapi.donationMatches.mockResolvedValue({
+      results: [
+        {
+          item: 31,
+          exact: {
+            id: 70,
+            title: "Ilık Sular",
+            authors: "Deneme Yazar",
+            publisher: "",
+            publish_year: null,
+            isbn13: "",
+          },
+          suspects: [],
+        },
+        {
+          item: 32,
+          exact: null,
+          suspects: [
+            {
+              id: 77,
+              title: "Benzer Kitap (2. baskı)",
+              authors: "",
+              publisher: "",
+              publish_year: null,
+              isbn13: "",
+            },
+          ],
+        },
+      ],
+    });
+    kapi.applyDonationDecision.mockResolvedValue({
+      intake: { ...kayit, status: "DECIDED", status_display: "Karar işlendi" },
+      accepted: 2,
+      rejected: 0,
+      acquisition: 4,
+      work_count: 1,
+      copy_count: 2,
+      linked_work_count: 1,
+    });
+    ekranaBas();
+    await screen.findByRole("table");
+    await bagisSekmesi(user);
+    await user.click(screen.getByRole("button", { name: /bağış ön kaydını aç/ }));
+    const diyalog = await screen.findByRole("dialog", { name: "Bağış ön kaydı" });
+    await user.click(within(diyalog).getByRole("button", { name: "Komisyon kararını uygula" }));
+    const karar = await screen.findByRole("dialog", { name: "Komisyon kararını uygula" });
+    expect(
+      within(karar).getByText(/komisyon kararının tarihi ile bağışın geliş tarihinden/),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(kapi.listCommissionDecisions).toHaveBeenCalled());
+    await user.selectOptions(within(karar).getByLabelText(/Komisyon kararı/), "5");
+
+    const karsiliklar = await within(karar).findAllByLabelText("Katalogdaki karşılığı");
+    expect(karsiliklar).toHaveLength(2);
+    expect(
+      within(karar).getByText("Bu kitap katalogda var; nüshalar var olan esere eklenir."),
+    ).toBeInTheDocument();
+    await user.selectOptions(karsiliklar[0], "yeni");
+    await user.selectOptions(karsiliklar[1], "77");
+    await user.click(within(karar).getByRole("button", { name: "Kararı uygula" }));
+    const onay = await screen.findByRole("dialog", { name: "Komisyon kararı uygulansın mı?" });
+    await user.click(within(onay).getByRole("button", { name: "Uygula" }));
+
+    await waitFor(() => expect(kapi.applyDonationDecision).toHaveBeenCalled());
+    expect(kapi.applyDonationDecision.mock.calls[0][1]).toMatchObject({
+      accepted_ids: [31, 32],
+      work_links: { "31": null, "32": 77 },
+    });
+    expect(
+      await screen.findByText(/1 kalemin nüshaları katalogdaki esere eklendi\./),
+    ).toBeInTheDocument();
+  });
+
   it("iptal gerekçesi sunucuya gider (kapanan kayıtta notlar artık düzenlenemez)", async () => {
     const user = userEvent.setup();
     kapi.cancelDonationIntake.mockResolvedValue(
@@ -335,5 +488,37 @@ describe("Komisyon kararları", () => {
 
     expect(await within(diyalog).findByText("Başkan adı yazılmalıdır.")).toBeInTheDocument();
     expect(kapi.createCommissionDecision).not.toHaveBeenCalled();
+  });
+
+  it("kararı kullanan kayıtlar yazılır: ayıklama teklifi ve nadir eserler listesi (F8)", async () => {
+    const user = userEvent.setup();
+    kapi.listCommissionDecisions.mockResolvedValue(
+      sayfa([
+        komisyonKarari({
+          decision_type: "WEEDING",
+          decision_type_display: "Ayıklama",
+          in_use: true,
+          usage: {
+            acquisitions: 0,
+            donation_intakes: 0,
+            weeding_batches: 2,
+            rare_works_submissions: 1,
+          },
+        }),
+      ]),
+    );
+    ekranaBas();
+    await screen.findByRole("table");
+    await user.click(screen.getByRole("tab", { name: "Komisyon Kararları" }));
+    expect(
+      await screen.findByText("2 ayıklama teklifi · 1 nadir eserler listesi"),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /kararını düzenle/ }));
+    const diyalog = await screen.findByRole("dialog", { name: "Kararı düzenle" });
+    expect(
+      within(diyalog).getByText(
+        /tür değiştirilemez \(2 ayıklama teklifi · 1 nadir eserler listesi\)/,
+      ),
+    ).toBeInTheDocument();
   });
 });

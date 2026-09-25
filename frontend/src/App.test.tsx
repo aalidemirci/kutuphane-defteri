@@ -105,6 +105,18 @@ vi.mock("./modules/yil/api", async (importOriginal) => {
   return { ...actual, yilApi: { ...actual.yilApi, ...yilApiMock } };
 });
 
+// Ayıklama, Nadir Eserler ve Yıl Sonu Raporu (F8) kendi uçlarına gider; burada yalnız rota
+// ve başlık.
+const ayiklamaApiMock = vi.hoisted(() => ({
+  teklifler: vi.fn(),
+  listeler: vi.fn(),
+  raporlar: vi.fn(),
+}));
+vi.mock("./modules/ayiklama/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./modules/ayiklama/api")>();
+  return { ...actual, ayiklamaApi: { ...actual.ayiklamaApi, ...ayiklamaApiMock } };
+});
+
 // Ağ Doktoru (F5) kendi uçlarına gider; burada yalnız rota ve başlık kablolaması.
 const agKataloguApiMock = vi.hoisted(() => ({
   durum: vi.fn(),
@@ -235,6 +247,9 @@ beforeEach(() => {
     kutuphaneApiMock.aktarimGecmisi,
     teslimApiMock.listele,
     kayipApiMock.listele,
+    ayiklamaApiMock.teklifler,
+    ayiklamaApiMock.listeler,
+    ayiklamaApiMock.raporlar,
   ]) {
     liste.mockResolvedValue(bosSayfa);
   }
@@ -471,6 +486,8 @@ describe("App — kabuk gezinmesi", () => {
     ["/ilisik-listesi", "İlişik Listesi"],
     ["/yil-sonu", "Yıl Sonu"],
     ["/yil-basi", "Yıl Başı"],
+    // F8: "/yil-sonu-raporu" "/yil-sonu" önekine de uyar; kendi başlığını bulur.
+    ["/yil-sonu-raporu", "Yıl Sonu Raporu"],
     ["/katalog", "Katalog"],
     // Alt sayfaların başlığı kökünkinden ÖNCE eşleşir (AppShell sıralaması).
     ["/katalog/eser/3", "Eser Ayrıntısı"],
@@ -478,6 +495,9 @@ describe("App — kabuk gezinmesi", () => {
     ["/katalog/ice-aktarma", "İçe Aktarma"],
     ["/katalog/hizli-kayit", "Hızlı Kayıt"],
     ["/katalog/etiketler", "Etiketler"],
+    // F8: Katalog'un sağ üstünden açılır.
+    ["/katalog/ayiklama", "Ayıklama"],
+    ["/katalog/nadir-eserler", "Nadir Eserler"],
     ["/ayarlar", "Ayarlar"],
     ["/ag-doktoru", "Ağ Doktoru"],
     ["/kilavuz", "Kullanım Kılavuzu"],

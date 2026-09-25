@@ -36,6 +36,7 @@ from django.conf import settings
 from rest_framework import serializers
 
 from apps.kutuphane import barcode as barcode_module
+from apps.kutuphane import selectors_ayiklama
 from apps.kutuphane.import_schema import MAX_COPIES_PER_ROW
 from apps.kutuphane.models import (
     MIN_UNIT_PRICE,
@@ -453,6 +454,7 @@ class CommissionDecisionSerializer(serializers.ModelSerializer[CommissionDecisio
         source="get_decision_type_display", read_only=True
     )
     in_use = serializers.SerializerMethodField()
+    usage = serializers.SerializerMethodField()
     chair_name = serializers.CharField(max_length=120, error_messages=_ZORUNLU_METIN)
 
     class Meta:
@@ -468,12 +470,17 @@ class CommissionDecisionSerializer(serializers.ModelSerializer[CommissionDecisio
             "participants_text",
             "notes",
             "in_use",
+            "usage",
             "created_at",
         ]
-        read_only_fields = ["id", "decision_type_display", "in_use", "created_at"]
+        read_only_fields = ["id", "decision_type_display", "in_use", "usage", "created_at"]
 
     def get_in_use(self, obj: CommissionDecision) -> bool:
         return commission_service.decision_in_use(obj)
+
+    def get_usage(self, obj: CommissionDecision) -> dict[str, int]:
+        """F8: karara bağlı kayıtların sayıları (edinim, bağış, ayıklama, nadir eser)."""
+        return selectors_ayiklama.decision_usage(obj)
 
 
 # ---------------------------------------------------------------------------
@@ -675,6 +682,29 @@ class DonationDecisionSerializer(serializers.Serializer[dict[str, Any]]):
         min_value=MIN_UNIT_PRICE,  # `Acquisition.unit_price` ile aynı taban
         error_messages={"min_value": "Birim fiyat eksi olamaz."},
     )
+    # F8: kabul edilen kalemin nüshalarının ekleneceği eser (kalem kimliği → eser
+    # kimliği; `null` = yeni eser aç). Verilmeyen kalemde katalogdaki birebir
+    # eşleşme kendiliğinden kullanılır (`services.donations.item_matches`).
+    work_links = serializers.DictField(
+        child=serializers.IntegerField(
+            min_value=1,
+            allow_null=True,
+            error_messages={"invalid": "Eser kimliği sayısal olmalıdır."},
+        ),
+        required=False,
+        default=dict,
+        error_messages={"not_a_dict": "Eser bağları eşleme olarak gönderilmelidir."},
+    )
+
+    def validate_work_links(self, value: dict[str, int | None]) -> dict[int, int | None]:
+        """JSON anahtarları (kalem kimliği) metindir; sayıya çevrilir."""
+        sonuc: dict[int, int | None] = {}
+        for anahtar, eser in value.items():
+            try:
+                sonuc[int(anahtar)] = eser
+            except (TypeError, ValueError) as exc:
+                raise serializers.ValidationError("Kalem kimliği sayısal olmalıdır.") from exc
+        return sonuc
 
     def validate_rejected(self, value: dict[str, str]) -> dict[int, str]:
         """Sözlük anahtarlarını kalem kimliğine çevirir (JSON anahtarı metindir)."""

@@ -45,6 +45,12 @@ Bu fazın kararları (tasarım §6.2, F2 sözleşmesi §1):
   notu şifreli, bedel yalnız kayıt) ve `CopyRepair` (D3: onarıma gönder /
   onarımdan dön). `Loan`'a "Kayba dönüştü" durumu eklenir. Kurallar
   `services.deliveries` ve `services.loss_damage`'dadır.
+- **F8 (ayıklama, nadir eser, yıl sonu raporu)**: `WeedingBatch` + `WeedingItem`
+  (Md. 12/1; D15 — kalem silme, teklifi geri çekme; E7 tablosu gerekçeden TMY
+  yoluna DB kısıtıdır; TMY komisyonu adları ve harcama yetkilisi şifreli),
+  `RareWorksSubmission` + satırları (Md. 12/2; D14 — komisyon kararı bağı) ve
+  `AnnualLibraryReview` (Md. 12/1, E9 — kişisiz, sonlandırılınca dondurulur).
+  Kurallar `services.weeding`, `services.rare_works`, `services.annual_review`.
 
 CLAUDE.md §3 "soft-delete ileri FK'da süzmez": `obj.fk` erişimi silinmiş kaydı
 geri getirir. Evraka ad basan yollar `deleted_at`'i elle denetler; katalog
@@ -146,7 +152,7 @@ class CopyStatus(models.TextChoices):
     `Delivery` kaydıyla eşleşir (`services.deliveries`). IN_REPAIR'in giriş ve
     çıkış yolu `services.loss_damage`'dadır (D3; kayıt `CopyRepair`).
     LOST: kayıp bildirimiyle girilir, dosya çözülünce (bulundu, aynısı temin
-    edildi…) rafa döner; asıl kayıttan düşme (WITHDRAWN_LOST) F8/F9'un TMY
+    edildi…) rafa döner; asıl kayıttan düşme (WITHDRAWN_LOST) F9 sayımının TMY
     yoludur.
     WITHDRAWN_*/TRANSFERRED terminaldir — yumuşak silme DEĞİL: kayıttan düşülen
     nüsha defterde ve tutanakta görünmeye devam eder.
@@ -2519,7 +2525,7 @@ class CaseResolution(models.TextChoices):
       "bedel belirlendi", "bedel teslim alındı" — asla borç, ceza ya da
       tahsilat). Disiplin süreci başlatmaz.
     - OYS'nin `WRITTEN_OFF`'u ("Kayıttan düşüldü") ALINMADI: kayıttan düşme bir
-      TMY işlemidir (F8/F9); burada yalnız ÖNERİ işaretlenir
+      TMY işlemidir (sayım — F9); burada yalnız ÖNERİ işaretlenir
       (`WRITE_OFF_PROPOSED`, `LossDamageCase.write_off_proposed_at`). "Bedelle
       başka eser alındı" da eski nüshanın kaydının silinmesini ister (Md. 19);
       o da öneri işaretini taşır.
@@ -2530,6 +2536,14 @@ class CaseResolution(models.TextChoices):
       çıkarmaz) ödünçte, teslimde ya da rafta kaybolunca kayıp bildirimi hasar
       dosyasını bu durumla kapatır ve yeni kayıp dosyası açar (yalnız hasarda —
       DB kısıtı). Hasar dosyasının sorumlusu ve notu kendi kaydında kalır.
+    - `FOUND_AFTER_PRICE` ("Bulundu (bedel teslim alınmıştı)" — 25.09.2026
+      kullanıcı kararı, tasarım F8 ekleri 14) bedeli teslim alınmış KAYIP
+      dosyasında kitabın bulunmasıdır: "Bedel teslim alındı" adımındaki açık
+      dosyadan ya da "Bedelle başka eser alındı" ile kapanmış dosyadan (nüsha hâlâ
+      "Kayıp"sa — asıl kayıttan düşme yapılmamışsa) seçilir; nüsha rafa döner,
+      dosya kapanır, bedel kaydı dosyada kalır. Bedel yoludur (`PRICE_RESOLUTIONS`)
+      ama kademeden bağımsız açıktır (bedel alınmıştır). Bedelin iadesi okul
+      yönetiminin kararıdır; program para tutmaz.
     """
 
     PENDING = "PENDING", "Çözüm bekliyor"
@@ -2540,6 +2554,7 @@ class CaseResolution(models.TextChoices):
     REPAIRED = "REPAIRED", "Onarıldı"
     CLOSED_SAME_REPURCHASED = "CLOSED_SAME_REPURCHASED", "Bedelle aynısı alındı"
     CLOSED_OTHER_REPURCHASED = "CLOSED_OTHER_REPURCHASED", "Bedelle başka eser alındı"
+    FOUND_AFTER_PRICE = "FOUND_AFTER_PRICE", "Bulundu (bedel teslim alınmıştı)"
     WRITE_OFF_PROPOSED = "WRITE_OFF_PROPOSED", "Kayıttan düşme önerildi"
     CONVERTED_TO_LOSS = "CONVERTED_TO_LOSS", "Kayba dönüştü"
 
@@ -2564,14 +2579,23 @@ PRICE_RESOLUTIONS: tuple[str, ...] = (
     CaseResolution.PRICE_RECEIVED,
     CaseResolution.CLOSED_SAME_REPURCHASED,
     CaseResolution.CLOSED_OTHER_REPURCHASED,
+    CaseResolution.FOUND_AFTER_PRICE,
 )
-#: Bedelin teslim alındığı kaydedilmiş durumlar (`price_received_at` dolu).
+#: Bedelin teslim alındığı kaydedilmiş durumlar (`price_received_at` dolu). Bu
+#: durumlardaki dosyanın sonraki adımları kademeden bağımsızdır (bedel alınmıştır).
 PRICE_RECEIVED_RESOLUTIONS: tuple[str, ...] = (
     CaseResolution.PRICE_RECEIVED,
     CaseResolution.CLOSED_SAME_REPURCHASED,
     CaseResolution.CLOSED_OTHER_REPURCHASED,
+    CaseResolution.FOUND_AFTER_PRICE,
 )
-#: Kayıttan düşme ÖNERİSİ taşıyan çözümler (asıl kayıttan düşme F8/F9).
+#: Kitabın bulunmasıyla kapanan çözümler — YALNIZ kayıp dosyasında (DB kısıtı).
+FOUND_RESOLUTIONS: tuple[str, ...] = (
+    CaseResolution.FOUND_RETURNED,
+    CaseResolution.FOUND_AFTER_PRICE,
+)
+#: Kayıttan düşme ÖNERİSİ taşıyan çözümler. Asıl kayıttan düşme sayımda (F9) TMY 27/1
+#: yolundan, kayıp/hasar tutanağıyla yapılır; öneri ayıklamaya konmaz (F8 ekleri 34).
 WRITE_OFF_RESOLUTIONS: tuple[str, ...] = (
     CaseResolution.CLOSED_OTHER_REPURCHASED,
     CaseResolution.WRITE_OFF_PROPOSED,
@@ -2672,7 +2696,7 @@ class LossDamageCase(BaseModel):
         "kayıttan düşme önerisi",
         null=True,
         blank=True,
-        help_text="Asıl kayıttan düşme TMY yoluyla yapılır (ayıklama ve sayım — F8/F9).",
+        help_text="Asıl kayıttan düşme sayımda, TMY 27/1 yoluyla yapılır (F9).",
     )
 
     class Meta:
@@ -2747,10 +2771,10 @@ class LossDamageCase(BaseModel):
                     | models.Q(resolution="CONVERTED_TO_LOSS")
                 ),
             ),
-            # "Bulundu" yalnız kayıpta, "Onarıldı" yalnız hasarda.
+            # "Bulundu" (iki biçimi de) yalnız kayıpta, "Onarıldı" yalnız hasarda.
             models.CheckConstraint(
                 name="ck_lossdamagecase_found_lost",
-                condition=~models.Q(resolution="FOUND_RETURNED") | models.Q(case_type="LOST"),
+                condition=~models.Q(resolution__in=FOUND_RESOLUTIONS) | models.Q(case_type="LOST"),
             ),
             models.CheckConstraint(
                 name="ck_lossdamagecase_repaired_damaged",
@@ -2828,3 +2852,622 @@ class CopyRepair(BaseModel):
     @property
     def is_open(self) -> bool:
         return self.returned_on is None
+
+
+# ---------------------------------------------------------------------------
+# F8 — ayıklama (Md. 12/1), nadir eser listesi (Md. 12/2), yıl sonu kütüphane
+# raporu (Md. 12/1, Kılavuz 2.4) — tasarım §6.2, §10 E7-E9, §13 D14-D15
+# ---------------------------------------------------------------------------
+class WeedingBatchStatus(models.TextChoices):
+    """Ayıklama teklifinin yaşam döngüsü (OYS `WeedingBatchStatus` UYARLA — D15).
+
+    OYS'de zincir DRAFT → PROPOSED → APPROVED | REJECTED idi; teklifi geri çekme
+    ve kalem silme yoktu (D15), Seçim ve Ayıklama Komisyonunun kararı ile
+    harcama yetkilisinin onayı tek adımdı. Burada iki karar ayrıdır: ayıklamaya
+    Seçim ve Ayıklama Komisyonu karar verir (Md. 12/1), kayıttan düşmeyi ve
+    devri harcama yetkilisi onaylar (TMY 10/1-e, 28/4; devirde 24, 31). Nüsha
+    durumu YALNIZ "Uygulandı" adımında değişir (teklif ≠ onay).
+
+    - Taslak: kalem eklenir, düzenlenir, silinir.
+    - Komisyona sunuldu: liste kilitlidir; teklif geri çekilebilir (taslağa döner).
+    - Komisyon kararı bağlandı: "Ayıklama" türünde karar (D7); komisyonun
+      ayıklanmasına karar vermediği kalemler gerekçesiyle işaretlenir.
+    - Harcama yetkilisi onayladı: onaylayanın adı (şifreli) ve onay tarihi;
+      onaylanmayan kalemler gerekçesiyle işaretlenir.
+    - Uygulandı: nüshalar "Ayıklandı (kayıttan düşüldü)" ya da "Devredildi" olur.
+    - İptal edildi: uygulanmamış teklif her adımda iptal edilebilir; nüshalara
+      dokunulmaz, kayıt kalır.
+    """
+
+    DRAFT = "DRAFT", "Taslak"
+    SUBMITTED = "SUBMITTED", "Komisyona sunuldu"
+    DECIDED = "DECIDED", "Komisyon kararı bağlandı"
+    APPROVED = "APPROVED", "Harcama yetkilisi onayladı"
+    APPLIED = "APPLIED", "Uygulandı"
+    CANCELLED = "CANCELLED", "İptal edildi"
+
+
+#: Süren (uygulanmamış, iptal edilmemiş) teklif durumları — bir nüsha aynı anda
+#: yalnız bir süren teklifte bulunabilir (servis kuralı).
+OPEN_WEEDING_STATUSES: tuple[str, ...] = (
+    WeedingBatchStatus.DRAFT,
+    WeedingBatchStatus.SUBMITTED,
+    WeedingBatchStatus.DECIDED,
+    WeedingBatchStatus.APPROVED,
+)
+
+
+class WeedingReason(models.TextChoices):
+    """Ayıklama gerekçesi — KAPALI liste, Md. 12/1'in bentleri (a-ç).
+
+    Md. 12/1: "Ayıklama kapsamında; a) Aşırı kullanımdan dolayı yıpranan,
+    b) Bilimsel değeri kalmayan, c) Kurumun düzeyine uygun olmayan, ç) 10 uncu
+    maddede belirtilen kriterlere uygun olmayan, eserler ayıklanır."
+
+    `LEVEL_MISMATCH` 12/1-c ile 10/1-b'yi (yaş ve gelişim düzeyine uygunsuzluk)
+    birlikte karşılar: Md. 12/1 "10 uncu maddenin birinci fıkrasının (b)
+    bendine uygun olmayan kaynaklar uygun okullara veya kurumlara devredilir"
+    der. Bu yüzden 10/1-b gerekçesi `CRITERIA_MISMATCH` altında SEÇİLEMEZ
+    (`WeedingCriterion.AGE_LEVEL`) ve düzeye uygunsuzluk yalnız devir yoluna
+    gider (E7 tablosu, `WEEDING_PATHS`).
+    """
+
+    WORN = "WORN", "Aşırı kullanımdan yıpranmış"
+    OBSOLETE = "OBSOLETE", "Bilimsel değeri kalmamış"
+    LEVEL_MISMATCH = "LEVEL_MISMATCH", "Kurumun düzeyine uygun değil"
+    CRITERIA_MISMATCH = "CRITERIA_MISMATCH", "10. maddedeki ölçütlere uygun değil"
+
+
+class WeedingCriterion(models.TextChoices):
+    """`CRITERIA_MISMATCH` (Md. 12/1-ç) kaleminde uyulmayan Md. 10 ölçütü.
+
+    Metinler Md. 10/1 bentlerinin ve 10/4'ün lafzından kısaltılmıştır.
+    `AGE_LEVEL` (10/1-b) listede YALNIZ reddedilmek için vardır: 10/1-b'ye uygun
+    olmayan kaynak Md. 12/1 gereği DEVREDİLİR, 12/1-ç yoluyla hurdaya
+    ayrılamaz. Servis ve DB kısıtı bu seçimi reddeder; kullanıcı "Kurumun
+    düzeyine uygun değil" gerekçesine yönlendirilir.
+    """
+
+    GENERAL_AIMS = "10_1_A", "Türk millî eğitiminin genel amaçları ve temel ilkelerine uygun değil"
+    AGE_LEVEL = "10_1_B", "Öğrencilerin yaş ve gelişim düzeylerine uygun değil"
+    VALUES = "10_1_C", "Millî, manevi, kültürel, ahlâki ve insani değerlere uygun değil"
+    PERSONALITY = "10_1_CH", "Dengeli ve sağlıklı kişilik gelişimini desteklemiyor"
+    TURKISH = "10_1_D", "Türkçenin doğru ve güzel kullanımını desteklemiyor"
+    THINKING = "10_1_E", "Eleştirel ve özgün düşünme becerilerini desteklemiyor"
+    LITERACIES = "10_1_F", "Farklı okuryazarlıkları desteklemiyor"
+    PROHIBITED = "10_4", "Kütüphanede bulundurulamaz (Md. 10/4)"
+
+
+#: `CRITERIA_MISMATCH` kaleminde seçilebilen ölçütler (10/1-b HARİÇ — Md. 12/1).
+CRITERIA_MISMATCH_CRITERIA: tuple[str, ...] = tuple(
+    deger for deger in WeedingCriterion.values if deger != WeedingCriterion.AGE_LEVEL
+)
+
+
+class WeedingTmyPath(models.TextChoices):
+    """Ayıklanan nüshanın Taşınır Mal Yönetmeliği'ndeki çıkış yolu (tasarım §10 E7).
+
+    Md. 12/1: ayıklanan kaynakların "Taşınır Mal Yönetmeliği hükümlerine göre
+    kayıtlardan düşümü yapılır"; 10/1-b'ye uygun olmayanlar devredilir.
+
+    - `TMY_27`: yıpranma, kırılma ya da bozulmayla kullanılamaz hâle gelen
+      taşınır — Kayıttan Düşme Teklif ve Onay Tutanağı (10/1-e) + Varlık İşlem
+      Fişi (27/1); kusur değerlendirmesi harcama yetkilisinindir (27/3; olağan
+      yıpranmada 5/8 sorumluluk aramaz).
+    - `TMY_28`: ekonomik ömrünü tamamlamış ya da teknik ve fiziki nedenlerle
+      kullanılmasında yarar görülmeyen taşınır — 28/1 komisyonu (en az üç kişi)
+      değerlendirir, 28/3 tutanak, 28/4 harcama yetkilisi onayı, imha kararı
+      çıkarsa 28/5 imha tutanağı, 28/7 VİF.
+    - `TMY_24_2`: aynı kamu idaresinin (MEB) başka harcama birimine, yani başka
+      bir MEB okuluna devir (24/2, VİF).
+    - `TMY_31`: başka bir kamu idaresine bedelsiz devir (31, 24/1).
+    """
+
+    TMY_27 = "TMY_27", "Kullanılmaz hâle gelme nedeniyle kayıttan düşme (TMY 27/1)"
+    TMY_28 = "TMY_28", "Hurdaya ayırma nedeniyle kayıttan düşme (TMY 28)"
+    TMY_24_2 = "TMY_24_2", "Başka bir MEB okuluna devir (TMY 24/2)"
+    TMY_31 = "TMY_31", "Başka bir kamu idaresine bedelsiz devir (TMY 31)"
+
+
+#: Kayıttan düşme yolları (nüsha "Ayıklandı (kayıttan düşüldü)" olur).
+WEEDING_WRITE_OFF_PATHS: tuple[str, ...] = (WeedingTmyPath.TMY_27, WeedingTmyPath.TMY_28)
+#: Devir yolları (nüsha "Devredildi" olur).
+WEEDING_TRANSFER_PATHS: tuple[str, ...] = (WeedingTmyPath.TMY_24_2, WeedingTmyPath.TMY_31)
+
+#: **E7 tablosu — gerekçeden TMY yoluna** (tasarım §10; TEK KAYNAK). İlk yol
+#: varsayılandır. Yıpranma 27/1'e, ekonomik ömrü bittiyse 28'e; bilimsel değer
+#: kaybı ve 10. madde ölçütlerine aykırılık 28'e gider (10/4'e aykırı kitap okul
+#: kütüphanelerinde ve sınıf kitaplıklarında bulundurulamaz; program bu gerekçeyi
+#: devir yoluna bağlamaz); düzeye uygunsuzluk YALNIZ devredilir (Md. 12/1, 10/1-b'ye
+#: uygun olmayan kaynağın devrini ister; program kurumun düzeyine uygunsuzluğu da bu
+#: yolda toplar). Devir YALNIZ düzeye uygunsuzlukla yapılır. DB kısıtı
+#: (`ck_weedingitem_e7_path`) ve servis bu sözlükten kurulur.
+WEEDING_PATHS: dict[str, tuple[str, ...]] = {
+    WeedingReason.WORN: (WeedingTmyPath.TMY_27, WeedingTmyPath.TMY_28),
+    WeedingReason.OBSOLETE: (WeedingTmyPath.TMY_28,),
+    WeedingReason.LEVEL_MISMATCH: (WeedingTmyPath.TMY_24_2, WeedingTmyPath.TMY_31),
+    WeedingReason.CRITERIA_MISMATCH: (WeedingTmyPath.TMY_28,),
+}
+
+
+def _e7_yol_kosulu() -> models.Q:
+    """`WEEDING_PATHS`'in DB karşılığı: (gerekçe, yol) çifti tablodaki satırlardan biri."""
+    kosul = models.Q()
+    for gerekce, yollar in WEEDING_PATHS.items():
+        kosul |= models.Q(reason=str(gerekce), tmy_path__in=[str(yol) for yol in yollar])
+    return kosul
+
+
+class WeedingItemState(models.TextChoices):
+    """Teklif kaleminin durumu.
+
+    Komisyonun ayıklanmasına karar vermediği ya da harcama yetkilisinin (28/2:
+    komisyonun hurdaya ayrılmasını uygun görmediği) onaylamadığı kalem SİLİNMEZ,
+    gerekçesiyle işaretlenir: tutanak neyin teklif edilip neyin ayıklandığını
+    birlikte gösterir. Nüsha yalnız "Uygulandı" kalemde durum değiştirir.
+    """
+
+    PROPOSED = "PROPOSED", "Teklif listesinde"
+    KEPT_BY_COMMISSION = "KEPT_BY_COMMISSION", "Komisyon ayıklanmasına karar vermedi"
+    NOT_APPROVED = "NOT_APPROVED", "Onaylanmadı"
+    APPLIED = "APPLIED", "Uygulandı"
+
+
+#: Teklif dışı bırakılmış kalem durumları (gerekçe zorunlu).
+WEEDING_EXCLUDED_STATES: tuple[str, ...] = (
+    WeedingItemState.KEPT_BY_COMMISSION,
+    WeedingItemState.NOT_APPROVED,
+)
+#: TMY komisyonunun en az üye sayısı (TMY 10/1-e ve 28/1: "en az üç kişiden").
+TMY_COMMISSION_MIN_MEMBERS = 3
+
+
+class WeedingBatch(BaseModel):
+    """Ayıklama teklifi — OYS `WeedingBatch` UYARLA (Md. 12/1, D15; tasarım §6.2, E7).
+
+    Kişi adları ŞİFRELİDİR (§6.3): `tmy_commission_members` (Kayıttan Düşme
+    Teklif ve Onay Tutanağını imzalayan ve 28/1'e göre hurdaya ayırmayı
+    değerlendiren komisyonun adları) ve `approved_by_name` (harcama yetkilisi).
+    Seçim ve Ayıklama Komisyonunun adları kendi karar kaydındadır
+    (`CommissionDecision`, şifreli). Anahtar yokken boş olmayan ad yazılmaz
+    (fail-closed, 409 `parola_gerekli`).
+
+    Durum makinesi `WeedingBatchStatus`; geçişler YALNIZ `services.weeding`'dedir.
+    DB kısıtları her durumun zorunlu alanlarını sabitler. Ayıklama komisyon
+    kararıdır; kayıttan düşme ve devir taşınır işlemidir (sözlük: "Ayıklama ≠
+    kayıttan düşme"). Program TKYS'nin yerine geçmez: E7 belgeleri hazırlık
+    çıktısıdır, resmî giriş-çıkış kaydı TKYS'dedir.
+    """
+
+    school_year = models.ForeignKey(
+        "okul.SchoolYear",
+        on_delete=models.PROTECT,
+        related_name="weeding_batches",
+        verbose_name="ders yılı",
+    )
+    status = models.CharField(
+        "durum",
+        max_length=12,
+        choices=WeedingBatchStatus.choices,
+        default=WeedingBatchStatus.DRAFT,
+    )
+    commission_decision = models.ForeignKey(
+        CommissionDecision,
+        on_delete=models.PROTECT,
+        related_name="weeding_batches",
+        verbose_name="komisyon kararı",
+        null=True,
+        blank=True,
+        help_text="Seçim ve Ayıklama Komisyonunun “Ayıklama” türündeki kararı (Md. 12/1).",
+    )
+    submitted_at = models.DateTimeField("komisyona sunulma zamanı", null=True, blank=True)
+    decided_at = models.DateTimeField("kararın bağlandığı zaman", null=True, blank=True)
+    tmy_commission_members = EncryptedTextField(
+        "TMY komisyonu üyeleri",
+        blank=True,
+        default="",
+        help_text=(
+            "Kayıttan düşme teklif ve onay tutanağını imzalayan komisyon (TMY 10/1-e, 28/1); "
+            "satır başına bir kişi."
+        ),
+    )
+    approved_by_name = EncryptedCharField(
+        "harcama yetkilisi adı",
+        max_length=120,
+        blank=True,
+        default="",
+        help_text="Kayıttan düşmeyi ve devri onaylayan harcama yetkilisi.",
+    )
+    approved_on = models.DateField("onay tarihi", null=True, blank=True)
+    approved_at = models.DateTimeField("onayın işlendiği zaman", null=True, blank=True)
+    destruction_decided = models.BooleanField(
+        "imha kararı",
+        default=False,
+        help_text=(
+            "TMY 28/5: komisyon imhaya karar verdiyse imha tutanağı düzenlenir; kararın "
+            "kapsadığı kalemler kalem düzeyinde işaretlidir."
+        ),
+    )
+    # Teklif geri çekildiğinde bağlı olan komisyon kararı ve o kararın ayıklanmasına karar
+    # verdiği kalemlerin kişisiz izi ([nüsha, gerekçe, ölçüt, TMY yolu]). Aynı karar yeniden
+    # bağlanırsa kalemler bu izin içinde kalmalıdır (servis: yeni kalem, değişen gerekçe ya
+    # da yol, komisyonun ayıklamadığı kalem → yeni karar gerekir).
+    withdrawn_decision = models.ForeignKey(
+        CommissionDecision,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="geri çekilmeden önceki komisyon kararı",
+        null=True,
+        blank=True,
+    )
+    withdrawn_items = models.JSONField(
+        "geri çekilmeden önce kararın kapsadığı kalemler", null=True, blank=True
+    )
+    applied_at = models.DateTimeField("uygulanma zamanı", null=True, blank=True)
+    cancelled_at = models.DateTimeField("iptal zamanı", null=True, blank=True)
+    cancel_reason = models.CharField("iptal gerekçesi", max_length=255, blank=True, default="")
+    notes = models.TextField("notlar", blank=True, default="")
+
+    class Meta:
+        verbose_name = "ayıklama teklifi"
+        verbose_name_plural = "ayıklama teklifleri"
+        ordering = ["-created_at", "-pk"]
+        indexes = [
+            models.Index(fields=["status", "school_year"], name="kutuphane_wb_status_idx"),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                name="ck_weedingbatch_status",
+                condition=models.Q(status__in=WeedingBatchStatus.values),
+            ),
+            # Taslakta sunulma zamanı boş; sunulmuş ve sonraki adımlarda dolu.
+            models.CheckConstraint(
+                name="ck_weedingbatch_submitted",
+                condition=(
+                    models.Q(status="DRAFT", submitted_at__isnull=True)
+                    | models.Q(
+                        status__in=["SUBMITTED", "DECIDED", "APPROVED", "APPLIED"],
+                        submitted_at__isnull=False,
+                    )
+                    | models.Q(status="CANCELLED")
+                ),
+            ),
+            # Karar bağlandıktan sonra komisyon kararı ve bağlanma zamanı dolu.
+            models.CheckConstraint(
+                name="ck_weedingbatch_decision",
+                condition=(
+                    models.Q(
+                        status__in=["DRAFT", "SUBMITTED"],
+                        commission_decision__isnull=True,
+                        decided_at__isnull=True,
+                    )
+                    | models.Q(
+                        status__in=["DECIDED", "APPROVED", "APPLIED"],
+                        commission_decision__isnull=False,
+                        decided_at__isnull=False,
+                    )
+                    | models.Q(status="CANCELLED")
+                ),
+            ),
+            # Onay: harcama yetkilisinin adı, onay tarihi ve işlenme zamanı birlikte.
+            models.CheckConstraint(
+                name="ck_weedingbatch_approval",
+                condition=(
+                    models.Q(
+                        status__in=["DRAFT", "SUBMITTED", "DECIDED"],
+                        approved_by_name="",
+                        approved_on__isnull=True,
+                        approved_at__isnull=True,
+                        destruction_decided=False,
+                    )
+                    | (
+                        models.Q(
+                            status__in=["APPROVED", "APPLIED"],
+                            approved_on__isnull=False,
+                            approved_at__isnull=False,
+                        )
+                        & ~models.Q(approved_by_name="")
+                    )
+                    | models.Q(status="CANCELLED")
+                ),
+            ),
+            models.CheckConstraint(
+                name="ck_weedingbatch_applied_at",
+                condition=models.Q(status="APPLIED", applied_at__isnull=False)
+                | (~models.Q(status="APPLIED") & models.Q(applied_at__isnull=True)),
+            ),
+            models.CheckConstraint(
+                name="ck_weedingbatch_cancelled_at",
+                condition=models.Q(status="CANCELLED", cancelled_at__isnull=False)
+                | (~models.Q(status="CANCELLED") & models.Q(cancelled_at__isnull=True)),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Ayıklama teklifi #{self.pk} ({self.get_status_display()})"
+
+    @property
+    def is_open(self) -> bool:
+        return self.status in OPEN_WEEDING_STATUSES
+
+
+class WeedingItem(BaseModel):
+    """Ayıklama teklifinin kalemi — bir nüsha, gerekçe ve TMY yolu (E7). Kişisiz.
+
+    - `reason` + `tmy_path`: E7 tablosu DB kısıtıyla sabittir
+      (`ck_weedingitem_e7_path`): devir yalnız düzeye uygunsuzlukla,
+      düzeye uygunsuzluk yalnız devirle; 10/1-b gerekçeli kalem 28 yoluna
+      GİDEMEZ.
+    - `criterion`: yalnız `CRITERIA_MISMATCH` kaleminde ve 10/1-b dışında dolu.
+    - `transfer_target`: yalnız devir yolunda; devralacak okul ya da kurumun adı
+      (kişi adı değildir). Onaydan önce dolmalıdır (servis).
+    - Kalemin kayıp/hasar dosyasına bağı YOKTUR (25.09.2026 kullanıcı kararı,
+      tasarım F8 ekleri 34): kayıp ve hasar dosyalarının kayıttan düşme önerisi
+      ayıklamaya konmaz, sayımda TMY 27/1 yolundan düşülür.
+    - `destruction_decided`: TMY 28/5 imha kararının kapsadığı kalem (yalnız 28
+      yolunda; DB kısıtı). İmha tutanağı yalnız bu kalemleri basar — komisyon
+      bir teklifin 28 kalemlerinin bir kısmı için imhaya, ekonomik değeri olan
+      öbürleri için 28/8'e karar verebilir.
+    - Kalem silme (D15) yalnız taslakta, yumuşak silmedir.
+    """
+
+    batch = models.ForeignKey(
+        WeedingBatch, on_delete=models.CASCADE, related_name="items", verbose_name="teklif"
+    )
+    copy = models.ForeignKey(
+        Copy, on_delete=models.PROTECT, related_name="weeding_items", verbose_name="nüsha"
+    )
+    reason = models.CharField("gerekçe", max_length=20, choices=WeedingReason.choices)
+    criterion = models.CharField(
+        "uyulmayan ölçüt",
+        max_length=8,
+        choices=WeedingCriterion.choices,
+        blank=True,
+        default="",
+        help_text="Yalnız “10. maddedeki ölçütlere uygun değil” gerekçesinde.",
+    )
+    tmy_path = models.CharField("TMY yolu", max_length=10, choices=WeedingTmyPath.choices)
+    transfer_target = models.CharField(
+        "devralacak okul ya da kurum",
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Yalnız devirde.",
+    )
+    state = models.CharField(
+        "kalem durumu",
+        max_length=20,
+        choices=WeedingItemState.choices,
+        default=WeedingItemState.PROPOSED,
+    )
+    exclusion_reason = models.CharField(
+        "ayıklanmama gerekçesi", max_length=255, blank=True, default=""
+    )
+    destruction_decided = models.BooleanField(
+        "imha kararı",
+        default=False,
+        help_text="TMY 28/5: komisyonun imhaya karar verdiği hurdaya ayırma kalemi.",
+    )
+
+    class Meta:
+        verbose_name = "ayıklama kalemi"
+        verbose_name_plural = "ayıklama kalemleri"
+        ordering = ["batch", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["batch", "copy"],
+                condition=models.Q(deleted_at__isnull=True),
+                name="uq_weedingitem_copy_per_batch",
+            ),
+            models.CheckConstraint(
+                name="ck_weedingitem_reason",
+                condition=models.Q(reason__in=WeedingReason.values),
+            ),
+            models.CheckConstraint(
+                name="ck_weedingitem_state",
+                condition=models.Q(state__in=WeedingItemState.values),
+            ),
+            # E7 tablosu (tasarım §10): gerekçe ⇒ izin verilen TMY yolları.
+            models.CheckConstraint(name="ck_weedingitem_e7_path", condition=_e7_yol_kosulu()),
+            # Ölçüt yalnız 12/1-ç kaleminde ve 10/1-b dışında (Md. 12/1: 10/1-b devredilir).
+            models.CheckConstraint(
+                name="ck_weedingitem_criterion",
+                condition=models.Q(
+                    reason="CRITERIA_MISMATCH", criterion__in=list(CRITERIA_MISMATCH_CRITERIA)
+                )
+                | (~models.Q(reason="CRITERIA_MISMATCH") & models.Q(criterion="")),
+            ),
+            # Devralacak kurum yalnız devir yolunda.
+            models.CheckConstraint(
+                name="ck_weedingitem_transfer_target",
+                condition=models.Q(tmy_path__in=list(WEEDING_TRANSFER_PATHS))
+                | models.Q(transfer_target=""),
+            ),
+            # İmha kararı (TMY 28/5) yalnız hurdaya ayırma kaleminde.
+            models.CheckConstraint(
+                name="ck_weedingitem_destruction",
+                condition=models.Q(destruction_decided=False) | models.Q(tmy_path="TMY_28"),
+            ),
+            # Ayıklanmama gerekçesi yalnız teklif dışı bırakılmış kalemde ve orada zorunlu.
+            models.CheckConstraint(
+                name="ck_weedingitem_exclusion",
+                condition=(
+                    models.Q(state__in=list(WEEDING_EXCLUDED_STATES))
+                    & ~models.Q(exclusion_reason="")
+                )
+                | (
+                    ~models.Q(state__in=list(WEEDING_EXCLUDED_STATES))
+                    & models.Q(exclusion_reason="")
+                ),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Ayıklama kalemi #{self.pk} ({self.get_reason_display()})"
+
+    @property
+    def is_transfer(self) -> bool:
+        return self.tmy_path in WEEDING_TRANSFER_PATHS
+
+
+class RareWorksSubmissionStatus(models.TextChoices):
+    """El yazması ve nadir eserler listesinin durumu (Md. 12/2)."""
+
+    DRAFT = "DRAFT", "Hazırlanıyor"
+    SENT = "SENT", "Genel Müdürlüğe gönderildi"
+
+
+class RareWorksSubmission(BaseModel):
+    """El yazması ve nadir eserler listesi — Md. 12/2 (D14; E8). Kişisiz.
+
+    Md. 12/2: "Seçim ve Ayıklama Komisyonu tarafından tespit edilen el yazmaları
+    ve nadir eserler listesi, Genel Müdürlüğe gönderilir." Liste bir komisyon
+    kararına bağlıdır (D14: OYS'de bağ yoktu); karar gönderimden önce bağlanır
+    (DB kısıtı). Karar Md. 12'nin kararıdır: "Ayıklama" türündedir (D7 —
+    `services.rare_works`).
+
+    Nüshanın nadir/el yazması olduğu `Copy.is_rare_or_manuscript` bayrağıdır ve
+    kalıcıdır: gönderilmiş ya da komisyon kararı bağlanmış (komisyonun tespit ettiği)
+    bir listede duran nüshanın bayrağı kaldırılamaz (`services.catalog.update_copy`);
+    listedeki nüsha silinemez (`services.catalog.delete_copy`); nadir eser AYIKLANAMAZ
+    (`services.weeding`).
+    """
+
+    school_year = models.ForeignKey(
+        "okul.SchoolYear",
+        on_delete=models.PROTECT,
+        related_name="rare_works_submissions",
+        verbose_name="ders yılı",
+    )
+    commission_decision = models.ForeignKey(
+        CommissionDecision,
+        on_delete=models.PROTECT,
+        related_name="rare_works_submissions",
+        verbose_name="komisyon kararı",
+        null=True,
+        blank=True,
+    )
+    status = models.CharField(
+        "durum",
+        max_length=8,
+        choices=RareWorksSubmissionStatus.choices,
+        default=RareWorksSubmissionStatus.DRAFT,
+    )
+    sent_on = models.DateField("Genel Müdürlüğe gönderim tarihi", null=True, blank=True)
+    sent_document_no = models.CharField(
+        "gönderme yazısının sayısı", max_length=40, blank=True, default=""
+    )
+    notes = models.TextField("notlar", blank=True, default="")
+
+    class Meta:
+        verbose_name = "el yazması ve nadir eserler listesi"
+        verbose_name_plural = "el yazması ve nadir eserler listeleri"
+        ordering = ["-created_at", "-pk"]
+        constraints = [
+            models.CheckConstraint(
+                name="ck_rareworks_status",
+                condition=models.Q(status__in=RareWorksSubmissionStatus.values),
+            ),
+            # Gönderilmiş liste bir komisyon kararına bağlıdır ve gönderim tarihi taşır.
+            models.CheckConstraint(
+                name="ck_rareworks_sent",
+                condition=models.Q(
+                    status="SENT", commission_decision__isnull=False, sent_on__isnull=False
+                )
+                | models.Q(status="DRAFT", sent_on__isnull=True),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Nadir eserler listesi #{self.pk} ({self.get_status_display()})"
+
+
+class RareWorksSubmissionItem(BaseModel):
+    """Nadir eserler listesinin satırı — bir nüsha (yalnız `is_rare_or_manuscript`)."""
+
+    submission = models.ForeignKey(
+        RareWorksSubmission,
+        on_delete=models.CASCADE,
+        related_name="items",
+        verbose_name="liste",
+    )
+    copy = models.ForeignKey(
+        Copy,
+        on_delete=models.PROTECT,
+        related_name="rare_submission_items",
+        verbose_name="nüsha",
+    )
+
+    class Meta:
+        verbose_name = "nadir eser satırı"
+        verbose_name_plural = "nadir eser satırları"
+        ordering = ["submission", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["submission", "copy"],
+                condition=models.Q(deleted_at__isnull=True),
+                name="uq_rareworksitem_copy",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Nadir eser satırı #{self.pk}"
+
+
+class AnnualLibraryReview(BaseModel):
+    """Yıl sonu kütüphane raporu — Md. 12/1, Kılavuz 2.4 (E9). KİŞİSEL VERİ YOK.
+
+    Md. 12/1: "Her ders yılı sonunda kütüphane kaynakları ... gözden geçirilir ve
+    tespit edilen hususlar raporla okul müdürlüğüne bildirilir." Kılavuz 2.4:
+    "kütüphanedeki kitap durumu, kazandırılan ve ayıklanan kaynaklar okul
+    yönetimine raporlanır."
+
+    Sayılar kişisizdir ve `selectors_yil_raporu.annual_review_stats`'tan gelir
+    (profil yasağı — CLAUDE.md §2-5: üye bazında hiçbir şey yok, sınıf düzeyi
+    kırılımı k farklı üye eşiğinin altında gösterilmez, adlı sıralama yok).
+    Rapor sonlandırılınca sayılar `stats`'a DONDURULUR: yeniden basılan rapor
+    aynı sayıları taşır. `findings` kütüphanecinin serbest metnidir (tespit
+    edilen hususlar); yardım metni kişi adı yazılmamasını ister.
+    """
+
+    school_year = models.ForeignKey(
+        "okul.SchoolYear",
+        on_delete=models.PROTECT,
+        related_name="library_reviews",
+        verbose_name="ders yılı",
+    )
+    document_date = models.DateField("tarih", null=True, blank=True)
+    document_no = models.CharField("sayı", max_length=40, blank=True, default="")
+    findings = models.TextField(
+        "tespit edilen hususlar",
+        blank=True,
+        default="",
+        help_text="Kaynakların durumu ve öneriler. Kişi adı yazmayın.",
+    )
+    stats = models.JSONField("dondurulmuş sayılar", null=True, blank=True)
+    finalized_at = models.DateTimeField("sonlandırılma zamanı", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "yıl sonu kütüphane raporu"
+        verbose_name_plural = "yıl sonu kütüphane raporları"
+        ordering = ["-school_year__start_date", "-pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["school_year"],
+                condition=models.Q(deleted_at__isnull=True),
+                name="uq_annualreview_school_year",
+            ),
+            # Sonlandırılmış raporun sayıları dondurulmuştur; taslakta sayı saklanmaz.
+            models.CheckConstraint(
+                name="ck_annualreview_finalized",
+                condition=models.Q(stats__isnull=True, finalized_at__isnull=True)
+                | models.Q(stats__isnull=False, finalized_at__isnull=False),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Yıl sonu kütüphane raporu #{self.pk}"
+
+    @property
+    def is_finalized(self) -> bool:
+        return self.finalized_at is not None

@@ -611,9 +611,45 @@ class DonationIntakeDecisionView(_IntakeChildView):
                 "rejected": sonuc["rejected"],
                 "acquisition": edinim.pk if edinim is not None else None,
                 "work_count": len(sonuc["works"]),
+                # F8: nüshaları katalogdaki var olan esere eklenen kalemler.
+                "linked_work_count": len(sonuc["linked_works"]),
                 "copy_count": len(sonuc["copies"]),
             }
         )
+
+
+class DonationIntakeMatchesView(_IntakeChildView):
+    """`GET library/donation-intakes/<pk>/matches/` — kalemlerin katalogdaki karşılığı (F8).
+
+    Kararı uygulamadan önce ekran her kalem için birebir eşleşmeyi (nüshalar o
+    esere eklenecek) ve şüpheli adayları (kendiliğinden bağlanmaz; kullanıcı
+    `work_links` ile seçer) gösterir. Kayıt yazmaz; kişisel veri yok.
+    """
+
+    def get(self, request: Request, pk: int) -> Response:
+        kayit = self._intake(pk)
+
+        def _eser(work: Work) -> dict[str, Any]:
+            return {
+                "id": work.pk,
+                "title": work.title,
+                "authors": work.authors,
+                "publisher": work.publisher,
+                "publish_year": work.publish_year,
+                "isbn13": work.isbn13,
+            }
+
+        sonuclar = []
+        for kalem in kayit.items.all().order_by("pk"):
+            eslesme = donation_service.item_matches(kalem)
+            sonuclar.append(
+                {
+                    "item": kalem.pk,
+                    "exact": _eser(eslesme.exact) if eslesme.exact is not None else None,
+                    "suspects": [_eser(w) for w in eslesme.suspects],
+                }
+            )
+        return Response({"results": sonuclar})
 
 
 class DonationIntakeCancelView(_IntakeChildView):

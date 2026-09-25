@@ -11,9 +11,9 @@ KURALLAR (her biri testle kilitli — `tests/test_kayip_hasar.py`):
    bedeli kaydı YALNIZ ortaöğretimde açılır (`SchoolConfig.kademe`; kademe
    seçilmemişse kapalı — fail-closed). İlkokul ve ortaokulda yalnız "Bulundu",
    "Aynısı temin edildi", "Onarıldı" ve "Kayıttan düşme önerildi" yolları vardır.
-   TEK istisna: bedeli teslim alınmış dosyanın iki kapanış yolu kademe sonradan
-   değişse de açık kalır (alınmış bedelin kullanımı kaydedilmelidir; dosya
-   kilitlenmez).
+   TEK istisna: bedeli teslim alınmış dosyanın sonraki yolları (iki kapanış yolu
+   ve kayıpta "Bulundu (bedel teslim alınmıştı)") kademe sonradan değişse de açık
+   kalır (alınmış bedelin kullanımı kaydedilmelidir; dosya kilitlenmez).
 2. **Program tahsilat yapmaz** ve disiplin sürecini başlatmaz (OKY 164/1-g bir
    disiplin konusudur, programın işi değildir). Bedel iki ADIMDIR (25.09.2026
    kullanıcı kararı): "Bedel belirlendi" (o günkü piyasa bedeli kaydedilir;
@@ -39,11 +39,21 @@ KURALLAR (her biri testle kilitli — `tests/test_kayip_hasar.py`):
    "Onarımda"; her gidiş bir `CopyRepair` kaydıdır (yıl sonu raporu — E9).
 6. **Kayıttan düşme yalnız ÖNERİDİR** (`WRITE_OFF_PROPOSED`, "Bedelle başka eser
    alındı"): dosyada `write_off_proposed_at` işaretlenir, nüshanın durumu
-   değişmez. Asıl kayıttan düşme TMY yoludur (ayıklama F8, sayım F9). Öneri geri
-   alınabilir: "Kayıttan düşme önerildi" ile kapanmış KAYIP dosyasında nüsha hâlâ
-   "Kayıp"sa kitap bulununca "Bulundu" seçilir — öneri kalkar, nüsha rafa döner
-   (F7 düzeltme turu). "Bedelle başka eser alındı"da bu yol yoktur: Md. 19 o yolda
-   kaybedilenin kaydının silinmesini ister.
+   değişmez. Asıl kayıttan düşme sayımda (F9) TMY 27/1 yolundan, kayıp/hasar
+   tutanağıyla yapılır; öneri ayıklamaya konmaz (25.09.2026 kullanıcı kararı, F8
+   ekleri 34). Öneri geri alınabilir (`oneri_geri_alinabilir`): KAYIP dosyasında
+   nüsha hâlâ "Kayıp"sa (kayıttan düşülmemişse) kitap bulununca "Kayıttan düşme
+   önerildi"den "Bulundu", "Bedelle başka eser alındı"dan "Bulundu (bedel teslim
+   alınmıştı)" seçilir — öneri kalkar, nüsha rafa döner (F7 düzeltme turu; ikincisi
+   25.09.2026 kullanıcı kararı, F8 ekleri 14: Md. 19'un "kaydı silinerek" hükmü
+   kayıttan düşme yapılmadıkça yerine gelmemiştir). Nüsha kayıttan düşülmüşse
+   bulunan kitap "Sayım fazlası (kayda giriş)" edinimiyle YENİ nüsha olarak alınır;
+   eski kayıt terminal kalır (TMY 17'ye kıyasen).
+6a. **Bedel teslim alındıktan sonra bulunma** ("Bulundu (bedel teslim alınmıştı)",
+   yalnız kayıp dosyasında, 25.09.2026 kullanıcı kararı): "Bedel teslim alındı"
+   adımındaki açık dosyada seçilir; nüsha "Kayıp"tan rafa döner, dosya kapanır,
+   bedel kaydı dosyada kalır. Teslim alınan bedelin kişiye iadesi ya da başka
+   kaynak alımında kullanılması okul yönetiminin kararıdır; program para tutmaz.
 7. **TMY 32/3 durdurması** kayıp bildirimini ve kayıp dosyası çözümünü kapsar
    (§9-10, D4): iki yol `services.tmy_kapisi.ensure_open`'dan geçer (F7'de boş,
    F9 doldurur). Hangi çözümün kapsamda olduğunu `tmy_kapisi.dosya_cozumu_kapsamda_mi`
@@ -73,7 +83,9 @@ from django.utils import timezone
 
 from apps.kutuphane import selectors_teslim
 from apps.kutuphane.models import (
+    FOUND_RESOLUTIONS,
     OPEN_CASE_RESOLUTIONS,
+    PRICE_RECEIVED_RESOLUTIONS,
     PRICE_RESOLUTIONS,
     TERMINAL_COPY_STATUSES,
     WRITE_OFF_RESOLUTIONS,
@@ -152,18 +164,28 @@ def price_options_available() -> bool:
     return SchoolConfig.load().kademe == SchoolLevel.ORTAOGRETIM
 
 
-def oneri_geri_alinabilir(case: LossDamageCase) -> bool:
-    """Kapanmış kayıp dosyasında kayıttan düşme önerisi "Bulundu" ile geri alınabilir mi?
+#: Kayıttan düşme önerisiyle kapanmış kayıp dosyasında kitap bulununca seçilen çözüm
+#: (kural 6): öneri kalkar, nüsha rafa döner. Bedel teslim alınmışsa bulunma da bedel
+#: kaydını taşıyan biçimdir.
+ONERIDEN_BULUNMA: Final[dict[str, str]] = {
+    CaseResolution.WRITE_OFF_PROPOSED: CaseResolution.FOUND_RETURNED,
+    CaseResolution.CLOSED_OTHER_REPURCHASED: CaseResolution.FOUND_AFTER_PRICE,
+}
 
-    Yalnız "Kayıttan düşme önerildi" ile kapanmış KAYIP dosyasında ve nüsha hâlâ
-    "Kayıp"ken (asıl kayıttan düşme — F8/F9 — yapılmamış, nüsha başka bir yola
-    geçmemiş). "Bedelle başka eser alındı" bu yolu açmaz (Md. 19: kaybedilenin
-    kaydı silinerek başka eser alınır).
+
+def oneri_geri_alinabilir(case: LossDamageCase) -> bool:
+    """Kapanmış kayıp dosyasında kayıttan düşme önerisi bulunmayla geri alınabilir mi?
+
+    Yalnız "Kayıttan düşme önerildi" ya da "Bedelle başka eser alındı" ile kapanmış
+    KAYIP dosyasında ve nüsha hâlâ "Kayıp"ken (asıl kayıttan düşme — sayım, F9 —
+    yapılmamış, nüsha başka bir yola geçmemiş). "Bedelle başka eser alındı"da Md.
+    19'un "kaybedilenin kaydı silinerek" hükmü kayıttan düşmeyle yerine gelir; o
+    yapılmadıkça kayıt silinmemiştir (25.09.2026 kullanıcı kararı, F8 ekleri 14).
     """
     return (
         not case.is_open
         and case.case_type == CaseType.LOST
-        and case.resolution == CaseResolution.WRITE_OFF_PROPOSED
+        and case.resolution in ONERIDEN_BULUNMA
         and case.copy.status == CopyStatus.LOST
     )
 
@@ -173,24 +195,35 @@ def allowed_resolutions(
 ) -> tuple[str, ...]:
     """Dosyanın şu anki durumundan seçilebilecek çözümler (`CaseResolution` sırasıyla).
 
-    - Kapanmış dosyada hiçbiri — TEK istisna: "Kayıttan düşme önerildi" ile
-      kapanmış kayıp dosyasında nüsha hâlâ "Kayıp"sa "Bulundu" (öneri geri alınır;
-      asıl kayıttan düşme yapılmadıkça kitap rafa dönebilir).
+    - Kapanmış dosyada hiçbiri — TEK istisna: kayıttan düşme önerisiyle kapanmış
+      kayıp dosyasında nüsha hâlâ "Kayıp"sa bulunma (öneri geri alınır; asıl
+      kayıttan düşme yapılmadıkça kitap rafa dönebilir): "Kayıttan düşme
+      önerildi"den "Bulundu", "Bedelle başka eser alındı"dan "Bulundu (bedel
+      teslim alınmıştı)" (`ONERIDEN_BULUNMA`).
     - "Bulundu" yalnız kayıpta, "Onarıldı" yalnız hasarda.
     - Bedel yolları yalnız ortaöğretimde ve SIRAYLA: "Bedel belirlendi" →
       "Bedel teslim alındı" → "Bedelle aynısı / başka eser alındı". "Bedel
       belirlendi" dosyasında bedel yeniden belirlenebilir (düzeltme) ve bulunma,
       temin ve öneri yolları açık kalır (kitap sonradan bulunabilir; kişinin işi
       henüz sürer).
-    - "Bedel teslim alındı" dosyasında YALNIZ iki kapanış yolu vardır ("Bedelle
-      aynısı alındı", "Bedelle başka eser alındı") ve kademeden bağımsızdır:
-      bedel alınmıştır, okulun açık işi kademe sonradan değişse de kapanabilmelidir.
+    - "Bedel teslim alındı" dosyasında YALNIZ iki kapanış yolu ("Bedelle aynısı
+      alındı", "Bedelle başka eser alındı") ve kayıpta "Bulundu (bedel teslim
+      alınmıştı)" vardır; üçü de kademeden bağımsızdır: bedel alınmıştır, okulun
+      açık işi kademe sonradan değişse de kapanabilmelidir.
     - "Kayba dönüştü" hiçbir zaman seçilemez (kayıp bildiriminin işidir).
     """
     if not case.is_open:
-        return (CaseResolution.FOUND_RETURNED,) if oneri_geri_alinabilir(case) else ()
+        if oneri_geri_alinabilir(case):
+            return (ONERIDEN_BULUNMA[case.resolution],)
+        return ()
     if case.resolution == CaseResolution.PRICE_RECEIVED:
-        return (CaseResolution.CLOSED_SAME_REPURCHASED, CaseResolution.CLOSED_OTHER_REPURCHASED)
+        kapanis: tuple[str, ...] = (
+            CaseResolution.CLOSED_SAME_REPURCHASED,
+            CaseResolution.CLOSED_OTHER_REPURCHASED,
+        )
+        if case.case_type == CaseType.LOST:
+            kapanis += (CaseResolution.FOUND_AFTER_PRICE,)
+        return kapanis
     bedel = price_options_available() if price_options is None else price_options
     yollar: set[str] = {CaseResolution.REPLACED_SAME, CaseResolution.WRITE_OFF_PROPOSED}
     if case.case_type == CaseType.LOST:
@@ -462,12 +495,14 @@ def resolve_case(
       kişinin açık işi biter, dosya okul için AÇIK kalır, nüshaya dokunulmaz.
     - "Bulundu" (kayıp) · "Aynısı temin edildi" · "Bedelle aynısı alındı": kaynak
       yerine geldi — kayıpta nüsha rafa döner; hasarda nüsha onarımdaysa rafa döner.
+    - "Bulundu (bedel teslim alınmıştı)" (kayıp; "Bedel teslim alındı"dan): nüsha
+      rafa döner, dosya kapanır, bedel kaydı kalır (kural 6a).
     - "Onarıldı" (hasar): nüsha onarımdaysa onarım kapanır ve rafa döner.
     - "Kayıttan düşme önerildi" · "Bedelle başka eser alındı": öneri işaretlenir,
-      nüshanın durumu DEĞİŞMEZ (asıl kayıttan düşme F8/F9).
-    - Kapanmış dosyada yalnız öneri geri alınır: "Kayıttan düşme önerildi" ile
-      kapanmış kayıp dosyasında nüsha hâlâ "Kayıp"sa "Bulundu" (öneri kalkar, nüsha
-      rafa döner — `oneri_geri_alinabilir`). Öbür her istek "zaten kapanmış" alır.
+      nüshanın durumu DEĞİŞMEZ (asıl kayıttan düşme sayımda — F9).
+    - Kapanmış dosyada yalnız öneri geri alınır: öneriyle kapanmış kayıp dosyasında
+      nüsha hâlâ "Kayıp"sa bulunma (öneri kalkar, nüsha rafa döner —
+      `oneri_geri_alinabilir`). Öbür her istek "zaten kapanmış" alır.
 
     `market_price` yalnız "Bedel belirlendi"de kabul edilir (teslim alınan bedel
     sonradan değiştirilmez). TMY 32/3 kapısı yalnız kapsamdaki çözümlerde sorulur
@@ -487,8 +522,9 @@ def resolve_case(
     if tmy_kapisi.dosya_cozumu_kapsamda_mi(dosya.case_type, resolution):
         tmy_kapisi.ensure_open(tmy_kapisi.DOSYA_COZUMU)
     bedel = price_options_available()
-    # Bedeli teslim alınmış dosyanın kapanışı kademeden bağımsızdır (kural 1).
-    teslim_alinmis = dosya.resolution == CaseResolution.PRICE_RECEIVED
+    # Bedeli teslim alınmış dosyanın sonraki adımları kademeden bağımsızdır (kural 1):
+    # açık dosyada kapanış ya da bulunma, kapanmışta öneriden bulunma.
+    teslim_alinmis = dosya.resolution in PRICE_RECEIVED_RESOLUTIONS
     if (
         (resolution in PRICE_RESOLUTIONS or market_price is not None)
         and not bedel
@@ -515,7 +551,7 @@ def resolve_case(
     if resolution == CaseResolution.PRICE_RECEIVED:
         dosya.price_received_at = simdi
     if resolution in (
-        CaseResolution.FOUND_RETURNED,
+        *FOUND_RESOLUTIONS,
         CaseResolution.REPLACED_SAME,
         CaseResolution.CLOSED_SAME_REPURCHASED,
     ):
