@@ -31,7 +31,7 @@ import { SkeletonList } from "../../ui/Skeleton";
 import { useSnackbar } from "../../ui/SnackbarProvider";
 import { Rozet } from "../ayiklama/ortak";
 import { KATALOG_SAYFA_BOYUTU } from "../kutuphane/api";
-import { SAYIM_BASLIGI, sayimAdi, sayimApi } from "./api";
+import { SAYIM_BASLIGI, YIL_SONU_SAYIMI, sayimAdi, sayimApi } from "./api";
 import type { Sayim, SayimDurumu } from "./api";
 import SayimAyrintisi from "./SayimAyrintisi";
 
@@ -139,6 +139,8 @@ function SayimListesi({ onAc }: { onAc: (id: number) => void }) {
 
   const sutunlar: Column<Sayim>[] = [
     { header: "Mali yıl", cell: (s) => (s.fiscal_year ? String(s.fiscal_year) : "—") },
+    // F10 (K6): "Yıl sonu sayımı" işareti — yönetim hesabı cetveli hazırlığı yalnız ondan basılır.
+    { header: "Tür", cell: (s) => (s.is_year_end ? YIL_SONU_SAYIMI : "Ara sayım") },
     { header: "Başlangıç", cell: (s) => formatDate(s.started_at) },
     {
       header: "Durum",

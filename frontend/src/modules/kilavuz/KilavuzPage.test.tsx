@@ -226,6 +226,30 @@ import {
   OKUTMA_BASLIGI,
   OKUTMA_KUTUSU as SAYIM_OKUTMA_KUTUSU,
 } from "../sayim/SayimOkutmasi";
+import {
+  AYIN_KITAPLARI_ADI,
+  KILAVUZ_7_ONERISI,
+  MD7_1_METNI,
+  OKUMA_ODULU_ADI,
+  ODUL_SIRA_EN_COK,
+  ODUL_SIRA_VARSAYILAN,
+  RAPORLAR_ADRESI,
+  RAPORLAR_BASLIGI,
+  RAPOR_SEKMELERI,
+  raporlarAdresi,
+} from "../raporlar/api";
+import { ESIK_ALTI, KISISIZLIK_NOTU } from "../raporlar/IstatistikBolumu";
+import { ODUL_OLCUTU } from "../raporlar/OkumaOduluBolumu";
+import { COK_OKUNANLAR_BASLIGI, KITAP_ESIGI_BASLIGI } from "../raporlar/RaporKartlari";
+import { DISA_AKTARIM_GERI_YUKLEME } from "../dokumler/DokumlerBolumu";
+import {
+  ALFABETIK_KATALOG_ADI,
+  DEFTER_DOKUMU_ADI,
+  KISI_DOKUMU_ADI,
+  YONETIM_HESABI_ADI,
+} from "../dokumler/api";
+import { BAKANLIK_SISTEMI_AYARI } from "../kutuphane/BakanlikHatirlatmasi";
+import { ARA_SAYIM_ADI, YIL_SONU_SAYIMI } from "../sayim/api";
 import KilavuzPage, { KILAVUZ_BOLUMLERI } from "./KilavuzPage";
 
 function renderPage() {
@@ -268,6 +292,8 @@ const BEKLENEN_BASLIKLAR = [
   "Sayım",
   "Katalog Excel Şablonu",
   "İçe Aktarma",
+  "Raporlar ve Çok Okunanlar",
+  "Dökümler ve Dışa Aktarım",
   "Yedek ve Güvenlik Dosyası",
   "Tepsi, Çıkış ve Gün Değişimi",
   "Ağ Kataloğu",
@@ -1171,9 +1197,10 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     expect(metin).toContain("bağışçı, fiyat, TKYS kodu, eski kayıt no");
     expect(metin).toContain("Aramalar ve bağlanan bilgisayarların adresleri kaydedilmez");
     expect(metin).toContain("kayıtlar kilitliyken de çalışır; internete hiç bağlanmaz");
-    // Çok okunanlar: sayı yok; bu sürümde liste boştur (ödünç verisi yok) ve kılavuz bunu söyler.
+    // Çok okunanlar: sayı yok; F10'dan beri her gün hesaplanır ve eşik geçilince dolar.
     expect(metin).toContain("Çok okunanlarda yalnız sıra görünür, sayı gösterilmez");
-    expect(metin).toContain("sonraki sürümlerde dolmaya başlar");
+    expect(metin).toContain("ödünç kayıtlarından her gün hesaplanan “Dönemin Çok Okunanları”dır");
+    expect(metin).not.toContain("sonraki sürümlerde dolmaya başlar");
     // Kataloğun kendi üst menüsü (backend/katalog/sablonlar/taban.html).
     expect(metin).toContain("“Ara”, “Kaynak Adları”, “Yazarlar”, “Konular” ve “Hakkında”");
     expect(metin).toContain("“Katalog Sayfaları”");
@@ -1452,10 +1479,11 @@ describe("KilavuzPage — sözlük ve kalıntı denetimi", () => {
       /en çok ödünç alınan/i,
       // Künye getirmenin konum dili (docs/sozluk.md §1, tasarım §8.5-10):
       // program "resmî künye" ya da "Bakanlık sisteminden geliyor" demez ve
-      // teknik dile kaymaz.
+      // teknik dile kaymaz. "Bakanlık sistemi" F10'dan beri yalnız "Dökümler ve Dışa
+      // Aktarım" bölümünde ve öbür bölümlerde yalnız ayarın adı olarak geçer (F10 testi).
       /otomatik künye/i,
       /resmî künye/i,
-      /Bakanlık sistemi/i,
+      /Bakanlık sisteminden/i,
       /sorgula/i,
       /\bAPI\b/,
       // "yapay zekâ" düzeltme işaretiyle yazılır; "AI" kısaltması kullanılmaz.
@@ -3192,5 +3220,328 @@ describe("KilavuzPage — F9 ile değişen eski bölümler", () => {
     expect(bolumMetni("ayiklama")).toContain(
       "Sayımda TMY 32/3 durdurması sürerken teklif uygulanamaz",
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F10: Raporlar ve Çok Okunanlar; Dökümler ve Dışa Aktarım. Ekran adları `modules/raporlar` ve
+// `modules/dokumler` sabitlerinden; mevzuat alıntıları sunucu tarafında `test_rapor_metinleri.py`
+// ile backend sabitleri ve docs/mevzuat'la eşitlenir. Kilitlenenler: profil yasağı (sayı yok,
+// k farklı üye, iç kullanım, ödünç ≠ okuma, başarı ilişkilendirmesi yok), Md. 7 kartının yalnız
+// bilgi olması, yasak sözcükler (sözlük: "okuduğu kitaplar", "okuma karnesi", "okuma puanı").
+// ---------------------------------------------------------------------------
+describe("KilavuzPage — Raporlar ve Çok Okunanlar (F10)", () => {
+  it("sayfa, sekme ve kart adları ekranın sabitleriyle aynıdır; bağlantılar doğru adrese gider", () => {
+    renderPage();
+    const metin = bolumMetni("raporlar");
+    for (const sekme of Object.values(RAPOR_SEKMELERI)) {
+      expect(metin).toContain(sekme);
+    }
+    expect(metin).toContain(KITAP_ESIGI_BASLIGI);
+    expect(metin).toContain(`${COK_OKUNANLAR_BASLIGI} kartı iki listenin ilk üç eserini`);
+    expect(metin).toContain(AYIN_KITAPLARI_ADI);
+    expect(metin).toContain(OKUMA_ODULU_ADI);
+    expect(metin).toContain("Yeniden hesapla ile süren listeleri hemen yenileyebilirsiniz");
+    expect(metin).toContain("Genel Bakış'taki “Raporlar” kartından da açılır");
+    expect(metin).toContain("yalnız yönetici kipinde çalışır");
+
+    const hedef = (ad: string) =>
+      screen.getAllByRole("link", { name: ad }).map((a) => a.getAttribute("href"));
+    expect(hedef(RAPORLAR_BASLIGI)).toEqual([RAPORLAR_ADRESI]);
+    expect(hedef("Raporlar → Dökümler")).toEqual([raporlarAdresi("dokumler")]);
+  });
+
+  it("istatistik kişisizdir; eşik altı “—” ve tamamlayıcı gizleme anlatılır; konu kırılımı yok", () => {
+    renderPage();
+    const metin = bolumMetni("raporlar");
+    expect(metin).toContain(KISISIZLIK_NOTU);
+    expect(metin).toContain(`yerine “${ESIK_ALTI}” yazılır`);
+    expect(metin).toContain("bir grup daha gizlenir");
+    expect(metin).toContain("Konuya ya da bölüme göre ödünç kırılımı hiç yoktur.");
+    expect(metin).toContain("okul müdürlüğüne gidecek rapor Yıl Sonu Raporu");
+    expect(metin).toContain(
+      "Sınıf düzeyi kaydı olmayan öğrencilerin ödüncü düzey kırılımına girmez.",
+    );
+  });
+
+  it("aktif üye sayısı eşiksizdir (F10 ekleri K1); ödünç eşiği kalır — üç yerde aynı kural", () => {
+    renderPage();
+    const raporlar = bolumMetni("raporlar");
+    expect(raporlar).toContain("“Aktif üye (bugün)” sütunu ise eşiksiz yazılır");
+    expect(raporlar).toContain("o öğretmenin ödünç sayısı yine gizli kalır");
+    const yilSonu = bolumMetni("yil-sonu-raporu");
+    expect(yilSonu).toContain(
+      "Rapor tarihindeki aktif üye sayısı ödünç verisi olmadığı için eşiksiz yazılır.",
+    );
+    expect(bolumMetni("dokumler")).toContain(
+      "üyelik sayısı ödünç verisi olmadığı için eşiksiz yazılır",
+    );
+    for (const metin of [raporlar, yilSonu]) {
+      expect(metin).not.toMatch(/aktif üyesi olan türün|eşiğin altındaysa gösterilmez/u);
+    }
+  });
+
+  it("küçük grupların neden gizlendiği sade dille ve KVKK md. 6'ya atıfla anlatılır", () => {
+    renderPage();
+    const metin = bolumMetni("raporlar");
+    expect(metin).toContain("Küçük gruplar neden gizlenir?");
+    expect(metin).toContain("o kişilerin ne kadar kitap aldığını ele verir");
+    expect(metin).toContain("düşüncesi, inancı ya da sağlığı hakkında fikir verebilir");
+    expect(metin).toContain("(6698 sayılı Kanun md. 6)");
+    expect(metin).toContain("ondan bir kişi ya da küçük bir grup hakkında okuma bilgisi üretmez");
+    expect(metin).toContain("Aynı kural yıl sonu raporunda da geçerlidir.");
+  });
+
+  it("Md. 7/1 birebir; kart yalnız bilgi verir ve yalnız kitap türünü sayar", () => {
+    renderPage();
+    const metin = bolumMetni("raporlar");
+    expect(metin).toContain(`“${MD7_1_METNI}”`);
+    expect(metin).toContain("Kart yalnız bilgi verir");
+    expect(metin).toContain("süreli yayın, görsel-işitsel materyal ve dijital kaynak sayılmaz");
+  });
+
+  it("çok okunanlar: en az k farklı üye, tek üyenin tekrarı sokmaz, sayı yok, 3-10", () => {
+    renderPage();
+    const metin = bolumMetni("raporlar");
+    expect(metin).toContain("aynı üyenin bir kitabı tekrar tekrar alması onu listeye sokmaz");
+    expect(metin).toContain("hiçbir yerde sayı gösterilmez, yalnız sıra görünür");
+    expect(metin).toContain("3 ile 10 arasında ayarlanır (varsayılan 5)");
+    expect(metin).toContain("Ağ Kataloğu vitrininde görünür");
+    // 15/1-ğ kısmi alıntı (başı "…"); Kılavuz 6.2 alıntısızdır.
+    expect(metin).toContain("çok okunan ve okunmasında fayda görülen kitaplar listesini");
+    expect(metin).toContain("Uygulama Kılavuzu (6.2)");
+    // Pencereler: en çok on eser; kapanan liste bir daha değişmez (eşik değişse de).
+    expect(metin).toContain("Her listede en çok on eser yer alır.");
+    expect(metin).toContain("son hâlini alır ve bir daha değişmez");
+    expect(metin).toContain("eşiği sonradan değiştirmek geçmiş listeleri değiştirmez");
+  });
+
+  it("Ayın Kitapları afişi sayısız ve kişisizdir, asılabilir; iç çıktı asılmaz", () => {
+    renderPage();
+    const metin = bolumMetni("raporlar");
+    expect(metin).toContain(`${AYIN_KITAPLARI_ADI} Çok Okunanlar sekmesindeki`);
+    expect(metin).toContain("Sayı ve kişi bilgisi yoktur; bu yüzden afiş panoya asılabilir.");
+    expect(metin).toContain("Ayın listesi boşsa afiş basılmaz.");
+    expect(metin).toContain(
+      "Ağ Kataloğu, Genel Bakış, Ayın Kitapları afişi ve yıl sonu raporu adlı sıralama içermez",
+    );
+  });
+
+  it("raporlar ve dökümler sözlüğün yasak sözcüklerini kullanmaz; ödünç okuma bilgisi değildir", () => {
+    renderPage();
+    // Kılavuz 7'nin cümlesi ("En çok kitap okuyan öğrenciler …") alıntıdır; tarama dışıdır.
+    const metin = `${bolumMetni("raporlar")} ${bolumMetni("dokumler")}`
+      .split(KILAVUZ_7_ONERISI)
+      .join("");
+    for (const yasak of [
+      /okuduğu kitap/i,
+      /okuma karnesi/i,
+      /okuma puanı/i,
+      /okuma geçmişi/i,
+      /okuma şampiyonu/i,
+      /okuma istatistiği/i,
+      /okuma oranı/i,
+      /okunma sayısı/i,
+      /popüler/i,
+      /en çok ödünç alınan/i,
+      /en çok (kitap )?okuyan/i,
+      /senkroniz/i,
+      /entegrasyon/i,
+      /Bakanlığa aktar/i,
+      /kütüphaneci atanmalı/i,
+    ]) {
+      expect(metin).not.toMatch(yasak);
+    }
+    // Ödünç ≠ okuma: kılavuz bunu istatistikte ve iç çıktıda ayrı ayrı söyler.
+    expect(metin.split("Ödünç kaydı okunan kitabı göstermez.").length - 1).toBeGreaterThanOrEqual(
+      2,
+    );
+  });
+
+  it("okuma ödülü: Kılavuz 7 birebir, öneridir, iç kullanım, ölçüt ekranla aynı", () => {
+    renderPage();
+    const metin = bolumMetni("raporlar");
+    expect(metin).toContain(`“${KILAVUZ_7_ONERISI}”`);
+    expect(metin).toContain("Bu bir öneridir, bağlayıcı değildir");
+    expect(metin).toContain(ODUL_OLCUTU);
+    // Seçiciler ekrandaki adlarla; sıra sınırları ekranın sabitlerinden.
+    expect(metin).toContain(
+      `“Sıra sayısı” (1 ile ${ODUL_SIRA_EN_COK} arası, varsayılan ${ODUL_SIRA_VARSAYILAN})`,
+    );
+    expect(metin).toContain("“Sınıf” (bütün sınıflar ya da bir sınıf düzeyi)");
+    expect(metin).toContain("çıktıdaki öğrenci sayısı sıra sayısından fazla olabilir");
+    expect(metin).toContain("asılmaz, çoğaltılmaz, ağda ve velilerle paylaşılmaz");
+    expect(metin).toContain("adlar ekranda listelenmez, yalnız PDF'te yer alır");
+    expect(metin).toContain(
+      "program not ya da başarı bilgisi tutmaz ve bu ilişkilendirmeyi yapmaz",
+    );
+  });
+
+  it("Dökümler bölümü Raporlar sekmesine ve dışa aktarımın geri yükleme bağlantısına gönderir", () => {
+    renderPage();
+    const metin = bolumMetni("dokumler");
+    expect(metin).toContain(DISA_AKTARIM_GERI_YUKLEME);
+    expect(metin).toContain("“Dışa aktarım dosyası”");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F10: Dökümler ve Dışa Aktarım. Belge adları `modules/dokumler/api.ts` sabitlerinden; alıntılar
+// (Md. 11/1, TMY 9/1-ç, 34/3-a, KVKK 11/1) ve alıntısız atıflar sunucu tarafında
+// `test_dokum_metinleri.py` ve `test_rapor_dokum_kilavuz_metinleri.py` ile eşitlenir. Dışa aktarım
+// anlatımı docs/disa-aktarim.md ile çelişmez: kişisel veri yok, numara yeniden kullanılmaz,
+// yedek değildir; dosya Bakanlık sistemine doğrudan yüklenecek biçim diye sunulmaz.
+// ---------------------------------------------------------------------------
+describe("KilavuzPage — Dökümler ve Dışa Aktarım (F10)", () => {
+  it("belge, kart, seçici ve düğme adları ekrandakiyle aynıdır", () => {
+    renderPage();
+    const metin = bolumMetni("dokumler");
+    for (const ad of [
+      ALFABETIK_KATALOG_ADI,
+      DEFTER_DOKUMU_ADI,
+      YONETIM_HESABI_ADI,
+      KISI_DOKUMU_ADI,
+    ]) {
+      expect(metin).toContain(ad);
+    }
+    expect(metin).toContain("Dışa aktarım dosyasını indir");
+    expect(metin).toContain("“Eksen” seçicisinde üç sıralama vardır: “Kaynak adına göre”, “Yazar");
+    expect(metin).toContain("“Konuya göre”");
+    expect(metin).toContain("“Bölüm” seçicisiyle");
+    expect(metin).toContain("“Kapsam” seçicisiyle");
+    expect(metin).toContain(
+      "“Kişi Dökümü” kartında “Okul no” ya da “Ad soyad” alanını doldurup “Ara”ya basın",
+    );
+    expect(metin).toContain(
+      "Belgeler “Önizle” ve “PDF'i indir” düğmeleriyle, çizelgeler “Excel'i indir” ile alınır",
+    );
+  });
+
+  it("dışa aktarım: kişisel veri yok, numara yeniden kullanılmaz, yedek değildir", () => {
+    renderPage();
+    const metin = bolumMetni("dokumler");
+    expect(metin).toContain("Dosyada kişisel veri yoktur");
+    expect(metin).toContain("komisyon kararının yalnız tarihi ve sayısı yazılır");
+    expect(metin).toContain("“Üye Özeti” sayfası üye türüne ve şubeye göre aktif üye sayısıdır");
+    expect(metin).toContain("hiçbir numara yeniden kullanılmaz");
+    expect(metin).toContain("“Numara Sayaçları”");
+    expect(metin).toContain("“Rafta” açılır");
+    expect(metin).toContain("program yalnız tanıdığı sürümü geri yükler");
+    expect(metin).toContain("Dışa aktarım yedek değildir.");
+    expect(metin).toContain("Yedek ve Güvenlik Dosyası → Yeni bilgisayara taşıma");
+    // İçe Aktarma bölümü dosya türü seçicisini ve reddedilen numaraları anlatır.
+    const ice = bolumMetni("ice-aktarma");
+    expect(ice).toContain("İçe aktarılacak dosya seçicisi iki türü ayırır: Excel listesi");
+    expect(ice).toContain("boş barkod aralığında ayrılmış ya da numara sayacının gerisinde kalan");
+    expect(ice).toContain("hiçbir numara yeniden kullanılmaz");
+  });
+
+  it("Bakanlık sistemine geçiş: taşınabilirlik; dosya o sisteme yüklenecek biçim diye sunulmaz", () => {
+    renderPage();
+    const metin = bolumMetni("dokumler");
+    expect(metin).toContain("kataloğun programın dışına her zaman çıkarılabilmesi içindir");
+    expect(metin).toContain("sütun eklenir ya da anlamı değişirse şema sürümü yükselir");
+    expect(metin).toContain("dosya o sisteme doğrudan yüklenecek biçimde hazırlanmadı");
+    expect(metin).toContain(
+      "program hiçbir kaydı Bakanlık sistemine ya da başka bir yere göndermez",
+    );
+    expect(metin).toContain("bu aktarım okul müdürlüğünün işidir");
+  });
+
+  it("Taşınır Kütüphane Defteri dökümü: ciltletilmemiş süreli yayın girmez; TKYS'nin yerine geçmez", () => {
+    renderPage();
+    const metin = bolumMetni("dokumler");
+    expect(metin).toContain("Ciltletilmemiş süreli yayın dökümde yoktur");
+    expect(metin).toContain("Varlık İşlem Fişi düzenlenmez (md. 10/1-a-4)");
+    expect(metin).toContain("ciltletildikten sonra kayda alınır (md. 15/4)");
+    expect(metin).toContain("giriş tarihi programa aktarıldıkları gündür");
+    expect(metin).toContain("döküm onun yerine geçmez");
+  });
+
+  it("yönetim hesabı cetveli hazırlığı yalnız yıl sonu işaretli ve onaylanmış sayımdan", () => {
+    renderPage();
+    const metin = bolumMetni("dokumler");
+    expect(metin).toContain(
+      `yalnız “${YIL_SONU_SAYIMI}” olarak işaretlenmiş ve onaylanmış sayımdan basılır`,
+    );
+    // F10 düzeltme turu: dayanak zinciri 34/3-a → 32/9 → 32/7 (32/9 TSDC'nin hükmüdür).
+    expect(metin).toContain("Taşınır Sayım ve Döküm Cetveline dayanır (md. 34/3-a)");
+    expect(metin).toContain("sonra düzenlenir (md. 32/7, 32/9)");
+    expect(metin).toContain("iptal edilmiş olanlar listelenmez");
+    expect(metin).toContain("resmî cetveller TKYS'dedir");
+    expect(metin).toContain("fiyatı kayıtlı olmayan nüshalar ayrı sütunda sayılır");
+    expect(metin).toContain("(md. 34/2-c)");
+    // Sayım bölümü işareti ve ara sayımın ekini ekranın adlarıyla anlatır.
+    const sayim = bolumMetni("sayim");
+    expect(sayim).toContain(`taslaktaki “${YIL_SONU_SAYIMI}” kutusunu işaretleyin`);
+    expect(sayim).toContain(`ekinin başlığı “${ARA_SAYIM_ADI}” olur`);
+    // F10 düzeltme turu: ara sayımın eki gelecek yıla devir basmaz; sayılar belge günündendir.
+    expect(sayim).toContain("gelecek yıla devir, ona göre hesaplanan fark");
+    expect(sayim).toContain("belgenin düzenlendiği günkü kayıtlardan hesaplanır");
+    expect(sayim).not.toContain("o güne kadarki durumunu");
+    expect(sayim).toContain("Bir mali yılın tek yıl sonu sayımı olur");
+  });
+
+  it("kişi dökümü: KVKK md. 11 başvurusuna cevap hazırlığıdır; yalnız seçilen kişinin kaydı", () => {
+    renderPage();
+    const metin = bolumMetni("dokumler");
+    expect(metin).toContain("a) Kişisel veri işlenip işlenmediğini öğrenme");
+    expect(metin).toContain("Döküm cevabın hazırlığıdır");
+    expect(metin).toContain("en geç otuz gün içinde sonuçlandırılır (md. 13/2)");
+    expect(metin).toContain("cevabı okul müdürlüğü verir");
+    expect(metin).toContain("Okul no şifreli saklandığı için numaranın tamamıyla aranır");
+    expect(metin).toContain("Başka bir kişinin kaydı aynı belgeye girmez:");
+    // F10 düzeltme turu: dosyanın kişisi tek kuraldır; serbest metin aranmaz ve bu söylenir.
+    expect(metin).toContain("dosya öğrencinindir, öğretmenin dökümünde yer almaz");
+    expect(metin).toContain("Döküm serbest metinle yazılmış adları aramaz");
+    expect(metin).toContain("Belge yalnız yönetici kipinde basılır");
+    expect(metin).toContain("indirilen dosyanın adında kişinin adı yoktur");
+  });
+
+  it("“Bakanlık sistemi kullanımda”: varsayılan kapalı, yalnız hatırlatma, konum dili", () => {
+    renderPage();
+    const metin = bolumMetni("dokumler");
+    expect(metin).toContain(`“${BAKANLIK_SISTEMI_AYARI}” kutusunu işaretleyip kaydedin`);
+    expect(metin).toContain(
+      "Ayar varsayılan olarak kapalıdır ve yalnız hatırlatma açar; hiçbir kaydı değiştirmez.",
+    );
+    expect(metin).toContain(
+      "Kütüphane Defteri okulun kütüphane işlerini yürüttüğü yerel araçtır; Bakanlık sistemine bağlanmaz, oraya veri göndermez ve o sistemin yerine geçmez.",
+    );
+    // F10 düzeltme turu: tek kişilik ayrılış yolu da hatırlatır (tasarım §9-8).
+    expect(metin).toContain("Kişiler ekranındaki “Ayrıldı olarak işaretle” onayı");
+    // Hatırlatmanın çıktığı iki ekranın ve ayarın bölümleri buraya gönderir.
+    for (const id of ["kisiler", "ilisik", "katalog"]) {
+      const bolum = bolumMetni(id);
+      expect(bolum).toContain(`“${BAKANLIK_SISTEMI_AYARI}”`);
+      expect(bolum).toContain("Dökümler ve Dışa Aktarım");
+    }
+    expect(bolumMetni("katalog")).toContain("3 ile 10 arasında ayarlanır (varsayılan 5)");
+  });
+
+  it("“Bakanlık sistemi” yalnız bu bölümde anılır; öbür bölümlerde yalnız ayarın adı geçer", () => {
+    const { container } = renderPage();
+    const sayfa = sayfaMetni(container);
+    const dokumler = bolumMetni("dokumler");
+    expect(sayfa).toContain(dokumler);
+    const disinda = sayfa.replace(dokumler, " ").split(`“${BAKANLIK_SISTEMI_AYARI}”`).join(" ");
+    // Künye getirmenin konum dili korunur: künye "Bakanlık sisteminden" gelmez.
+    expect(disinda).not.toMatch(/Bakanlık sistemi/i);
+    expect(disinda).not.toMatch(/Bakanlık otomasyon/i);
+  });
+
+  it("yeni bilgisayara taşıma şifreli yedekle yapılır; dışa aktarım taşımaya yetmez", () => {
+    renderPage();
+    const yedek = bolumMetni("yedek");
+    expect(yedek).toContain("Yeni bilgisayara taşıma");
+    expect(yedek).toContain("programı bütün kayıtlarıyla şifreli yedek taşır");
+    expect(yedek).toContain("Dışa aktarım dosyası yalnız kataloğu taşır, taşıma için yetmez");
+    expect(yedek).toContain("“Kütüphane Defteri — Yedekten Geri Yükle”");
+    expect(yedek).toContain("kutuphane-defteri --geri-yukle");
+    expect(yedek).toContain(
+      "kitap, üye ve açık ödünç sayılarını eski bilgisayardaki son durumla karşılaştırın",
+    );
+    expect(yedek).toContain("“Kuralı ekle/güncelle” kuralı ayardaki portla yeniden yazar");
+    expect(yedek).toContain("sabit adres ayırmayı yeni bilgisayarın ağ kartına taşımasını");
   });
 });

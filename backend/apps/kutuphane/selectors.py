@@ -290,7 +290,7 @@ def works_by_isbn13(numaralar: Any) -> QuerySet[Work]:
 
 
 def collection_summary() -> dict[str, Any]:
-    """Koleksiyon özeti — kişisiz sayaçlar (pano kartı ve Md. 7 eşiği için).
+    """Koleksiyon özeti — kişisiz sayaçlar (pano kartı).
 
     Kişisel veri İÇERMEZ: yalnız eser ve nüsha sayıları, durum kırılımı.
 
@@ -298,9 +298,11 @@ def collection_summary() -> dict[str, Any]:
 
     - `copy_count` kayıt defterinin toplamıdır: kayıttan düşülmüş ve devredilmiş
       nüshalar da sayılır (TMY dökümünün baktığı sayı).
-    - `in_stock_count` **elde bulunan** nüshadır (terminal durumlar düşülür).
-      Md. 7/1'in "kitap sayısı 10.000'i aşan" eşiği budur: eşik eldeki dermeye
-      bakar, defterden düşmüş kayıtlara değil.
+    - `in_stock_count` **elde bulunan** nüshadır (terminal durumlar düşülür), bütün
+      kaynak türleriyle. Md. 7/1'in "kitap sayısı 10.000'i aşan" eşiği bunun KİTAP
+      türündeki kısmıdır (F10): Genel Bakış'ın bilgi kartı
+      `selectors_istatistik.kitap_esigi`'nden okunur (süreli yayın ve görsel-işitsel
+      materyal sayılmaz — programın sayım kuralı, `selectors_istatistik`).
     - `available_count` şu anda rafta olandır (ödünçteki, teslimdeki, onarımdaki
       nüsha elde vardır ama rafta değildir).
     """

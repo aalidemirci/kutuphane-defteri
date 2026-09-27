@@ -100,6 +100,7 @@ class StockTakeListSerializer(serializers.ModelSerializer[StockTake]):
             "status",
             "status_display",
             "fiscal_year",
+            "is_year_end",
             "round",
             "tmy_stop",
             "service_pause",
@@ -138,6 +139,7 @@ class StockTakeDetailSerializer(serializers.ModelSerializer[StockTake]):
             "status",
             "status_display",
             "fiscal_year",
+            "is_year_end",
             "round",
             "committee_chair",
             "committee_property_officer",
@@ -244,6 +246,8 @@ class StockTakeWriteSerializer(serializers.Serializer[dict[str, Any]]):
         choices=_secenekler(REPAIR_BASIS_CHOICES, "repair"), required=False, error_messages=_SECIM
     )
     notes = serializers.CharField(max_length=NOTES_MAX, required=False, allow_blank=True)
+    #: F10 (K6): yıl sonu sayımı işareti — yalnız bu alan gönderilirse onaya dek değişir.
+    is_year_end = serializers.BooleanField(required=False)
 
 
 class StockTakeApproveSerializer(serializers.Serializer[dict[str, Any]]):

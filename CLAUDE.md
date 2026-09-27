@@ -319,6 +319,7 @@ kayıtlıdır.
 | OpenAPI / drf-spectacular yok | Tipler elle; serializer alan listesi anlık görüntüyle test edilir | T13 |
 | Veri `ProgramData`'da değil hesabın `%LOCALAPPDATA%`'sında | `ProgramData` bütün hesaplara okuma hakkı verirdi; önerilen hesap ayrı kütüphane masası hesabıdır | §4.5 |
 | Personel unvanı, branşı ve öğrenci cinsiyeti yok | Veri en aza indirme; branş öğretmeni kişiye bağlar | V2-01, §6.1 |
+| Üye sayıları (türe ve şubeye göre) eşiksiz basılıyor | 27.09.2026 kullanıcı kararı: üyelik sayısı ödünç verisi değildir, profil yasağının konusu sayılmaz. k eşiği ve tamamlayıcı gizleme yalnız ödünçten türeyen sayılara uygulanır | §14.1 F10 ekleri K1 |
 | e-Okul aktarımı kimseyi "ayrıldı" yapmıyor, ayrılış da kaydı silmiyor | 22.09.2026 kullanıcı kararı: listede bulunmayan kişi **Ayrılış Havuzu**'na düşer, kararı kullanıcı verir; ayrılan kişinin iade etmediği kaynak olabileceği için kayıt kalır. Ayrılmış kayıtların temizliği F11 saklama taramasına bağlıdır | §14.1 F1 ekleri, TB16 |
 
 **Kural:** Bu tabloya ya da teknik borç kütüğüne giren bir konuyu yalnız
@@ -581,13 +582,45 @@ dosyasında "Bulundu" 32/3 kapsamı dışında (K1), onarımdaki nüsha için ku
 ama TMY'siz iletiyle (K4), ikinci turda fazla teyidi yok (K5), harfli eski etiket yazılmaz
 (K7). E10'un gerçek yazıcı çıktısı ve sayım gününün kendisi F12'ye ertelendi.
 
-Sıradaki: F10 Raporlar + dışa aktarım (kişisiz istatistik ve eşikli kırılımlar, Md. 7'nin 10.000
-eşiği, çok okunanlar — k farklı üye, gün değişimi kapısına eklenir — + E12, E11 ciltsiz süreli
-yayın hariç ve D1'in kalan kısmı 34/2-c + 34/3-a, E17, E20, sürümlü dışa aktarım şeması +
-gidiş-dönüş, kişi dökümü, "Bakanlık sistemi kullanımda" hatırlatma ayarı). F10, F9'dan sayıma
-**"yıl sonu sayımı" işaretini** üstlenir (F9 ekleri K6 KARAR — F10 sözleşmesine devredildi;
-işaretsiz sayımın eki cetvele aktarılacak sayı basmaz). Tam tablo: tasarım §14.1. Saha hazırlık
-hattı (S1-S15, kod dışı): §14.2.
+**F10 Raporlar + dışa aktarım — kod tarafı bitti (27.09.2026, dal `f10-raporlar`).** Tek göç
+`0009_yil_sonu_sayimi_ve_bakanlik_sistemi` (`StockTake.is_year_end`,
+`LibraryPolicy.ministry_system_in_use`, `LibraryPolicy.popular_min_members` 3-10) · Raporlar
+sayfası (yalnız yönetici kipi): **İstatistik** kişisiz ve k eşikli — dolaşım hesabı E9'unkidir
+(`selectors_yil_raporu._dolasim`, farklı üye eşiği + tamamlayıcı gizleme), konu ekseni yok ·
+**Md. 7/1 kartı** (elde bulunan kitap 10.000'i AŞINCA; yalnız bilgi; kayıp bildirilmiş ama
+düşülmemiş kitabı ayrıca yazar) · **çok okunanlar** (`kd_katalog_populer`, gün değişimi
+kapısında; en az k FARKLI üye — §5.10-12; sayı yok, yalnız sıra; kapanan pencere dondurulur) +
+**E12 Ayın Kitapları** afişi · **E20 okuma ödülü iç çıktısı** (yalnız yönetici kipi, "İç
+kullanım"; ağa, panoya, E9'a, E12'ye girmez) · **Dökümler**: sürümlü dışa aktarım şeması
+(`export_schema`, `docs/disa-aktarim.md`, `v1`) ve İçe Aktarma'nın **"Dışa aktarım dosyası"
+kipi** — barkod ve kayıt no korunur, sayaç ilerler, gidiş-dönüş testli; **yalnız boş kataloga
+ve bütün satırlarla** (aktarılamayan satır varken uygulanmaz — reddedilen numara yanardı);
+dosya "Excel listesi" yolunda tanınıp reddedilir · **E17** (üç eksen, kurum yazarı ters
+çevrilmez, "Bölümü yazılmamış" süzgeci) · **E11** defter dökümü (ciltsiz süreli yayın girmez —
+tek süzgeç `selectors_sayim.ciltsiz_sureli_yayin_q`, cetvel hazırlığı da uygular) ve yönetim
+hesabı cetveli hazırlığı (yalnız yıl sonu işaretli ve onaylanmış sayımdan; 34/3-a → 32/9 →
+32/7) · **kişi dökümü** (KVKK md. 11; dosya kişisi F7'nin tek kuralı
+`selectors_teslim.person_case_q`; serbest metin aranmaz ve belge bunu söyler) · **K6** "yıl
+sonu sayımı" işareti (işaretsiz sayımın eki "Ara sayım", gelecek yıla devir basmaz; bir mali
+yılın tek yıl sonu sayımı olur) · **A21** "Bakanlık sistemi kullanımda" (varsayılan kapalı;
+ayrılışta — Ayrılış Havuzu ve tek kişilik "Ayrıldı olarak işaretle" — ve İlişik Listesi'nde
+hatırlatma) · kılavuz, sözlük §4.16-4.17. **D1'in F10 kısmı kapandı.** Sapmalar, düzeltme turu
+(21 bulgu) ve kararlar: tasarım §14.1 **"F10 ekleri"**; kalan riskler TB35-TB38. **Kararlar
+(27.09.2026) uygulandı; bekleyen karar yok** (F10 ekleri K1-K4, karar turu madde 36-37):
+KULLANICI KARARI K1 — üyelik sayısı ödünç verisi değildir: Üye Özeti eşiksiz kalır, İstatistik
+ve E9'daki aktif üye gizlemesi kaldırıldı (E9 şeması 3; şema 2 ile dondurulmuş rapor kendi
+kuralıyla basılır), ödünçten türeyen bütün eşikler aynen kalır · K2 serbest tarih aralığı kalır
+(TB38 kabul) · K3 Md. 7 kartı kayıp nüshayı sayar ve ayrıca yazar · K4 kişi dökümünde serbest
+metin aranmaz, ara sayım ekinin sayıları belge günündendir. E11, E12, E17, E20 ve kişi
+dökümünün gerçek yazıcı çıktısı F12'ye ertelendi.
+
+Sıradaki: F11 Bakım (dış yedek hatırlatması · saklama ve anonimleştirme — gün değişimi
+kapısına eklenir; azami gecikme, `pre-anonim` rotasyonu, tetikte eski `pre-migrate` silme,
+BelgeIzi, kapanmış teslim; çok okunanlar anonimleştirmeden sonra yeniden hesaplanmaz · görev
+devri (E18) · güncelleme (manifest, düğmeyle)). Kod kapısı: eski exe yeni DB'yi açmaz ·
+anonimleştirme sonrası yeniden basımda ibare var · açık yükümlülük varken kişi silinmez ·
+temiz makinede geri yükleme provası. Tam tablo: tasarım §14.1. Saha hazırlık hattı (S1-S15,
+kod dışı): §14.2.
 
 ---
 
@@ -603,7 +636,7 @@ hattı (S1-S15, kod dışı): §14.2.
 | `docs/teknik-borc.md` | Bilinen ve kabul edilmiş kalan riskler |
 | `docs/kurulum.md` | Son kullanıcı ve BTR için kurulum, taşıma, sorun giderme, çıkış kodları |
 | `docs/ag-kurulumu.md` | BTR için ağ kılavuzu (güvenlik duvarı, adres, tahtalar, sınama) |
-| `docs/disa-aktarim.md` | *(F10)* sürümlü dışa aktarım şeması |
+| `docs/disa-aktarim.md` | Sürümlü dışa aktarım şeması (F10): sütunlar, geri yükleme kuralları (boş katalog, bütün satırlar), dosyada olmayanlar |
 | `packaging/windows/NOTLAR.md` | Windows paketinde doğrulanmamış varsayımlar |
 | `README.md` | Kısa tanıtım |
 

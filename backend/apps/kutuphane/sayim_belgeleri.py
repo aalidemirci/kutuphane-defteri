@@ -28,7 +28,10 @@ anlatımların dayandığı ifadeler testle depodaki metinde aranır
   dört büyüklüğü, programa aktarım ayrı satırda, ödünç, teslim ve onarımın sayılışı ayrı
   satırda; gelecek yıla devirden onayda 27/1 ile düşülenler çıkarılır ve altında ayrı
   satırda gösterilir — F9 ekleri madde 25 (a); "Bu döküm Taşınır Sayım ve Döküm Cetveli
-  değildir …" ibaresi — A8 kararı, F8 ekleri 13).
+  değildir …" ibaresi — A8 kararı, F8 ekleri 13). Ek bu adı YALNIZ "yıl sonu sayımı"
+  işaretli sayımda taşır (F10 — F9 ekleri K6; TMY 32/1, 10/1-ğ, 32/9): işaretsiz sayımın
+  eki "EK: ARA SAYIM — SAYILAR CETVELE AKTARILMAZ" başlığını, künye "Sayımın türü"
+  satırını, Excel sayfası "Ara sayım" adını alır.
 
 **ÖDÜNÇ ALANIN KİMLİĞİ BASILMAZ** (E10): sayım fazlası ve noksanına ilişkin sayfalar Varlık
 İşlem Fişine eklenir ve muhasebe birimine gider (10/1-g, 32/8). Bu modül ödünç, teslim,
@@ -210,16 +213,47 @@ GELECEK_YIL_NOTU: Final = (
     "sürerken yapılan giriş ve çıkıştan doğar."
 )
 
-#: Ekin ara sayım notu (F9 düzeltme turu): cetvel YIL SONU hesabı içindir (10/1-ğ, 32/9);
-#: program yıl sonu sayımını harcama yetkilisinin gerekli gördüğü sayımdan ayırmaz (32/1),
-#: bu yüzden ek her sayımda bu cümleyi taşır. "Yıl sonu sayımı" işareti F10'dadır (F9
-#: ekleri K6 — 25.09.2026 ana oturum kararı, F10 sözleşmesine devredildi).
+#: Ekin ara sayım notu. Cetvel YIL SONU hesabı içindir (10/1-ğ, 32/9); 32/1 yıl sonu
+#: sayımını harcama yetkilisinin gerekli gördüğü sayımdan ayırır. F9'da program bu ayrımı
+#: tutmuyordu ve ek her sayımda koşullu bir cümle taşıyordu; F10'da sayımın "yıl sonu
+#: sayımı" işareti var (F9 ekleri K6 — 25.09.2026 ana oturum kararı): işaretsiz sayımın eki
+#: "Ara sayım — sayılar cetvele aktarılmaz" başlığını ve bu notu taşır, cetvele aktarılacak
+#: sayı olarak sunulmaz.
+#: F10 düzeltme turu: "yılın o güne kadarki durumu" / "sayım günündeki ara durum" denmez —
+#: kayıt tabanlı sayılar (`tmy_34_1`) belgenin DÜZENLENDİĞİ günün kayıtlarından hesaplanır ve
+#: sayımdan sonraki giriş ve çıkışı da içerir (mali yılın sonu henüz gelmemiştir).
 ARA_SAYIM_NOTU: Final = (
-    "Taşınır Sayım ve Döküm Cetveli taşınır kayıt yetkilisinin yıl sonu hesabı için düzenlenir "
-    "(Taşınır Mal Yönetmeliği md. 10/1-ğ, 32/9). Bu sayım yıl sonu sayımı değilse (md. 32/1: "
-    "harcama yetkilisinin gerekli gördüğü sayım), aşağıdaki sayılar yılın o güne kadarki "
-    "durumunu gösterir ve cetvele aktarılmaz."
+    "Bu sayım yıl sonu sayımı olarak işaretlenmedi: harcama yetkilisinin gerekli gördüğü "
+    "sayımdır (Taşınır Mal Yönetmeliği md. 32/1). Taşınır Sayım ve Döküm Cetveli taşınır kayıt "
+    "yetkilisinin yıl sonu hesabı için düzenlenir (md. 10/1-ğ, 32/9); aşağıdaki sayılar "
+    "cetvele aktarılmaz."
 )
+#: Ara sayım ekinin sayı paragrafı (F10 düzeltme turu — tarih iddiası gerçeğe uyar).
+ARA_SAYIM_SAYILARI: Final = (
+    "Kayda dayanan sayılar belgenin düzenlendiği günkü kayıtlardan hesaplanır; sayım gününden "
+    "sonra yapılan giriş ve çıkışları da içerir. Sayımda bulunan miktar ve onayda hasar "
+    "nedeniyle kayıttan düşülenler sayımın kendi sonucudur."
+)
+#: Ara sayımda "kayda göre yıl sonu" yerine (yılın sonu gelmemiştir).
+ARA_KAYDA_GORE_SATIRI: Final = (
+    "Kayda göre, belgenin düzenlendiği gün (devir + aktarım + giren − çıkan)"
+)
+#: İşaretli sayımın ekindeki not (F10, K6): cetvel yıl sonu sayımına dayanır.
+YIL_SONU_SAYIMI_NOTU: Final = (
+    "Bu sayım yıl sonu sayımıdır (Taşınır Mal Yönetmeliği md. 32/1). Taşınır Sayım ve Döküm "
+    "Cetveli taşınır kayıt yetkilisinin yıl sonu hesabı için düzenlenir (md. 10/1-ğ, 32/9)."
+)
+#: Ekin iki başlığı ve Excel sayfası (K6): işaretli sayımda cetvel eki, işaretsizde ara sayım.
+EK_BASLIGI: Final = "EK: TAŞINIR SAYIM VE DÖKÜM CETVELİNE AKTARILACAK SAYILAR"
+ARA_SAYIM_ADI: Final = "Ara sayım — sayılar cetvele aktarılmaz"
+ARA_SAYIM_BASLIGI: Final = "EK: ARA SAYIM — SAYILAR CETVELE AKTARILMAZ"
+EK_SAYFASI: Final = "Cetvele aktarılacak sayılar"
+ARA_SAYIM_SAYFASI: Final = "Ara sayım"
+#: Künyedeki "Sayımın türü" satırı (TMY 32/1'in iki sayımı).
+SAYIM_TURU: Final[dict[bool, str]] = {
+    True: "Yıl sonu sayımı (TMY md. 32/1)",
+    False: "Ara sayım — harcama yetkilisinin gerekli gördüğü sayım (TMY md. 32/1)",
+}
 
 BOS_TARIH: Final = "…/…/……"
 BELIRSIZ: Final = "Sayım tamamlanınca yazılır"
@@ -668,6 +702,7 @@ def _kunye(stocktake: StockTake) -> list[tuple[str, str]]:
     ozet = selectors_sayim.summary(stocktake)
     info = [
         ("Mali yıl", str(stocktake.fiscal_year or "—")),
+        ("Sayımın türü", SAYIM_TURU[bool(stocktake.is_year_end)]),
         ("Sayımın başlangıcı", _zaman(stocktake.started_at)),
     ]
     if stocktake.completed_at is not None:
@@ -985,9 +1020,13 @@ def ek_satirlari(stocktake: StockTake) -> dict[str, Any]:
     )
     # Sayımda bulunan kesin ama hasar önerisi onay bekliyorsa devir onaydan sonra yazılır.
     devir_belirsiz = belirsiz if not kesin else BELIRSIZ_ONAY
+    yil_sonu = bool(stocktake.is_year_end)
     satirlar.append(
         _ek_satiri(
-            "Kayda göre yıl sonu (devir + aktarım + giren − çıkan)", sayilar["year_end_by_record"]
+            "Kayda göre yıl sonu (devir + aktarım + giren − çıkan)"
+            if yil_sonu
+            else ARA_KAYDA_GORE_SATIRI,
+            sayilar["year_end_by_record"],
         )
     )
 
@@ -1000,35 +1039,55 @@ def ek_satirlari(stocktake: StockTake) -> dict[str, Any]:
 
     # Madde 25 (a): gelecek yıla devirden onayda 27/1 ile düşülenler çıkarılır; bileşenleri
     # altında AYRI satırdadır (sayımda bulunan miktar değişmez — tutanağın SONUÇLAR'ıyla aynı).
-    satirlar += [
-        _kesinse(
-            GELECEK_YIL_SATIRI,
-            sayilar["next_year_carryover"],
-            dogru=devir_kesin,
-            bos=devir_belirsiz,
-            kalin=True,
-        ),
-        _kesinse(
-            SAYIMDA_BULUNAN_SATIRI,
-            sayilar["found_quantity"],
-            dogru=kesin,
-            bos=belirsiz,
-            girinti=True,
-        ),
-        _kesinse(
-            HASAR_DUSULEN_SATIRI,
-            sayilar["damage_written_off"],
-            dogru=devir_kesin,
-            bos=devir_belirsiz,
-            girinti=True,
-        ),
-        _kesinse(
-            "Fark (kayda göre yıl sonu − gelecek yıla devir)",
-            sayilar["difference"],
-            dogru=devir_kesin,
-            bos=devir_belirsiz,
-        ),
-    ]
+    # F10 kod kapısı (K6): "Gelecek yıla devir" cetvelin sütunudur (10/1-ğ, 34/1 "ertesi yıla
+    # devredilen") ve yalnız YIL SONU sayımına aittir. Ara sayımda ne o satır ne ona göre
+    # hesaplanan "Fark" basılır; sayımın kendi sonuçları (bulunan, hasarla düşülen) kalır.
+    if not yil_sonu:
+        satirlar += [
+            _kesinse(
+                SAYIMDA_BULUNAN_SATIRI,
+                sayilar["found_quantity"],
+                dogru=kesin,
+                bos=belirsiz,
+                kalin=True,
+            ),
+            _kesinse(
+                HASAR_DUSULEN_SATIRI,
+                sayilar["damage_written_off"],
+                dogru=devir_kesin,
+                bos=devir_belirsiz,
+            ),
+        ]
+    else:
+        satirlar += [
+            _kesinse(
+                GELECEK_YIL_SATIRI,
+                sayilar["next_year_carryover"],
+                dogru=devir_kesin,
+                bos=devir_belirsiz,
+                kalin=True,
+            ),
+            _kesinse(
+                SAYIMDA_BULUNAN_SATIRI,
+                sayilar["found_quantity"],
+                dogru=kesin,
+                bos=belirsiz,
+                girinti=True,
+            ),
+            _kesinse(
+                HASAR_DUSULEN_SATIRI,
+                sayilar["damage_written_off"],
+                dogru=devir_kesin,
+                bos=devir_belirsiz,
+                girinti=True,
+            ),
+            _kesinse(
+                "Fark (kayda göre yıl sonu − gelecek yıla devir)",
+                sayilar["difference"],
+                dogru=devir_kesin,
+                bos=devir_belirsiz,
+            ),
+        ]
     satirlar += [
         _ek_satiri("Sayım fazlası", sayilar["surplus"]),
         _ek_satiri(
@@ -1043,19 +1102,29 @@ def ek_satirlari(stocktake: StockTake) -> dict[str, Any]:
         "note": str(sayilar["note"]),
         "final": kesin,
         "surplus_unresolved": int(sayilar["surplus_unresolved"]),
+        "year_end": yil_sonu,
     }
 
 
 def _ek(stocktake: StockTake) -> dict[str, Any]:
+    """Tutanağın eki. İşaretsiz sayımda (K6) başlık "Ara sayım" olur ve sayılar cetvele
+    aktarılacak büyüklük olarak SUNULMAZ: "Gelecek yıla devir" ve ona göre "Fark" satırı ile
+    cetvelin sütununu anlatan not (`GELECEK_YIL_NOTU`) yalnız yıl sonu sayımında basılır; kayıt
+    tabanlı sayıların belgenin düzenlendiği güne ait olduğu söylenir (F10 düzeltme turu)."""
     ek = ek_satirlari(stocktake)
+    yil_sonu = bool(stocktake.is_year_end)
     return {
-        "title": "EK: TAŞINIR SAYIM VE DÖKÜM CETVELİNE AKTARILACAK SAYILAR",
+        "title": EK_BASLIGI if yil_sonu else ARA_SAYIM_BASLIGI,
         "subtitle": f"{ek['fiscal_year']} mali yılı (1 Ocak - 31 Aralık) · kütüphane materyali, "
         "nüsha sayısıyla",
         "paragraphs": [
-            f"“{TMY34_1}” (Taşınır Mal Yönetmeliği md. 34/1). Aşağıdaki sayılar taşınır kayıt "
-            "yetkilisinin cetvele aktaracağı büyüklüklerdir.",
-            ARA_SAYIM_NOTU,
+            f"“{TMY34_1}” (Taşınır Mal Yönetmeliği md. 34/1). "
+            + (
+                "Aşağıdaki sayılar taşınır kayıt yetkilisinin cetvele aktaracağı büyüklüklerdir."
+                if yil_sonu
+                else ARA_SAYIM_SAYILARI
+            ),
+            YIL_SONU_SAYIMI_NOTU if yil_sonu else ARA_SAYIM_NOTU,
         ],
         "tables": [
             _tablo(
@@ -1092,7 +1161,7 @@ def _ek(stocktake: StockTake) -> dict[str, Any]:
                 ],
             ),
         ],
-        "notes": [GELECEK_YIL_NOTU, ek["note"]],
+        "notes": [GELECEK_YIL_NOTU, ek["note"]] if yil_sonu else [ek["note"]],
     }
 
 
@@ -1285,8 +1354,9 @@ def stocktake_report_xlsx(stocktake: StockTake, *, on: date | None = None) -> by
     kalem_sayfasi.freeze_panes = kalem_sayfasi.cell(row=baslik + 1, column=1)
 
     ek = ek_satirlari(stocktake)
-    ek_sayfasi = wb.create_sheet("Cetvele aktarılacak sayılar")
-    ek_sayfasi.append([EK_ADI])
+    yil_sonu = bool(stocktake.is_year_end)
+    ek_sayfasi = wb.create_sheet(EK_SAYFASI if yil_sonu else ARA_SAYIM_SAYFASI)
+    ek_sayfasi.append([EK_ADI if yil_sonu else ARA_SAYIM_ADI])
     ek_sayfasi["A1"].font = Font(bold=True, size=13)
     ek_sayfasi.append([f"{ek['fiscal_year']} mali yılı · kütüphane materyali, nüsha sayısıyla"])
     ek_sayfasi.append([])
@@ -1315,8 +1385,11 @@ def stocktake_report_xlsx(stocktake: StockTake, *, on: date | None = None) -> by
             ]
         )
     ek_sayfasi.append([])
-    ek_sayfasi.append([GELECEK_YIL_NOTU])
-    ek_sayfasi.append([ARA_SAYIM_NOTU])
+    if yil_sonu:
+        ek_sayfasi.append([GELECEK_YIL_NOTU])
+    else:
+        ek_sayfasi.append([ARA_SAYIM_SAYILARI])
+    ek_sayfasi.append([YIL_SONU_SAYIMI_NOTU if yil_sonu else ARA_SAYIM_NOTU])
     ek_sayfasi.append([ek["note"]])
 
     out = BytesIO()

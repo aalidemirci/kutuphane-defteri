@@ -24,8 +24,15 @@ import { SkeletonList } from "../../ui/Skeleton";
 import { useSnackbar } from "../../ui/SnackbarProvider";
 import Stepper from "../../ui/Stepper";
 import type { StepperItem, StepperStatus } from "../../ui/Stepper";
-import { BelgeSatiri, Bilgi, Rozet } from "../ayiklama/ortak";
-import { EK_ADI, sayimAdi, sayimApi } from "./api";
+import { BelgeSatiri, Bilgi, OnayKutusu, Rozet } from "../ayiklama/ortak";
+import {
+  ARA_SAYIM_ADI,
+  EK_ADI,
+  YIL_SONU_ACIKLAMASI,
+  YIL_SONU_SAYIMI,
+  sayimAdi,
+  sayimApi,
+} from "./api";
 import type { SayimAyrintisi as SayimVerisi, SayimBelgesi } from "./api";
 import { IptalDiyalogu, OnayDiyalogu } from "./SayimDiyaloglari";
 import { Fazlalar, Kalemler, Sonuclar } from "./SayimKalemleri";
@@ -165,6 +172,23 @@ export default function SayimAyrintisi({ id, onGeri }: { id: number; onGeri: () 
 
   const durum = sayim.status;
   const ikinci = durum === "IN_PROGRESS" && sayim.round === 2;
+  // F10 (K6): "Yıl sonu sayımı" işareti onaya dek değişir (sürerken ve tamamlanmışken).
+  const yilSonuDegisir = durum === "IN_PROGRESS" || durum === "COMPLETED";
+
+  const yilSonuYaz = async (deger: boolean) => {
+    setBusy(true);
+    setHata(null);
+    try {
+      setSayim(await sayimApi.yilSonuIsaretle(sayim.id, deger));
+      tazele(
+        deger ? "Sayım yıl sonu sayımı olarak işaretlendi." : "Yıl sonu sayımı işareti kaldırıldı.",
+      );
+    } catch (e) {
+      setHata(hataOku(e, "İşaret kaydedilemedi."));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const tamamla = async () => {
     if (bekleyenRef.current > 0) {
@@ -231,6 +255,7 @@ export default function SayimAyrintisi({ id, onGeri }: { id: number; onGeri: () 
         {durum !== "DRAFT" && (
           <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Bilgi etiket="Mali yıl">{sayim.fiscal_year ?? "—"}</Bilgi>
+            <Bilgi etiket="Sayımın türü">{sayim.is_year_end ? YIL_SONU_SAYIMI : "Ara sayım"}</Bilgi>
             <Bilgi etiket="Sayım kurulu">{kurulMetni(sayim) || "—"}</Bilgi>
             <Bilgi etiket="Başlangıç">{formatDateTime(sayim.started_at)}</Bilgi>
             <Bilgi etiket="Tamamlanma">{formatDateTime(sayim.completed_at)}</Bilgi>
@@ -261,6 +286,18 @@ export default function SayimAyrintisi({ id, onGeri }: { id: number; onGeri: () 
                 </li>
               ))}
             </ul>
+          </section>
+        )}
+
+        {yilSonuDegisir && (
+          <section className="space-y-1">
+            <OnayKutusu
+              etiket={<span className="font-semibold">{YIL_SONU_SAYIMI}</span>}
+              checked={sayim.is_year_end}
+              onChange={(d) => void yilSonuYaz(d)}
+              disabled={busy}
+            />
+            <p className="text-body-small text-on-surface-variant">{YIL_SONU_ACIKLAMASI}</p>
           </section>
         )}
 
@@ -348,7 +385,9 @@ export default function SayimAyrintisi({ id, onGeri }: { id: number; onGeri: () 
           <div className="border-b border-outline-variant/60 px-4 py-3">
             <h2 className="text-title-medium font-semibold text-on-surface">Sayım Belgeleri</h2>
             <p className="text-body-small text-on-surface-variant">
-              {`Sayım tutanağının ekinde “${EK_ADI}” (Taşınır Mal Yönetmeliği md. 34/1) yer alır; ödünç alanın kimliği tutanağa yazılmaz. Resmî tutanaklar, Varlık İşlem Fişi ve Taşınır Sayım ve Döküm Cetveli Taşınır Kayıt ve Yönetim Sistemi'nde (TKYS) düzenlenir.`}
+              {sayim.is_year_end
+                ? `Sayım tutanağının ekinde “${EK_ADI}” (Taşınır Mal Yönetmeliği md. 34/1) yer alır; ödünç alanın kimliği tutanağa yazılmaz. Resmî tutanaklar, Varlık İşlem Fişi ve Taşınır Sayım ve Döküm Cetveli Taşınır Kayıt ve Yönetim Sistemi'nde (TKYS) düzenlenir.`
+                : `Bu sayım yıl sonu sayımı olarak işaretli değil: tutanağın eki “${ARA_SAYIM_ADI}” başlığını alır (Taşınır Mal Yönetmeliği md. 32/1). Ödünç alanın kimliği tutanağa yazılmaz. Resmî tutanaklar, Varlık İşlem Fişi ve Taşınır Sayım ve Döküm Cetveli Taşınır Kayıt ve Yönetim Sistemi'nde (TKYS) düzenlenir.`}
             </p>
           </div>
           <ul className="divide-y divide-outline-variant/50">

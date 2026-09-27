@@ -28,6 +28,8 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/dolasim", label: "Dolaşım Masası", icon: "sync_alt" },
   { to: "/kisiler", label: "Kişiler", icon: "group" },
   { to: "/katalog", label: "Katalog", icon: "menu_book" },
+  // F10: istatistik, çok okunanlar, dökümler ve dışa aktarım (yönetici kipi).
+  { to: "/raporlar", label: "Raporlar", icon: "bar_chart" },
   { to: "/ayarlar", label: "Ayarlar", icon: "settings" },
   { to: "/kilavuz", label: "Kılavuz", icon: "auto_stories" },
 ];
@@ -60,6 +62,7 @@ const PAGE_TITLES: Array<[prefix: string, title: string]> = [
   // F9: Katalog'un sağ üstünden ve Genel Bakış'ın "Sayım" kartından açılır.
   ["/katalog/sayim", "Sayım"],
   ["/katalog", "Katalog"],
+  ["/raporlar", "Raporlar"],
   ["/ayarlar", "Ayarlar"],
   ["/ag-doktoru", "Ağ Doktoru"],
   ["/kilavuz", "Kullanım Kılavuzu"],

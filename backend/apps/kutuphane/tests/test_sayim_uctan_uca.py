@@ -182,8 +182,10 @@ def test_sayim_uctan_uca_durdurma_hizmet_arasi_iade_onay_ve_tutanak() -> None:
     teslim_edilmeyecek = odunc_nushasi(title="Uçtan Uca Teslim Edilmeyen")
 
     # ------------------------------------------------------------ 1. taslak ve başlatma
+    # F10 (K6): yıl sonu sayımı — ek cetvele aktarılacak sayılar adını taşır.
     sayim = taslak(
         **durdurma_alanlari(),
+        is_year_end=True,
         service_pause=True,
         service_pause_decision=HIZMET_ARASI_KARARI,
         loan_basis=CountBasis.BY_RECORD,

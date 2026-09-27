@@ -22,7 +22,7 @@ from pypdf import PdfReader
 from rest_framework.test import APIClient
 
 from apps.kutuphane import yil_raporu_belgesi as belge
-from apps.kutuphane.models import AcquisitionMethod
+from apps.kutuphane.models import AcquisitionMethod, AnnualLibraryReview
 from apps.kutuphane.services import annual_review
 from apps.kutuphane.tests.dolasim_ortak import odunc_ver, ogrenci, uye
 from apps.kutuphane.tests.ortak import bolum, edinim, eser, nusha
@@ -145,10 +145,35 @@ class TestBicim:
         assert "Verilen ödünç 15" in metin
         assert "Öğrenci: — · Öğretmen: — · Diğer personel: —" in metin
         assert "9. sınıf: — · 10. sınıf: 5 · 11. sınıf: —" in metin
-        assert "Öğrenci: 11 · Öğretmen: — · Diğer personel: 0" in metin
+        # Aktif üye sayısı eşiksiz (F10 ekleri K1): tek öğretmen üye "1" basılır.
+        assert "Öğrenci: 11 · Öğretmen: 1 · Diğer personel: 0" in metin
         assert "Öğrenci: 13" not in metin and "11. sınıf: 3" not in metin
         assert "5 farklı üyeden azının ödünç aldığı grubun sayısı gösterilmez" in metin
         assert "toplamdan çıkarılarak bulunamasın" in metin
+        assert "aktif üyesi olan türün sayısı" not in metin
+
+    def test_eski_semayla_dondurulmus_rapor_kendi_kuralini_basar(self) -> None:
+        """Şema 2 ile dondurulmuş rapor: aktif üye `None` "—" basılır ve not o raporun
+        kuralını (eşikli aktif üye sayısı) yazar. Yeni rapor bu cümleyi taşımaz (K1)."""
+        etkin_yil()
+        odunc_ver(uye(ogrenci()))
+        rapor = annual_review.create_review(school_year=etkin_yil())
+        annual_review.finalize_review(rapor)
+        rapor.refresh_from_db()
+        assert rapor.stats is not None and rapor.stats["schema"] == 3
+        eski = dict(rapor.stats)
+        eski["schema"] = 2
+        eski["circulation"] = {
+            **eski["circulation"],
+            "active_members": {"STUDENT": 1, "TEACHER": None, "STAFF": 0},
+        }
+        AnnualLibraryReview.objects.filter(pk=rapor.pk).update(stats=eski)
+        rapor.refresh_from_db()
+
+        metin = _metin(belge.annual_review_pdf(rapor))
+
+        assert "Öğrenci: 1 · Öğretmen: — · Diğer personel: 0" in metin
+        assert "5 kişiden az aktif üyesi olan türün sayısı da gösterilmez" in metin
 
     def test_kazandirilan_yalniz_md_10_5_yollarindan(self) -> None:
         etkin_yil()

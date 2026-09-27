@@ -86,6 +86,11 @@ describe("Genel Bakış", () => {
     expect(
       screen.getByRole("link", { name: /Ders yılı, şubeler, okul bilgileri/ }),
     ).toHaveAttribute("href", "/ayarlar");
+    // F10: Raporlar gezinme kartı (başlık sayfanın h1'i).
+    expect(screen.getByRole("link", { name: /^Raporlar Kişisiz istatistik/ })).toHaveAttribute(
+      "href",
+      "/raporlar",
+    );
   });
 
   it("Katalog Excel Şablonu kartı indirme düğmesiyle görünür (bir sayfaya gitmez)", async () => {

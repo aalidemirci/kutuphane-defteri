@@ -221,7 +221,7 @@ export function nadirListe(ek: Partial<NadirListeAyrintisi> = {}): NadirListeAyr
 
 export function raporSayilari(): RaporSayilari {
   return {
-    schema: 2,
+    schema: 3,
     generated_on: "2027-06-20",
     school_year: { label: "2026-2027", start_date: "2026-09-07", end_date: "2027-06-25" },
     period: { start: "2026-09-07", end: "2027-06-25" },
@@ -270,7 +270,7 @@ export function raporSayilari(): RaporSayilari {
       by_class_level: [],
       by_month: [],
       deliveries: { section: 3, teacher: 1 },
-      active_members: { STUDENT: 300, TEACHER: 20, STAFF: null },
+      active_members: { STUDENT: 300, TEACHER: 20, STAFF: 2 },
     },
   };
 }

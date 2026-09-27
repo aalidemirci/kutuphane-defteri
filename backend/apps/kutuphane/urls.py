@@ -29,12 +29,14 @@ from __future__ import annotations
 from django.urls import path
 
 from apps.kutuphane import (
+    urls_dokumler,
     views,
     views_ag_doktoru,
     views_ayiklama,
     views_evrak,
     views_ilisik,
     views_import,
+    views_istatistik,
     views_katalog,
     views_komisyon_belgeleri,
     views_kunye,
@@ -450,6 +452,35 @@ urlpatterns = [
         views_evrak.RecentTransactionsView.as_view(),
         name="library-dashboard-recent-transactions",
     ),
+    # --- F10-R: istatistik (kişisiz, k eşikli), Md. 7/1 bilgi kartı, çok okunanlar
+    # (sayısız), Ayın Kitapları afişi (E12) ve okuma ödülü iç çıktısı (E20 — ADLI).
+    # YALNIZ yönetici kipi; görevli izin listesinde YOK (`views_istatistik.py`).
+    path(
+        "library/statistics/",
+        views_istatistik.StatisticsView.as_view(),
+        name="library-statistics",
+    ),
+    path(
+        "library/dashboard/statistics/",
+        views_istatistik.DashboardStatisticsView.as_view(),
+        name="library-dashboard-statistics",
+    ),
+    path("library/popular/", views_istatistik.PopularView.as_view(), name="library-popular"),
+    path(
+        "library/popular/refresh/",
+        views_istatistik.PopularRefreshView.as_view(),
+        name="library-popular-refresh",
+    ),
+    path(
+        "library/popular/poster/",
+        views_istatistik.PopularPosterView.as_view(),
+        name="library-popular-poster",
+    ),
+    path(
+        "library/reading-award/pdf/",
+        views_istatistik.ReadingAwardPdfView.as_view(),
+        name="library-reading-award-pdf",
+    ),
     # --- F6: dolaşım masası (§7.3). Görevli kipi izin listesinde (uç + PARAMETRE
     # kuralıyla — `apps/okul/kip_izinleri.py`); yanıtlar görevli kipinde daralır.
     path("library/desk/member/", views_masa.MasaUyeView.as_view(), name="library-desk-member"),
@@ -774,3 +805,8 @@ urlpatterns = [
 # --- F4-L: etiket motoru — şablon, yazıcı kalibrasyonu, kalibrasyon sayfası ve
 # PDF önizleme (`apps/kutuphane/labels/urls.py`; düz `path()` girdileri, `include` değil).
 urlpatterns += label_urls.urlpatterns
+
+# --- F10 (D kolu): dışa aktarım, alfabetik katalog dökümü (E17), Taşınır Kütüphane Defteri
+# dökümü ve yönetim hesabı cetveli hazırlığı (E11), kişi dökümü (KVKK md. 11) —
+# `apps/kutuphane/urls_dokumler.py`; yönetici kipi, görevli izin listesinde YOK.
+urlpatterns += urls_dokumler.urlpatterns

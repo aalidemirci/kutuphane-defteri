@@ -53,6 +53,7 @@ from apps.kutuphane.models import (
     DeliveryRecipientKind,
     Loan,
     LossDamageCase,
+    ResourceType,
     StockTake,
     StockTakeItem,
     StockTakeOutcome,
@@ -63,6 +64,21 @@ from apps.kutuphane.models import (
     WeedingItem,
     WeedingItemState,
 )
+
+
+# ---------------------------------------------------------------------------
+# Taşınır kaydına girmeyen nüsha
+# ---------------------------------------------------------------------------
+def ciltsiz_sureli_yayin_q() -> Q:
+    """Ciltletilmemiş süreli yayın nüshası — taşınır kaydına GİRMEZ (TMY 10/1-a-4, 15/4).
+
+    Nüsha kuralları (`services.catalog.ensure_copy_allowed`) böyle bir nüshayı açtırmaz;
+    kütüphane defteri dökümü, TMY 34/1 büyüklükleri (`tmy_34_1`) ve yönetim hesabı cetveli
+    hazırlığı yine de AYNI süzgeci uygular (savunma derinliği — eski veri ya da doğrudan
+    yazım; F10 düzeltme turu: süzgeç yalnız defterdeydi, cetvel hazırlığı onu sayıyordu).
+    """
+    return Q(work__resource_type=ResourceType.PERIODICAL, is_bound_periodical=False)
+
 
 # ---------------------------------------------------------------------------
 # Tutanak satırları — iki seçenek AYRI satırda, kurul seçimi dayanağıyla (E10)
@@ -677,7 +693,8 @@ def tmy_34_1(stocktake: StockTake, *, fiscal_year: int | None = None) -> dict[st
 
     Yıl mali yıldır (1 Ocak - 31 Aralık; VİF sıra numarası her mali yılın başında 1'den
     başlar — 10/1-a). Giriş tarihi edinim tarihidir; çıkış tarihi harcama yetkilisinin
-    onay tarihidir (`exit_dates`). Silinmiş (yanlış açılmış) nüsha hiç sayılmaz.
+    onay tarihidir (`exit_dates`). Silinmiş (yanlış açılmış) nüsha ve ciltletilmemiş süreli
+    yayın (`ciltsiz_sureli_yayin_q` — taşınır kaydına girmez) hiç sayılmaz.
 
     - **önceki yıldan devir**: yıl başında kayıtta olan;
     - **programa aktarım** (AYRI satır): yıl içinde programa aktarılan mevcut
@@ -698,8 +715,10 @@ def tmy_34_1(stocktake: StockTake, *, fiscal_year: int | None = None) -> dict[st
     devir = aktarim = kayda_gore = 0
     giren: Counter[str] = Counter()
     cikan: Counter[str] = Counter()
-    satirlar = Copy.objects.filter(work__deleted_at__isnull=True).values_list(
-        "pk", "status", "acquisition__date", "acquisition__method", "updated_at"
+    satirlar = (
+        Copy.objects.filter(work__deleted_at__isnull=True)
+        .exclude(ciltsiz_sureli_yayin_q())
+        .values_list("pk", "status", "acquisition__date", "acquisition__method", "updated_at")
     )
     for pk, durum, giris, yol, guncel in satirlar:
         cikis: date | None = None

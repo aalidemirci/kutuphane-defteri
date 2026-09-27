@@ -30,13 +30,24 @@ from typing import Any
 
 import pytest
 
-from apps.kutuphane import ai_bridge, import_schema, isbn, keys, views_import
+from apps.kutuphane import ai_bridge, export_schema, import_schema, isbn, keys, views_import
 from apps.kutuphane.models import CatalogImportSource, Copy
+from apps.kutuphane.services import export_import
 from apps.kutuphane.services import import_service as ia
 from apps.kutuphane.tests import sentetik_katalog
 
-#: İçe aktarma hattının modülleri (dosya → satır → plan → yazma → uç).
-ICE_AKTARMA_MODULLERI = (ia, ai_bridge, import_schema, isbn, keys, views_import)
+#: İçe aktarma hattının modülleri (dosya → satır → plan → yazma → uç). F10: dışa aktarım
+#: dosyası kipi (`export_import`, şema `export_schema`) aynı hattır.
+ICE_AKTARMA_MODULLERI = (
+    ia,
+    ai_bridge,
+    import_schema,
+    isbn,
+    keys,
+    views_import,
+    export_import,
+    export_schema,
+)
 
 #: Hiçbiri aktarım hattında bulunamaz (ağ ve süreç açan kütüphaneler).
 YASAKLI_MODULLER = frozenset(

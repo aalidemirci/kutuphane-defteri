@@ -263,6 +263,10 @@ class ParsedFile:
     unknown_headers: list[str] = field(default_factory=list)
     #: Sözlükte olup dosyada bulunmayan sütunlar (yalnız bilgi).
     missing_columns: list[str] = field(default_factory=list)
+    #: F10 "dışa aktarım dosyası" kipi (§8.4): dosya programın kendi dışa aktarımıysa
+    #: satırları burada durur (`services.export_import.ExportFile`) ve önizleme/uygulama
+    #: o kipin koduna gider — barkod ve kayıt no korunur, sayaçlar ilerler.
+    export: Any = None
 
 
 def _find_header(grid: Sequence[Sequence[Any]]) -> tuple[int, dict[str, int], list[str]]:
@@ -1250,8 +1254,18 @@ def _label_batch(
 # ---------------------------------------------------------------------------
 def rows_from_file(file_bytes: bytes, *, source: str) -> tuple[ParsedFile, str]:
     """Yüklenen dosyayı satırlara çevirir → (ayrıştırma sonucu, içerik özeti)."""
+    from apps.kutuphane.services import export_import
+
     if source == CatalogImportSource.AI_JSON:
         return _parsed_from_json(file_bytes)
+    if source == CatalogImportSource.EXPORT:
+        # F10 (§8.4): programın dışa aktarım dosyası — ayrı okuyucu ve ayrı yazma yolu.
+        return export_import.parse_export_file(file_bytes)
+    # F10 düzeltme turu: programın dışa aktarım dosyası "Excel listesi" olarak OKUNMAZ —
+    # numaralar yeniden verilir, eski etiket başka kitabı açar, kayıttan çıkmış nüsha "Rafta"
+    # açılırdı. Kullanıcı "Dışa aktarım dosyası" kipine yönlendirilir.
+    if export_import.is_export_file(file_bytes):
+        raise ParserError(export_import.EXPORT_FILE_AS_LIST_MESSAGE)
     parsed = parse_catalog_grid(read_catalog_grid(file_bytes))
     return parsed, content_hash(parsed.rows)
 
@@ -1296,7 +1310,20 @@ def preview_import(
     TMY 32/3 durdurması sürerken (F9) önizleme de reddedilir: her satırı aynı
     gerekçeyle "hatalı" gösteren bir önizleme yanıltıcı olurdu. Programa aktarımın
     (varsayılan yol) iletisi TMY'ye dayanmaz (F9 ekleri K4).
+
+    Dışa aktarım dosyası (F10, `parsed.export`) kendi koduna gider: edinimler dosyadan
+    gelir, eşleşme kovası ve karar yoktur.
     """
+    if parsed.export is not None:
+        from apps.kutuphane.services import export_import
+
+        return export_import.preview_export(
+            parsed,
+            payload_sha256=payload_sha256,
+            file_name=file_name,
+            section_map=section_map,
+            new_sections=new_sections,
+        )
     tmy_kapisi.ensure_open(tmy_kapisi.edinim_islemi((spec or AcquisitionSpec()).method))
     plan = _plan(
         parsed.rows,
@@ -1346,7 +1373,19 @@ def apply_import(
     TMY 32/3 durdurması (F9) BAŞTA sorulur: satır düzeyinde yakalansaydı her satır
     hatalı sayılır ve dosya "uygulandı" diye kaydedilirdi (aynı dosya sonra "zaten
     uygulandı" görünürdü). Programa aktarımın iletisi TMY'ye dayanmaz (K4).
+
+    Dışa aktarım dosyası (F10) kendi koduna gider; `spec` yok sayılır (edinimler dosyadan).
     """
+    if parsed.export is not None:
+        from apps.kutuphane.services import export_import
+
+        return export_import.apply_export(
+            parsed,
+            payload_sha256=payload_sha256,
+            file_name=file_name,
+            section_map=section_map,
+            new_sections=new_sections,
+        )
     tmy_kapisi.ensure_open(tmy_kapisi.edinim_islemi((spec or AcquisitionSpec()).method))
     plan = _plan(
         parsed.rows,

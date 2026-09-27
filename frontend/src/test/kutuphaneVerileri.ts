@@ -199,6 +199,8 @@ export function politika(ozel: Partial<LibraryPolicy> = {}): LibraryPolicy {
     metadata_lookup_enabled: false,
     metadata_lookup_ministry: true,
     metadata_lookup_openlibrary: true,
+    // "Bakanlık sistemi kullanımda" (A21) varsayılan KAPALI.
+    ministry_system_in_use: false,
     updated_at: "2026-09-21T09:00:00+03:00",
     ...ozel,
   };

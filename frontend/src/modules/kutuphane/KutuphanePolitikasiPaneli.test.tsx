@@ -205,3 +205,29 @@ describe("Kütüphane Politikası — yönetici kipi süreleri", () => {
     ).toBeInTheDocument();
   });
 });
+
+// F10 (A12): çok okunanlar eşiği 3-10 (varsayılan 5); aynı eşik istatistikte de kullanılır.
+describe("Kütüphane Politikası — çok okunanlar eşiği", () => {
+  it("aralık yardım metninde yazar; değer kaydedilir, sunucu reddi alanda görünür", async () => {
+    const user = userEvent.setup();
+    kapi.updatePolicy.mockRejectedValue(
+      new ApiError(400, "validation_error", "Gönderilen veride hatalar var.", {
+        popular_min_members: ["Bu değerin 10 ya da daha küçük olduğundan emin olun."],
+      }),
+    );
+    ekranaBas();
+    const esik = await screen.findByLabelText("Çok okunanlar için en az üye sayısı");
+    expect(esik).toHaveValue("5");
+    expect(screen.getByText(/^3 ile 10 arası \(varsayılan 5\)\./)).toHaveTextContent(
+      "İstatistik ve yıl sonu raporu da bu sayıdan az üyeli grubun sayısını göstermez.",
+    );
+    await user.clear(esik);
+    await user.type(esik, "12");
+    await user.click(screen.getByRole("button", { name: "Kaydet" }));
+    await waitFor(() => expect(kapi.updatePolicy).toHaveBeenCalled());
+    expect(kapi.updatePolicy.mock.calls[0][0]).toMatchObject({ popular_min_members: 12 });
+    expect(
+      await screen.findByText("Bu değerin 10 ya da daha küçük olduğundan emin olun."),
+    ).toBeInTheDocument();
+  });
+});

@@ -2,7 +2,8 @@
 // §14.1): F0 iskeleti kurulum, kişiler, ayarlar, kılavuz ve hakkında
 // ekranlarını taşır; F2 katalog ekranlarını (eser, nüsha, edinim, bağış)
 // ekledi; F3 toplu aktarım ve hızlı kayıt ekranlarını, F4 etiket ekranını,
-// F5 Ağ Doktoru'nu ekledi; F6-F8 dolaşım, teslim, ayıklama ve F9 sayım ekranlarını. Kilit ekranı
+// F5 Ağ Doktoru'nu ekledi; F6-F8 dolaşım, teslim, ayıklama, F9 sayım ve F10 Raporlar
+// ekranlarını. Kilit ekranı
 // (GuvenlikKapisi) kurulum kapısından ÖNCE gelir — parola kuruluysa hiçbir
 // veri ekranı (sihirbaz dahil) açılmadan kilit çözülmelidir. Kip kapısı
 // (KipKapisi) en içtedir: görevli kipinde rotaların yerine görevli ekranı
@@ -30,6 +31,7 @@ import HizliKayitPage from "./modules/kutuphane/HizliKayitPage";
 import IceAktarmaPage from "./modules/kutuphane/IceAktarmaPage";
 import KatalogPage from "./modules/kutuphane/KatalogPage";
 import PanelPage from "./modules/panel/PanelPage";
+import RaporlarPage from "./modules/raporlar/RaporlarPage";
 import AyiklamaPage from "./modules/ayiklama/AyiklamaPage";
 import NadirEserlerPage from "./modules/ayiklama/NadirEserlerPage";
 import YilSonuRaporuPage from "./modules/ayiklama/YilSonuRaporuPage";
@@ -94,6 +96,9 @@ export default function App() {
                   Bakış'ın "Sayım" kartından açılır. Yalnız yönetici kipinde. */}
               <Route path="/katalog/sayim" element={<SayimPage />} />
               {/* Ders yılı, şubeler, okul künyesi, güvenlik, güncelleme, Ağ Kataloğu. */}
+              {/* F10: istatistik, çok okunanlar ve afiş, dökümler ve dışa aktarım, kişi dökümü,
+                  okuma ödülü iç çıktısı. Ana gezinmede; yalnız yönetici kipinde. */}
+              <Route path="/raporlar" element={<RaporlarPage />} />
               <Route path="/ayarlar" element={<AyarlarPage />} />
               {/* Ağ Doktoru (F5): Ağ Kataloğu denetimi ve belgeleri; yalnız yönetici kipinde. */}
               <Route path="/ag-doktoru" element={<AgDoktoruPage />} />

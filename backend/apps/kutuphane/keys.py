@@ -118,18 +118,73 @@ def first_author(authors: object) -> str:
     return first_of(authors, AUTHOR_SEPARATORS)
 
 
+#: Kurum yazarını belli eden SON sözcükler (F10 düzeltme turu). Okul kütüphanesinde
+#: sık görülen kurum yazarları ("Millî Eğitim Bakanlığı", "Türk Dil Kurumu") kişi adı
+#: gibi ters çevrilince "Bakanlığı, Millî Eğitim" diye basılıyor ve B harfinde
+#: sıralanıyordu. Liste sezgidir; kapsamadığı kurum adı kişi adı gibi işlenir (yer
+#: numarası elle değiştirilebilir — D11).
+_KURUM_SOZCUKLERI: frozenset[str] = frozenset(
+    fold_search(sozcuk)
+    for sozcuk in (
+        "Akademisi",
+        "Ajansı",
+        "Bakanlığı",
+        "Başkanlığı",
+        "Belediyesi",
+        "Birliği",
+        "Cemiyeti",
+        "Derneği",
+        "Enstitüsü",
+        "Fakültesi",
+        "Federasyonu",
+        "Heyeti",
+        "Kaymakamlığı",
+        "Komisyonu",
+        "Komitesi",
+        "Konseyi",
+        "Kurulu",
+        "Kurumu",
+        "Kütüphanesi",
+        "Lisesi",
+        "Merkezi",
+        "Müdürlüğü",
+        "Müzesi",
+        "Müsteşarlığı",
+        "Odası",
+        "Okulu",
+        "Şirketi",
+        "Teşkilatı",
+        "Üniversitesi",
+        "Valiliği",
+        "Vakfı",
+        "Yayınevi",
+        "Yayınları",
+    )
+)
+
+
+def is_corporate_author(name: object) -> bool:
+    """Ad bir kurum adı mı? (en az iki sözcük ve son sözcük kurum sözcüğü)."""
+    sozcukler = fold_search(name).split()
+    return len(sozcukler) >= 2 and sozcukler[-1] in _KURUM_SOZCUKLERI
+
+
 def author_surname(authors: object) -> str:
     """İlk yazarın soyadı — sezgi: SON sözcük (D11, sözlük "Ad Soyad" sırası).
 
     Çok sözcüklü soyadlarda ('Ahmet Hamdi Tanpınar' doğru, 'Halide Edip Adıvar'
     doğru, ama 'Mehmet Akif Ersoy Yılmazoğlu' gibi bileşik soyadlar) sezgi
     yanılabilir; bu yüzden ürettiği tek alan (`Work.call_number`) ELLE
-    DEĞİŞTİRİLEBİLİR bırakılmıştır.
+    DEĞİŞTİRİLEBİLİR bırakılmıştır. Kurum yazarı (`is_corporate_author`) ters
+    çevrilmez: soyad yerine adın kendisi döner (yer numarası adın ilk harflerini alır).
     """
-    _ad, soyad = split_full_name(first_author(authors))
+    ilk = first_author(authors)
+    if is_corporate_author(ilk):
+        return ilk
+    _ad, soyad = split_full_name(ilk)
     if soyad:
         return soyad
-    return first_author(authors)
+    return ilk
 
 
 def author_sort_name(authors: object) -> str:
@@ -137,9 +192,13 @@ def author_sort_name(authors: object) -> str:
 
     Katalogda yazar ekseni SOYADA göre sıralanır (Md. 11/1 yazar adı ekseni);
     soyad sezgisi `author_surname` ile AYNI tek kaynaktan gelir, yani yer
-    numarasıyla sıralama aynı soyadı görür.
+    numarasıyla sıralama aynı soyadı görür. Kurum yazarı adıyla sıralanır
+    ('Türk Dil Kurumu' T harfindedir).
     """
-    ad, soyad = split_full_name(first_author(authors))
+    ilk = first_author(authors)
+    if is_corporate_author(ilk):
+        return ilk
+    ad, soyad = split_full_name(ilk)
     if not soyad:
         return ad
     return f"{soyad} {ad}".strip()

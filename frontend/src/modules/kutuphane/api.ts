@@ -176,6 +176,8 @@ export interface LibraryPolicy {
   metadata_lookup_enabled: boolean;
   metadata_lookup_ministry: boolean;
   metadata_lookup_openlibrary: boolean;
+  /** "Bakanlık sistemi kullanımda" (A21) — VARSAYILAN KAPALI; yalnız hatırlatma açar. */
+  ministry_system_in_use: boolean;
   updated_at: string;
 }
 
@@ -549,7 +551,11 @@ export interface LibraryStats {
   work_count: number;
   /** Kayıt defterinin toplamı: kayıttan düşülmüş ve devredilmiş nüshalar DAHİL. */
   copy_count: number;
-  /** Elde bulunan nüsha (terminal durumlar düşülür) — Md. 7 eşiği budur. */
+  /**
+   * Elde bulunan nüsha, bütün kaynak türleri (terminal durumlar düşülür). Md. 7/1 kartı bunu
+   * DEĞİL, yalnız "Kitap" türündeki elde bulunan nüshayı sayar (`library/dashboard/statistics/`
+   * — `modules/raporlar`).
+   */
   in_stock_count: number;
   /** Şu anda RAFTA olan (ödünçteki ve teslimdeki nüsha elde vardır, rafta değildir). */
   available_count: number;

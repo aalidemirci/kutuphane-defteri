@@ -228,6 +228,17 @@ DIGER_UCLAR = frozenset(
         # yetkilisi adları şifreli alandan yalnız belgenin kendisine çözülür.
         "library-stocktake-documents",
         "library-stocktake-document",
+        # F10-D: dışa aktarım (kişisel veri yok; üye özeti kişisiz sayılar), E17, E11 ve
+        # kişi dökümü (KVKK md. 11) yalnız okur ve PDF/XLSX üretir. Kişi arama POST'tur ama
+        # yazmaz (okul no sorgu dizesine girmesin diye gövdededir). Yönetici kipi işidir.
+        "library-export",
+        "library-export-member-summary",
+        "library-report-documents",
+        "library-report-catalog-listing",
+        "library-report-library-register",
+        "library-report-management-account",
+        "library-report-person-record-search",
+        "library-report-person-record",
         # F8 belgeleri (E7, E8, E9, E16): yalnız okur ve PDF/XLSX üretir; adlar
         # şifreli alandan yalnız belgenin kendisine çözülür. Yönetici kipi işidir.
         "library-weeding-batch-documents",
@@ -238,6 +249,15 @@ DIGER_UCLAR = frozenset(
         # Bağış değerlendirme sonucu (F8 ekleri 13, 25.09.2026 kullanıcı kararı): yalnız okur;
         # bağışçının adı şifreli alandan yalnız belgeye çözülür.
         "library-donation-intake-result-pdf",
+        # F10-R: istatistik, Md. 7/1 kartı, çok okunanlar ve E12 kişisizdir; "yeniden
+        # hesapla" yalnız `kd_katalog_populer`'i (kişisiz sıra) yazar. E20 yalnız okur ve
+        # PDF üretir (adlar şifreli alandan yalnız belgeye çözülür; yönetici kipi).
+        "library-statistics",
+        "library-dashboard-statistics",
+        "library-popular",
+        "library-popular-refresh",
+        "library-popular-poster",
+        "library-reading-award-pdf",
         # Toplu katalog aktarımı (F3): kitap kaydıdır, kişi sicili değildir.
         # Önizleme de yazar ve geri sarar; ikisi de yönetici kipi işidir ve
         # görevli kipi izin listesinde DEĞİLDİR.

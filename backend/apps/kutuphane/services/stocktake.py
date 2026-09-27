@@ -145,6 +145,7 @@ STATE_MESSAGES: Final[dict[str, str]] = {
     "cancel": "Onaylanmış ya da iptal edilmiş sayım iptal edilemez.",
     "surplus_add": "Sayım fazlası yalnız süren sayımda eklenir ya da çıkarılır.",
     "surplus_edit": "Sayım fazlası yalnız süren ya da tamamlanmış sayımda düzenlenir.",
+    "year_end": "“Yıl sonu sayımı” işareti onaylanmış ya da iptal edilmiş sayımda değişmez.",
 }
 STOCKTAKE_MISSING_MESSAGE = "Sayım bulunamadı."
 LIVE_EXISTS_MESSAGE = (
@@ -200,6 +201,13 @@ STATE_CHANGED_NOTE = "Onayda durumu: {durum}."
 #: Etiketi sayım sırasında Hızlı Kayıt'ta bağlanan fazla (F9 düzeltme turu; kişisiz).
 SURPLUS_BOUND_NOTE = (
     "Etiket sayım sırasında {barkod} nüshasına bağlandı; kitap kayıtta, yeniden kayda alınmadı."
+)
+#: F10 düzeltme turu: bir mali yılın TEK yıl sonu sayımı olur (TMY 32/1 yıl sonu sayımını ayırır;
+#: 34/2-a taşınır mal yönetim hesabına "Yıl sonu sayımına ilişkin Sayım Tutanağı"nı koyar). İptal
+#: edilmiş sayım sayılmaz. Olmasaydı aynı yıl için iki ayrı cetvel hazırlığı basılabilirdi.
+YEAR_END_EXISTS_MESSAGE = (
+    "{yil} mali yılının yıl sonu sayımı zaten var ({ad}). Bir mali yılda tek yıl sonu sayımı "
+    "olur (Taşınır Mal Yönetmeliği md. 32/1, 34/2-a); bu sayımı ara sayım olarak bırakın."
 )
 #: Onayda açılan edinimin notu — sayım ekrandaki adıyla anılır, iç kimlik yazılmaz (sözlük §4.15).
 SURPLUS_ACQUISITION_NOTE = "Sayım fazlası — {ad} (TMY 17, 32/7)"
@@ -345,6 +353,29 @@ def _kitap(copy: Copy | None) -> str:
     return f"{barcode_module.format_barcode(copy.barcode)} {copy.work.title}"
 
 
+def _yil_sonu_tekligi(sayim: StockTake) -> None:
+    """İşaretli sayımın mali yılında başka (iptal edilmemiş) yıl sonu sayımı varsa reddeder.
+
+    Taslakta mali yıl boş olabilir: başlatmada bu yıl yazılır (`start_stocktake`), karşılaştırma
+    da o değerle yapılır. Başlatmada yıl kesinleşince denetim yinelenir.
+    """
+    if not sayim.is_year_end:
+        return
+    bu_yil = timezone.localdate().year
+    yil = sayim.fiscal_year or bu_yil
+    digerleri = (
+        StockTake.objects.filter(is_year_end=True)
+        .exclude(pk=sayim.pk)
+        .exclude(status=StockTakeStatus.CANCELLED)
+        .order_by("pk")
+    )
+    for diger in digerleri:
+        if (diger.fiscal_year or bu_yil) == yil:
+            raise ValidationError(
+                {"is_year_end": YEAR_END_EXISTS_MESSAGE.format(yil=yil, ad=sayim_adi(diger))}
+            )
+
+
 # ---------------------------------------------------------------------------
 # Taslak: aç, düzenle, sil
 # ---------------------------------------------------------------------------
@@ -366,7 +397,15 @@ DRAFT_FIELDS: Final[frozenset[str]] = frozenset(
         "teacher_delivery_basis",
         "repair_basis",
         "notes",
+        "is_year_end",
     }
+)
+#: F10 (F9 ekleri K6): "yıl sonu sayımı" işareti onaya dek değişebilir — sayımın niteliğidir,
+#: seçenek değildir; anlık görüntüyü ve kilitleri etkilemez. Onaydan sonra tutanak imzalıdır.
+YEAR_END_EDITABLE_STATUSES: Final[tuple[str, ...]] = (
+    StockTakeStatus.DRAFT,
+    StockTakeStatus.IN_PROGRESS,
+    StockTakeStatus.COMPLETED,
 )
 _BASIS_FIELDS: Final[dict[str, tuple[str, ...]]] = {
     "loan_basis": LOAN_BASIS_CHOICES,
@@ -399,7 +438,7 @@ def _uygula(stocktake: StockTake, fields: Mapping[str, Any]) -> None:
             setattr(stocktake, ad, _metin(deger, ad, NAME_MAX))
         elif ad == "committee_members":
             stocktake.committee_members = _uyelerin_satirlari(deger)
-        elif ad in ("tmy_stop", "service_pause"):
+        elif ad in ("tmy_stop", "service_pause", "is_year_end"):
             setattr(stocktake, ad, bool(deger))
         elif ad in ("tmy_stop_requested_on", "tmy_stop_on"):
             setattr(stocktake, ad, _tarih(deger, ad))
@@ -429,6 +468,7 @@ def create_stocktake(**fields: Any) -> StockTake:
         raise ValidationError({"status": LIVE_EXISTS_MESSAGE})
     sayim = StockTake()
     _uygula(sayim, fields)
+    _yil_sonu_tekligi(sayim)
     try:
         with transaction.atomic():
             sayim.save()
@@ -440,12 +480,24 @@ def create_stocktake(**fields: Any) -> StockTake:
 
 @transaction.atomic
 def update_stocktake(stocktake: StockTake, **fields: Any) -> StockTake:
-    """Taslağı günceller — seçenekler, kurul ve kurulun seçimleri YALNIZ taslakta değişir."""
+    """Taslağı günceller — seçenekler, kurul ve kurulun seçimleri YALNIZ taslakta değişir.
+
+    Tek istisna "yıl sonu sayımı" işaretidir (F10, K6): yalnız o alan gönderildiğinde
+    sayım sürerken ve tamamlanmışken de değişir (`YEAR_END_EDITABLE_STATUSES`); onaydan
+    ve iptalden sonra değişmez.
+    """
     require_admin_mode()
     app_password.require_password_set()
     sayim = _taze(stocktake)
+    if fields and set(fields) == {"is_year_end"}:
+        _durum(sayim, YEAR_END_EDITABLE_STATUSES, "year_end")
+        sayim.is_year_end = bool(fields["is_year_end"])
+        _yil_sonu_tekligi(sayim)
+        sayim.save(update_fields=["is_year_end", "updated_at"])
+        return sayim
     _durum(sayim, (StockTakeStatus.DRAFT,), "draft_only")
     _uygula(sayim, fields)
+    _yil_sonu_tekligi(sayim)
     sayim.save()
     return sayim
 
@@ -572,6 +624,7 @@ def start_stocktake(stocktake: StockTake) -> StockTake:
     _kurulu_denetle(sayim)
     _durdurmayi_denetle(sayim)
     sayim.fiscal_year = sayim.fiscal_year or timezone.localdate().year
+    _yil_sonu_tekligi(sayim)
     sayim.status = StockTakeStatus.IN_PROGRESS
     sayim.started_at = timezone.now()
     sayim.save()

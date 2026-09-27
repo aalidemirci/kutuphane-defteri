@@ -61,6 +61,7 @@ ALANLAR: dict[str, list[str]] = {
         "metadata_lookup_enabled",
         "metadata_lookup_ministry",
         "metadata_lookup_openlibrary",
+        "ministry_system_in_use",
         "updated_at",
     ],
     "SectionSerializer": ["id", "name", "dewey_from", "dewey_to", "description", "sort_order"],
@@ -266,6 +267,7 @@ YAZILABILIR: dict[str, set[str]] = {
         "metadata_lookup_enabled",
         "metadata_lookup_ministry",
         "metadata_lookup_openlibrary",
+        "ministry_system_in_use",
     },
     "SectionSerializer": {"name", "dewey_from", "dewey_to", "description", "sort_order"},
     "WorkSerializer": {

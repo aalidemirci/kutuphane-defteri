@@ -35,6 +35,7 @@ import { useSnackbar } from "../../ui/SnackbarProvider";
 import TextField from "../../ui/TextField";
 import { kutuphaneApi } from "./api";
 import type { LibraryPolicy, LibraryPolicyBody } from "./api";
+import { BAKANLIK_SISTEMI_AYARI, KONUM_CUMLESI } from "./BakanlikHatirlatmasi";
 
 /**
  * Sayı alanını gövdeye çevirir. Alan BOŞSA ya da sayı değilse kayıtlı değer
@@ -54,6 +55,14 @@ const BOSTA_DK_EN_AZ = 1;
 const BOSTA_DK_EN_COK = 15;
 const MUTLAK_DK_EN_AZ = 5;
 const MUTLAK_DK_EN_COK = 120;
+
+/**
+ * Çok okunanlar eşiğinin sınırları (en az k farklı üye; tasarım §15 A12: varsayılan 5, 3-10) —
+ * backend `POPULAR_MIN_MEMBERS_*` kopyası (`test_on_yuz_sabitleri.py` eşitler). Aynı eşik
+ * istatistikte ve yıl sonu raporunda üye türü ve sınıf düzeyi kırılımına da uygulanır.
+ */
+const COK_OKUNAN_ESIGI_EN_AZ = 3;
+const COK_OKUNAN_ESIGI_EN_COK = 10;
 
 function Bolum({ baslik, children }: { baslik: string; children: ReactNode }) {
   return (
@@ -123,6 +132,7 @@ export default function KutuphanePolitikasiPaneli() {
   const [kunyeAcik, setKunyeAcik] = useState(false);
   const [kunyeBakanlik, setKunyeBakanlik] = useState(true);
   const [kunyeOpenLibrary, setKunyeOpenLibrary] = useState(true);
+  const [bakanlikSistemi, setBakanlikSistemi] = useState(false);
 
   const doldur = (p: LibraryPolicy) => {
     setPolitika(p);
@@ -146,6 +156,7 @@ export default function KutuphanePolitikasiPaneli() {
     setKunyeAcik(p.metadata_lookup_enabled);
     setKunyeBakanlik(p.metadata_lookup_ministry);
     setKunyeOpenLibrary(p.metadata_lookup_openlibrary);
+    setBakanlikSistemi(p.ministry_system_in_use);
   };
 
   useEffect(() => {
@@ -200,6 +211,7 @@ export default function KutuphanePolitikasiPaneli() {
       metadata_lookup_enabled: kunyeAcik,
       metadata_lookup_ministry: kunyeBakanlik,
       metadata_lookup_openlibrary: kunyeOpenLibrary,
+      ministry_system_in_use: bakanlikSistemi,
     };
     setBusy(true);
     try {
@@ -346,7 +358,7 @@ export default function KutuphanePolitikasiPaneli() {
               value={enAzUye}
               onChange={(e) => setEnAzUye(e.target.value)}
               error={errors.popular_min_members}
-              helperText="Bir eser vitrine ancak en az bu kadar farklı üye ödünç aldıysa girer; sayı hiçbir yerde gösterilmez."
+              helperText={`${COK_OKUNAN_ESIGI_EN_AZ} ile ${COK_OKUNAN_ESIGI_EN_COK} arası (varsayılan 5). Bir eser çok okunanlara ancak en az bu kadar farklı üye ödünç aldıysa girer; sayı hiçbir yerde gösterilmez. İstatistik ve yıl sonu raporu da bu sayıdan az üyeli grubun sayısını göstermez.`}
             />
             <TextField
               label="Üyelik sonlandıktan sonra saklama (yıl)"
@@ -419,6 +431,20 @@ export default function KutuphanePolitikasiPaneli() {
               program “İnternetten getirilemedi” der. En az bir kaynak seçin.
             </p>
           )}
+        </Bolum>
+
+        <Bolum baslik="Bakanlık Sistemi">
+          <p className="text-body-medium text-on-surface-variant">
+            Okul Bakanlık otomasyon sistemini de kullanıyorsa bu ayarı açın. Açıkken Kişiler →
+            Ayrılış Havuzu ve İlişik Listesi ekranları, kaydın Bakanlık otomasyon sisteminde de
+            güncellenmesini hatırlatır. {KONUM_CUMLESI}
+          </p>
+          <Onay
+            label={BAKANLIK_SISTEMI_AYARI}
+            checked={bakanlikSistemi}
+            onChange={setBakanlikSistemi}
+            helperText="Varsayılan olarak kapalıdır. Yalnız hatırlatma açar; hiçbir kayıt değişmez."
+          />
         </Bolum>
 
         <div className="flex justify-end">

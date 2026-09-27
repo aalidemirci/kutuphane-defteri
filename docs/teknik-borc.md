@@ -360,6 +360,54 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   alınsın mı?" + yalnız "İade al"); bu, §7.3'ün görevliye verdiği "başka üyede →
   iade + uyarı" akışını değiştirirdi. **Karar kullanıcınındır (25.09.2026):** ayrım
   korunur, kalem kabul edilmiş kalan risktir.
+- **TB35 — Dışa aktarım dosyasından geri yüklenen kayıtların bilinen kayıpları (F10 — D;
+  tasarım §8.4; 26.09.2026):** dışa aktarım kataloğun kendisidir, programın bütün
+  kayıtları değildir. Geri yüklemede (a) "Ödünçte" ve "Sınıf kitaplığında" nüsha
+  "Rafta" açılır — ödünç ve teslim kaydı kişisel veri taşıdığı için dosyada yoktur;
+  kayıtsız "Ödünçte" nüsha masada iade alınamazdı; (b) "Kayıp" ve "Onarımda" nüsha
+  durumunu korur ama kayıp dosyası ve onarım kaydı gelmez (sayım ve "Onarımdan dön"
+  kayıtsız nüshayı zaten karşılar — F7 bilinen sınır, F9 LOST uzlaştırma); (c) edinimin
+  komisyon kararı tarih ve sayısıyla yeniden kurulur (bağışta "Bağış değerlendirme", öbür
+  yollarda "Kaynak seçimi" — F10 düzeltme turu), başkan adı boş kalır ve notu bunu söyler;
+  kararın türü dosyada yoktur, bağış dışı yola bağlanmış bir "Bağış değerlendirme" kararı
+  "Kaynak seçimi" olarak döner; (d) bağlanmamış boş barkod aralıkları gelmez: numaraları sayaçla korunur (bir
+  daha verilmez) ama o etiketler yeni kurulumda bir kitaba bağlanamaz; (e) kayıttan
+  çıkmış nüshanın çıkış tarihi, onay kaydı (ayıklama ya da sayım) dosyada olmadığı için
+  nüshanın son güncelleme zamanına yazılır — `selectors_sayim.tmy_34_1`'in "eski veri"
+  kuralı onu buradan okur; o nüsha sonradan düzenlenirse çıkış günü kayar (terminal
+  nüshada düzenleme yolu yoktur). **Azaltma:** belge ve ekran bunları söyler
+  (`docs/disa-aktarim.md` "Dosyada olmayanlar"); tam taşıma şifreli yedektir. **Kalan
+  risk kabul edilir.**
+- **TB36 — Büyük koleksiyonda E11 ve E17 PDF'lerinin üretim süresi (F10 — D;
+  26.09.2026):** Taşınır Kütüphane Defteri dökümü nüsha başına, alfabetik katalog dökümü
+  eser (konu ekseninde eser × konu) başına bir satırdır; 10.000 eserlik okulda PDF yüzlerce
+  sayfadır ve WeasyPrint'in tek kapısında (`shared.pdf`) dakikalar sürebilir. XLSX yazma
+  kipindedir ve hızlıdır. **Azaltma:** dökümde bölüm (E17) ve giriş yılı (E11) süzgeci;
+  Excel dosyası asıl çalışma biçimidir. Gerçek süre saha denemesinde ölçülür (F12).
+- **TB37 — Profil yasağının kaynak taraması tek ifadeyi görür (F10 — R; CLAUDE.md §2-5;
+  26.09.2026):** `tests/test_profil_yasagi.py::TestKaynakTaramasi` kişi ya da şube
+  eksenini konu ekseniyle birleştiren gruplamayı (`values`/`values_list`) AYNI ifade
+  içinde arar. Sorgu önce bir değişkene atanıp gruplama başka bir deyimde yapılırsa
+  sezgisel tarama bunu kaçırır. **Azaltma:** aynı dosyanın davranış testleri
+  istatistiğin, çok okunanların, E9 ve E12'nin bütün çıktısını sentetik adlarla tarar
+  ve istatistikte konu ekseninin hiç olmadığını sınar; yeni bir kırılım bu testlere
+  takılır. Ekran tarafı (Raporlar → İstatistik) kırılımı sunucudan olduğu gibi yazar,
+  kendisi gruplama yapmaz. Veri akışı çözümlemesi (tam doğruluk) bu projenin test
+  bütçesini aşar. **Önerilen karar:** kalan risk olarak kabul (bütünleştirmede onaylanır).
+- **TB38 — İstatistikte örtüşen dönemlerin farkı (F10 düzeltme turu; 27.09.2026):**
+  Raporlar → İstatistik serbest tarih aralığı alır. Tamamlayıcı gizleme TEK sorgunun
+  içindedir; örtüşen iki dönemin (1-19 Eylül ile 1-20 Eylül) farkı, ikinci sorguda gizlenen
+  bir sınıf düzeyi hücresini geri hesaplatabilir ("11. sınıftan bir öğrenci 20 Eylül'de 2
+  ödünç aldı"); kısa dönemde "Verilen ödünç" ve "Ödünç alan farklı üye" toplamları eşiksizdir.
+  **Neden kabul edilebilir:** ekran yalnız yönetici kipindedir ve dışa çıktısı (PDF, Excel)
+  yoktur; aynı kişi yönetici kipinde adlı ödünç kayıtlarının kendisini zaten görür (Dolaşım
+  Masası, üye ayrıntısı, gecikmiş listesi) — eşik, yönetici karşısında bir gizlilik sınırı
+  değil, çıktının kişisiz kalma kuralıdır; konu ekseni hiç yoktur (profil üretilmez).
+  Çıktıya giden yıl sonu raporu (E9) ders yılı dönemine bağlıdır, serbest aralık almaz.
+  **Seçenek:** dönemi ay/dönem hizasına bağlamak ve farklı üye sayısı k'dan azken toplamları
+  da gizlemek — ekran değişikliği gerektirir. **Karar:** kalan risk olarak KABUL EDİLDİ
+  (27.09.2026 kullanıcı kararı, tasarım §14.1 F10 ekleri K2 — seçenek (a)); serbest tarih
+  aralığı kalır, kod değişmedi.
 
 ## Kapanan
 
