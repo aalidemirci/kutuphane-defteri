@@ -141,6 +141,8 @@ class LibraryPolicySerializer(serializers.ModelSerializer[LibraryPolicy]):
             "metadata_lookup_enabled",
             "metadata_lookup_ministry",
             "metadata_lookup_openlibrary",
+            # Bakanlık sistemi kullanımda (A21, F10): varsayılan KAPALI; yalnız hatırlatma.
+            "ministry_system_in_use",
             "updated_at",
         ]
         read_only_fields = ["loan_period_days", "updated_at"]

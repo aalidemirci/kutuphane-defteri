@@ -6,7 +6,8 @@ yıl kurar ve raporun BÜTÜN çıktısını (servis sözlüğü ve API yanıtı
 yasağı (CLAUDE.md §2-5): üye türü ve sınıf düzeyi kırılımı k farklı üyenin
 altında sayı göstermez; üye bazında hiçbir alan yoktur. **Türetme testi**
 (`TestTamamlayiciGizleme`): basılan toplamlardan çıkarma yapılarak k'dan az farklı
-üyeye ait bir sayı bulunamaz.
+üyeye ait bir sayı bulunamaz. Aktif üye sayısı eşiksizdir, ödünç eşikleri kalır
+(`TestAktifUyeSayisiEsiksiz` — F10 ekleri K1).
 """
 
 from __future__ import annotations
@@ -215,8 +216,8 @@ class TestKisiselVeriYok:
             "STAFF": {"loans": None, "below_threshold": True},
         }
         assert dolasim["loans"] == 9 and dolasim["distinct_borrowers"] == 9
-        # Tek öğretmen üye: aktif üye sayısı da eşik altında gösterilmez.
-        assert dolasim["active_members"] == {"STUDENT": 8, "TEACHER": None, "STAFF": 0}
+        # Aktif üye sayısı eşiksizdir (F10 ekleri K1): üyelik sayısı ödünç verisi değildir.
+        assert dolasim["active_members"] == {"STUDENT": 8, "TEACHER": 1, "STAFF": 0}
 
 
 # ============================================================ tamamlayıcı gizleme (türetme testi)
@@ -297,7 +298,8 @@ class TestTamamlayiciGizleme:
         duzeyler = {h["class_level"]: h["loans"] for h in dolasim["by_class_level"]}
         # Görünen düzey kalır (10. sınıf); 9. sınıf tamamlayıcı olarak gizlenir.
         assert duzeyler == {9: None, 10: 5, 11: None}
-        assert dolasim["active_members"]["TEACHER"] is None
+        # Aktif üye sayısı eşiksiz (F10 ekleri K1); türetme denetimi yine geçer.
+        assert dolasim["active_members"]["TEACHER"] == 1
         _turetme_denetimi(dolasim)
 
     def test_buyuk_yilda_yalniz_gereken_hucre_gizlenir(self) -> None:
@@ -334,6 +336,56 @@ class TestTamamlayiciGizleme:
         duzeyler = {h["class_level"]: h["loans"] for h in dolasim["by_class_level"]}
         assert sorted(duzeyler) == [9, 10] and list(duzeyler.values()).count(None) == 1
         _turetme_denetimi(dolasim)
+
+
+# ============================================================ aktif üye sayısı (F10 ekleri K1)
+
+
+class TestAktifUyeSayisiEsiksiz:
+    """27.09.2026 kullanıcı kararı (tasarım §14.1 F10 ekleri K1): üyelik sayısı ödünç verisi
+    değildir ve profil yasağının konusu sayılmaz; aktif üye sayısı eşiksiz verilir. Ödünçten
+    türeyen bütün eşikler (k farklı üye, tamamlayıcı gizleme) AYNEN kalır."""
+
+    def test_tek_ogretmen_uye_gorunur_ama_odunc_kirilimi_gizli_kalir(self) -> None:
+        etkin_yil()
+        for _ in range(6):
+            odunc_ver(uye(ogrenci(class_level=9)))
+        hoca = uye(ogretmen())
+        for _ in range(2):
+            odunc_ver(hoca)
+
+        veri = selectors_yil_raporu.annual_review_stats(etkin_yil())
+        dolasim = veri["circulation"]
+
+        assert veri["schema"] == selectors_yil_raporu.SCHEMA_VERSION == 3
+        # Üyelik sayısı eşiksiz: tek öğretmen üye "1" diye görünür.
+        assert dolasim["active_members"] == {"STUDENT": 6, "TEACHER": 1, "STAFF": 0}
+        # Aynı öğretmenin ödüncü üye türü kırılımında hâlâ gizli (eşik ödünçte kalır); toplam
+        # (8) − öğrenci (6) onu ele vereceği için öğrenci ve 9. sınıf da tamamlayıcı gizlenir.
+        assert dolasim["loans"] == 8
+        assert dolasim["by_member_type"] == {
+            "STUDENT": {"loans": None, "below_threshold": True},
+            "TEACHER": {"loans": None, "below_threshold": True},
+            "STAFF": {"loans": None, "below_threshold": True},
+        }
+        assert dolasim["by_class_level"] == [
+            {"class_level": 9, "loans": None, "below_threshold": True},
+        ]
+        _turetme_denetimi(dolasim)
+
+    def test_sayi_sifirda_ve_esigin_ustunde_de_aynen_verilir(self) -> None:
+        """Ödünç almamış üyeler de sayılır; sonlanmış üyelik sayılmaz."""
+        etkin_yil()
+        for _ in range(3):
+            uye(ogrenci(class_level=10))
+        personele_odunc_ac()
+        uye(personel(member_kind="STAFF"))
+        memberships.terminate_membership(uye(ogretmen()), reason="MEMBER_REQUEST")
+
+        dolasim = selectors_yil_raporu.annual_review_stats(etkin_yil())["circulation"]
+
+        assert dolasim["active_members"] == {"STUDENT": 3, "TEACHER": 0, "STAFF": 1}
+        assert dolasim["loans"] == 0
 
 
 # ============================================================ bölümler ve dönem

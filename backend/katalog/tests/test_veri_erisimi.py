@@ -32,6 +32,12 @@ kayıp "Kayıp", hasar önerisi "Hasar" diye kayıttan düşülür; fazla kayda 
 okunan küme yine DEĞİŞMEZ. Sayımla kayıttan düşülen nüsha görünümde ve sayfada yoktur,
 fazladan kayda alınan nüsha rafta sayılır
 (`test_sayimla_dusulen_nusha_gorunmez_fazla_rafta_sayilir`).
+
+F10 (§5.10-4/5 yeniden koşar): `kd_katalog_populer` artık gün değişimi kapısının GERÇEK
+hesabıyla dolar (en az k farklı üye; sayı yazılmaz). Vitrinin bu tablodan sayısız okuduğu,
+üye izinin hiçbir sayfada geçmediği ve vitrin bağlantısının yalnız izinli okumaları yaptığı
+(`kaydedici` ile aynı, görünüm dışı okumaları da kaydeden fikstürle)
+`test_vitrin_cok_okunanlar.py`'dedir.
 """
 
 from __future__ import annotations

@@ -1588,7 +1588,7 @@ ifadeleri ters çevrilir: `settings.py:3-7`, `server.py:8`, `docs/kurulum.md:83-
 
 | # | Kusur | Düzeltme | Faz |
 |---|---|---|---|
-| D1 | TMY atıfları eski: 32/6 → **32/7**, 32/4 → 32/5, 10/1-m → **34/2-c + 34/3-a** | Tam metinden doğrulanır | F9, F10 — F9 kısmı (32/7, 32/5) kapandı (§14.1 F9 ekleri 3); 34/2-c + 34/3-a F10'da (E11) |
+| D1 | TMY atıfları eski: 32/6 → **32/7**, 32/4 → 32/5, 10/1-m → **34/2-c + 34/3-a** | Tam metinden doğrulanır | F9, F10 — F9 kısmı (32/7, 32/5) kapandı (§14.1 F9 ekleri 3); F10 kısmı (34/2-c + 34/3-a, E11) kapandı (§14.1 F10 ekleri 11) |
 | D2 | Türkçe arama ve eşleştirme bozuk | T7 | F2 |
 | D3 | `IN_REPAIR` durumuna yol yok. `DAMAGED` açılamıyor | Akışlar yazılır | F7 — kapandı (§14.1 F7 ekleri 3) |
 | D4 | Sayım kilidi `report_lost` ve `resolve_case`'i kapsamıyor | Kilit seçildiyse bunlar da kapsanır | F9 — kapandı (§14.1 F9 ekleri 4) |
@@ -3165,7 +3165,8 @@ yazıldı (madde 34-35).
     sınıf düzeyleri + düzeysiz öğrenciler) korur: türetilebilen her gizli toplam ya sıfır
     ya da en az k farklı üyeye aittir; eksik kalırsa farklı üyesi en az olan görünür
     hücre de gizlenir. Farklı üye sayıları veritabanında sayılır, kimlik Python'a gelmez.
-    Rapor anındaki aktif üye sayısı da k'nın altında "—". Şema sürümü 2. Türetme testi:
+    Rapor anındaki aktif üye sayısı da k'nın altında "—". Şema sürümü 2 (*aktif üye
+    gizlemesi F10 ekleri K1 kararıyla — 27.09.2026 — kaldırıldı, şema 3*). Türetme testi:
     `test_yil_sonu_raporu.py::TestTamamlayiciGizleme`. Küçük bir okulda bu, kırılımın
     tamamen "—" olması demektir; bilinçlidir.
 31. **E9 "kazandırılan" yalnız Md. 10/5 yolları.** Mevcut koleksiyonun programa aktarımı
@@ -3735,6 +3736,283 @@ alındı ve karar aşağıda K1-K7'dedir. Hiçbir bulgu bütünüyle reddedilmed
     Karar turunda görevli yüzeyinin anlık görüntüleri de güncellendi
     (`test_masa_gorevli_yuzeyi.py`, `test_uc_kapilari.py`, `test_kisi_yazan_uclar.py`).
     `bash scripts/gates.sh` bu turda koşulmadı.
+
+**F10 ekleri (27.09.2026).** F10'da tasarımdan bilinçli sapmalar ve tasarımda yazmayan
+kararlar. İki iş kolunda (R: istatistik, Md. 7 kartı, çok okunanlar, E12, E20 — madde 1-6;
+D: dışa aktarım şeması ve kipi, E17, E11, kişi dökümü, K6 işareti, A21 — madde 7-14)
+yapıldı, bütünleştirildi ve denetimden sonra bir düzeltme turundan geçti (madde 15-35).
+Kararına sunulan dört konu (K1-K4) **27.09.2026'da KULLANICI KARARI ile bağlandı ve
+uygulandı** (karar turu, madde 36-37): K1'de İstatistik ve E9'daki aktif üye gizlemesi
+kaldırıldı (üyelik sayısı ödünç verisi değildir); K2, K3 ve K4'te bugünkü davranış kaldı.
+Bekleyen karar yoktur. Kod kapısı (§14.1
+F10 satırı: gidiş-dönüş, §5.10-12, profil yasağı testleri, ciltsiz süreli yayın E11'e
+girmez, E20 ve kişi dökümü yalnız yönetici kipinde, §5.10-4/5 vitrin, A21, K6) ve `bash
+scripts/gates.sh` yeşildir (madde 35). **D1'in F10 kısmı kapandı** (34/2-c + 34/3-a — madde
+11). Her atıf `docs/mevzuat/` metninden doğrulandı (atıf haritası `BENIOKU.md` §3.1, §3.2).
+E11, E12, E17, E20 ve kişi dökümünün gerçek yazıcı çıktısı F12'ye ertelendi.
+
+1. **Tek göç** (`0009_yil_sonu_sayimi_ve_bakanlik_sistemi`): `StockTake.is_year_end` (K6),
+   `LibraryPolicy.ministry_system_in_use` (A21, varsayılan kapalı) ve
+   `LibraryPolicy.popular_min_members` (A12: 3-10, varsayılan 5).
+2. **İstatistik** (`selectors_istatistik`, Raporlar → İstatistik): koleksiyon, edinim,
+   dolaşım, teslim, kayıp/hasar, ayıklama/devir. Dolaşım hesabı E9'unkidir — TEK kaynak
+   `selectors_yil_raporu._dolasim` (k farklı üye eşiği + tamamlayıcı gizleme, F8 ekleri 30);
+   konu ekseni dolaşımda hiç yoktur. Dönem: etkin ders yılı, başka ders yılı ya da serbest
+   tarih aralığı (sınırı madde 34, K2).
+3. **Md. 7/1 bilgi kartı** (`kitap_esigi`): elde bulunan kitap nüshası 10.000'i AŞINCA Genel
+   Bakış'ta; yalnız bilgi, bağlantı ve düğme yok. Sayım kuralı madde 24-25.
+4. **Çok okunanlar** (`services.populer`, `kd_katalog_populer`): gün değişimi kapısında günde
+   bir; eşik pencerede en az k FARKLI üye (§5.10-12 testli); dönem penceresi vitrin, ay
+   penceresi E12; sayı yazılmaz, yalnız sıra; kapanan pencere bir kez son hesapla dondurulur,
+   anonimleştirmeden sonra yeniden hesaplanmaz. Ağ Kataloğu vitrini bu tablodan okur
+   (§5.10-4/5 yeniden sınandı).
+5. **E12 "Ayın Kitapları" afişi**: eser bazlı, eşikli, sayısız, asılabilir.
+6. **E20 okuma ödülü iç çıktısı**: yalnız yönetici kipinde, "İç kullanım" ibareli; ölçüt
+   dönem içinde iade edilmiş FARKLI eser; sayı ve okul no basılmaz; ağa, panoya, E9'a ve E12'ye
+   girmez (profil yasağı testleri). Kaynak taramasının sınırı TB37.
+7. **Dışa aktarım şeması** (`export_schema`, `docs/disa-aktarim.md`, sürüm `v1`): içe aktarım
+   sözlüğünün üst kümesi (ilk on altı sütun aynı başlıklarla), 35 sütun; sayfalar Bilgi ·
+   Katalog · Bölümler · Numara Sayaçları · Üye Özeti. Kişisel veri yoktur (bağışçı ve komisyon
+   üyelerinin adları dahil); komisyon kararının yalnız tarihi ve sayısı yazılır.
+8. **"Dışa aktarım dosyası" kipi** (`services.export_import`): barkod ve kayıt no korunur,
+   sayaçlar dosyanın "Numara Sayaçları"na ilerler; çakışma dört kaynağa karşı (kayıtlı nüsha,
+   ayrılmış numara, sayacın gerisi, dosya içi tekrar). Gidiş-dönüş testi kod kapısıdır. Bilinen
+   kayıplar TB35. Düzeltme turunda üç kural eklendi (madde 29-31).
+9. **E17 Alfabetik katalog dökümü** (`katalog_dokumu`): üç eksen (kaynak adı, yazar — "Soyad,
+   Ad", konu — her konu ayrı giriş), TR sıralı, PDF bir eksen + XLSX üç sayfa, bölüm süzgeci.
+   Büyük koleksiyonda süre TB36.
+10. **E11 Taşınır Kütüphane Defteri dökümü** (`tmy_dokumleri`): nüsha başına satır, kayıt no
+    sırasıyla; ciltletilmemiş süreli yayın GİRMEZ (kod kapısı, 10/1-a-4, 15/4); kayıttan
+    çıkmış nüsha çıkış tarihiyle kalır.
+11. **E11 Yönetim hesabı cetveli hazırlığı** (34/2-c, 34/3-a — **D1'in F10 kısmı**; OYS'nin
+    "10/1-m" atfı yoktur): YALNIZ "yıl sonu sayımı" işaretli ve onaylanmış sayımdan; sayılar
+    `selectors_sayim.tmy_34_1`'den (E10'un ekiyle aynı), tutarlar birim fiyatı kayıtlı
+    nüshalardan; not "Sayım kurulunca onaylanan Taşınır Sayım ve Döküm Cetveline dayanır;
+    resmî cetveller TKYS'dedir."
+12. **Kişi dökümü** (KVKK md. 11; `kisi_dokumu`): okul no ile kör indeksten TAM eşleşme ya da
+    adla; aynı numaralı birden çok kayıt ayrı aday; döküm SEÇİLEN kişinindir; arama POST
+    gövdesiyle; yalnız yönetici kipinde; indirme adında kişi adı yok.
+13. **K6 — "Yıl sonu sayımı" işareti** (F9 ekleri K6): taslakta ve onaya dek ayrıntıda
+    değişir; işaretsiz sayımın eki "Ara sayım — sayılar cetvele aktarılmaz" başlığını, Excel
+    sayfası "Ara sayım" adını alır; künyede "Sayımın türü".
+14. **A21 — "Bakanlık sistemi kullanımda"** (Kütüphane Politikası): varsayılan kapalı;
+    açıkken ayrılış ve İlişik Listesi hatırlatır; konum cümlesi program o sistemin yerine
+    geçmez der.
+
+**Düzeltme turu (27.09.2026).** Bütünleştirme sonrası denetimin yirmi bir bulgusu (ikisi aynı
+konu) şüpheyle yeniden doğrulandı: her biri Docker'da sondayla ya da kodun okunmasıyla
+sınandı, gerçek olanlar kök nedeninden düzeltildi ve kilitleyen testle bağlandı; tasarım
+kararını değiştirecek olanlar düzeltilmedi, kararına sunuldu (K1-K4).
+
+15. **Kişi dökümünde başkasının dosyası — DÜZELTİLDİ (yüksek).** Öğretmene teslim edilen
+    kitabı öğrenci kaybedip dosya öğrencinin üyeliğiyle açılınca dosyada hem üyelik hem
+    teslim duruyordu; `_dosya_tablosu` personelde `delivery__personnel` koşulunu üyelik
+    koşuluna VEYA'yla eklediği için öğrencinin dosyası ve sorumlu notu öğretmenin dökümüne,
+    "Yalnız başvuru sahibine verilir" ibaresiyle giriyordu. F7'nin tek kuralı (önce üyelik,
+    yoksa teslim alan) `selectors_teslim.person_case_q` adıyla genelleşti ve döküm onu
+    kullanır. Test: öğretmenin dökümünde dosya ve not YOK, öğrencininkinde VAR; üyeliksiz
+    teslim dosyası öğretmenindir.
+16. **Kişi dökümünün kapsamı — DÜZELTİLDİ.** Belge md. 11/a'yı alıntılıyor ama neyi
+    aramadığını söylemiyordu. Not eklendi (`KAPSAM_NOTU`): üyelik, ödünç, kişiye bağlı dosya
+    ve teslim kayıtlarını kapsar; serbest metindeki adlar (üyeliksiz dosyanın sorumlu notu,
+    kurul ve komisyon üyeleri, onaylayan, bağışçı) aranmaz. Kılavuz aynısını yazar. Sorumlu
+    notunda adla arama yapılmadı (K4 — karar (i)(a): yapılmaz).
+17. **Kişi dökümünde bölünen tarih ve bedel — DÜZELTİLDİ.** %10'luk "İade tarihi" sütunu
+    gg.aa.yyyy'yi son hanesinden ("12.10.202" / "6"), %9'luk "Bedel" beş haneli tutarı
+    bölüyordu. Sütunlar 12/12'ye çıktı; gerçek uzunlukta veriyle `hucre_satirlari` testi ve
+    yatay taşma testi (CLAUDE.md §3).
+18. **E20 ekranının açıklaması — DÜZELTİLDİ.** Programın kendi cümlesi ödünç sırasını "en çok
+    kitap okuyan öğrenciler" diye sunuyordu (sözlük: ödünç ≠ okuduğu kitap). Yeni metin
+    (`E20_ACIKLAMASI`): "Okul, Uygulama Kılavuzu 7'deki ödül önerisini uygulamak isterse
+    karar vermesine yardım eden iç çıktı. …". Yasak kalıp `/en çok (kitap )?okuyan/i`;
+    Kılavuz 7'nin cümlesi alıntı olduğu için taramadan çıkarılır (kılavuz ve ekran testi).
+19. **Ara sayımın eki cetvel sütununu basıyordu — DÜZELTİLDİ (K6 kod kapısı).** İşaretsiz
+    sayımın ekinde "Gelecek yıla devir" satırı, ona göre "Fark" ve cetvelin "Gelecek Yıla
+    Devir" sütununu anlatan not (`GELECEK_YIL_NOTU`) kalıyordu. Artık yalnız yıl sonu
+    sayımında basılır (PDF ve Excel); ara sayımda "Sayımda bulunan miktar" ve "Onayda hasar
+    nedeniyle kayıttan düşülen" kendi satırlarıdır, "Kayda göre yıl sonu" yerine "Kayda göre,
+    belgenin düzenlendiği gün (…)". Kapı testi satırları, notları, PDF metnini ve Excel'i
+    sınar.
+20. **Ara sayımın tarih iddiası — DÜZELTİLDİ (metin).** "Sayım günündeki ara durum" /
+    "yılın o güne kadarki durumu" yanlıştı: `tmy_34_1` kesim tarihi taşımaz, sayılar basım
+    anındaki kayıtlardandır (onaydan sonra giren nüsha sayıyı değiştirir — test). Metin
+    gerçeğe çevrildi (`ARA_SAYIM_SAYILARI`: "Kayda dayanan sayılar belgenin düzenlendiği
+    günkü kayıtlardan hesaplanır; sayım gününden sonra yapılan giriş ve çıkışları da
+    içerir. …"); `ARA_SAYIM_NOTU` ve kılavuz aynı yönde. Sayılarını sayım gününe kesmek
+    ayrı bir seçenekti (K4 — karar (ii)(a): kesilmez).
+21. **Cetvel hazırlığı ciltsiz süreli yayını sayıyordu — DÜZELTİLDİ (savunma derinliği).**
+    Defterin süzgeci yalnız defterdeydi; `tmy_34_1` ve `management_account_values` doğrudan
+    yazılmış eski bir ciltsiz dergi nüshasını "Programa aktarım"da ve (noksan çıkıp
+    düşülünce) "Yıl içinde çıkan"da sayıyordu. Süzgeç tektir
+    (`selectors_sayim.ciltsiz_sureli_yayin_q`) ve üç hesap da uygular; E10 ekinin kayıt
+    tabanlı sayıları da. Test: defter, 34/1 ve cetvel hazırlığı aynı nüsha kümesini görür.
+    Modül başlığındaki test dosyası adı düzeltildi.
+22. **Onaysız sayım iletisinin dayanağı — DÜZELTİLDİ.** İleti yönetim hesabı cetvelini
+    32/9'a bağlıyordu; 32/9 Taşınır Sayım ve Döküm Cetvelidir. Zincir: 34/3-a (hazırlık
+    TSDC'ye dayanır) → 32/9 (TSDC kayıtlar uygun hâle gelince düzenlenir) → 32/7 (uygunluğun
+    belgeleri) — programda sayımın onayı (noksan düşülür, fazla kayda alınır). İleti, kılavuz
+    ve BENIOKU bu zinciri yazar; test metinden doğrular.
+23. **Bir mali yılın tek yıl sonu sayımı — DÜZELTİLDİ.** Aynı mali yıl için birden çok sayım
+    işaretlenebiliyor, iki ayrı cetvel hazırlığı basılabiliyordu; iptal edilmiş yıl sonu sayımı
+    listede "onaylandıktan sonra basılır" diye duruyordu. İşaret (açılışta, taslakta, onaya
+    dek ayrıntıda) ve başlatma, aynı mali yılda iptal edilmemiş başka yıl sonu sayımı varsa
+    reddedilir ("YYYY mali yılının yıl sonu sayımı zaten var (…). …" — TMY 32/1, 34/2-a).
+    İptal edilmiş sayım listelenmez; doğrudan istenirse "İptal edilmiş sayımdan yönetim hesabı
+    cetveli hazırlığı basılmaz." Ekran açıklaması (`YIL_SONU_ACIKLAMASI`) ve kılavuz kuralı
+    söyler.
+24. **Md. 7 kartının metni — DÜZELTİLDİ.** Kart "kayıttan düşülmemiş" diyor, sözlüğün
+    "devredilmemiş"ini atlıyordu. Metin sözlükle eşit (`MD7_SAYIM_KURALI`); kayıp bildirilmiş
+    ama kayıttan düşülmemiş kitap sayıya dahildir ve kart bunu SAYIYLA yazar (`lost_books`;
+    "Kayıp bildirilmiş ama henüz kayıttan düşülmemiş N kitap bu sayıya dahildir."). Kaybın
+    dışlanması K3'e sunuldu — karar (a): sayıda kalır.
+25. **Md. 7 sayım kuralının dayanağı — DÜZELTİLDİ.** BENIOKU ve docstring "kitap"ı
+    Yönetmelik 4/1-d'ye dayandırıyordu; 4/1-d "Kütüphane"nin tanımıdır ve aynı madde hem
+    dergiyi dışlamaya hem referans kaynağını dahil etmeye gerekçe olamaz (16/1-a/b de danışma
+    kaynağını kitaptan ayrı bent sayar). Kural artık **programın sayım kuralı** diye yazılır:
+    kaynak türü "Kitap", danışma kitapları dahil; Yönetmelik "kitap"ı tanımlamaz.
+26. **E17'de kurum yazarı — DÜZELTİLDİ.** "Millî Eğitim Bakanlığı" "Bakanlığı, Millî Eğitim"
+    diye basılıp B harfinde sıralanıyordu. `keys.is_corporate_author`: en az iki sözcük ve son
+    sözcük kurum sözcüğüyse (Bakanlığı, Kurumu, Müdürlüğü, Başkanlığı, Üniversitesi, Derneği,
+    Vakfı, Yayınları, Yayınevi, Merkezi, Enstitüsü …) ad ters çevrilmez, adıyla sıralanır ve
+    yer numarası adın ilk harflerini alır ("371.3 MİL"). D11 sezgisinin inceltilmesidir: yer
+    numarası elle değiştirilebilir kalır; listenin kapsamadığı kurum adı kişi adı gibi işlenir.
+27. **E17'de bölümsüz eserler — DÜZELTİLDİ.** "Bölüm bölüm basabilirsiniz" denirken bölümü
+    yazılmamış eserler hiçbir bölüm çıktısına girmiyordu. Seçicide **"Bölümü yazılmamış"**
+    (uç `section=0`, `katalog_dokumu.SECTION_NONE`; seçenek bölümsüz eser varken görünür —
+    özet `unsectioned_works`).
+28. **A21 tek kişilik ayrılışta — DÜZELTİLDİ.** Hatırlatma Ayrılış Havuzu'nda ve İlişik
+    Listesi'nde vardı; Kişiler ekranındaki "Ayrıldı olarak işaretle" onayında yoktu (§9-8
+    ayrılışın yolunu ayırmaz). Onay penceresi, ayar açıkken `AYRILIS_HATIRLATMASI`'nı yazar
+    (`useBakanlikSistemi`); vitest, kılavuz.
+29. **Dışa aktarım dosyası "Excel listesi" yolunda — DÜZELTİLDİ (yüksek).** Varsayılan kipte
+    dosya tanınmadan kabul ediliyordu: bütün nüshalar yeni numara alıyor, numaralar eski
+    etiketlerle aynı aralıkta ama başka sırayla verildiği için okutulan eski etiket başka
+    kitabı açıyor, kayıttan çıkmış ve kayıptaki nüsha "Rafta" açılıyordu; ardından doğru kiple
+    yeniden denemek de "kayıtlı nüshada" diye reddediliyordu. Olağan yol dosyayı "Bilgi"
+    sayfasından tanır ve reddeder (`export_import.is_export_file`,
+    `EXPORT_FILE_AS_LIST_MESSAGE`). `docs/disa-aktarim.md`'deki "olağan Excel içe aktarımına
+    da verilebilir" paragrafı, Bilgi sayfasının notu ve şema belgesi düzeltildi; test ters
+    çevrildi.
+30. **Reddedilen satırın numarası yanıyordu — DÜZELTİLDİ (hepsi ya da hiçbiri).** Sayaç
+    dosyanın "Numara Sayaçları"na ilerlediği için ilk uygulamada reddedilen satır (ör.
+    okunamayan tarih) dosya düzeltilince "sayacın gerisinde" diye bir daha aktarılamıyor,
+    kitap yeni etiket istiyordu. Dışa aktarım kipinde aktarılamayan satır varken uygulama
+    reddedilir (`ROWS_NOT_IMPORTED_MESSAGE`; tek işlem, sayaç ilerlemez); ekranda Uygula
+    kapalıdır ve nedeni yazar (`aktarilmayanSatirEngeli`). Düzeltilemeyen satır dosyadan
+    silinir (o kitap sonra yeni etiketle kaydedilir). Test: bozuk dosya reddedilir, hiçbir
+    şey yazılmaz; özgün dosya bütün numaralarıyla aktarılır.
+31. **Dolu kataloğa aktarım eserleri çoğaltıyordu — DÜZELTİLDİ.** Eşleştirme yapılmadığı
+    için nüshasız eserler (e-kitap) her uygulamada yeniden açılıyor, kısmen aktarılmış eserin
+    nüshası ikiz esere bağlanıyordu. Katalogda canlı eser varken önizleme de uygulama da
+    reddedilir (`ensure_empty_catalog`, `NOT_EMPTY_MESSAGE`; aynı dosya daha önce
+    uygulanmışsa ileti bunu da söyler). Belge ve ekranın "boş bir kuruluma" dediği artık
+    zorlanır.
+32. **Bağış dışı edinimin kararı düşüyordu — DÜZELTİLDİ.** Satın alma, Bakanlık gönderimi ve
+    değişimin "Kaynak seçimi" kararı dosyaya yazılıyor ama geri yüklemede sessizce
+    kayboluyor, kararı farklı iki satın alma tek edinime birleşiyordu. Karar her yolda tarih
+    ve sayısıyla yeniden kurulur (bağışta "Bağış değerlendirme", öbür yollarda "Kaynak
+    seçimi") ve edinim anahtarına her yolda girer. Şema değişmedi (sürüm `v1`); kararın türü
+    dosyada olmadığı için bağış dışı yola bağlanmış bir "Bağış değerlendirme" kararı "Kaynak
+    seçimi" olarak döner (TB35 c).
+33. **Üye özeti eşiksiz — KARARA SUNULDU (K1); KARARA BAĞLANDI (27.09.2026, seçenek (b) —
+    madde 36).** Aynı bulgu iki kez geldi. İstatistik ve E9, k'dan az aktif üyesi olan türün
+    sayısını gizliyor; Dökümler'deki Üye Özeti ve dışa aktarım dosyasının "Üye Özeti" sayfası
+    türe ve şubeye göre sayıyı eşiksiz veriyor. Ödünç kırılımları farklı üye eşiği ve
+    tamamlayıcı gizlemeyle korunduğu için ödünç sayısı türetilemez; açıkta kalan üyelik
+    bilginin kendisi ve iki çıktı arasındaki kural çelişkisidir. Tasarım §8.4 yalnız "kişisiz"
+    der; hangi kuralın doğru olduğu tasarım kararıdır — bu turda kod değişmedi. *Karar:
+    üyelik sayısı ödünç verisi değildir; üye özeti eşiksiz kalır, İstatistik ve E9'daki aktif
+    üye gizlemesi kaldırıldı (çelişki bu yönde giderildi).*
+34. **İstatistiğin serbest dönemi — BELGELENDİ, KARARA SUNULDU (K2); KALAN RİSK OLARAK KABUL
+    EDİLDİ (27.09.2026, seçenek (a)).** Örtüşen dönemlerin farkı tek sorgudaki tamamlayıcı
+    gizlemeyi aşabiliyor; kısa dönemde toplamlar eşiksiz. Ekran yalnız yönetici kipindedir,
+    çıktısı yoktur ve aynı kişi adlı ödünç kayıtlarını zaten görür; konu ekseni yoktur. Kalan
+    risk TB38; modül belgesi sınırı söyler.
+35. **Kapı.** Değişen alanların testleri (kişi dökümü, dökümler, sayım belgeleri ve sayım,
+    dışa aktarım, istatistik, profil yasağı, metin testleri), ruff, ruff format, mypy (356
+    dosya), ön yüz `typecheck`, `eslint`, `prettier --check` ve ilgili vitest (raporlar,
+    dökümler, kişiler, kılavuz, sayım, kütüphane) yeşil; ardından tam `bash scripts/gates.sh`
+    yeşil (27.09.2026): backend `pytest` 4042 geçti, 2 atlandı; masaüstü + paketleme 658
+    geçti, 2 atlandı; ruff, ruff format, mypy (356 dosya); ön yüz typecheck, eslint, prettier,
+    vitest 121 dosya / 1313 test (kapsam: satır %95,49, dal %87,35). Genişletilmiş depo
+    sızıntısı taraması (izlenen + izlenmeyen 886 dosya) bulgusuz. Göç değişmedi.
+
+**Kullanıcı kararları (27.09.2026).** Dört konu kullanıcıya seçenekleriyle sunuldu; seçilen
+seçenek ve uygulanan her maddenin başındadır. Seçenekler kayıt için olduğu gibi kalır.
+
+- **K1 — Üye özetinde eşik. KULLANICI KARARI (27.09.2026): SEÇENEK (b) "GİZLENMESİN",
+  UYGULANDI (madde 36).** Üyelik sayısı (türe ve şubeye göre kaç kişinin üyeliği sürüyor)
+  ödünç verisi DEĞİLDİR ve profil yasağının konusu sayılmaz. Üye özetine eşik getirilmedi;
+  İstatistik ve E9'daki aktif üye gizlemesi KALDIRILDI. Sınır: ödünçten türeyen bütün
+  eşikler (üye türü ve sınıf düzeyi ödünç kırılımlarında en az k farklı üye, tamamlayıcı
+  gizleme `_gizlenenler`, çok okunanlar eşiği, şube × konu yasağı) AYNEN kalır; eşiksiz olan
+  yalnız salt üyelik sayısıdır; öneri (a) seçilmedi. Seçenekler: (a) Üye özetine de k kuralı:
+  türde 0 < n < k ise "—"; şube satırlarında da eşik ve toplamdan geri hesap olmasın diye
+  tamamlayıcı gizleme ("Sınıfı yazılı olmayan" dahil) — dışa aktarım dosyasının "Üye Özeti"
+  sayfası da aynı; (b) üyelik sayısı profil yasağının konusu değildir (ödünç verisi
+  taşımaz): üye özeti eşiksiz kalır, İstatistik ve E9'daki aktif üye gizlemesi kaldırılır ya
+  da gerekçesi "yalnız bu ekranda, ödünç kırılımının yanında" diye daraltılır; karar sözlük
+  §4.17 ve kılavuza yazılır. **Öneri (a):** okul dışına verilebilen dosyada "9/A: 1 üye" gibi
+  küçük grupları göstermemek veri en aza indirme ilkesine uyar ve iki çıktıyı eşitler.
+- **K2 — İstatistiğin serbest tarih aralığı (TB38). KULLANICI KARARI (27.09.2026): SEÇENEK
+  (a) "KALSIN".** Serbest tarih aralığı kalır, TB38 kalan risk olarak kabul edildi; kod
+  değişmedi. Seçenekler: (a) Kalan risk olarak kabul (bugünkü davranış); (b) dönemi
+  ay/dönem/ders yılı hizasına bağlamak ve
+  farklı üye sayısı k'dan azken "Verilen ödünç", "Ödünç alan farklı üye" ve aylık toplamları da
+  gizlemek (ekran değişir). **Öneri (a):** eşik yönetici karşısında bir gizlilik sınırı
+  değildir; ekranın çıktısı yoktur ve konu ekseni yoktur.
+- **K3 — Md. 7 kartında kayıp nüsha. KULLANICI KARARI (27.09.2026): SEÇENEK (a).** Kayıp
+  bildirilmiş ama kayıttan düşülmemiş kitap sayılır ve `lost_books` ile ayrıca yazılır
+  (bugünkü davranış); kod değişmedi. Seçenekler: (a) Bugünkü gibi: kayıp bildirilmiş ama
+  kayıttan düşülmemiş kitap kayıtta olduğu için sayılır, kart sayısını ayrıca yazar (madde 24); (b) "elde bulunan" kaybı dışlar (Md. 7 sayısı ile istatistiğin "Elde
+  bulunan nüsha"sı ayrışır, sözlük satırı değişir). **Öneri (a):** kayıt, kayıttan düşme
+  onayına dek nüshayı taşır (F7, F9 LOST uzlaştırma); kart bilgi verir, hüküm kurmaz.
+- **K4 — Kişi dökümünde serbest metin ve ara sayımın kesim tarihi. KULLANICI KARARI
+  (27.09.2026): (i) SEÇENEK (a) VE (ii) SEÇENEK (a).** Kişi dökümünde serbest metinde ad
+  araması yapılmaz, yalnız kapsam notu durur; ara sayım ekinin sayıları belgenin düzenlendiği
+  günün kayıtlarındandır ve metin bunu söyler (bugünkü davranış); kod değişmedi. Seçenekler:
+  (i) Serbest metin: (a) bugünkü gibi yalnız not (madde 16); (b) yönetici kipinde çözülmüş
+  sorumlu notlarında seçilen kişinin adıyla TR katlamalı arama yapıp eşleşmeyi
+  "adla eşleşen serbest metin — doğrulayın" diye ayrı tabloya koymak. **Öneri (a):**
+  ad araması yanlış eşleşmeyle başka kişinin notunu belgeye taşıyabilir. (ii) Ara sayımın
+  eki: (a) bugünkü gibi — sayılar belge günündendir ve metin bunu söyler (madde 20); (b) kayıt
+  tabanlı sayıları sayımın onay gününe kesmek. **Öneri (a):** ara sayımın sayıları cetvele
+  aktarılmaz; kesim, satır adlarını ve `tmy_34_1`'i ikiye böler.
+
+**Karar turu (27.09.2026).** K1-K4 kararlarının uygulanması:
+
+36. **K1 — aktif üye sayısı eşiksiz.** `selectors_yil_raporu._aktif_uyeler` eşiksiz sayıları
+    döndürür (`None` üretmez; `k` parametresi kalktı); E9 şeması **3**
+    (`SCHEMA_VERSION`; `AKTIF_UYE_ESIKSIZ_SURUM = 3`). İstatistik dolaşım hesabını E9'dan
+    aldığı için (`_dolasim`, tek kaynak) aynı değişikliği kendiliğinden taşır; İstatistik
+    şeması 1 kaldı (F10 yayımlanmadı). **Dondurulmuş eski rapor:** şema 2 ile sonlandırılmış
+    raporun sayıları yeniden hesaplanmaz; `active_members`'taki `None` belgede "—" basılmaya
+    devam eder ve ödünç notundaki "{k} kişiden az aktif üyesi olan türün sayısı da
+    gösterilmez." cümlesi YALNIZ şeması 3'ten küçük raporda basılır (`yil_raporu_belgesi._odunc`,
+    `schema` parametresi); yeni raporda bu cümle yoktur. Ekran: İstatistik'in "Aktif üye
+    (bugün)" sütunu düz sayı yazar; eşik açıklaması "… kişiden az aktif üyesi olan türün
+    sayısı da gösterilmez" yerine "Aktif üye sayısı ödünç verisi değildir; eşiksiz yazılır."
+    der. Tipler: `raporlar/api.ts` `number`; `ayiklama/api.ts` dondurulmuş eski rapor için
+    `number | null` (yorumunda nedeni). Ödünçten türeyen eşikler değişmedi: üye türü ve sınıf
+    düzeyi kırılımı, `_gizlenenler`, çok okunanlar, şube × konu yasağı. Kılavuz (Yıl Sonu
+    Raporu, Raporlar → İstatistik, Dökümler → Üye Özeti), sözlük (E9 satırı, §4.16 İstatistik,
+    §4.17 Üye özeti), `docs/disa-aktarim.md` ve modül belgeleri karara göre yazıldı; CLAUDE.md
+    §4 "bulgu DEĞİL" tablosuna satır eklendi. **Testler:** `test_yil_sonu_raporu.py`
+    `TestAktifUyeSayisiEsiksiz` (tek öğretmen üye `active_members["TEACHER"] == 1` görünür,
+    aynı öğretmenin ödüncü üye türü kırılımında gizli kalır ve türetme denetimi geçer; ödünç
+    almamış üye sayılır, sonlanmış üyelik sayılmaz) ve eski "tek öğretmen üye gizli"
+    beklentilerinin tersi; `test_istatistik.py` aynısını API yanıtında; `test_yil_raporu_belgesi.py`
+    yeni raporda "Öğretmen: 1" ve eski cümlenin yokluğu, şema 2 ile dondurulmuş raporda "—" ve
+    eski cümle; vitest (`RaporlarPage.test.tsx`, `KilavuzPage.test.tsx`). K2, K3, K4'te kod
+    değişmedi; modül belgeleri ve TB38 kararı anar.
+37. **Kapı.** Hedefli koşular (yıl sonu raporu, belgesi, istatistik, ayıklama uçları, profil
+    yasağı, rapor ve döküm metinleri, dışa aktarım — 135 test; vitest raporlar, kılavuz,
+    ayıklama, dökümler — 214 test) yeşil; ardından tam `bash scripts/gates.sh` yeşil
+    (27.09.2026): depo sızıntısı (832 izlenen dosya) bulgusuz; backend `pytest` 4046 geçti, 2
+    atlandı; masaüstü + paketleme 658 geçti, 2 atlandı; ruff, ruff format, mypy (356 + 52 + 15
+    dosya); ön yüz typecheck, eslint, prettier, vitest 121 dosya / 1314 test (kapsam: satır
+    %95,49, dal %87,33). `makemigrations --check --dry-run`: "No changes detected" — göç
+    değişmedi.
 
 ### 14.2 Saha hazırlık hattı (kod dışı — F0 ile başlar)
 

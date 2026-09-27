@@ -6,7 +6,8 @@
 // boş değilse "N kişi ayrılış kararı bekliyor" — F1 eki 7), modül kartları ve
 // "Katalog Excel Şablonu" (bir sayfaya gitmez, şablonu indirir — tasarım §8.1;
 // indirme yol haritasının şablon maddesini de işaretler). Diğer pano kartları
-// (temiz kapanış uyarısı…) kendi fazlarında gelir.
+// (temiz kapanış uyarısı…) kendi fazlarında gelir. F10: Md. 7/1 bilgi kartı ve çok
+// okunanlar özeti (`modules/raporlar/RaporKartlari`) ve Raporlar gezinme kartı.
 //
 // Durum `GET /setup/status/`'tan tek kez okunur (kişisel veri yok). Okunamazsa
 // yol haritası gösterilmez; sayfanın geri kalanı çalışır.
@@ -18,6 +19,8 @@ import HubFeatureCard from "../../ui/HubFeatureCard";
 import { useSnackbar } from "../../ui/SnackbarProvider";
 import KatalogSablonuKarti from "../kutuphane/KatalogSablonuKarti";
 import { okulApi } from "../okul/api";
+import { RAPORLAR_ADRESI, RAPORLAR_BASLIGI } from "../raporlar/api";
+import RaporKartlari from "../raporlar/RaporKartlari";
 import SayimKarti from "../sayim/SayimKarti";
 import type { RoadmapManualItem, SetupStatus } from "../okul/api";
 import DolasimKartlari from "../uyelik/DolasimKartlari";
@@ -97,6 +100,9 @@ export default function PanelPage() {
       {/* F9: canlı sayım varken "Sayım" kartı — durumu, kişisiz ilerleme ve süren seçenekler
           (TMY 32/3 durdurması, sayım için hizmet arası) ayrı satırlarda; iade her zaman açık. */}
       <SayimKarti />
+      {/* F10: Md. 7/1 bilgi kartı (yalnız eşik aşılınca; yalnız bilgi) ve çok okunanlar özeti
+          (sayısız; liste boşsa görünmez). */}
+      <RaporKartlari />
       <div className="grid gap-4 sm:grid-cols-2">
         <HubFeatureCard
           to="/kisiler"
@@ -116,6 +122,12 @@ export default function PanelPage() {
           icon="fact_check"
           title={ILISIK_LISTESI_BASLIGI}
           description="Kütüphaneyle açık işi olan kişiler; “Kütüphaneden ilişiği yoktur” belgesi, yıl sonu ve yıl başı."
+        />
+        <HubFeatureCard
+          to={RAPORLAR_ADRESI}
+          icon="bar_chart"
+          title={RAPORLAR_BASLIGI}
+          description="Kişisiz istatistik, çok okunanlar ve Ayın Kitapları afişi, dökümler ve dışa aktarım."
         />
       </div>
       <KatalogSablonuKarti onIndirildi={sablonIndirildi} />

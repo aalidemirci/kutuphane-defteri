@@ -1,0 +1,79 @@
+{% extends "documents/base.html" %}
+{% comment %}F10 dökümleri (D kolu) — alfabetik katalog dökümü, Taşınır Kütüphane Defteri dökümü,
+yönetim hesabı cetveli hazırlığı ve kişi dökümü ortak şablonu. Bağlam
+apps/kutuphane/{katalog_dokumu,tmy_dokumleri,kisi_dokumu}.py'den gelir.
+
+Bölümler, sırasıyla: başlık (+ alt başlık ve durum notu), künye ızgarası (`info`), açıklama
+paragrafları, tablolar (`documents/_sayim_tablosu.html` — başlık satırı her sayfada yinelenir,
+satır sayfa arasında bölünmez), KAPANIŞ (notlar, isteğe bağlı imza ızgarası, dipnot — tek
+bölünmez kutu). `landscape` doğruysa sayfa yatay A4'tür (geniş defter dökümü).
+
+WeasyPrint kuralları (sayim_tutanagi.html ile aynı): tablolar `table-layout: fixed` +
+`box-sizing: border-box`; hücreye blok kutu konmaz; uzun kod hücresi (`tek`) kırılabilir.
+`text-transform` YOK: büyük harfli başlıklar bağlamda doğrudan büyük harfle gelir.{% endcomment %}
+{% block extra_style %}
+<style>
+  {% if landscape %}@page { size: A4 landscape; margin: 1.2cm 1.4cm 1.3cm 1.4cm; }{% endif %}
+  body { font-size: 9pt; }
+  .doc-title { margin: 8pt 0 2pt; }
+  .doc-subtitle { margin-bottom: 4pt; }
+  .durum-notu { margin: 2pt 0 4pt; padding: 3pt 6pt; font-size: 8.6pt; font-weight: bold;
+    color: var(--pr-ink); border: 0.75pt solid var(--pr-line); text-align: center; }
+  .info { margin: 5pt 0 5pt; }
+  .info td { padding: 2.5pt 8pt; font-size: 8.6pt; }
+  .info td.label { width: 30%; }
+  .para { margin: 3pt 0; font-size: 8.6pt; line-height: 1.32; text-align: justify; }
+  .tablo-basligi { font-size: 8.8pt; font-weight: bold; color: var(--pr-ink); margin: 7pt 0 3pt;
+    padding: 0 0 2pt 2pt; border-bottom: 1.2pt solid var(--pr-ink); break-after: avoid;
+    page-break-after: avoid; }
+  table.liste { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 7.8pt;
+    margin-bottom: 4pt; }
+  table.liste th, table.liste td { box-sizing: border-box; border: 0.5pt solid var(--pr-line);
+    padding: 1.8pt 3pt; vertical-align: top; overflow-wrap: break-word; }
+  table.liste th { background: var(--pr-fill-head); color: var(--pr-ink); text-align: left;
+    font-weight: bold; font-size: 7.6pt; }
+  table.liste tr { break-inside: avoid; page-break-inside: avoid; }
+  table.liste td.sayi, table.liste th.sayi { text-align: right; }
+  table.liste td.tek { overflow-wrap: anywhere; word-break: break-all; }
+  table.liste td.kalin { font-weight: bold; }
+  table.liste td.grup { font-weight: bold; background: var(--pr-fill); }
+  table.liste td.bos { color: var(--pr-muted); font-style: italic; }
+  .tablo-notu { margin: 0 0 4pt; font-size: 7.8pt; color: var(--pr-secondary); }
+  .kapanis { break-inside: avoid; page-break-inside: avoid; }
+  .not { margin-top: 4pt; font-size: 7.9pt; color: var(--pr-secondary); text-align: justify; }
+  .imza-basligi { margin-top: 8pt; font-size: 9pt; font-weight: bold; color: var(--pr-ink);
+    text-align: center; }
+  .sig-grid { table-layout: fixed; margin-top: 6pt; }
+  .sig-grid td { vertical-align: top; padding-bottom: 4pt; }
+  .sig-grid .space { height: 18pt; }
+  .sig-grid .name { font-size: 8.6pt; }
+  .sig-grid .role { font-size: 8pt; }
+  .dipnot { margin-top: 6pt; font-size: 7.6pt; color: var(--pr-muted); text-align: justify; }
+</style>
+{% endblock %}
+{% block content %}
+  <div class="doc-title">{{ document_title }}</div>
+  {% if subtitle %}<div class="doc-subtitle">{{ subtitle }}</div>{% endif %}
+  {% if status_note %}<p class="durum-notu">{{ status_note }}</p>{% endif %}
+  <table class="info">
+    <tr><td class="label">Düzenlenme tarihi</td><td>{{ issued_on }}</td></tr>
+    {% for r in info %}<tr><td class="label">{{ r.label }}</td><td>{{ r.value }}</td></tr>
+    {% endfor %}
+  </table>
+  {% for p in paragraphs %}<p class="para">{{ p }}</p>
+  {% endfor %}
+  {% for t in tables %}{% include "documents/_sayim_tablosu.html" with t=t %}{% endfor %}
+  <div class="kapanis">
+    {% for n in notes %}<p class="not">{{ n }}</p>
+    {% endfor %}
+    {% if signature_title %}<div class="imza-basligi">{{ signature_title }}</div>{% endif %}
+    {% if signature_rows %}
+    <table class="sig-grid">
+      {% for satir in signature_rows %}<tr>
+        {% for k in satir %}<td><div class="space"></div><div class="line"></div><div class="name">{% if k.name %}{{ k.name }}{% else %}&nbsp;{% endif %}</div><div class="role">{{ k.role }}</div></td>{% endfor %}
+      </tr>{% endfor %}
+    </table>
+    {% endif %}
+    {% if footnote %}<p class="dipnot">{{ footnote }}</p>{% endif %}
+  </div>
+{% endblock %}

@@ -9,10 +9,13 @@
 //   * Aktarım Geçmişi — hangi dosya ne zaman aktarıldı.
 //
 // Sekme adreste tutulur (`?tab=kopru`), böylece kılavuz doğrudan bağlanabilir.
+// `?dosya=disa-aktarim` Excel Aktarımı'nı "Dışa aktarım dosyası" seçili açar (F10 — Raporlar →
+// Dökümler'deki Dışa Aktarım kartından).
 // Kitap kitap giriş (yöntem B, okulun asıl yolu) bu ekranda değil, Katalog →
 // Hızlı Kayıt'tadır.
 
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { useTabParam } from "../../hooks/useTabParam";
 import Button from "../../ui/Button";
@@ -32,6 +35,12 @@ export const ICE_AKTARMA_BASLIGI = "İçe Aktarma";
 /** İçe Aktarma ekranının adresi (Katalog'dan girilir). */
 export const ICE_AKTARMA_ADRESI = "/katalog/ice-aktarma";
 
+/**
+ * Excel Aktarımı "Dışa aktarım dosyası" seçili açılır (F10, §8.4) — Raporlar → Dökümler'deki
+ * Dışa Aktarım kartının geri yükleme bağlantısı.
+ */
+export const DISA_AKTARIM_ICE_AKTARMA_ADRESI = `${ICE_AKTARMA_ADRESI}?dosya=disa-aktarim`;
+
 // TAB_KEYS[0] varsayılan sekmedir (useTabParam fallback) — başa yeni anahtar EKLEME.
 const TAB_KEYS = ["excel", "kopru", "cevrimdisi", "gecmis"] as const;
 type TabKey = (typeof TAB_KEYS)[number];
@@ -45,6 +54,8 @@ const TABS: TabItem[] = [
 
 export default function IceAktarmaPage() {
   const [tab, setTab] = useTabParam<TabKey>("tab", TAB_KEYS, "excel");
+  const [params] = useSearchParams();
+  const disaAktarimDosyasi = params.get("dosya") === "disa-aktarim";
   const bolumler = useBolumler();
   const { indir, indiriliyor } = useKatalogSablonuIndirme();
   // Aktarım uygulandığında geçmiş sekmesi eski listeyi göstermesin.
@@ -92,6 +103,7 @@ export default function IceAktarmaPage() {
             kaynak="excel"
             bolumler={bolumler}
             onAktarildi={() => setTazeleme((k) => k + 1)}
+            baslangicDosyaTuru={disaAktarimDosyasi ? "disa_aktarim" : "liste"}
           />
         )}
         {tab === "kopru" && (

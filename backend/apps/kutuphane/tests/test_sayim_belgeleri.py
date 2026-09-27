@@ -360,7 +360,7 @@ class TestTutanakIcerigi:
         odunc_nushasi(title="Rafta Ek")
         dosya = loss_damage.open_damage_case(copy=hasarli)
         loss_damage.resolve_case(dosya, resolution=CaseResolution.WRITE_OFF_PROPOSED)
-        sayim = baslat()
+        sayim = baslat(is_year_end=True)
         okut(sayim, *Copy.objects.all())
         tamamla(sayim)
         satirlar = {
@@ -505,7 +505,7 @@ class TestTutanakIcerigi:
 class TestEk:
     def test_ek_dort_buyukluk_ve_cetvel_degildir_ibaresi(self) -> None:
         odunc_nushasi(title="Sayılan")
-        sayim = baslat()
+        sayim = baslat(is_year_end=True)
         ek = belgeler.stocktake_report_context(_t(sayim))["annex"]
         assert ek["title"] == "EK: TAŞINIR SAYIM VE DÖKÜM CETVELİNE AKTARILACAK SAYILAR"
         satirlar = {s[0]: s[1] for s in _hucreler(ek["tables"][0])}
@@ -546,7 +546,7 @@ class TestEk:
 
     def test_ek_yeni_sayfada_ve_xlsx_te_ayri_sayfada(self) -> None:
         odunc_nushasi(title="Sayılan")
-        sayim = tamamla(baslat())
+        sayim = tamamla(baslat(is_year_end=True))
         sayfalar = _sayfalar(belgeler.stocktake_report_pdf(_t(sayim)))
         son = sayfalar[-1]
         assert son.startswith("EK: TAŞINIR SAYIM VE DÖKÜM CETVELİNE AKTARILACAK SAYILAR"), son
@@ -890,7 +890,7 @@ class TestDuzeltmeTuru:
 
     def test_karar_bekleyen_fazla_varken_imza_tutanagi_kesin_demez(self) -> None:
         kitap = odunc_nushasi(title="Rafta Bulunan")
-        sayim = baslat()
+        sayim = baslat(is_year_end=True)
         okut(sayim, kitap)
         fazla = stocktake.add_surplus(sayim, note="Etiketsiz")
         tamamla(sayim)
@@ -916,13 +916,106 @@ class TestDuzeltmeTuru:
         assert "yıl sonu hesaplarına ilişkin işlemlerinde" in _fikra(10, 1)
         assert "yıl sonu hesabını oluşturur" in _fikra(32, 9)
         assert "harcama yetkilisinin gerekli gördüğü durum ve zamanlarda" in _fikra(32, 1)
+        assert "yıl sonlarında" in _fikra(32, 1)
         for atif in ("md. 10/1-ğ, 32/9", "md. 32/1"):
             assert atif in belgeler.ARA_SAYIM_NOTU
+            assert atif in belgeler.YIL_SONU_SAYIMI_NOTU
+
+    def test_isaretsiz_sayimin_eki_ara_sayimdir_cetvele_aktarilacak_sayi_basmaz(self) -> None:
+        """F10 kod kapısı (F9 ekleri K6): işaretsiz sayımın eki cetvele aktarılacak sayı
+        olarak SUNULMAZ — başlık, Excel sayfası ve künye "Ara sayım" der."""
+        odunc_nushasi(title="Sayılan")
+        sayim = tamamla(baslat())
+        onayla(sayim)
+        baglam = belgeler.stocktake_report_context(_t(sayim))
+        ek = baglam["annex"]
+        assert ek["title"] == belgeler.ARA_SAYIM_BASLIGI
+        assert "cetvele aktaracağı büyüklüklerdir" not in " ".join(ek["paragraphs"])
+        assert ek["paragraphs"][1] == belgeler.ARA_SAYIM_NOTU
+        kunye = {r["label"]: r["value"] for r in baglam["info"]}
+        assert kunye["Sayımın türü"] == belgeler.SAYIM_TURU[False]
+        pdf = "\n".join(_sayfalar(belgeler.stocktake_report_pdf(_t(sayim))))
+        assert belgeler.ARA_SAYIM_BASLIGI in pdf
+        assert belgeler.EK_BASLIGI not in pdf
+        kitap = load_workbook(io.BytesIO(belgeler.stocktake_report_xlsx(_t(sayim))))
+        assert kitap.sheetnames == ["Sayım tutanağı", "Kalemler", belgeler.ARA_SAYIM_SAYFASI]
+        assert kitap[belgeler.ARA_SAYIM_SAYFASI]["A1"].value == belgeler.ARA_SAYIM_ADI
+        metin = " ".join(
+            str(h.value) for s in kitap.worksheets for r in s.iter_rows() for h in r if h.value
+        )
+        assert belgeler.EK_ADI not in metin
+        # F10 düzeltme turu: cetvelin "Gelecek Yıla Devir" sütununa ilişkin satır, ona göre
+        # hesaplanan fark ve sütunu anlatan not ara sayımda NE PDF'te NE Excel'de basılır.
+        satir_adlari = [s.ad for s in belgeler.ek_satirlari(_t(sayim))["rows"]]
+        assert belgeler.GELECEK_YIL_SATIRI not in satir_adlari
+        assert not any(ad.startswith("Fark") for ad in satir_adlari)
+        assert belgeler.SAYIMDA_BULUNAN_SATIRI in satir_adlari
+        assert belgeler.ARA_KAYDA_GORE_SATIRI in satir_adlari
+        assert belgeler.GELECEK_YIL_NOTU not in ek["notes"]
+        duz_pdf = " ".join(pdf.split())
+        assert "Gelecek yıla devir" not in duz_pdf and "Gelecek Yıla Devir" not in duz_pdf
+        assert "Gelecek yıla devir" not in metin and "Gelecek Yıla Devir" not in metin
+        assert "yıl sonu (devir" not in metin
+
+    def test_ara_sayim_eki_sayilarin_belge_gunune_ait_oldugunu_soyler(self) -> None:
+        """F10 düzeltme turu: kayıt tabanlı sayılar basım anındaki kayıtlardandır; metin
+        "sayım günündeki ara durum" demez (onaydan sonra giren nüsha sayıyı değiştirir)."""
+        odunc_nushasi(title="Sayılan")
+        sayim = tamamla(baslat())
+        onayla(sayim)
+
+        def kayda_gore() -> str:
+            satirlar = {s.ad: s.metin for s in belgeler.ek_satirlari(_t(sayim))["rows"]}
+            return str(satirlar[belgeler.ARA_KAYDA_GORE_SATIRI])
+
+        once = kayda_gore()
+        odunc_nushasi(title="Onaydan Sonra Giren")
+        assert kayda_gore() != once
+        paragraflar = " ".join(belgeler.stocktake_report_context(_t(sayim))["annex"]["paragraphs"])
+        assert "sayım günündeki" not in paragraflar
+        assert belgeler.ARA_SAYIM_SAYILARI in paragraflar
+        assert "belgenin düzenlendiği günkü kayıtlardan" in belgeler.ARA_SAYIM_SAYILARI
+        assert "o güne kadarki" not in belgeler.ARA_SAYIM_NOTU
+
+    def test_isaretli_sayimda_gelecek_yil_satiri_ve_notu_basilir(self) -> None:
+        odunc_nushasi(title="Sayılan")
+        sayim = tamamla(baslat(is_year_end=True))
+        onayla(sayim)
+        ek = belgeler.stocktake_report_context(_t(sayim))["annex"]
+        assert belgeler.GELECEK_YIL_NOTU in ek["notes"]
+        satir_adlari = [s.ad for s in belgeler.ek_satirlari(_t(sayim))["rows"]]
+        assert belgeler.GELECEK_YIL_SATIRI in satir_adlari
+        assert belgeler.ARA_KAYDA_GORE_SATIRI not in satir_adlari
+
+    def test_isaretli_sayimin_eki_cetvel_ekidir(self) -> None:
+        odunc_nushasi(title="Sayılan")
+        sayim = baslat(is_year_end=True)
+        baglam = belgeler.stocktake_report_context(_t(sayim))
+        assert baglam["annex"]["title"] == belgeler.EK_BASLIGI
+        assert baglam["annex"]["paragraphs"][1] == belgeler.YIL_SONU_SAYIMI_NOTU
+        kunye = {r["label"]: r["value"] for r in baglam["info"]}
+        assert kunye["Sayımın türü"] == belgeler.SAYIM_TURU[True]
+
+    def test_yil_sonu_isareti_onaya_dek_degisir_sonra_degismez(self) -> None:
+        odunc_nushasi(title="Sayılan")
+        sayim = baslat()
+        stocktake.update_stocktake(_t(sayim), is_year_end=True)
+        assert _t(sayim).is_year_end is True
+        # Başlamış sayımda başka alan değişmez (seçenekler yalnız taslakta).
+        with pytest.raises(ValidationError):
+            stocktake.update_stocktake(_t(sayim), is_year_end=False, notes="x")
+        tamamla(_t(sayim))
+        stocktake.update_stocktake(_t(sayim), is_year_end=False)
+        assert _t(sayim).is_year_end is False
+        onayla(_t(sayim))
+        with pytest.raises(ValidationError) as hata:
+            stocktake.update_stocktake(_t(sayim), is_year_end=True)
+        assert stocktake.STATE_MESSAGES["year_end"] in str(hata.value)
 
     def test_xlsx_ek_sayilari_ve_mali_yil_sayi_hucresidir(self) -> None:
         for _ in range(2):
             odunc_nushasi(title="Sayılan")
-        sayim = tamamla(baslat())
+        sayim = tamamla(baslat(is_year_end=True))
         onayla(sayim)
         kitap = load_workbook(io.BytesIO(belgeler.stocktake_report_xlsx(_t(sayim))))
         ek = kitap["Cetvele aktarılacak sayılar"]

@@ -15,10 +15,12 @@ yoksa gösterilmez (`LibraryPolicy.popular_min_members`, çok okunanlar eşiğiy
 aynı değer). **Tamamlayıcı gizleme:** toplam ve üst grup basıldığı için gizli bir
 hücre çıkarmayla geri bulunmasın diye, bir toplamdan türetilebilen gizli hücreler
 birlikte k'dan az farklı üyeye aitse bir hücre daha gizlenir (`_gizlenenler`).
-Rapor anındaki aktif üye sayısı da k'nın altında gösterilmez. Şube × konu
-kırılımı ve adlı sıralama YOKTUR. Koruma testi sentetik adlarla bütün çıktıyı
-tarar ve her kırılımda "toplam − görünenler" türetmesini sınar
-(`tests/test_yil_sonu_raporu.py`).
+Rapor anındaki aktif üye sayısı (üye türüne göre) EŞİKSİZDİR: üyelik sayısı ödünç
+verisi değildir ve profil yasağının konusu sayılmaz (27.09.2026 kullanıcı kararı,
+tasarım §14.1 F10 ekleri K1); k eşiği ve tamamlayıcı gizleme yalnız ödünçten türeyen
+sayılara uygulanır. Şube × konu kırılımı ve adlı sıralama YOKTUR. Koruma testi
+sentetik adlarla bütün çıktıyı tarar ve her kırılımda "toplam − görünenler"
+türetmesini sınar (`tests/test_yil_sonu_raporu.py`).
 
 **Dönem.** Ders yılının başlangıcından bir SONRAKİ ders yılının başlangıcına dek
 (sonraki yıl yoksa bugüne ya da ders yılı sonuna — hangisi geçse): kılavuzun
@@ -73,7 +75,13 @@ from apps.okul.models import MemberKind, SchoolYear
 #: Çıktı şemasının sürümü (dondurulmuş raporlar eski sürümle de okunabilsin).
 #: 2 (F8 düzeltme turu): kazandırılanlar yalnız Md. 10/5 yolları, kayıt içi girişler
 #: ayrı; tamamlayıcı gizleme; aktif üye sayısı eşikli.
-SCHEMA_VERSION: Final = 2
+#: 3 (F10 K1): aktif üye sayısı eşiksiz.
+SCHEMA_VERSION: Final = 3
+
+#: `circulation.active_members`'ın eşiksiz olduğu ilk şema sürümü. Daha eski sürümle
+#: dondurulmuş raporda k'dan az (sıfır değil) üyesi olan türün değeri `None`'dur ve belge
+#: o raporun kuralını (eşikli aktif üye sayısı) notunda yazmaya devam eder.
+AKTIF_UYE_ESIKSIZ_SURUM: Final = 3
 
 #: Md. 10/5'in dışarıdan sağlama yolları — "kazandırılan" yalnız bunlardır (Kılavuz 2.3,
 #: 2.4). Öbür iki yol kayıt içi giriştir (programa aktarım, sayım fazlası).
@@ -397,25 +405,27 @@ def _dolasim(bas: date, son: date, k: int) -> dict[str, Any]:
             "section": teslimler.filter(recipient_kind=DeliveryRecipientKind.SECTION).count(),
             "teacher": teslimler.filter(recipient_kind=DeliveryRecipientKind.TEACHER).count(),
         },
-        "active_members": _aktif_uyeler(k),
+        "active_members": _aktif_uyeler(),
     }
 
 
-def _aktif_uyeler(k: int) -> dict[str, int | None]:
-    """Rapor anında aktif üyelik sayıları (üye türüne göre; kişisiz toplam).
+def _aktif_uyeler() -> dict[str, int]:
+    """Rapor anında aktif üyelik sayıları (üye türüne göre; kişisiz toplam) — EŞİKSİZ.
 
-    k'dan az (sıfır değil) üyesi olan türün sayısı gösterilmez (`None`): "tek
-    öğretmen üye" bilgisi, toplamlardan geri bulunan bir sayıyı kişiye bağlardı.
+    Üyelik sayısı ödünç verisi değildir ve profil yasağının konusu sayılmaz (27.09.2026
+    kullanıcı kararı, tasarım §14.1 F10 ekleri K1): Dökümler'deki Üye Özeti ve dışa aktarım
+    dosyasının "Üye Özeti" sayfası da türe ve şubeye göre eşiksiz sayar. "Tek öğretmen üye"
+    bilgisi o öğretmenin ödüncünü açmaz: ödünç kırılımları k farklı üye eşiği ve
+    tamamlayıcı gizlemeyle (`_gizlenenler`) korunmaya devam eder.
     """
     aktif = Membership.objects.filter(status=MembershipStatus.ACTIVE)
-    sayilar = {
+    return {
         "STUDENT": aktif.filter(student__isnull=False).count(),
         "TEACHER": aktif.filter(personnel__member_kind=MemberKind.TEACHER).count(),
         "STAFF": aktif.filter(personnel__isnull=False)
         .exclude(personnel__member_kind=MemberKind.TEACHER)
         .count(),
     }
-    return {tur: (None if 0 < n < k else n) for tur, n in sayilar.items()}
 
 
 def annual_review_stats(school_year: SchoolYear, *, today: date | None = None) -> dict[str, Any]:

@@ -30,6 +30,7 @@ import PaginationBar from "../../ui/PaginationBar";
 import Select from "../../ui/Select";
 import { SkeletonList } from "../../ui/Skeleton";
 import TextField from "../../ui/TextField";
+import BakanlikHatirlatmasi, { ILISIK_HATIRLATMASI } from "../kutuphane/BakanlikHatirlatmasi";
 import { PdfDugmeleri } from "../kutuphane/etiketOrtak";
 import { subeOku, useSubeSecenekleri } from "../uyelik/ortak";
 import {
@@ -115,6 +116,8 @@ export default function IlisikListesiPage() {
           ]}
         />
       </div>
+
+      <BakanlikHatirlatmasi metin={ILISIK_HATIRLATMASI} />
 
       <Card
         elevation={0}

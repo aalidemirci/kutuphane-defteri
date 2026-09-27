@@ -54,6 +54,15 @@ vi.mock("../okul/api", async (importOriginal) => {
 
 vi.mock("../../lib/download", () => ({ saveBlob: vi.fn() }));
 
+// "Bakanlık sistemi kullanımda" ayarı (A21) — ayrılış onayı ayarı okur (F10 düzeltme turu).
+const kutuphaneApiMock = vi.hoisted(() => ({ getPolicy: vi.fn() }));
+vi.mock("../kutuphane/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../kutuphane/api")>();
+  return { ...actual, kutuphaneApi: { ...actual.kutuphaneApi, ...kutuphaneApiMock } };
+});
+
+import { politika } from "../../test/kutuphaneVerileri";
+import { AYRILIS_HATIRLATMASI } from "../kutuphane/BakanlikHatirlatmasi";
 import KisilerPage from "./KisilerPage";
 
 const STUDENT: Student = {
@@ -128,6 +137,7 @@ beforeEach(() => {
   });
   okulApiMock.listStudents.mockResolvedValue(page([STUDENT]));
   okulApiMock.listPersonnel.mockResolvedValue(page([PERSONNEL]));
+  kutuphaneApiMock.getPolicy.mockResolvedValue(politika());
 });
 
 afterEach(() => {
@@ -473,6 +483,51 @@ describe("KisilerPage — öğretmenler ve diğer personel sekmesi", () => {
       within(dialog).queryByRole("button", { name: "Ayrıldı olarak işaretle" }),
     ).not.toBeInTheDocument();
     expect(within(dialog).getByText("Ayrıldı · 20.06.2026")).toBeInTheDocument();
+  });
+});
+
+describe("KisilerPage — Bakanlık sistemi hatırlatması (A21)", () => {
+  // Tasarım §9-8: ayrılışta, ayar açıksa hatırlatma çıkar — ayrılışın yolu ayrılmaz. Ayrılış
+  // Havuzu'nda vardı; tek kişilik "Ayrıldı olarak işaretle" yolunda yoktu.
+  it("ayar açıkken öğrenci ayrılış onayı Bakanlık sistemini hatırlatır", async () => {
+    kutuphaneApiMock.getPolicy.mockResolvedValue(politika({ ministry_system_in_use: true }));
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: "Ayşe Yılmaz kaydını düzenle" }));
+    const dialog = await screen.findByRole("dialog", { name: "Öğrenciyi düzenle" });
+    await waitFor(() => expect(kutuphaneApiMock.getPolicy).toHaveBeenCalled());
+    await user.click(within(dialog).getByRole("button", { name: "Ayrıldı olarak işaretle" }));
+    const onay = await screen.findByRole("dialog", {
+      name: "Öğrenci ayrıldı olarak işaretlensin mi?",
+    });
+    expect(onay).toHaveTextContent(AYRILIS_HATIRLATMASI);
+  });
+
+  it("ayar açıkken personel ayrılış onayı da hatırlatır", async () => {
+    kutuphaneApiMock.getPolicy.mockResolvedValue(politika({ ministry_system_in_use: true }));
+    const user = userEvent.setup();
+    renderPage("/kisiler?tab=personel");
+    await user.click(await screen.findByRole("button", { name: "Mehmet Demirci kaydını düzenle" }));
+    const dialog = await screen.findByRole("dialog", { name: "Kişiyi düzenle" });
+    await waitFor(() => expect(kutuphaneApiMock.getPolicy).toHaveBeenCalled());
+    await user.click(within(dialog).getByRole("button", { name: "Ayrıldı olarak işaretle" }));
+    const onay = await screen.findByRole("dialog", {
+      name: "Kişi ayrıldı olarak işaretlensin mi?",
+    });
+    expect(onay).toHaveTextContent(AYRILIS_HATIRLATMASI);
+  });
+
+  it("ayar kapalıyken (varsayılan) hatırlatma yok", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: "Ayşe Yılmaz kaydını düzenle" }));
+    const dialog = await screen.findByRole("dialog", { name: "Öğrenciyi düzenle" });
+    await waitFor(() => expect(kutuphaneApiMock.getPolicy).toHaveBeenCalled());
+    await user.click(within(dialog).getByRole("button", { name: "Ayrıldı olarak işaretle" }));
+    const onay = await screen.findByRole("dialog", {
+      name: "Öğrenci ayrıldı olarak işaretlensin mi?",
+    });
+    expect(onay).not.toHaveTextContent("Bakanlık otomasyon sistemindeki kaydı");
   });
 });
 

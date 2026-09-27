@@ -26,6 +26,7 @@ import Icon from "../../ui/Icon";
 import Select from "../../ui/Select";
 import { SkeletonList } from "../../ui/Skeleton";
 import { useSnackbar } from "../../ui/SnackbarProvider";
+import BakanlikHatirlatmasi, { AYRILIS_HATIRLATMASI } from "../kutuphane/BakanlikHatirlatmasi";
 import { MEMBER_KIND_TR, benzerlikGerekcesi, okulApi } from "../okul/api";
 import type {
   LeavePool,
@@ -220,6 +221,8 @@ export default function AyrilisHavuzu({ onDegisti }: { onDegisti?: () => void })
           kaydı silinmez: iade etmediği kitap varsa izlenebilir.
         </p>
       </div>
+
+      <BakanlikHatirlatmasi metin={AYRILIS_HATIRLATMASI} />
 
       {hata && <ErrorBand hata={hata} />}
 

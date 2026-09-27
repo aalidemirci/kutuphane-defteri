@@ -59,6 +59,9 @@ _POLITIKA = Path("frontend") / "src" / "modules" / "kutuphane" / "KutuphanePolit
         ("BOSTA_DK_EN_COK", "IDLE_MINUTES_MAX"),
         ("MUTLAK_DK_EN_AZ", "ADMIN_MAX_MINUTES_MIN"),
         ("MUTLAK_DK_EN_COK", "ADMIN_MAX_MINUTES_MAX"),
+        # F10 (A12): çok okunanlar eşiğinin aralığı.
+        ("COK_OKUNAN_ESIGI_EN_AZ", "POPULAR_MIN_MEMBERS_MIN"),
+        ("COK_OKUNAN_ESIGI_EN_COK", "POPULAR_MIN_MEMBERS_MAX"),
     ],
 )
 def test_on_yuzdeki_kip_suresi_sinirlari_modelle_aynidir(ad: str, sabit: str) -> None:

@@ -177,6 +177,47 @@
 // kitaplığında "Kayda göre alınır" yok; programa aktarım durdurma süresince kapalı ama TMY'ye
 // dayanmaz (İçe Aktarma, Sayım); ekin gelecek yıla devrinden onayda hasarla düşülen çıkarılır.
 //
+// F10 bölümleri "Raporlar ve Çok Okunanlar" ile "Dökümler ve Dışa Aktarım" İçe Aktarma'nın
+// ardından gelir. Raporlar bölümü: dört sekme (adlar `modules/raporlar/api.ts::RAPOR_SEKMELERI`),
+// istatistik (dönem kuralı yıl sonu raporununki; kişisizlik notu ve eşik altı "—"; konu kırılımı
+// yok) → Md. 7/1 alıntısı ve Genel Bakış'ın bilgi kartı (yalnız bilgi, yorum yok; yalnız "Kitap"
+// türü) → çok okunanlar (15/1-ğ kısmi alıntı; en az k FARKLI üye, 3-10, varsayılan 5; sayı yok;
+// dönem listesi Ağ Kataloğu vitrininde, ay listesi afişte; "Yeniden hesapla") → Ayın Kitapları
+// afişi (Kılavuz 6.2 ALINTISIZ: metni kılavuzun yasakladığı bir sözcük taşır) → okuma ödülü iç
+// çıktısı (Kılavuz 7 son maddesi birebir; öneridir; iç kullanım; sayı ve okul no yok; ödünç ≠
+// okuma; Kılavuz 7'nin ders başarısı önerisini program yapmaz — profil yasağı). Metinler ekran
+// sabitleriyle `KilavuzPage.test.tsx`'te, alıntılar backend sabitleriyle
+// `test_rapor_metinleri.py`'de eşitlenir.
+// Kılavuz turu (26.09.2026): istatistikte küçük grupların NEDEN gizlendiği (KVKK md. 6/1'e
+// alıntısız atıf: kimin hangi kitabı aldığı inanç, düşünce ya da sağlık hakkında fikir
+// verebilir; tasarım §3 "ödünç verisi md. 6'ya kayabilir"), çok okunanlarda pencere başına en
+// çok on eser (`populer.EN_COK_SIRA`) ve kapanan pencerenin bir daha yazılmaması, afişin
+// asılabilir olması (kişi bilgisi yok) ile iç çıktının asılmaması arasındaki ayrım.
+// "Dökümler ve Dışa Aktarım" bölümü: dışa aktarım (docs/disa-aktarim.md ile çelişmez: kişisel
+// veri yok, Bilgi sayfasındaki şema sürümü, Numara Sayaçları, geri yüklemede numara yeniden
+// kullanılmaz, ödünçteki ve teslimdeki nüsha "Rafta" açılır; yedek DEĞİLDİR) → Bakanlık
+// sistemine geçişte taşınabilirlik (o sistemin veri alma biçimi bilinmiyor — tasarım §3; dosya
+// ona doğrudan yüklenecek biçim diye sunulmaz; kişi kayıtları dosyaya girmez, program hiçbir
+// yere göndermez) → alfabetik katalog dökümü (Md. 11/1 birebir; eksen adları
+// `katalog_dokumu.AXES`) → Taşınır Kütüphane Defteri dökümü (TMY 9/1-ç birebir; ciltletilmemiş
+// süreli yayın girmez — 10/1-a-4, 15/4 alıntısız; programa aktarımın giriş tarihi notu) →
+// yönetim hesabı cetveli hazırlığı (34/3-a birinci cümle birebir; 34/2-c ve 34/3-a ikinci cümle
+// alıntısız; yalnız yıl sonu işaretli ve onaylanmış sayım) → kişi dökümü (KVKK 11/1 a-b bentleri
+// birebir, 13/2 alıntısız; okul no kör indeksle tam eşleşme, aday seçimi, indirme adında ad
+// yok) → "Bakanlık sistemi kullanımda" ayarı (varsayılan kapalı, yalnız hatırlatma; konum dili).
+// Kılavuz Bakanlığın sistemini sözlüğün kısa adıyla ("Bakanlık sistemi") ve YALNIZ bu bölümde
+// anar; öbür bölümlerde yalnız ayarın adı geçer (künye getirmenin konum dili bozulmasın — test).
+// Yeni bilgisayara taşıma, Yedek bölümünün alt başlığıdır (docs/kurulum.md §7'nin özeti; geri
+// yükleme aracı yedek klasöründeki dosyaları listeler — `desktop/restore.py`). Kişiler (Ayrılış
+// Havuzu), İlişik Listesi ve Katalog (Kütüphane Politikası) bölümleri ayara birer cümleyle
+// gönderir.
+// Tamamlama turu (26.09.2026): okuma ödülünün seçicileri (sıra sınırları
+// `raporlar/api.ts::ODUL_SIRA_*`; eşitler yüzünden çıktı sıra sayısından uzun olabilir —
+// `selectors_okuma_odulu.adaylar`), yönetim hesabı kartının yalnız yıl sonu sayımlarını
+// listelemesi, İçe Aktarma'da reddedilen numaraların üç durumu (docs/disa-aktarim.md), taşımada
+// kurucu görevi ve port kuralı (docs/kurulum.md §7 madde 3 ve 6), yazarsız eserin döküm başlığı
+// (`katalog_dokumu.YAZARSIZ`).
+//
 // Ad kaynakları: tepsi menüsü `desktop/tray.py` sabitleri, durum satırı
 // `desktop/katalog_kontrol.py::tepsi_satiri`, adres uyarısı `ip_denetle`,
 // kurucu görevleri `packaging/windows/kutuphane-defteri.iss` [Tasks], Ağ
@@ -184,25 +225,31 @@
 // kataloğun kendi sayfa adları `backend/katalog/sablonlar`. Tepsiden seçilen Çık
 // yönetici kipinde ve kilitliyken ONAY SORMADAN kapatır
 // (`tepsi_eylemleri.quit = request_quit`); üst çubuktaki Çık sorar. Çok okunanlar
-// listesi bu sürümde boştur (ödünç F6'da geldi, hesap F10'da — `services/populer.py`) ve kılavuz
-// bunu söyler. "rezervasyon" sözcüğü sözlükte yasak olduğu için DHCP'deki sabit
+// listesi F10'dan beri her gün hesaplanır (`services/populer.py`); Ağ Kataloğu bölümü listenin
+// eşik geçilince dolduğunu söyler ve Raporlar bölümüne gönderir. "rezervasyon" sözcüğü sözlükte
+// yasak olduğu için DHCP'deki sabit
 // adres "sabit adres ayırma" diye anlatılır.
 //
 // Mevzuat atıfları yalnız `docs/mevzuat/`'taki tam metinlerden alınır; alıntılar
 // BİREBİR, madde numarası uydurulmaz: Yönerge 11/6, 11/8, 11/12, 11/22 (yalnız
 // ilk cümlesi) ve 11/23 (meb-bilgi-ve-sistem-guvenligi-yonergesi.md; atıf
-// haritası docs/mevzuat/BENIOKU.md §3.3), Yönetmelik 10/1 (ilk iki cümle), 10/3,
-// 10/5, 11/1, 12/1 (ayıklama: ortası "…"; yıl sonu raporu: ilk cümle), 12/2, 14/1-a,
-// 16/1, 17/1 (yalnız "üye olmak isteyen" parçası), 18/1, 19/1 ve 23/1-a
-// (meb-okul-kutuphaneleri-yonetmeligi.md), Uygulama Kılavuzu 2.4
-// (…-uygulama-kilavuzu.md), TBK 93 (6098-…-md92-93.md), KVKK 10/1 (yalnız "elde
-// edilmesi sırasında" parçası) ve 12/1 (6698-kvkk.md); Taşınır Mal Yönetmeliği 17/1 (ilk
-// cümle), 32/3 (ilk cümle) ve 34/1 (ikinci cümle). Alıntısız atıflar: Yönetmelik 4/1-c,
-// 4/1-ı, 10/1-b, 10/4, 23/1-c; Taşınır Mal Yönetmeliği 5/8, 10/1-e, 10/1-g, 10/1-ğ, 13/1,
-// 16/1, 17/1 (ikinci cümle), 23/4, 23/6, 24, 24/2, 27/1, 27/3, 28 (1, 4, 5), 31, 32/1,
-// 32/2, 32/3 (ikinci cümle), 32/5, 32/6, 32/7, 32/8 ve 32/9 (tasinir-mal-yonetmeligi.md;
+// haritası docs/mevzuat/BENIOKU.md §3.3), Yönetmelik 7/1 (ilk cümle), 10/1 (ilk iki cümle),
+// 10/3, 10/5, 11/1, 12/1 (ayıklama: ortası "…"; yıl sonu raporu: ilk cümle), 12/2, 14/1-a,
+// 15/1-ğ (başı "…"), 16/1, 17/1 (yalnız "üye olmak isteyen" parçası), 18/1, 19/1 ve 23/1-a
+// (meb-okul-kutuphaneleri-yonetmeligi.md), Uygulama Kılavuzu 2.4 ve 7 (son maddenin ilk
+// cümlesi; 6.2 alıntısız) (…-uygulama-kilavuzu.md), TBK 93 (6098-…-md92-93.md), KVKK 10/1 (yalnız "elde
+// edilmesi sırasında" parçası), 11/1 (giriş ile a ve b bentleri, sonu "…") ve 12/1
+// (6698-kvkk.md); Taşınır Mal Yönetmeliği 9/1-ç, 17/1 (ilk cümle), 32/3 (ilk cümle), 34/1
+// (ikinci cümle) ve 34/3-a (birinci cümle). Alıntısız atıflar: Yönetmelik 4/1-c,
+// 4/1-ı, 10/1-b, 10/4, 23/1-c; KVKK 6/1 ve 13/2; Taşınır Mal Yönetmeliği 5/8, 10/1-a-4,
+// 10/1-e, 10/1-g, 10/1-ğ, 13/1, 15/4, 16/1, 17/1 (ikinci cümle), 23/4, 23/6, 24, 24/2, 27/1,
+// 27/3, 28 (1, 4, 5), 31, 32/1, 32/2, 32/3 (ikinci cümle), 32/5, 32/6, 32/7, 32/8, 32/9, 34/2-c
+// ve 34/3-a (ikinci cümle) (tasinir-mal-yonetmeligi.md;
 // 23/6 ve 32/5'in metni kılavuzun kalıntı taramasına takılan bir sözcük taşır) ve
-// Ortaöğretim Kurumları Yönetmeliği 164/1-g (…-ilgili-maddeler.md).
+// Ortaöğretim Kurumları Yönetmeliği 164/1-g (…-ilgili-maddeler.md). F10 alıntıları sunucu
+// tarafında `test_rapor_metinleri.py` ve `test_dokum_metinleri.py` belge sabitleriyle, bütün F10
+// atıfları (alıntılı ve alıntısız) `test_rapor_dokum_kilavuz_metinleri.py` ile atıf yapılan
+// fıkranın metninde aranır.
 
 import { useEffect } from "react";
 import type { ReactNode } from "react";
@@ -234,6 +281,8 @@ const BOLUMLER = {
   sayim: { baslik: "Sayım", ikon: "inventory_2" },
   "katalog-sablonu": { baslik: "Katalog Excel Şablonu", ikon: "table_view" },
   "ice-aktarma": { baslik: "İçe Aktarma", ikon: "upload_file" },
+  raporlar: { baslik: "Raporlar ve Çok Okunanlar", ikon: "bar_chart" },
+  dokumler: { baslik: "Dökümler ve Dışa Aktarım", ikon: "description" },
   yedek: { baslik: "Yedek ve Güvenlik Dosyası", ikon: "backup" },
   "tepsi-ve-cikis": { baslik: "Tepsi, Çıkış ve Gün Değişimi", ikon: "power_settings_new" },
   "ag-katalogu": { baslik: "Ağ Kataloğu", ikon: "lan" },
@@ -753,7 +802,11 @@ export default function KilavuzPage() {
           Satırlar tek tek ya da toplu seçilebilir; “Sınıf” süzgeci yıl sonunda mezun şubeleri bir
           kerede işaretlemeye yarar. Her satırda kişinin havuza hangi gün ve hangi aktarımla girdiği
           yazar. Genel Bakış&apos;taki “Ayrılış Havuzu” kartı bekleyen kişi sayısını gösterir ve
-          buraya getirir.
+          buraya getirir. Ayarlar → Kütüphane Politikası&apos;nda “Bakanlık sistemi kullanımda”
+          açıksa ekranın üstünde, ayrılan kişinin kaydını orada da güncellemenizi hatırlatan bir not
+          durur; kişiyi Öğrenciler ya da Öğretmenler ve Diğer Personel sekmesinde düzenleme
+          penceresinden “Ayrıldı olarak işaretle” ile ayırdığınızda da onay penceresi aynı
+          hatırlatmayı yazar (bkz. Dökümler ve Dışa Aktarım).
         </p>
         <Ipucu>
           <p>
@@ -1164,7 +1217,13 @@ export default function KilavuzPage() {
           </li>
           <li>
             <strong>“Çok okunanlar için en az üye sayısı”:</strong> bir eser çok okunanlar listesine
-            ancak en az bu kadar farklı üye ödünç aldıysa girer; sayı hiçbir yerde gösterilmez.
+            ancak en az bu kadar farklı üye ödünç aldıysa girer; sayı hiçbir yerde gösterilmez. 3
+            ile 10 arasında ayarlanır (varsayılan 5). Aynı sayı istatistikte ve yıl sonu raporunda
+            küçük grupların gizlenme eşiğidir (bkz. Raporlar ve Çok Okunanlar).
+          </li>
+          <li>
+            <strong>“Bakanlık sistemi kullanımda”:</strong> varsayılan olarak kapalıdır ve yalnız
+            hatırlatma açar; hiçbir kaydı değiştirmez (bkz. Dökümler ve Dışa Aktarım).
           </li>
           <li>
             <strong>Saklama süreleri:</strong> üyelik sonlandıktan, ödünç iade edildikten, kayıp ya
@@ -2548,7 +2607,9 @@ export default function KilavuzPage() {
           dosyası olan öğrenci ve personel. Okuldan ayrılmış kişiler de listededir: ayrılış kaydı
           silmez, açık iş izlenmeye devam eder. Sayfa Genel Bakış&apos;taki “İlişik Listesi”
           kartından açılır ve yalnız yönetici kipinde çalışır; sağ üstünde “Yıl Sonu” ve “Yıl Başı”
-          bağlantıları vardır. Liste kişisel veri içerir.
+          bağlantıları vardır. Liste kişisel veri içerir. Ayarlar → Kütüphane Politikası&apos;nda
+          “Bakanlık sistemi kullanımda” açıksa sayfanın üstündeki not, ilişik ve iade işlemlerinin
+          kaydını orada da güncellemenizi hatırlatır (bkz. Dökümler ve Dışa Aktarım).
         </p>
         <ul className="list-disc space-y-2 pl-5">
           <li>
@@ -3062,10 +3123,10 @@ export default function KilavuzPage() {
             ve şube ile konu kırılımı yapmaz; imza satırında bile ad yoktur. Üye türü ve sınıf
             düzeyi kırılımında, eşikten az farklı üyenin ödünç aldığı grubun sayısı gösterilmez
             (“—”); gizlenen sayı toplamdan çıkarılarak bulunamasın diye gerekirse bir grup daha
-            gizlenir. Aktif üye sayısı da eşiğin altındaysa gösterilmez. Eşik Kütüphane
-            Politikası&apos;ndaki “Çok okunanlar için en az üye sayısı”dır. Program “Tespit edilen
-            hususlar” alanına yazılanı denetleyemez: oraya öğrenci, öğretmen ya da personel adı
-            yazmayın.
+            gizlenir. Rapor tarihindeki aktif üye sayısı ödünç verisi olmadığı için eşiksiz yazılır.
+            Eşik Kütüphane Politikası&apos;ndaki “Çok okunanlar için en az üye sayısı”dır. Program
+            “Tespit edilen hususlar” alanına yazılanı denetleyemez: oraya öğrenci, öğretmen ya da
+            personel adı yazmayın.
           </p>
         </Ipucu>
       </Bolum>
@@ -3387,9 +3448,16 @@ export default function KilavuzPage() {
           nedeniyle kayıttan düşülen kitap sayımın kendi çıkışı olduğu için ondan çıkarılır ve
           altında ayrı satırda yazar (tutanağın “Sayımda bulunan miktar”ı değişmez). Hasar önerisi
           onaylanmadan ekteki gelecek yıla devir yazılmaz. Excel dosyasında bu sayılar sayı
-          hücresidir. Cetvel yıl sonu hesabı için düzenlenir; yıl sonu dışında, harcama yetkilisinin
-          gerekli gördüğü bir sayımda ekteki sayılar yılın o güne kadarki durumunu gösterir ve
-          cetvele aktarılmaz (ek bunu da yazar).
+          hücresidir. Cetvel yıl sonu hesabı için düzenlenir (md. 10/1-ğ, 32/9): yıl sonu sayımında
+          taslaktaki “Yıl sonu sayımı” kutusunu işaretleyin (işaret sayım onaylanana dek sayımın
+          ayrıntısında da değiştirilebilir). Bir mali yılın tek yıl sonu sayımı olur: aynı yıl için
+          ikinci işaret kabul edilmez (iptal edilmiş sayım sayılmaz). İşaretsiz sayım, harcama
+          yetkilisinin gerekli gördüğü ara sayımdır (md. 32/1): ekinin başlığı “Ara sayım — sayılar
+          cetvele aktarılmaz” olur; gelecek yıla devir, ona göre hesaplanan fark ve cetvelin
+          sütununa ilişkin not ara sayımın ekinde yoktur. Ekin kayda dayanan sayıları belgenin
+          düzenlendiği günkü kayıtlardan hesaplanır; sayımdan sonra yapılan giriş ve çıkışları da
+          içerir. Raporlar → Dökümler&apos;deki yönetim hesabı cetveli hazırlığı da yalnız işaretli
+          ve onaylanmış sayımdan basılır.
         </p>
         <Mevzuat kaynak="Taşınır Mal Yönetmeliği, md. 34/1">
           “Taşınır mal yönetim hesabında; önceki yıldan devredilen, yılı içinde giren, çıkan ve
@@ -3603,6 +3671,309 @@ export default function KilavuzPage() {
           düşürebilirsiniz. Uygulanmış aktarım listede kalır: aynı dosyanın ikinci kez uygulanmasını
           engelleyen iz odur.
         </p>
+        <p>
+          Excel Aktarımı sekmesindeki <strong>İçe aktarılacak dosya</strong> seçicisi iki türü
+          ayırır: <strong>Excel listesi</strong> (şablon ya da okulun kendi listesi; nüshalara yeni
+          numara verilir) ve <strong>Dışa aktarım dosyası</strong> (programın kendi dışa aktarımı;
+          boş bir kuruluma geri yüklemek içindir). Dışa aktarım dosyasında barkod ve kayıt no
+          korunur, numara sayaçları ilerletilir; edinimler ve bölümler dosyadan kurulur. Barkodu bu
+          kurulumda kayıtlı (silinmiş nüsha dahil), boş barkod aralığında ayrılmış ya da numara
+          sayacının gerisinde kalan (bir kez verilmiş sayılan) satır aktarılmaz ve nedeni önizlemede
+          yazar; hiçbir numara yeniden kullanılmaz. Dışa aktarım dosyası yalnız boş bir kataloga ve
+          bütün satırlarıyla geri yüklenir: katalogda eser varken ya da önizlemede aktarılamayan bir
+          satır varken “Uygula” yapılmaz — aktarılmayan satırın barkodu bu kurulumda bir daha
+          kullanılamazdı; dosyayı düzeltin ya da o satırları dosyadan silip yeniden önizleyin. Dışa
+          aktarım dosyasını “Excel listesi” olarak yüklerseniz program dosyayı tanır ve “Dışa
+          aktarım dosyası”nı seçmenizi ister. Ayrıntı “Dökümler ve Dışa Aktarım” bölümündedir.
+        </p>
+      </Bolum>
+
+      {/* ------------------------------------------------------------------ */}
+      <Bolum id="raporlar">
+        <p>
+          <Ekran to="/raporlar">Raporlar</Ekran> ana gezinmededir (Genel Bakış&apos;taki “Raporlar”
+          kartından da açılır) ve yalnız yönetici kipinde çalışır. Dört sekmesi vardır:{" "}
+          <strong>İstatistik</strong>, <strong>Çok Okunanlar</strong>, <strong>Dökümler</strong> ve{" "}
+          <strong>Okuma Ödülü</strong>. Sayfa katalog, üye ve ödünç kayıtlarını değiştirmez.
+          Dökümler sekmesi bir sonraki bölümde anlatılır.
+        </p>
+
+        <AltBaslik>İstatistik</AltBaslik>
+        <p>
+          “Dönem” seçicisinde etkin ders yılı, geçmiş ders yılları ve tarih aralığı vardır. Ders
+          yılının dönemi yıl sonu raporununkiyle aynıdır: ders yılının başından sonraki ders yılının
+          başına dek (yaz aylarındaki işler de girer). Tarih aralığı “Göster” denince uygulanır.
+          Koleksiyon sayıları bugünkü kayıtlardandır; edinim, dolaşım, teslim, kayıp ve hasar,
+          ayıklama ve devir sayıları seçilen dönemin işlemleridir.
+        </p>
+        <p>
+          İstatistik kişisizdir: üye bazında bilgi, adlı sıralama ve konuya göre ödünç dağılımı
+          yoktur. Ödünç kaydı okunan kitabı göstermez. Dolaşımın üye türüne ve sınıf düzeyine göre
+          kırılımında, “Çok okunanlar için en az üye sayısı”ndan az farklı üyenin ödünç aldığı
+          grubun sayısı gösterilmez; yerine “—” yazılır. Gizlenen sayı toplamdan çıkarılarak
+          bulunamasın diye gerektiğinde bir grup daha gizlenir. “Aktif üye (bugün)” sütunu ise
+          eşiksiz yazılır: kaç kişinin üyeliğinin sürdüğü ödünç verisi değildir; tek öğretmen üye
+          varsa “1” görünür, o öğretmenin ödünç sayısı yine gizli kalır. Sınıf düzeyi kaydı olmayan
+          öğrencilerin ödüncü düzey kırılımına girmez. Konuya ya da bölüme göre ödünç kırılımı hiç
+          yoktur.
+        </p>
+        <p>
+          <strong>Küçük gruplar neden gizlenir?</strong> Birkaç kişilik bir grubun sayısı, o
+          kişilerin ne kadar kitap aldığını ele verir; bir kişinin hangi konuda kitap aldığı da onun
+          düşüncesi, inancı ya da sağlığı hakkında fikir verebilir. Kanun bu konulardaki verileri
+          özel nitelikli sayar ve işlenmesini sıkı koşullara bağlar (6698 sayılı Kanun md. 6).
+          Program ödünç kaydını ödünç ve iadenin takibi için tutar; ondan bir kişi ya da küçük bir
+          grup hakkında okuma bilgisi üretmez. Aynı kural yıl sonu raporunda da geçerlidir.
+        </p>
+        <p>
+          İstatistik bir bilgi ekranıdır; okul müdürlüğüne gidecek rapor{" "}
+          <Ekran to="/yil-sonu-raporu">Yıl Sonu Raporu</Ekran>&apos;dur (bkz. Yıl Sonu Raporu
+          bölümü).
+        </p>
+
+        <AltBaslik>Kitap sayısı eşiği</AltBaslik>
+        <Mevzuat kaynak={`${YONETMELIK}, Md. 7/1`}>
+          “Kitap sayısı 10.000&apos;i aşan okul kütüphanelerine bir kütüphaneci atanır.”
+        </Mevzuat>
+        <p>
+          Elde bulunan kitap sayısı bu eşiği aşınca Genel Bakış&apos;ta{" "}
+          <strong>Kitap Sayısı 10.000&apos;i Aştı</strong> kartı görünür. Sayılan, kaynak türü
+          “Kitap” olan ve kayıttan düşülmemiş, devredilmemiş nüshalardır (danışma kitapları dahil);
+          süreli yayın, görsel-işitsel materyal ve dijital kaynak sayılmaz. Kayıp bildirilmiş ama
+          henüz kayıttan düşülmemiş kitap kayıtta durduğu için sayılır; kart kaç tanesinin böyle
+          olduğunu ayrıca yazar. Bu sayım kuralı programındır: Yönetmelik “kitap”ı tanımlamaz. Kart
+          yalnız bilgi verir; program maddenin nasıl uygulanacağı konusunda yorum yapmaz.
+        </p>
+
+        <AltBaslik>Çok okunanlar</AltBaslik>
+        <Mevzuat kaynak={`${YONETMELIK}, Md. 15/1-ğ`}>
+          “…okul kütüphanesinde çok okunan ve okunmasında fayda görülen kitaplar listesini belirli
+          aralıklarla ilan edilerek kitap tanıtımlarına yönelik etkinlikler düzenlenmesini sağlar.”
+        </Mevzuat>
+        <p>
+          Çok okunanlar listesi ödünç kayıtlarından her gün kendiliğinden hesaplanır. Bir eser
+          listeye ancak en az “Çok okunanlar için en az üye sayısı” kadar{" "}
+          <strong>farklı üye</strong> ödünç aldıysa girer: aynı üyenin bir kitabı tekrar tekrar
+          alması onu listeye sokmaz. Sıra farklı üye sayısına göredir; hiçbir yerde sayı
+          gösterilmez, yalnız sıra görünür. Eşik Ayarlar → Kütüphane Politikası&apos;nda 3 ile 10
+          arasında ayarlanır (varsayılan 5).
+        </p>
+        <p>
+          İki liste vardır. <strong>Dönemin Çok Okunanları</strong> ders dönemine göredir ve Ağ
+          Kataloğu vitrininde görünür. <strong>Ayın Kitapları</strong> takvim ayına göredir ve
+          afişin kaynağıdır. Her listede en çok on eser yer alır. Süren dönem ve ay “Sürüyor”, biten
+          “Kapandı” rozetini taşır. Kapanan dönemin ve ayın listesi, kapandıktan sonraki ilk hesapta
+          son hâlini alır ve bir daha değişmez: eşiği sonradan değiştirmek geçmiş listeleri
+          değiştirmez. Eşiği değiştirdiyseniz ya da ay başında afişi basacaksanız{" "}
+          <strong>Yeniden hesapla</strong> ile süren listeleri hemen yenileyebilirsiniz. Genel
+          Bakış&apos;taki <strong>Çok Okunanlar</strong> kartı iki listenin ilk üç eserini gösterir.
+        </p>
+
+        <AltBaslik>Ayın Kitapları afişi</AltBaslik>
+        <p>
+          Uygulama Kılavuzu (6.2), okul girişine ya da kütüphaneye o ay en çok okunan kitapların
+          tanıtıldığı bir “Ayın Kitapları” panosu önerir. <strong>Ayın Kitapları afişi</strong> Çok
+          Okunanlar sekmesindeki Ayın Kitapları kartından “Önizle” ya da “PDF&apos;i indir” ile
+          alınır: tek sayfada sıra, kaynak adı ve yazar. Sayı ve kişi bilgisi yoktur; bu yüzden afiş
+          panoya asılabilir. Süren ayın afişi kartta “Son hesap” diye yazan günün sırasını taşır ve
+          üzerinde “Ay sürüyor — … itibarıyla” yazar; kapanan ayın afişi son hâliyle basılır. Ayın
+          listesi boşsa afiş basılmaz.
+        </p>
+
+        <AltBaslik>Okuma ödülü iç çıktısı</AltBaslik>
+        <Mevzuat kaynak={`${YONETMELIK} Uygulama Kılavuzu, 7`}>
+          “En çok kitap okuyan öğrenciler ödüllendirilerek teşvik sistemi kurulabilir.”
+        </Mevzuat>
+        <p>
+          Bu bir <strong>öneridir</strong>, bağlayıcı değildir: ödül verilip verilmeyeceğine okul
+          karar verir. Okuma Ödülü sekmesindeki <strong>Okuma ödülü iç çıktısı</strong> okulun bu
+          kararına yardım eder. Sıra, dönem içinde ödünç alınıp iade edilmiş farklı eser sayısına
+          göredir: aynı eserin yeniden alınması bir kez sayılır. Eşit olanlar aynı sıradadır ve
+          sınırdaki eşitlerin hepsi girer. Yalnız okuldaki öğrenciler sıralanır. Çıktıda sayı ve
+          okul no yoktur. Ödünç kaydı okunan kitabı göstermez.
+        </p>
+        <p>
+          Sekmede “Dönem” (istatistikteki seçicinin aynısı), “Sınıf” (bütün sınıflar ya da bir sınıf
+          düzeyi) ve “Sıra sayısı” (1 ile 50 arası, varsayılan 10) seçilir; çıktı “Önizle” ya da
+          “PDF&apos;i indir” ile alınır. Eşitler aynı sırada olduğu için çıktıdaki öğrenci sayısı
+          sıra sayısından fazla olabilir.
+        </p>
+        <Ipucu>
+          <p>
+            Çıktı <strong>iç kullanım</strong> içindir ve öğrenci adı taşır: asılmaz, çoğaltılmaz,
+            ağda ve velilerle paylaşılmaz. Yalnız yönetici kipinde basılır; adlar ekranda
+            listelenmez, yalnız PDF&apos;te yer alır. Ağ Kataloğu, Genel Bakış, Ayın Kitapları afişi
+            ve yıl sonu raporu adlı sıralama içermez. Kılavuzun aynı bölümü kütüphane kullanımını
+            ders başarısıyla ilişkilendirmeyi de önerir; program not ya da başarı bilgisi tutmaz ve
+            bu ilişkilendirmeyi yapmaz.
+          </p>
+        </Ipucu>
+      </Bolum>
+
+      {/* ------------------------------------------------------------------ */}
+      <Bolum id="dokumler">
+        <p>
+          <Ekran to="/raporlar?tab=dokumler">Raporlar → Dökümler</Ekran> sekmesi yönetici kipinde
+          açılır ve hiçbir kayıt yazmaz. Belgeler “Önizle” ve “PDF&apos;i indir” düğmeleriyle,
+          çizelgeler “Excel&apos;i indir” ile alınır; Excel dosyalarında sayılar sayı, tarihler
+          tarih hücresidir.
+        </p>
+
+        <AltBaslik>Dışa aktarım</AltBaslik>
+        <p>
+          <strong>Dışa aktarım dosyasını indir</strong> kataloğun bütün eserlerini ve nüshalarını
+          tek Excel dosyasına yazar: barkod, kayıt no, TKYS kodu, eski kayıt no, durum, edinim yolu
+          ve tarihi, bölüm ve bütün işaretler. Her nüsha bir satırdır; aynı “Eser No”yu taşıyan
+          satırlar aynı eserin nüshalarıdır. Kayıttan düşülmüş ve devredilmiş nüshalar da çıkış
+          tarihleriyle dosyadadır. İlk on altı sütun katalog Excel şablonunun sütunlarıdır; dışa
+          aktarıma özgü sütunlar onlardan sonra gelir.
+        </p>
+        <p>
+          Dosyada kişisel veri yoktur: üye, ödünç, teslim ve kayıp/hasar kayıtları, bağışçı ve
+          komisyon üyelerinin adları dışa aktarıma girmez; komisyon kararının yalnız tarihi ve
+          sayısı yazılır. “Üye Özeti” sayfası üye türüne ve şubeye göre aktif üye sayısıdır; üyelik
+          sayısı ödünç verisi olmadığı için eşiksiz yazılır. Dosyayı başkasına verirken yine de
+          okulun kararıyla verin.
+        </p>
+        <p>
+          Aynı dosya boş bir kuruluma Katalog → İçe Aktarma → “Dışa aktarım dosyası” ile geri
+          yüklenir; kartın <strong>Dışa aktarım dosyasını içe aktar</strong> bağlantısı İçe
+          Aktarma&apos;yı bu seçimle açar. Barkod ve kayıt no korunur ve{" "}
+          <strong>hiçbir numara yeniden kullanılmaz</strong>: dosyanın “Numara Sayaçları” sayfası
+          her yıl için verilmiş son numarayı taşır ve geri yüklemede sayaçlar ona çekilir; böylece
+          silinmiş nüshaların ve bağlanmamış boş etiketlerin numaraları bir daha verilmez. Geri
+          yükleme yalnız boş bir kataloga ve bütün satırlarla yapılır. Edinimin komisyon kararı
+          tarihi ve sayısıyla yeniden kurulur (bağışta bağış değerlendirme, öbür yollarda kaynak
+          seçimi kararı olarak). Ödünçteki ve sınıf kitaplığındaki nüsha geri yüklemede “Rafta”
+          açılır, çünkü ödünç ve teslim kayıtları dosyada yoktur. Dosyanın “Bilgi” sayfası şema
+          sürümünü yazar; program yalnız tanıdığı sürümü geri yükler, tanımadığı sürümde dosyayı
+          programın güncel sürümüyle yeniden dışa aktarmanızı ister.
+        </p>
+        <Ipucu>
+          <p>
+            <strong>Dışa aktarım yedek değildir.</strong> Dosya yalnız kataloğu taşır; üyeler,
+            ödünçler, teslimler, kayıp ve hasar dosyaları, ayıklama teklifleri, sayımlar ve basım
+            partileri dosyada yoktur. Programı bütün kayıtlarıyla başka bir bilgisayara taşımak için
+            şifreli yedek kullanılır (bkz. Yedek ve Güvenlik Dosyası → Yeni bilgisayara taşıma).
+          </p>
+        </Ipucu>
+
+        <AltBaslik>Bakanlık sistemine geçişte katalog</AltBaslik>
+        <p>
+          Dışa aktarım, kataloğun programın dışına her zaman çıkarılabilmesi içindir: okul ileride
+          kütüphane işlerini Bakanlık sistemine ya da başka bir araca taşırsa elinde kitap kitap,
+          nüsha nüsha, barkodu ve kayıt no&apos;suyla eksiksiz bir liste olur. Sütunların sırası ve
+          anlamı sabittir; sütun eklenir ya da anlamı değişirse şema sürümü yükselir. Bakanlık
+          sisteminin veri alma biçimi bu sürümde bilinmediği için dosya o sisteme doğrudan
+          yüklenecek biçimde hazırlanmadı.
+        </p>
+        <p>
+          Üye ve ödünç kayıtları kişisel veri olduğu için dosyaya girmez; program hiçbir kaydı
+          Bakanlık sistemine ya da başka bir yere göndermez. Kütüphane aydınlatma metni, Bakanlık
+          sistemi okulda kullanıma girdiğinde kayıtların okul müdürlüğünce o sisteme
+          aktarılabileceğini söyler; bu aktarım okul müdürlüğünün işidir.
+        </p>
+
+        <AltBaslik>Alfabetik katalog dökümü</AltBaslik>
+        <Mevzuat kaynak={`${YONETMELIK}, Md. 11/1`}>
+          “Kataloglar; yazar adı, kaynak adı ve konularına göre alfabetik olarak düzenlenir.”
+        </Mevzuat>
+        <p>
+          “Eksen” seçicisinde üç sıralama vardır: “Kaynak adına göre”, “Yazar adına göre” (ilk
+          yazarın soyadına göre; “Soyad, Ad” biçiminde, birden çok yazarlı eserde “vd.” eklenir) ve
+          “Konuya göre”. Sıralama Türk alfabesiyledir. Konu dökümünde birden çok konusu olan eser
+          her konu başlığının altında yer alır; konusu yazılmamış eserler sonda “Konusu yazılmamış”
+          başlığıyla, yazarı belli olmayan eserler yazar dökümünün sonunda “Yazarı belli olmayan”
+          başlığıyla durur. Kurum adıyla yazılmış yazar (“Millî Eğitim Bakanlığı”, “Türk Dil Kurumu”
+          gibi, adı “Bakanlığı”, “Kurumu”, “Müdürlüğü”, “Üniversitesi”, “Derneği”, “Vakfı”,
+          “Yayınları” gibi bir sözcükle biten) ters çevrilmez ve adıyla sıralanır. PDF seçilen
+          ekseni, Excel dosyası üç ekseni ayrı sayfalarda taşır; “Bölüm” seçicisiyle büyük
+          koleksiyonda dökümü bölüm bölüm basabilirsiniz — bölümü yazılmamış eserler için seçicideki
+          “Bölümü yazılmamış”ı seçin. Kayıtta nüshası olan eserler ve dijital kaynaklar girer;
+          kayıttan düşülmüş ve devredilmiş nüsha sayılmaz.
+        </p>
+
+        <AltBaslik>Taşınır Kütüphane Defteri dökümü</AltBaslik>
+        <Mevzuat kaynak="Taşınır Mal Yönetmeliği, md. 9/1-ç">
+          “Kütüphane Defteri: Bu defter, kütüphanelerdeki yazma ve basma nadir eserler ile kitap ve
+          kitap dışı materyal için tutulur. Her bir taşınır için ayrı kayıt yapılır.”
+        </Mevzuat>
+        <p>
+          Döküm her nüshayı kayıt no sırasıyla bir satırda gösterir: giriş tarihi ve yolu, künye,
+          TKYS kodu, eski kayıt no, birim fiyat, durum ve kayıttan çıkış tarihi. Kayıttan düşülmüş
+          ve devredilmiş nüsha defterde kalır. Ciltletilmemiş süreli yayın dökümde yoktur: dergi ve
+          gazete gibi süreli yayınlar için Varlık İşlem Fişi düzenlenmez (md. 10/1-a-4), cilt
+          birliği sağlananlar ciltletildikten sonra kayda alınır (md. 15/4). “Kapsam” seçicisiyle
+          yalnız bir yılda girenleri basabilirsiniz. “Mevcut koleksiyon (programa aktarım)”
+          yolundaki nüshaların giriş tarihi programa aktarıldıkları gündür, taşınır kaydındaki asıl
+          giriş tarihi değildir; birim fiyat edinimde yazılan değerdir. Resmî taşınır kaydı Taşınır
+          Kayıt ve Yönetim Sistemi&apos;ndedir (TKYS); döküm onun yerine geçmez.
+        </p>
+
+        <AltBaslik>Yönetim hesabı cetveli hazırlığı</AltBaslik>
+        <p>
+          Taşınır mal yönetim hesabının büyüklükleri (md. 34/1) nüsha sayısıyla ve birim fiyatı
+          kayıtlı nüshaların tutarıyla yazılır; fiyatı kayıtlı olmayan nüshalar ayrı sütunda
+          sayılır. Hazırlık sayım kurulunca onaylanan Taşınır Sayım ve Döküm Cetveline dayanır (md.
+          34/3-a); o cetvel de defter kayıtları sayım sonuçlarıyla uygun hâle getirildikten sonra
+          düzenlenir (md. 32/7, 32/9). Programda kayıtlar sayımın onayıyla uygun hâle gelir: noksan
+          kayıttan düşülür, fazla kayda alınır. Bu yüzden hazırlık yalnız “Yıl sonu sayımı” olarak
+          işaretlenmiş ve onaylanmış sayımdan basılır; resmî cetveller TKYS&apos;dedir. Kartta
+          yalnız yıl sonu sayımları listelenir (iptal edilmiş olanlar listelenmez); henüz
+          onaylanmamış olanın satırında neden basılamadığı yazar. İşaretli sayım yoksa kart,
+          işaretin sayımın ayrıntısında konulacağını söyler.
+        </p>
+        <Mevzuat kaynak="Taşınır Mal Yönetmeliği, md. 34/3-a">
+          “Sayım kurulu tarafından onaylanan Taşınır Sayım ve Döküm Cetveline dayanılarak ilgisine
+          göre Harcama Birimi Taşınır Mal Yönetim Hesabı Cetveli, Müze Yönetim Hesabı Cetveli veya
+          Kütüphane Yönetim Hesabı Cetveli düzenlenir.”
+        </Mevzuat>
+        <p>
+          Kütüphane Yönetim Hesabı Cetveli, kütüphane olarak faaliyet gösteren harcama birimlerinin
+          hesabındadır (md. 34/2-c); kütüphane materyali bulunan idareler gerekli görürse bu cetveli
+          ayrıca düzenleyebilir (md. 34/3-a). Hazırlık bu kararı okula bırakır.
+        </p>
+
+        <AltBaslik>Kişi dökümü</AltBaslik>
+        <Mevzuat kaynak="6698 sayılı Kişisel Verilerin Korunması Kanunu, md. 11/1">
+          “Herkes, veri sorumlusuna başvurarak kendisiyle ilgili; a) Kişisel veri işlenip
+          işlenmediğini öğrenme, b) Kişisel verileri işlenmişse buna ilişkin bilgi talep etme, …”
+        </Mevzuat>
+        <p>
+          Bir öğrenci, öğretmen ya da personel kendisiyle ilgili hangi kayıtların tutulduğunu
+          sorarsa “Kişi Dökümü” kartında “Okul no” ya da “Ad soyad” alanını doldurup “Ara”ya basın
+          (personelde adı yazın). Okul no şifreli saklandığı için numaranın tamamıyla aranır. Aynı
+          okul numarasıyla birden çok kayıt çıkabilir (ayrılan öğrencinin numarası başka öğrenciye
+          verilmiş olabilir); döküm seçtiğiniz kişinin kaydıyla basılır ve yalnız o kişinin üyelik,
+          ödünç, kayıp/hasar ve (öğretmende) teslim kayıtlarını taşır. Başka bir kişinin kaydı aynı
+          belgeye girmez: öğretmene teslim edilen kitabı bir öğrenci kaybettiyse ve dosya öğrencinin
+          üyeliğiyle açıldıysa dosya öğrencinindir, öğretmenin dökümünde yer almaz.
+        </p>
+        <p>
+          Döküm serbest metinle yazılmış adları aramaz: üyeliği olmayan kayıp ya da hasar dosyasının
+          sorumlu notu, komisyon ve sayım kurulu üyeleri, onaylayan ve bağışçı adları dökümde
+          yoktur. Başvuru sahibinin adı bu kayıtlarda geçebiliyorsa ilgili ekranlarda ayrıca bakın;
+          belge de bunu not olarak yazar.
+        </p>
+        <p>
+          Döküm cevabın hazırlığıdır: başvuru en geç otuz gün içinde sonuçlandırılır (md. 13/2) ve
+          cevabı okul müdürlüğü verir. Belge yalnız yönetici kipinde basılır, kişisel veri içerir ve
+          yalnız başvuru sahibine verilir; indirilen dosyanın adında kişinin adı yoktur. Saklama
+          süresi dolup kişiyle bağı koparılmış kayıtlar dökümde görünmez.
+        </p>
+
+        <AltBaslik>“Bakanlık sistemi kullanımda” ayarı</AltBaslik>
+        <p>
+          Okul Bakanlık sistemini de kullanıyorsa{" "}
+          <Ekran to="/ayarlar?tab=politika">Ayarlar → Kütüphane Politikası</Ekran>&apos;nın
+          “Bakanlık Sistemi” bölümündeki <strong>“Bakanlık sistemi kullanımda”</strong> kutusunu
+          işaretleyip kaydedin. Ayar varsayılan olarak kapalıdır ve yalnız hatırlatma açar; hiçbir
+          kaydı değiştirmez. Açıkken Kişiler → Ayrılış Havuzu ekranı ve Kişiler ekranındaki “Ayrıldı
+          olarak işaretle” onayı okuldan ayrılan kişinin, İlişik Listesi ise ilişik ve iade
+          işlemlerinin Bakanlık sistemindeki kaydının da güncellenmesini hatırlatır. Güncellemeyi o
+          sistemde siz yaparsınız: Kütüphane Defteri okulun kütüphane işlerini yürüttüğü yerel
+          araçtır; Bakanlık sistemine bağlanmaz, oraya veri göndermez ve o sistemin yerine geçmez.
+        </p>
       </Bolum>
 
       {/* ------------------------------------------------------------------ */}
@@ -3651,6 +4022,51 @@ export default function KilavuzPage() {
           <Kod>kutuphane-defteri --geri-yukle</Kod> komutunu kullanın. Program tepsideyse önce
           tepsideki simgeden “Çık”ı seçin.
         </p>
+
+        <AltBaslik>Yeni bilgisayara taşıma</AltBaslik>
+        <p>
+          Kütüphane bilgisayarı değişirse, yeniden kurulursa ya da diski değişirse programı bütün
+          kayıtlarıyla şifreli yedek taşır. Dışa aktarım dosyası yalnız kataloğu taşır, taşıma için
+          yetmez (bkz. Dökümler ve Dışa Aktarım). Sırasıyla:
+        </p>
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>
+            Eski bilgisayarda <Ekran to="/ayarlar?tab=guvenlik">Ayarlar → Güvenlik</Ekran>&apos;teki
+            “Şifreli Veritabanı Yedeği” kartından “Şifreli yedeği indir” ile yedek alıp USB belleğe
+            kopyalayın. Yönetici parolasının ya da kurtarma anahtarının elinizde olduğunu
+            doğrulayın: yedek yalnız onlarla açılır.
+          </li>
+          <li>
+            Yeni bilgisayarın okul demirbaşı olduğunu doğrulayın, kütüphane masası hesabını açın ve
+            programı o hesapta kurun (Windows&apos;ta kurulum yönetici onayı ister, kimliği BTR
+            girer). Ağ Kataloğu kullanılıyorsa kurulumda “Yerel ağdan katalog taramasına izin ver
+            (güvenlik duvarı kuralı)” seçeneğini işaretli bırakın.
+          </li>
+          <li>
+            Yedek dosyasını yeni bilgisayarın yedek klasörüne kopyalayın (Windows&apos;ta{" "}
+            <Kod>%LOCALAPPDATA%\KutuphaneDefteri\backups</Kod>, Pardus&apos;ta{" "}
+            <Kod>~/.local/share/kutuphane-defteri/backups</Kod>). Program tepsideyse tepsideki
+            simgeden “Çık”ı seçin; Windows&apos;ta Başlat menüsündeki “Kütüphane Defteri — Yedekten
+            Geri Yükle” kısayolunu, Pardus&apos;ta uçbirimden{" "}
+            <Kod>kutuphane-defteri --geri-yukle</Kod> komutunu çalıştırıp bu yedeği seçin. Eski
+            bilgisayardaki yönetici parolası ya da kurtarma anahtarı sorulur.
+          </li>
+          <li>
+            Programı açın; kitap, üye ve açık ödünç sayılarını eski bilgisayardaki son durumla
+            karşılaştırın.
+          </li>
+          <li>
+            Ağ Kataloğu kullanılıyorsa Ağ Doktoru&apos;nda beş denetimin geçtiğini görün. Yedekteki
+            port varsayılandan farklıysa yeni bilgisayarın kuralı varsayılan portla yazılmıştır; Ağ
+            Doktoru&apos;ndaki “Kuralı ekle/güncelle” kuralı ayardaki portla yeniden yazar.
+            BTR&apos;den sabit adres ayırmayı yeni bilgisayarın ağ kartına taşımasını isteyin. Adres
+            değiştiyse katalog afişini yeniden basın ve yer imlerini güncelleyin (bkz. Ağ Kataloğu).
+          </li>
+          <li>
+            Yeni kurulum çalıştıktan sonra eski bilgisayardaki veri klasörünü ve yedekleri silin;
+            USB bellekteki yedeği bilgisayardan ayrı saklayın.
+          </li>
+        </ol>
 
         <AltBaslik>Kurtarma anahtarını yenilerseniz</AltBaslik>
         <p>
@@ -3864,8 +4280,9 @@ export default function KilavuzPage() {
         <p>
           Aramalar ve bağlanan bilgisayarların adresleri kaydedilmez. Katalog kişisel veri
           taşımadığı için kayıtlar kilitliyken de çalışır; internete hiç bağlanmaz. Çok okunanlarda
-          yalnız sıra görünür, sayı gösterilmez; bu liste ödünç kayıtlarından hesaplanır ve sonraki
-          sürümlerde dolmaya başlar, bu sürümde vitrinde yeni gelenler görünür.
+          yalnız sıra görünür, sayı gösterilmez; bu liste ödünç kayıtlarından her gün hesaplanan
+          “Dönemin Çok Okunanları”dır ve bir eseri yeterince farklı üye ödünç alınca dolmaya başlar
+          (bkz. Raporlar ve Çok Okunanlar). O zamana dek vitrinde yalnız yeni gelenler görünür.
         </p>
         <p>
           Kataloğun üst menüsünde “Ara”, “Kaynak Adları”, “Yazarlar”, “Konular” ve “Hakkında”

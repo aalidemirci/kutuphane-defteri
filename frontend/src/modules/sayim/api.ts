@@ -141,6 +141,8 @@ export interface Sayim {
   status: SayimDurumu;
   status_display: string;
   fiscal_year: number | null;
+  /** "Yıl sonu sayımı" işareti (F10 — F9 ekleri K6; TMY 32/1). */
+  is_year_end: boolean;
   round: number;
   tmy_stop: boolean;
   service_pause: boolean;
@@ -190,6 +192,7 @@ export interface SayimAyrintisi extends Sayim {
 /** Taslak gövdesi (`POST library/stocktakes/`, taslakta `PATCH`). */
 export interface TaslakGovdesi {
   fiscal_year?: number | null;
+  is_year_end?: boolean;
   committee_chair?: string;
   committee_property_officer?: string;
   committee_members?: string;
@@ -376,6 +379,16 @@ export const SAYIM_BASLIGI = "Sayım";
 /** Belge adı (sözlük §2 — E10) ve ekin adı (A8 kararı). */
 export const SAYIM_TUTANAGI_ADI = "Sayım tutanağı";
 export const EK_ADI = "Taşınır Sayım ve Döküm Cetveline aktarılacak sayılar";
+/** İşaretsiz sayımın ekinin adı (F10 — K6; backend `sayim_belgeleri.ARA_SAYIM_ADI`). */
+export const ARA_SAYIM_ADI = "Ara sayım — sayılar cetvele aktarılmaz";
+/** "Yıl sonu sayımı" işaretinin adı ve açıklaması (taslak ve ayrıntı; kılavuz aynı cümleyi kullanır). */
+export const YIL_SONU_SAYIMI = "Yıl sonu sayımı";
+export const YIL_SONU_ACIKLAMASI =
+  "Taşınır Mal Yönetmeliği yıl sonu sayımını harcama yetkilisinin gerekli gördüğü sayımdan " +
+  `ayırır (md. 32/1). Sayım tutanağının ekindeki “${EK_ADI}” ve yönetim hesabı cetveli ` +
+  "hazırlığı yalnız yıl sonu sayımından basılır; işaretsiz sayımın eki " +
+  `“${ARA_SAYIM_ADI}” başlığını alır. Bir mali yılın tek yıl sonu sayımı olur. İşaret sayım ` +
+  "onaylanana dek değiştirilebilir.";
 
 /** İki seçeneğin adları (sözlük §1 — tutanakta ve ekranda ayrı satırlarda). */
 export const TMY_DURDURMASI = "TMY 32/3 durdurması";
@@ -450,6 +463,10 @@ export const sayimApi = {
 
   taslakGuncelle: (id: number, govde: TaslakGovdesi): Promise<SayimAyrintisi> =>
     api.patch<SayimAyrintisi>(`${SAYIM}${id}/`, govde),
+
+  /** "Yıl sonu sayımı" işareti (F10 — K6): sürerken ve tamamlanmışken de değişir, onaya dek. */
+  yilSonuIsaretle: (id: number, deger: boolean): Promise<SayimAyrintisi> =>
+    api.patch<SayimAyrintisi>(`${SAYIM}${id}/`, { is_year_end: deger }),
 
   taslakSil: (id: number): Promise<void> => api.del<void>(`${SAYIM}${id}/`),
 

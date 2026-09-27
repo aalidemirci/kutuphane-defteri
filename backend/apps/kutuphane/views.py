@@ -668,15 +668,15 @@ class DonationIntakeCancelView(_IntakeChildView):
 # Koleksiyon özeti ve sayaç
 # ---------------------------------------------------------------------------
 class LibraryStatsView(APIView):
-    """`GET library/stats/` — kişisiz koleksiyon özeti (pano kartı, Md. 7 eşiği).
+    """`GET library/stats/` — kişisiz koleksiyon özeti (pano kartı).
 
     KİŞİSEL VERİ İÇERMEZ: yalnız eser ve nüsha sayıları, durum kırılımı, bölüm
     sayısı ve sıradaki nüsha numarası. `next_barcode` yalnız GÖSTERİMDİR, sayacı
     ilerletmez; sayaç dolduysa `null` döner.
 
-    Md. 7/1 eşiği (`in_stock_count`) ELDE BULUNAN nüshadır; `copy_count` kayıt
-    defterinin toplamıdır ve kayıttan düşülenleri de sayar (bkz.
-    `selectors.collection_summary`).
+    `in_stock_count` ELDE BULUNAN nüshadır; `copy_count` kayıt defterinin toplamıdır
+    ve kayıttan düşülenleri de sayar (bkz. `selectors.collection_summary`). Md. 7/1
+    bilgi kartı (elde bulunan KİTAP nüshası) `library/dashboard/statistics/`'tedir (F10).
     """
 
     def get(self, request: Request) -> Response:

@@ -125,6 +125,14 @@ vi.mock("./modules/sayim/api", async (importOriginal) => {
   return { ...actual, sayimApi: { ...actual.sayimApi, ...sayimApiMock } };
 });
 
+// Raporlar (F10) kendi uçlarına gider; burada yalnız rota ve başlık. Genel Bakış'ın Md. 7/1 ve
+// çok okunanlar kartları özet beklemede kaldığı için çizilmez.
+const raporlarApiMock = vi.hoisted(() => ({ istatistik: vi.fn(), pano: vi.fn() }));
+vi.mock("./modules/raporlar/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./modules/raporlar/api")>();
+  return { ...actual, raporlarApi: { ...actual.raporlarApi, ...raporlarApiMock } };
+});
+
 // Ağ Doktoru (F5) kendi uçlarına gider; burada yalnız rota ve başlık kablolaması.
 const agKataloguApiMock = vi.hoisted(() => ({
   durum: vi.fn(),
@@ -244,6 +252,8 @@ beforeEach(() => {
   // sayfaları iskelet gösterir); ilişik listesi ve sınıf kitaplıkları boştur.
   yilApiMock.akislar.mockReturnValue(new Promise(() => undefined));
   sayimApiMock.durum.mockReturnValue(new Promise(() => undefined));
+  raporlarApiMock.istatistik.mockReturnValue(new Promise(() => undefined));
+  raporlarApiMock.pano.mockReturnValue(new Promise(() => undefined));
   yilApiMock.ilisikListesi.mockResolvedValue(bosSayfa);
   yilApiMock.sinifKitapliklari.mockResolvedValue([]);
   for (const liste of [
@@ -414,7 +424,7 @@ describe("App — kurulum kapısı", () => {
 });
 
 describe("App — kabuk gezinmesi", () => {
-  it("gezinme tam olarak Genel Bakış, Dolaşım Masası, Kişiler, Katalog, Ayarlar ve Kılavuz'dur (bu sırayla)", async () => {
+  it("gezinme tam olarak Genel Bakış, Dolaşım Masası, Kişiler, Katalog, Raporlar, Ayarlar ve Kılavuz'dur (bu sırayla)", async () => {
     ekranaBas("/");
     await screen.findByRole("heading", { name: "Genel Bakış" });
     const gezinme = screen.getByRole("navigation", { name: "Ana gezinme" });
@@ -425,6 +435,8 @@ describe("App — kabuk gezinmesi", () => {
       ["Dolaşım Masası", "/dolasim"],
       ["Kişiler", "/kisiler"],
       ["Katalog", "/katalog"],
+      // F10: istatistik, çok okunanlar, dökümler ve dışa aktarım (docs/sozluk.md §4.1).
+      ["Raporlar", "/raporlar"],
       ["Ayarlar", "/ayarlar"],
       ["Kılavuz", "/kilavuz"],
     ];
@@ -510,6 +522,8 @@ describe("App — kabuk gezinmesi", () => {
     ["/katalog/nadir-eserler", "Nadir Eserler"],
     // F9: Katalog'un sağ üstünden ve Genel Bakış kartından açılır.
     ["/katalog/sayim", "Sayım"],
+    // F10: ana gezinmede.
+    ["/raporlar", "Raporlar"],
     ["/ayarlar", "Ayarlar"],
     ["/ag-doktoru", "Ağ Doktoru"],
     ["/kilavuz", "Kullanım Kılavuzu"],

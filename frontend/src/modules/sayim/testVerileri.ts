@@ -48,6 +48,7 @@ export function sayimSatiri(ek: Partial<Sayim> = {}): Sayim {
     status: "IN_PROGRESS",
     status_display: "Sürüyor",
     fiscal_year: 2026,
+    is_year_end: false,
     round: 1,
     tmy_stop: true,
     service_pause: true,

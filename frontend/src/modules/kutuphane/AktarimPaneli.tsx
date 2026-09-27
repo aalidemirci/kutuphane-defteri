@@ -47,6 +47,33 @@ import { barkodBicimle } from "./tarama";
 
 export type AktarimKaynagiSecimi = "excel" | "kopru";
 
+/** Excel sekmesindeki dosya türü (F10, §8.4). */
+export type DosyaTuru = "liste" | "disa_aktarim";
+export const DOSYA_TURU_SECENEKLERI: Array<{ value: DosyaTuru; label: string }> = [
+  { value: "liste", label: "Excel listesi" },
+  { value: "disa_aktarim", label: "Dışa aktarım dosyası" },
+];
+/** Dışa aktarım dosyası seçilince görünen açıklama (kılavuz ve docs/disa-aktarim.md ile aynı). */
+export const DISA_AKTARIM_ACIKLAMASI =
+  "Kütüphane Defteri'nin dışa aktarım dosyasını boş bir kataloga geri yükler. Barkod ve kayıt " +
+  "no korunur, numara sayaçları ilerletilir; hiçbir numara yeniden kullanılmaz. Eserler, " +
+  "edinimler ve bölümler dosyadan kurulur. Aktarım bütün satırlarla yapılır: bu kurulumda " +
+  "kayıtlı ya da ayrılmış bir numarayı taşıyan ya da okunamayan satır varken uygulanmaz. " +
+  "“Ödünçte” ve “Sınıf kitaplığında” nüsha “Rafta” açılır: ödünç ve teslim kayıtları dosyada " +
+  "yoktur.";
+/**
+ * Dışa aktarım dosyasında aktarılamayan satır varken Uygula kapalıdır (F10 düzeltme turu;
+ * sunucu `export_import.ROWS_NOT_IMPORTED_MESSAGE` ile de reddeder): sayaçlar dosyaya göre
+ * ilerlediği için aktarılmayan satırın barkodu bir daha kullanılamazdı.
+ */
+export function aktarilmayanSatirEngeli(sayi: number): string {
+  return (
+    `${formatNumber(sayi)} satır aktarılamıyor. Aktarım bütün satırlarla yapılır: aktarılmayan ` +
+    "satırın barkodu bu kurulumda bir daha kullanılamazdı. Dosyayı düzeltin ya da o satırları " +
+    "dosyadan silip yeniden önizleyin."
+  );
+}
+
 const DOSYA_TURLERI =
   ".xlsx,.xls,application/vnd.ms-excel," +
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -55,13 +82,20 @@ export default function AktarimPaneli({
   kaynak,
   bolumler,
   onAktarildi,
+  baslangicDosyaTuru = "liste",
 }: {
   kaynak: AktarimKaynagiSecimi;
   bolumler: Section[];
   /** Uygulama başarılı olunca çağrılır (geçmiş listesi tazelenir). */
   onAktarildi?: () => void;
+  /** Açılıştaki dosya türü (Raporlar → Dökümler'in bağlantısı `?dosya=disa-aktarim`). */
+  baslangicDosyaTuru?: DosyaTuru;
 }) {
   const [dosya, setDosya] = useState<File | null>(null);
+  // F10 (§8.4): Excel sekmesinde dosya türü — olağan liste ya da programın dışa aktarım
+  // dosyası. Dışa aktarım dosyasında barkod ve kayıt no korunur, edinimler dosyadan gelir.
+  const [dosyaTuru, setDosyaTuru] = useState<DosyaTuru>(baslangicDosyaTuru);
+  const disaAktarim = kaynak === "excel" && dosyaTuru === "disa_aktarim";
   const [metin, setMetin] = useState("");
   // Köprü kapısı FAIL-CLOSED: §8.2'nin dört uyarısı ekranda değilken JSON
   // kutusu ve "Önizle" kapalıdır — okulun kitap listesini dışarı çıkaran adım
@@ -142,7 +176,7 @@ export default function AktarimPaneli({
     if (Object.keys(bolumEslemesi).length > 0) ortak.section_map = bolumEslemesi;
     if (yeniBolumler.length > 0) ortak.new_sections = yeniBolumler;
     return kaynak === "excel"
-      ? { ...ortak, file: dosya, source: "EXCEL" }
+      ? { ...ortak, file: dosya, source: disaAktarim ? "EXPORT" : "EXCEL" }
       : { ...ortak, payload: metin.trim() };
   };
 
@@ -182,15 +216,18 @@ export default function AktarimPaneli({
     setBusy(true);
     setHata(null);
     clearErrors();
-    const govde: AktarimUygulamaGovdesi = {
-      ...govdeKur(),
-      method: yol,
-      date: tarih || null,
-      source_note: kaynakNotu.trim(),
-      unit_price: birimFiyat.trim() || null,
-      commission_decision: komisyonKarari ? Number(komisyonKarari) : null,
-      notes: notlar.trim(),
-    };
+    // Dışa aktarım dosyasında edinimler dosyadandır: edinim alanları gönderilmez.
+    const govde: AktarimUygulamaGovdesi = disaAktarim
+      ? govdeKur()
+      : {
+          ...govdeKur(),
+          method: yol,
+          date: tarih || null,
+          source_note: kaynakNotu.trim(),
+          unit_price: birimFiyat.trim() || null,
+          commission_decision: komisyonKarari ? Number(komisyonKarari) : null,
+          notes: notlar.trim(),
+        };
     try {
       const sonuc = await kutuphaneApi.aktarimiUygula(govde);
       void kosuyuBirak(onizlemeKosusu);
@@ -210,7 +247,7 @@ export default function AktarimPaneli({
   };
 
   const onizleme = rapor !== null && rapor.dry_run;
-  const eksikler = rapor === null ? [] : uygulamaEngelleri(rapor);
+  const eksikler = rapor === null ? [] : uygulamaEngelleri(rapor, disaAktarim);
   const uygulanabilir = onizleme && eksikler.length === 0;
 
   return (
@@ -221,10 +258,20 @@ export default function AktarimPaneli({
         {kaynak === "excel" ? (
           <div>
             <p className="text-title-medium text-on-surface">Excel dosyasından katalog aktar</p>
-            <p className="mt-0.5 max-w-3xl text-body-small text-on-surface-variant">
-              Katalog şablonunu ya da okulun kendi listesini yükleyin. Dosyanın “Katalog” sayfası
-              okunur; sayfa yoksa ilk sayfa okunur. Başlık satırında “Eser Adı” sütunu ve en az bir
-              künye sütunu daha bulunmalıdır.
+            <Select
+              className="mt-3 max-w-xs"
+              label="İçe aktarılacak dosya"
+              value={dosyaTuru}
+              onChange={(e) => {
+                setDosyaTuru(e.target.value as DosyaTuru);
+                sifirla();
+              }}
+              options={DOSYA_TURU_SECENEKLERI}
+            />
+            <p className="mt-2 max-w-3xl text-body-small text-on-surface-variant">
+              {disaAktarim
+                ? DISA_AKTARIM_ACIKLAMASI
+                : "Katalog şablonunu ya da okulun kendi listesini yükleyin. Dosyanın “Katalog” sayfası okunur; sayfa yoksa ilk sayfa okunur. Başlık satırında “Eser Adı” sütunu ve en az bir künye sütunu daha bulunmalıdır."}
             </p>
             <label
               htmlFor={dosyaId}
@@ -317,7 +364,33 @@ export default function AktarimPaneli({
         />
       )}
 
-      {onizleme && (
+      {onizleme && disaAktarim && (
+        <Card elevation={0} className="space-y-4 p-[var(--kd-panel-padding)] shadow-elevation-1">
+          <div>
+            <p className="text-title-medium text-on-surface">Dışa Aktarım Dosyasını Uygula</p>
+            <p className="mt-0.5 max-w-3xl text-body-small text-on-surface-variant">
+              Nüshalar dosyadaki barkod ve kayıt no ile, dosyadaki edinim yolu ve tarihiyle kayda
+              girer. Bağışın komisyon kararı tarihi ve sayısıyla yeniden kurulur; kararın başkan ve
+              katılımcı adları dosyada yoktur.
+            </p>
+          </div>
+          {hata && hataAdimi === "uygulama" && <ErrorBand hata={hata} />}
+          {eksikler.length > 0 && (
+            <ul className="list-disc space-y-1 rounded-shape-sm bg-tertiary-container px-6 py-3 text-body-small text-on-tertiary-container">
+              {eksikler.map((eksik) => (
+                <li key={eksik}>{eksik}</li>
+              ))}
+            </ul>
+          )}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button icon="upload" onClick={() => void uygula()} disabled={busy || !uygulanabilir}>
+              Uygula
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {onizleme && !disaAktarim && (
         <Card elevation={0} className="space-y-4 p-[var(--kd-panel-padding)] shadow-elevation-1">
           <div>
             <p className="text-title-medium text-on-surface">Açılacak Edinim Partisi</p>
@@ -399,7 +472,7 @@ export default function AktarimPaneli({
         </Card>
       )}
 
-      {rapor && !rapor.dry_run && <SonucKarti rapor={rapor} />}
+      {rapor && !rapor.dry_run && <SonucKarti rapor={rapor} disaAktarim={disaAktarim} />}
     </div>
   );
 }
@@ -409,8 +482,12 @@ export default function AktarimPaneli({
  * kullanıcı diline çevrilmiş hâli. İstek atılmadan söylenmesinin sebebi:
  * kullanıcı "Uygula"ya basıp 400 almasın, ne eksik olduğunu önce görsün.
  */
-function uygulamaEngelleri(rapor: AktarimRaporu): string[] {
+function uygulamaEngelleri(rapor: AktarimRaporu, disaAktarim: boolean): string[] {
   const engeller: string[] = [];
+  const aktarilmayan = rapor.stats.skipped_rows + rapor.stats.error_rows;
+  if (disaAktarim && aktarilmayan > 0) {
+    engeller.push(aktarilmayanSatirEngeli(aktarilmayan));
+  }
   if (rapor.already_applied) {
     engeller.push(
       `Bu dosya ${rapor.applied_at} tarihinde zaten aktarıldı; aynı dosya ikinci kez uygulanamaz.`,
@@ -439,7 +516,7 @@ function uygulamaEngelleri(rapor: AktarimRaporu): string[] {
  * (tasarım §8.1): Etiketler → Basım Kuyruğu o edinim partisine süzülmüş açılır
  * (`?edinim=`); nüsha kimlikleri taşınmaz, kuyruk partiyi kendisi bulur.
  */
-function SonucKarti({ rapor }: { rapor: AktarimRaporu }) {
+function SonucKarti({ rapor, disaAktarim }: { rapor: AktarimRaporu; disaAktarim: boolean }) {
   const parti = rapor.label_batch;
   return (
     <Card elevation={0} className="space-y-2 p-[var(--kd-panel-padding)] shadow-elevation-1">
@@ -447,7 +524,13 @@ function SonucKarti({ rapor }: { rapor: AktarimRaporu }) {
         <Icon name="check_circle" size="lg" className="text-primary" />
         Aktarım tamamlandı
       </p>
-      {parti === null ? (
+      {disaAktarim ? (
+        <p className="text-body-medium text-on-surface">
+          {formatNumber(rapor.stats.copies_created)} nüsha kendi barkoduyla kayda girdi. Etiketi
+          basılmış olarak işaretli nüshalar basım kuyruğuna girmez; öbürleri Etiketler → Basım
+          Kuyruğu'nda bekler.
+        </p>
+      ) : parti === null ? (
         <p className="text-body-medium text-on-surface-variant">Bu aktarımda nüsha açılmadı.</p>
       ) : (
         <>

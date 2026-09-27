@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  {% comment %}Ayın Kitapları afişi (E12; tasarım §10, §5.3) — bağlam
+  apps/kutuphane/ayin_kitaplari_belgesi.py::afis_baglami'dan gelir. Kütüphaneye ve okul
+  girişindeki panoya asılır. Resmî antet ve dayanak YOKTUR: afiş bir duyurudur.
+  Afişte YALNIZ sıra, kaynak adı ve yazar vardır: ödünç ya da üye sayısı, kişi adı
+  ve sınıf bilgisi basılmaz (profil yasağı). Kaynak adı sunucuda ölçülerek en çok iki
+  satıra, yazar tek satıra sığdırılır; satır boyu sunucudan gelir (inline stil düz
+  değer taşır — WeasyPrint inline stildeki CSS değişkenini yok sayar). Stil <head>
+  içindedir. Tablo `table-layout: fixed` + yalnız bu tabloya `box-sizing: border-box`;
+  satır sayfa arasında bölünmez. text-transform YOK (TR "i" tuzağı). Sayfa bütçesi:
+  TEK sayfa, en uzun künyelerle 10 eser (test_ayin_kitaplari.py).{% endcomment %}
+  <style>
+    {% include "print/_design.css" %}
+    @page { size: A4 portrait; margin: 1.5cm 1.6cm 1.3cm 1.6cm; }
+    body { font-family: "DejaVu Sans", sans-serif; color: var(--pr-text); margin: 0; }
+    .okul { text-align: center; font-size: 13pt; font-weight: bold; color: var(--pr-ink); }
+    .birim { text-align: center; font-size: 10.5pt; color: var(--pr-secondary); margin-top: 1pt; }
+    .baslik { text-align: center; font-size: 30pt; font-weight: bold; color: var(--pr-ink);
+              margin-top: 12pt; letter-spacing: 0.5pt; }
+    .ay { text-align: center; font-size: 15pt; color: var(--pr-secondary); margin-top: 4pt; }
+    .itibariyla { text-align: center; font-size: 9pt; color: var(--pr-muted); margin-top: 2pt; }
+    table.liste { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 12pt; }
+    table.liste td { box-sizing: border-box; vertical-align: top; padding: 4pt 0 4pt 0;
+                     border-bottom: 0.75pt solid var(--pr-line); }
+    table.liste tr { break-inside: avoid; page-break-inside: avoid; }
+    table.liste td.sira { width: 14mm; font-size: 18pt; font-weight: bold; color: var(--pr-ink);
+                          text-align: center; padding-right: 3mm; }
+    .eser { font-weight: bold; color: var(--pr-ink); line-height: 1.2; }
+    .yazar { font-size: {{ author_size_pt }}pt; color: var(--pr-secondary); line-height: 1.2;
+             margin-top: 1pt; }
+    .dipnot { margin-top: 10pt; font-size: 8.5pt; color: var(--pr-muted); text-align: center; }
+  </style>
+</head>
+<body>
+  {% if school_name %}<div class="okul">{{ school_name }}</div>{% endif %}
+  <div class="birim">Kütüphane</div>
+
+  <div class="baslik">{{ title }}</div>
+  <div class="ay">{{ month_label }}</div>
+  {% if as_of %}<div class="itibariyla">Ay sürüyor — {{ as_of }} itibarıyla</div>{% endif %}
+
+  <table class="liste">
+    {% for w in works %}<tr>
+      <td class="sira">{{ w.rank }}</td>
+      <td>
+        <div class="eser" style="font-size: {{ w.title_size }}pt">{% for satir in w.title_lines %}{{ satir }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</div>
+        {% if w.authors %}<div class="yazar">{{ w.authors }}</div>{% endif %}
+      </td>
+    </tr>{% endfor %}
+  </table>
+
+  <div class="dipnot">{{ footnote }}</div>
+</body>
+</html>

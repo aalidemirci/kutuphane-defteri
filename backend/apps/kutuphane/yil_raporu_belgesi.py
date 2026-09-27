@@ -129,7 +129,8 @@ def _esikli(hucre: Mapping[str, Any] | None) -> str:
 
 
 def _aktif(sayi: Any) -> str:
-    """Aktif üye sayısı; eşik altında (`None`) "—"."""
+    """Aktif üye sayısı. Şema 3'ten (F10 ekleri K1) başlayarak hep sayıdır; eski şemayla
+    dondurulmuş raporda eşik altındaki tür `None` taşır ve "—" basılır."""
     return ESIK_ALTI if sayi is None else _sayi(sayi)
 
 
@@ -147,7 +148,8 @@ def _satir(etiket: str, deger: str, *, alt: bool = False) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Bölümler — `selectors_yil_raporu.annual_review_stats` şemasıyla (sürüm 1)
+# Bölümler — `selectors_yil_raporu.annual_review_stats` şemasıyla (dondurulmuş eski
+# sürümler de basılır; şemaya göre değişen yalnız aktif üye notudur — `_odunc`)
 # ---------------------------------------------------------------------------
 def _tespitler(findings_text: str, f: Mapping[str, Any]) -> dict[str, Any]:
     cozumler = f.get("resolutions") or {}
@@ -270,7 +272,13 @@ def _ayiklanan(w: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def _odunc(d: Mapping[str, Any]) -> dict[str, Any]:
+def _odunc(d: Mapping[str, Any], *, schema: int) -> dict[str, Any]:
+    """Ödünç istatistiği bölümü. `schema`: sayıların şema sürümü (dondurulmuş raporda eski).
+
+    Aktif üye sayısı şema 3'ten başlayarak eşiksizdir (27.09.2026 kullanıcı kararı, F10
+    ekleri K1: üyelik sayısı ödünç verisi değildir). Daha eski şemayla dondurulmuş rapor
+    k'dan az üyeli türü gizlemiştir; not o raporun kuralını yazmaya devam eder.
+    """
     k = int(d.get("k_threshold") or 0)
     turler = d.get("by_member_type") or {}
     duzeyler = d.get("by_class_level") or []
@@ -303,6 +311,11 @@ def _odunc(d: Mapping[str, Any]) -> dict[str, Any]:
             " · ".join(f"{ad}: {_aktif(aktif.get(kod))}" for kod, ad in UYE_TURU.items()),
         ),
     ]
+    eski_aktif_notu = (
+        f"{k} kişiden az aktif üyesi olan türün sayısı da gösterilmez. "
+        if schema < selectors_yil_raporu.AKTIF_UYE_ESIKSIZ_SURUM
+        else ""
+    )
     return {
         "title": "5. ÖDÜNÇ İSTATİSTİĞİ",
         "keep": True,
@@ -312,9 +325,8 @@ def _odunc(d: Mapping[str, Any]) -> dict[str, Any]:
             f"Rapor kişisizdir: üye bazında bilgi içermez. Üye türü ve sınıf düzeyi kırılımında "
             f"{k} farklı üyeden azının ödünç aldığı grubun sayısı gösterilmez ({ESIK_ALTI}); "
             "gizlenen sayı toplamdan çıkarılarak bulunamasın diye gerektiğinde bir grup daha "
-            f"gizlenir. {k} kişiden az aktif üyesi olan türün sayısı da gösterilmez. Sınıf düzeyi "
-            "kaydı olmayan öğrencilerin ödüncü düzey kırılımına girmez. Teslim ödünç değildir; "
-            "ayrı sayılır.",
+            f"gizlenir. {eski_aktif_notu}Sınıf düzeyi kaydı olmayan öğrencilerin ödüncü düzey "
+            "kırılımına girmez. Teslim ödünç değildir; ayrı sayılır.",
         ],
     }
 
@@ -348,7 +360,7 @@ def annual_review_context(review: AnnualLibraryReview) -> dict[str, Any]:
             _koleksiyon(stats.get("collection") or {}),
             _kazandirilanlar(stats.get("acquisitions") or {}),
             _ayiklanan(stats.get("weeding") or {}),
-            _odunc(stats.get("circulation") or {}),
+            _odunc(stats.get("circulation") or {}, schema=int(stats.get("schema") or 0)),
         ],
         # Tarih yazının üstündedir (resmî yazı düzeni); imza bloğu tarih yinelemez.
         "signature_date": "",

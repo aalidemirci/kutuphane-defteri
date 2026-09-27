@@ -225,7 +225,7 @@ def test_nadir_eser_ve_yil_sonu_uclari(istemci: APIClient) -> None:
     rapor = istemci.post("/api/v1/library/annual-reviews/", {}, format="json")
     assert rapor.status_code == 201
     rpk = rapor.json()["id"]
-    assert rapor.json()["stats"]["schema"] == 2
+    assert rapor.json()["stats"]["schema"] == 3
     guncel = istemci.patch(
         _yol("library-annual-review-detail", rpk),
         {"findings": "Raflar düzenlendi.", "document_no": "E-42"},

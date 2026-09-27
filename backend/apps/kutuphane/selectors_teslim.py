@@ -156,8 +156,13 @@ def case_person(case: LossDamageCase) -> Person | None:
     return None
 
 
-def _person_case_q(person: Person) -> Q:
-    """`case_person` kuralının DB karşılığı: önce üyelik, üyelik yoksa teslim alan."""
+def person_case_q(person: Person) -> Q:
+    """`case_person` kuralının DB karşılığı: önce üyelik, üyelik yoksa teslim alan.
+
+    Kişiye dosya soran HER yol bunu kullanır (açık yükümlülük, ilişik, kişi dökümü —
+    F10 düzeltme turu): teslimdeki kitabı kaybeden öğrencinin üyeliğiyle açılan dosya
+    öğretmenin değildir; öğretmenin dökümüne ya da yükümlülüğüne girmez.
+    """
     if isinstance(person, Student):
         return Q(membership__student=person)
     return Q(membership__personnel=person) | Q(membership__isnull=True, delivery__personnel=person)
@@ -210,7 +215,7 @@ def open_cases_for_person(person: Person) -> QuerySet[LossDamageCase]:
 
     Bedeli teslim alınmış dosya kişiye yazılmaz (`PERSON_OPEN_RESOLUTIONS`).
     """
-    return _person_open_cases().filter(_person_case_q(person)).distinct()
+    return _person_open_cases().filter(person_case_q(person)).distinct()
 
 
 def open_cases_for_section(section: ClassSection) -> QuerySet[LossDamageCase]:

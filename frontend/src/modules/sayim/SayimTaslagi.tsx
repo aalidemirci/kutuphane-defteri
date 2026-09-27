@@ -23,10 +23,14 @@ import TextField from "../../ui/TextField";
 import { OnayKutusu } from "../ayiklama/ortak";
 import { MetinAlani } from "../kutuphane/ortak";
 import {
+  ARA_SAYIM_ADI,
+  EK_ADI,
   HIZMET_ARASI,
   TMY_DURDURMA_KAPSAMAZ,
   TMY_DURDURMA_KAPSAMI,
   TMY_DURDURMASI,
+  YIL_SONU_ACIKLAMASI,
+  YIL_SONU_SAYIMI,
   sayimApi,
 } from "./api";
 import type { SayimAyrintisi, SayimBicimi, TaslakGovdesi } from "./api";
@@ -73,6 +77,7 @@ export const KURUL_SECIMI_ACIKLAMASI =
 
 interface Form {
   fiscal_year: string;
+  is_year_end: boolean;
   committee_chair: string;
   committee_property_officer: string;
   committee_members: string;
@@ -92,6 +97,7 @@ interface Form {
 function formdan(s: SayimAyrintisi): Form {
   return {
     fiscal_year: s.fiscal_year ? String(s.fiscal_year) : "",
+    is_year_end: s.is_year_end,
     committee_chair: s.committee_chair,
     committee_property_officer: s.committee_property_officer,
     committee_members: s.committee_members,
@@ -112,6 +118,7 @@ function formdan(s: SayimAyrintisi): Form {
 function govde(f: Form): TaslakGovdesi {
   return {
     fiscal_year: f.fiscal_year.trim() ? Number(f.fiscal_year) : null,
+    is_year_end: f.is_year_end,
     committee_chair: f.committee_chair.trim(),
     committee_property_officer: f.committee_property_officer.trim(),
     committee_members: f.committee_members,
@@ -129,10 +136,16 @@ function govde(f: Form): TaslakGovdesi {
   };
 }
 
-/** Başlatma onayının gövdesi: anlık görüntü ve seçilen seçenekler (sonuç cümleleri). */
-export function baslatmaMetni(f: Pick<Form, "tmy_stop" | "service_pause">): string {
+/**
+ * Başlatma onayının gövdesi: anlık görüntü, sayımın türü (F10 — K6: "Yıl sonu sayımı" işareti)
+ * ve seçilen seçenekler (sonuç cümleleri).
+ */
+export function baslatmaMetni(f: Pick<Form, "tmy_stop" | "service_pause" | "is_year_end">): string {
   const parcalar = [
     "O anki kayıtlar sayımın anlık görüntüsü olur; sayım sürerken yapılan değişiklikler onu değiştirmez. Kurul ve seçenekler bundan sonra değişmez.",
+    f.is_year_end
+      ? `Sayım yıl sonu sayımıdır: tutanağın ekinde “${EK_ADI}” yer alır.`
+      : `Sayım yıl sonu sayımı olarak işaretli değil: tutanağın eki “${ARA_SAYIM_ADI}” başlığını alır. İşaret onaya dek değiştirilebilir.`,
   ];
   if (f.tmy_stop) {
     parcalar.push(`TMY 32/3 durdurması başlar: ${TMY_DURDURMA_KAPSAMI} yapılamaz.`);
@@ -271,6 +284,14 @@ export default function SayimTaslagi({
           error={errors.fiscal_year}
           helperText="Boşsa sayımın başladığı yıl yazılır."
         />
+        <section className="space-y-1">
+          <OnayKutusu
+            etiket={<span className="font-semibold">{YIL_SONU_SAYIMI}</span>}
+            checked={form.is_year_end}
+            onChange={(d) => yaz("is_year_end", d)}
+          />
+          <p className="text-body-small text-on-surface-variant">{YIL_SONU_ACIKLAMASI}</p>
+        </section>
       </Card>
 
       <Card elevation={0} className="space-y-4 p-[var(--kd-panel-padding)] shadow-elevation-1">

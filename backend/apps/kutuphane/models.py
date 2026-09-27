@@ -215,6 +215,13 @@ IDLE_MINUTES_MAX = 15
 ADMIN_MAX_MINUTES_MIN = 5
 ADMIN_MAX_MINUTES_MAX = 120
 
+#: Çok okunanlar eşiğinin ayar aralığı (en az k FARKLI üye — tasarım §15 A12: varsayılan
+#: 5, 3-10). Aynı eşik istatistikte ve yıl sonu raporunda üye türü ve sınıf düzeyi
+#: kırılımına da uygulanır. Ön yüz kopyası `KutuphanePolitikasiPaneli.tsx`
+#: (`test_on_yuz_sabitleri.py` eşitler).
+POPULAR_MIN_MEMBERS_MIN = 3
+POPULAR_MIN_MEMBERS_MAX = 10
+
 
 class LibraryPolicy(BaseModel):
     """Kütüphane politikası — tek satır (singleton, pk=1). Kişisel veri taşımaz.
@@ -305,7 +312,12 @@ class LibraryPolicy(BaseModel):
     popular_min_members = models.PositiveSmallIntegerField(
         "çok okunanlar için en az üye sayısı",
         default=5,
-        validators=[MinValueValidator(2), MaxValueValidator(50)],
+        # A12: en az 5 farklı üye, 3-10 arası ayarlanır (F10 — önceki 2-50 aralığı
+        # tasarımın açık kararına göre daraldı; tek göç D kolunun 0009'udur).
+        validators=[
+            MinValueValidator(POPULAR_MIN_MEMBERS_MIN),
+            MaxValueValidator(POPULAR_MIN_MEMBERS_MAX),
+        ],
         help_text=(
             "Bir eser vitrine ancak en az bu kadar FARKLI üye ödünç aldıysa girer; "
             "sayı hiçbir yerde gösterilmez (profil yasağı, tasarım §3)."
@@ -354,6 +366,21 @@ class LibraryPolicy(BaseModel):
         "Open Library'den sorulur",
         default=True,
         help_text="Bakanlık kataloğunda bulunamayan numaralar için yedek kaynak.",
+    )
+    # -- Bakanlık otomasyon sistemi (A21, tasarım §3 "Çıkış planı") ---------
+    # VARSAYILAN KAPALI (S5 cevabına göre açılır). Açıkken ayrılış ve ilişik
+    # ekranları kaydın Bakanlık otomasyon sisteminde de güncellenmesini
+    # HATIRLATIR; program o sistemle konuşmaz, o sistemin yerine de geçmez (konum
+    # dili — CLAUDE.md §2-13). Yerel kişisel ödünç kaydının kapatıldığı kip A22'dir
+    # ve S5 cevabına kadar tasarlanmaz; bu bayrak yalnız hatırlatmadır.
+    ministry_system_in_use = models.BooleanField(
+        "Bakanlık sistemi kullanımda",
+        default=False,
+        help_text=(
+            "Okul, Bakanlık otomasyon sistemini de kullanıyorsa açılır. Açıkken ayrılış ve "
+            "ilişik ekranları kaydın Bakanlık otomasyon sisteminde de güncellenmesini "
+            "hatırlatır; program o sistemin yerine geçmez."
+        ),
     )
 
     class Meta:
@@ -3665,6 +3692,21 @@ class StockTake(BaseModel):
         blank=True,
         validators=[MinValueValidator(2000), MaxValueValidator(2999)],
         help_text="TMY 34/1 büyüklüklerinin yılı; boşsa sayımın başladığı yıl yazılır.",
+    )
+    # F9 ekleri K6 (25.09.2026 ana oturum kararı, F10'a devredildi): TMY 32/1 yıl sonu
+    # sayımını harcama yetkilisinin gerekli gördüğü sayımdan ayırır; Taşınır Sayım ve
+    # Döküm Cetveli ve taşınır mal yönetim hesabı YIL SONU sayımına dayanır (10/1-ğ, 32/9,
+    # 34/2-a, 34/3-a). İşaretsiz sayımın eki "Ara sayım — sayılar cetvele aktarılmaz"
+    # başlığını alır; Yönetim hesabı cetveli hazırlığı yalnız işaretli ve onaylanmış
+    # sayımdan basılır. Onaya dek değişebilir (`services.stocktake.update_stocktake`).
+    is_year_end = models.BooleanField(
+        "yıl sonu sayımı",
+        default=False,
+        help_text=(
+            "Yıl sonu sayımıysa işaretleyin (TMY 32/1). Taşınır Sayım ve Döküm Cetveline "
+            "aktarılacak sayılar ve yönetim hesabı cetveli hazırlığı yalnız yıl sonu "
+            "sayımından basılır."
+        ),
     )
     status = models.CharField(
         "durum", max_length=12, choices=StockTakeStatus.choices, default=StockTakeStatus.DRAFT

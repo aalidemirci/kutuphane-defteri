@@ -341,7 +341,10 @@ export interface RaporSayilari {
     by_class_level: Array<{ class_level: number } & EsikliSayi>;
     by_month: Array<{ month: string; loans: number }>;
     deliveries: { section: number; teacher: number };
-    /** k'dan az (sıfır değil) üyesi olan türde `null` (profil yasağı). */
+    /** Rapor anındaki aktif üyelik sayısı. Şema 3'ten başlayarak eşiksizdir (27.09.2026
+     *  kullanıcı kararı, tasarım F10 ekleri K1: üyelik sayısı ödünç verisi değildir).
+     *  `null` yalnız şema 2 ile DONDURULMUŞ eski raporda kalır (o sürüm k'dan az üyeli
+     *  türü gizliyordu; dondurulmuş sayılar yeniden hesaplanmaz). */
     active_members: Record<"STUDENT" | "TEACHER" | "STAFF", number | null>;
   };
 }
