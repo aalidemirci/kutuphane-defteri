@@ -195,6 +195,7 @@ export function politika(ozel: Partial<LibraryPolicy> = {}): LibraryPolicy {
     retention_years_returned_loans: 1,
     retention_years_closed_cases: 2,
     retention_years_closed_deliveries: 2,
+    retention_years_left_person: 2,
     // Künye getirme varsayılan KAPALI (§8.5-1); kaynak seçimleri yalnız açıkken anlamlı.
     metadata_lookup_enabled: false,
     metadata_lookup_ministry: true,

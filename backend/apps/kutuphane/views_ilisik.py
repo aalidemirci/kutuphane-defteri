@@ -14,9 +14,13 @@
 
 Hiçbiri görevli kipi izin listesinde DEĞİLDİR (§4.4: "ilişik", "kayıp dosyaları",
 "raporlar" kapalı; varsayılan kapalı — CLAUDE.md §2-4). Ara katman keser; görünüm
-bir kez daha keser (`YoneticiKipiGorunumu`). Hiçbiri kayıt YAZMAZ, bu yüzden
+bir kez daha keser (`YoneticiKipiGorunumu`). Hiçbiri kişi kaydı YAZMAZ, bu yüzden
 `RequiresAdminPassword` taşımaz (`apps/okul/tests/test_kisi_yazan_uclar.py`).
 PDF yanıtları `Cache-Control: no-store` taşır; indirme adında kişi adı YOKTUR.
+
+F11 (§6.2 `BelgeIzi`, KM-12): E5, E6 ve E15 üretildiğinde belgenin KİŞİSİZ izi
+yazılır (tür, tarih, belge no ya da dosya numarası, satır sayısı, SHA-256) —
+`belge_izi.iz_birak`; iz yazılamazsa belge yine verilir.
 """
 
 from __future__ import annotations
@@ -32,9 +36,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.kutuphane import barcode as barcode_module
-from apps.kutuphane import dolasim_belgeleri, ilisik_belgeleri, selectors_teslim
+from apps.kutuphane import belge_izi, dolasim_belgeleri, ilisik_belgeleri, selectors_teslim
 from apps.kutuphane import selectors_ilisik as ilisik
 from apps.kutuphane import teslim_belgeleri as teslim
+from apps.kutuphane.models import BelgeTuru
 from apps.kutuphane.pagination import KatalogSayfalama
 from apps.kutuphane.serializers_ilisik import (
     CertificateRequestSerializer,
@@ -151,10 +156,12 @@ class ClearanceCertificatePdfView(YoneticiKipiGorunumu):
             personnel_ids=istek.validated_data["personnel_ids"],
         )
         ilisik_belgeleri.ensure_certifiable(rows, eksik)
-        return _pdf(
-            ilisik_belgeleri.certificate_pdf(rows),
-            dolasim_belgeleri.belge_dosya_adi(ilisik_belgeleri.BELGE_ADI),
+        pdf = ilisik_belgeleri.certificate_pdf(rows)
+        # İz kişisizdir: yalnız kaç kişilik (kaç sayfalık) belge olduğu yazılır.
+        belge_izi.iz_birak(
+            BelgeTuru.ILISIK_BELGESI, pdf, kapsam=f"{len(rows)} kişi", adet=len(rows)
         )
+        return _pdf(pdf, dolasim_belgeleri.belge_dosya_adi(ilisik_belgeleri.BELGE_ADI))
 
 
 # ---------------------------------------------------------------------------
@@ -264,13 +271,17 @@ class LossDamageCaseReportView(YoneticiKipiGorunumu):
         dosya = selectors_teslim.get_case(pk)
         if dosya is None:
             raise Http404
-        return _pdf(
-            teslim.case_report_pdf(dosya),
-            dolasim_belgeleri.belge_dosya_adi(
-                teslim.TUTANAK_ADI,
-                kapsam=(barcode_module.format_barcode(dosya.copy.barcode),),
-            ),
+        pdf = teslim.case_report_pdf(dosya)
+        barkod = barcode_module.format_barcode(dosya.copy.barcode)
+        belge_izi.iz_birak(
+            BelgeTuru.KAYIP_HASAR_TUTANAGI,
+            pdf,
+            belge_sayisi=f"Dosya {dosya.pk}",
+            kapsam=f"{dosya.get_case_type_display()} · barkod {barkod}",
+            adet=1,
+            anonim_kopya=teslim.case_report_anonymized(dosya),
         )
+        return _pdf(pdf, dolasim_belgeleri.belge_dosya_adi(teslim.TUTANAK_ADI, kapsam=(barkod,)))
 
 
 class DeliveryListPdfView(YoneticiKipiGorunumu):
@@ -294,9 +305,22 @@ class DeliveryListPdfView(YoneticiKipiGorunumu):
             if ogretmen is None:
                 raise serializers.ValidationError({"personnel": "Öğretmen bulunamadı."})
         satirlar = teslim.delivery_list_rows(document_no=belge, section=sube, personnel=ogretmen)
+        pdf = teslim.delivery_list_pdf(satirlar)
+        # İz kişisizdir: belge no'lar ve kapsamın türü; öğretmen adı ya da kimliği YAZILMAZ.
+        belge_izi.iz_birak(
+            BelgeTuru.TESLIM_LISTESI,
+            pdf,
+            belge_sayisi=", ".join(dict.fromkeys(d.document_no for d in satirlar)),
+            kapsam=(
+                "Belge no"
+                if belge
+                else (f"Şube {sube.class_label}" if sube is not None else "Öğretmene teslim")
+            ),
+            adet=len(satirlar),
+            anonim_kopya=teslim.rows_anonymized(satirlar),
+        )
         return _pdf(
-            teslim.delivery_list_pdf(satirlar),
-            dolasim_belgeleri.belge_dosya_adi(teslim.TESLIM_LISTESI_ADI, kapsam=kapsam),
+            pdf, dolasim_belgeleri.belge_dosya_adi(teslim.TESLIM_LISTESI_ADI, kapsam=kapsam)
         )
 
 
@@ -310,8 +334,17 @@ class DeliveryTakeBackReportView(YoneticiKipiGorunumu):
         satirlar = teslim.take_back_rows(
             delivery_ids=istek.validated_data["delivery_ids"], document_no=belge
         )
+        pdf = teslim.take_back_pdf(satirlar, document_no=belge)
+        belge_izi.iz_birak(
+            BelgeTuru.GERI_ALMA_DOKUMU,
+            pdf,
+            belge_sayisi=", ".join(dict.fromkeys(d.document_no for d in satirlar)),
+            kapsam="Belge no" if belge else "Geri alınan kitaplar",
+            adet=len(satirlar),
+            anonim_kopya=teslim.rows_anonymized(satirlar),
+        )
         return _pdf(
-            teslim.take_back_pdf(satirlar, document_no=belge),
+            pdf,
             dolasim_belgeleri.belge_dosya_adi(
                 teslim.GERI_ALMA_ADI, kapsam=(belge,) if belge else ()
             ),

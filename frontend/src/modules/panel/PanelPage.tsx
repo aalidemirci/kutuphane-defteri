@@ -17,9 +17,11 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError } from "../../lib/api";
 import HubFeatureCard from "../../ui/HubFeatureCard";
 import { useSnackbar } from "../../ui/SnackbarProvider";
+import DisYedekKarti from "../guvenlik/DisYedekKarti";
 import KatalogSablonuKarti from "../kutuphane/KatalogSablonuKarti";
 import { okulApi } from "../okul/api";
 import { RAPORLAR_ADRESI, RAPORLAR_BASLIGI } from "../raporlar/api";
+import SaklamaKartlari from "../saklama/SaklamaKartlari";
 import RaporKartlari from "../raporlar/RaporKartlari";
 import SayimKarti from "../sayim/SayimKarti";
 import type { RoadmapManualItem, SetupStatus } from "../okul/api";
@@ -103,6 +105,12 @@ export default function PanelPage() {
       {/* F10: Md. 7/1 bilgi kartı (yalnız eşik aşılınca; yalnız bilgi) ve çok okunanlar özeti
           (sayısız; liste boşsa görünmez). */}
       <RaporKartlari />
+      {/* F11 (§6.4): saklama süresi dolan kayıtlar (yalnız sayı; 6 ayı aşan beklemede
+          kapatılamayan uyarı) ve bedel adımında bir yıldan uzun bekleyen dosyalar. */}
+      <SaklamaKartlari />
+      {/* F11: dış yedek hatırlatması — son şifreli yedek indirmesinden (yoksa parola
+          kurulumundan) süre dolunca; yalnız tarih ve gün sayısı (§16 risk 13). */}
+      <DisYedekKarti />
       <div className="grid gap-4 sm:grid-cols-2">
         <HubFeatureCard
           to="/kisiler"

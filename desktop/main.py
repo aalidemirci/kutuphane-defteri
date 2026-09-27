@@ -6,6 +6,7 @@
     3. Temiz kapanış işareti okunur ve silinir (T15) + tek kopya kanalı kurulur
     4. Oturum belirteci ..................... ayarlar okunmadan ÖNCE üretilir
     5. Sürüm damgası ........................ eski program yeni veriyi AÇMAZ
+       (damga yoksa 8'den önce veritabanının göç kaydı da denetlenir — F11)
     6. Bütünlük denetimi .................... bozuk veriyle pencere AÇILMAZ
     7. Günlük yedek + 14 gün rotasyonu ...... `Connection.backup()`; yalnız şifreli
        `.kdbak`. Yönetici parolası kurulmadan (ilk açılış) yedek atlanır; bugünün
@@ -77,6 +78,7 @@ from desktop.django_bootstrap import (
     is_parcacigi_baglantisiyla,
     prepare_django,
     run_migrations,
+    unknown_applied_migrations,
     wal_checkpoint,
 )
 from desktop.errors import (
@@ -110,6 +112,7 @@ from desktop.server import BackgroundServer, check_health
 from desktop.session_guard import ENV_TOKEN, generate_session_token, window_url
 from desktop.tray import TrayActions, start_tray
 from desktop.version import (
+    ensure_no_unknown_migrations,
     ensure_stamp_compatible,
     get_app_version,
     write_version_stamp,
@@ -198,7 +201,7 @@ def is_plain_launch(args: argparse.Namespace) -> bool:
 
 
 def prepare_data(paths: AppPaths, app_version: str) -> None:
-    """Veriyi açılışa hazırlar: sürüm → bütünlük → yedek → göç → damga."""
+    """Veriyi açılışa hazırlar: sürüm → bütünlük → yedek → göç sürümü → göç → damga."""
     ensure_stamp_compatible(paths.version_stamp_path, app_version)
     check_database_integrity(paths.db_path, backup_dir=paths.backups)
 
@@ -210,6 +213,9 @@ def prepare_data(paths: AppPaths, app_version: str) -> None:
         rotate_backups(paths.backups)
 
     prepare_django(resolve_backend_dir(), paths.data)
+    # İkinci hat (F11): damga yoksa (geri yükleme siler) veritabanının göç kaydı
+    # konuşur — tanınmayan göç = daha yeni sürümün şeması; göç ve yazım başlamadan dur.
+    ensure_no_unknown_migrations(unknown_applied_migrations(), app_version)
     if has_pending_migrations():
         pre_migrate_backup(paths.db_path, paths.backups, app_version)
     run_migrations()

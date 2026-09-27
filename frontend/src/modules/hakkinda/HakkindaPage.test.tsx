@@ -50,6 +50,8 @@ describe("HakkindaPage", () => {
 
     expect(screen.getByText(/Program açılışta internete çıkmaz\./)).toBeInTheDocument();
     expect(screen.getByText(/“Şimdi denetle” düğmesine bastığınızda/)).toBeInTheDocument();
+    // Kullanıcı kararı (27.09.2026): denetimin hedefi GitHub'dır (T11).
+    expect(screen.getByText(/son sürümü\s+GitHub'dan soran anonim denetim/)).toBeInTheDocument();
     // U13 (tasarım §8.5): ikinci kapı ve varsayılan kapalı olduğu yazılı olmalı.
     expect(screen.getByText(/ISBN sorgusu/)).toBeInTheDocument();
     expect(screen.getByText(/varsayılan olarak kapalıdır/)).toBeInTheDocument();

@@ -128,8 +128,9 @@ yeşil koşu o durumda "paketler indirme alanında" demek DEĞİLDİR.
 
 Yükleme sonrası elle kalan iş, `okulapp.org` deposundaki
 `src/data/kd-release.json` dosyasını güncellemektir (tasarım §17 — ortak yayın
-alanı kuralları). Uygulamanın okuyacağı `manifest.json` (tasarım §2.2 T11) henüz
-üretilmiyor.
+alanı kuralları). Program güncellemeyi GitHub Release'ten denetler; R2'deki
+paketler elle indirme içindir ve program oraya istek atmaz, bu yüzden bir
+`manifest.json` üretilmez (tasarım §2.2 T11 v4, 27.09.2026 kullanıcı kararı).
 
 Etiket, push ve R2 yüklemesi dışa açık işlerdir; **kullanıcı onaylı adımlardır**
 (tasarım §14.1).

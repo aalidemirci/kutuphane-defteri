@@ -112,11 +112,16 @@ iç kavramları (karar, faz, evrak kodları) yüzeye çıkmaz.
 | Sorumlu kişi | **kütüphane yöneticisi** (kütüphaneci ya da kütüphaneden sorumlu öğretmen) | admin, yetkili, sorumlu (tek başına) | Md. 20'nin terimi. Çoğu okulda kütüphaneci atanmaz (Md. 7/1) |
 | Parola | **yönetici parolası**, **kurtarma anahtarı** | şifre, uygulama parolası, PIN | Parola zorunludur, sihirbazın ilk adımıdır |
 | Kurtarma anahtarı işlemleri | kart adları **Kurtarma Anahtarını Doğrula** ve **Kurtarma Anahtarını Yenile**; eylem **"yenileme"** | anahtarı sıfırla, anahtar değiştir, yeni anahtar üret (tek başına) | Yenileme kayıtların anahtarını değiştirmez, yalnız kurtarma kilidini yeniler; yenilemeden önce alınmış yedekler için eski kâğıt gerekebilir ve metin bunu söyler |
-| Görev devri | **görev devri**; belge **Görev devri notu** | devir teslim (tek başına) | "Devir" TMY'de başka anlama gelir |
+| Görev devri | **görev devri**; belge **Görev devri notu**; kişiler **"görevi devreden"** / **"görevi devralan"** | devir teslim (tek başına); görev devrinde tek başına "devreden" / "devralan" (bu iki sözcük TMY devrinin — E7 — imza adlarıdır) | "Devir" TMY'de başka anlama gelir: kişiler hep "görevi …" diye anılır. Görev devri parola ve kurtarma anahtarını birlikte yeniler; kayıtların şifreleme anahtarı değişmez ve metin bunu söyler: devirden önceki yedekler eski parola/anahtarla açılır ve eski parola ya da eski anahtar böyle bir yedekle (ya da arşiv dosyasıyla) devirden SONRAKİ yedekleri de açar — **"eski parola kilidi artık açmaz" denmez**; metin masa hesabının parolasının değiştirilmesini ister (F11 düzeltme turu D-5). Açık işler **"notun düzenlendiği gün"**ün sayılarıdır ("devir günü" denmez — D-6). Eski kâğıt "yırtılarak yok edilir" — "imha" denmez |
 | Masa hesabı | **kütüphane masası Windows hesabı** | kiosk hesabı, ortak hesap | Yönetici yetkisi olmayan ayrı hesap (U9) |
-| Yedek | **yedek**, **şifreli yedek**; "güçlü şifrelemeyle korunur" | X25519, AES, `.kdbak` (kullanıcı metninde) | Teknik adlar yalnız Hakkında sayfasında |
+| Yedek | **yedek**, **şifreli yedek**; "güçlü şifrelemeyle korunur"; türleri **günlük yedek** · **güncelleme öncesi yedek** · **işlemden hemen önce alınan yedek** (saklama işlemi, F11); indirileni **"USB bellekteki yedek"** (ya da okulun ağ diskindeki); hatırlatma kartı **Şifreli Yedeği USB Belleğe Alın** (F11) | X25519, AES, `.kdbak` (kullanıcı metninde); "dış yedek" (ekranda ve kılavuzda — kod yorumunda serbest); "harici yedek", "bulut yedeği" | Teknik adlar yalnız Hakkında sayfasında (kurulum belgesi BTR için dosya adlarını yazar). **USB bellekteki yedek programın dışındadır**: program ona ulaşamaz, onu silemez, saklama işlemi ona dokunmaz; saklanması ve silinmesi okulun sorumluluğundadır, düzeni okul müdürlüğü belirler; bellekteki yedeğin güvenliğini onu kullanan personel sağlar (Yönerge 10/5'in öznesi personeldir — metin "yükümlüdür" der, kullanıcı metni "sağlar" der; F11 düzeltme turu D-19). Kılavuzun "Önerilen düzen"i (son iki yedek — 27.09.2026 kullanıcı kararıyla onaylandı; saklama işleminden ve görev devrinden sonra yeni yedek, eskilerin silinmesi) programın önerisidir, mevzuat hükmü diye sunulmaz. Program elle konan dosyaya dokunmaz; geri yüklemeden kalan **önceki veritabanı** (`db-onceki`) dosyalarından 14 günden eski olanları saklama işlemi siler, daha yenilerine dokunmaz (27.09.2026 kullanıcı kararı) — metin bunu söyler ve elle silme önerisini yalnız onlar için yapar (§4.18) |
+| Saklama ve anonimleştirme (`services.saklama`, tasarım §6.4; F11) | **saklama süresi**, **süresi dolan kayıtlar**, **silme** (kaydın kendisi kalkar: kişi kaydı, sona ermiş üyelik kaydı), **anonimleştirme** / **"kişiyle bağı koparılır"** (kayıt kalır, gerekçe ve açıklamaları temizlenir); ekran **Ayarlar → Saklama**; kılavuz bölümü **Saklama ve Anonimleştirme** | imha, KVKK imhası, periyodik imha, otomatik silme, temizlik, çöp, arşivleme, maskeleme; "silindi" (anonimleştirme anlamında) | **Anonimleştirme ≠ silme**: anonimleştirilen ödünç, dosya ve teslim sayım ve istatistik için kalır (belge no ya da dosya numarası arşivdeki asılla eşleşebilir: "kişisel veri içermeyen" denmez — §4.18); silinen kayıt kalmaz. Program her gün tarar, **kendiliğinden hiçbir şey silmez**; işlem yönetici parolasıyla onaylanır, geri alınamaz, tek seferdedir; onay altı aydan uzun beklerse kapatılamayan uyarı çıkar. Dayanak KVKK 4/2-d (birebir alıntı) ve 7/1 (atıf); **Silme, Yok Etme veya Anonim Hâle Getirme Yönetmeliği depoda yoktur, atıf yapılmaz**. Süreler okulun ayarıdır (Kütüphane Politikası → Vitrin ve Saklama, 1-10 yıl), mevzuat hükmü diye sunulmaz. Ekran adları §4.18 |
+| Silme ve imha (sözlük kuralı, F11) | kayıt, yedek dosyası, veri klasörü ve USB bellekteki yedek için **silme**; kâğıt için **"yırtarak yok etme"** (eski kurtarma anahtarı); **imha** YALNIZ TMY 28/5 bağlamında (**İmha tutanağı**, **"İmha kararı verildi"**, §4.14) | imha (kişisel veri, yedek, anahtar kâğıdı, USB bellek için), "imha kuralı" (kullanıcı metninde; tasarım belgesinin iç dilidir), "KVKK imhası", "veri imhası" | Mevzuat metni "imha" dese de (ör. Yönerge 10/3 "atık evrakı imha eder") kullanıcı metninde alıntılanmaz, "yok edilir" diye aktarılır. KVKK 7/1'in "silinir, yok edilir veya anonim hâle getirilir" üçlüsü atıf olarak anılabilir. Kılavuzda "imha" yalnız Ayıklama ve Nadir Eserler bölümünde geçer (test) |
+| Belge izi (`BelgeIzi`, tasarım §6.2; F11) | **belgenin kişisiz izi**; ibare **"Anonimleştirilmiş kopya — ıslak imzalı asıl nüsha okul arşivindedir"** (birebir) | belge kaydı, arşiv (programdaki iz anlamında), suret | Kişiyi adıyla anan ve ıslak imzalı asılla okul arşivine giren belgeler iz bırakır: "Kütüphaneden ilişiği yoktur" belgesi, Kayıp/hasar tutanağı, Teslim listesi, Geri alma dökümü. Görev devri notu iz bırakmaz (adlar hiç saklanmaz). Ayrıntı §4.18 |
+| Geri yükleme provası (F11) | **geri yükleme provası**; programın kendi denetiminde **"temiz bilgisayarda geri yükleme provası"** | restore testi, felaket kurtarma tatbikatı, test geri yükleme | Program her sürümde sınar; okul isterse başka bir **demirbaş** bilgisayarda kurtarma anahtarıyla yapar ve provadan sonra o bilgisayardaki veri, yedek ve günlük klasörlerini siler (kılavuzun Yedek bölümü, `docs/kurulum.md` §7.1) |
+| Eski program, yeni veri (`SchemaTooNewError`, çıkış kodu 4; F11) | açılış iletisinin başlığı **"Program sürümü eski"**; çözüm **"programı güncelleyin"** | şema, migration, göç, sürüm uyuşmazlığı (kullanıcı metninde) | İki durumda çıkar: daha yeni sürümün açtığı veriyi eski program açmaya çalışınca ve daha yeni sürümle alınmış yedek eski programa geri yüklenince. Program veriyi korumak için açılmaz. İleti "tanımadığı **değişiklikler**" der; tanınmayan değişikliklerin (göçlerin) adları iletide GEÇMEZ, yalnız günlüğe (`logs/uygulama.log`) yazılır ve ipucu günlük dosyasını anar (27.09.2026 ana oturum kararı — §2 iç kimlikler). `docs/kurulum.md` §10.4, §11 |
 | Lisans | **LGPLv3** (yalnız Pardus sürümünün lisans bildiriminde), **PolyForm Noncommercial** | — | Lisans adı teknik ad sayılmaz: bildirim yükümlülüğü gereği açıkça yazılır (`docs/kurulum.md` §4.1, `packaging/linux/BENIOKU.txt`) |
-| Sürüm | **"yayımlanan son sürüm"**, **"kurulum dosyası"** | GitHub sürümü, Release, kurucu | Güncelleme denetimi yalnız düğmeyle yapılır |
+| Sürüm | **"yayımlanan son sürüm"**, **"kurulum dosyası"**; düğmeler **"Şimdi denetle"** · **"Doğrula ve indir"**; elle denetlemenin bağlantısı **okulapp.org/kutuphane-defteri** (programın sayfası; dosyalar indir.okulapp.org'dan iner) | GitHub sürümü, Release, kurucu; "Denetle" (tek başına, düğme adı olarak) | Güncelleme denetimi yalnız düğmeyle yapılır. Hedef GitHub'dır (27.09.2026 kullanıcı kararı); hizmetin adı ulaşılamama iletisinde (**"GitHub'a ulaşılamadı; okul ağında engellenmiş olabilir. Yeni sürümü indir.okulapp.org'dan elle denetleyebilirsiniz."**), Hakkında'da, kılavuzun Güncelleme bölümünde ve kurulum belgesinde geçer (program dışarı hangi adrese çıktığını söyler); Güncelleme ekranının açıklama metninde geçmez. Program indir.okulapp.org'a ve programın sayfasına istek atmaz: bağlantıyı dış tarayıcı açar. Ekran adları §4.19 |
 
 ## 2. İç kodlar yüzeye çıkmaz
 
@@ -209,7 +214,7 @@ Düzenindedir; sekme adreste `?tab=` ile tutulur, böylece başka ekranlar ve
 kılavuz doğrudan sekmeye bağlanır. Kılavuzda ekran, sekme ve düğme adları
 buradaki ve ekrandaki metinle birebir yazılır ("Ayarlar → Güvenlik").
 
-*Aşağıdaki tablolar F10 sonundaki durumdur (26.09.2026); kaynak `AppShell.tsx`
+*Aşağıdaki tablolar F11 sonundaki durumdur (27.09.2026); kaynak `AppShell.tsx`
 (`NAV_ITEMS`, `PAGE_TITLES`), sayfaların h1'leri ve sekme tanımlarıdır.*
 
 ### 4.1 Sayfalar
@@ -260,6 +265,12 @@ Bunlar adres değildir; program durumuna göre sayfanın yerine gelir.
 | Güvenlik dosyası yok ya da bozuk | **Güvenlik dosyası bulunamadı ya da okunamıyor** |
 | Yedekten geri yüklendi | **Programı kapatıp yeniden açın** |
 
+Pencere açılmadan çıkan açılış iletilerinin başlıkları (masaüstü ileti kutusu;
+`desktop/errors.py`): **Program sürümü eski** (eski program, yeni veri — çıkış kodu 4;
+F11) · **Veritabanı bozuk** · **Veritabanı güncellenemedi** · **Kütüphane Defteri zaten
+çalışıyor** · **Pencere açılamadı** · **Program başlatılamadı**. İletinin gövdesi
+sonucu, ikinci paragrafı yapılacak işi söyler (`docs/kurulum.md` §10, §11).
+
 Üst çubuktaki kip göstergesinin adları: kip adı **Yönetici kipi** / **Görevli
 kipi**; düğmeler **Görevli kipine geç** (kısayol Ctrl+Shift+G), **Yönetici
 kipine geç**, **Kilitle**.
@@ -278,7 +289,7 @@ kipine geç**, **Kilitle**.
 | Nadir Eserler | **Listeler** (`listeler`) · **Nadir Eser İşaretli Nüshalar** (`nushalar`) |
 | İçe Aktarma | **Excel Aktarımı** (`excel`) · **Yapay Zekâ Köprüsü** (`kopru`) · **Çevrimdışı Künye** (`cevrimdisi`) · **Aktarım Geçmişi** (`gecmis`) |
 | Raporlar | **İstatistik** (`istatistik`) · **Çok Okunanlar** (`cok-okunanlar`) · **Dökümler** (`dokumler`) · **Okuma Ödülü** (`okuma-odulu`) |
-| Ayarlar | **Ders Yılları** (`ders-yillari`) · **Kapalı Günler** (`kapali-gunler`) · **Şubeler** (`subeler`) · **Kütüphane Politikası** (`politika`) · **Bölümler** (`bolumler`) · **Okul Bilgileri** (`okul`) · **Güvenlik** (`guvenlik`) · **Güncelleme** (`guncelleme`) · **Ağ Kataloğu** (`ag-katalogu`) |
+| Ayarlar | **Ders Yılları** (`ders-yillari`) · **Kapalı Günler** (`kapali-gunler`) · **Şubeler** (`subeler`) · **Kütüphane Politikası** (`politika`) · **Bölümler** (`bolumler`) · **Okul Bilgileri** (`okul`) · **Güvenlik** (`guvenlik`) · **Güncelleme** (`guncelleme`) · **Ağ Kataloğu** (`ag-katalogu`) · **Saklama** (`saklama`, F11) |
 
 Katalog ekranlarının pencere başlıkları (Dialog): **Yeni eser** /
 **Künyeyi düzenle** · **Nüsha ekle** / **Nüshayı düzenle** · **Yeni edinim** /
@@ -318,8 +329,18 @@ satırlarda, **"İade her zaman açıktır."**; bağlantı **"Sayım'ı aç"**) 
 "Elde bulunan kitap: N.", maddenin cümlesi ve "Kart yalnız bilgi verir."; bağlantı ve düğme
 yok — hüküm yorumlamaz) · **Çok Okunanlar** (F10; son dönemin ve son ayın ilk üç eseri, sayısız:
 "Sıra farklı üye sayısına göredir; sayı gösterilmez."; bağlantı **"Çok Okunanlar'ı aç"** →
-Raporlar → Çok Okunanlar; liste boşsa görünmez) · **Kişiler** · **Ayarlar** · **İlişik
-Listesi** · **Raporlar** (F10) · **Katalog Excel Şablonu** (bir sayfaya gitmez, şablonu indirir).
+Raporlar → Çok Okunanlar; liste boşsa görünmez) · **Saklama Süresi Dolan Kayıtlar** (F11;
+yalnız süresi dolan kayıt varken, yalnız sayı: "N kaydın saklama süresi doldu; silme ve
+anonimleştirme onayınızı bekliyor."; onay altı aydan uzun beklerse **kapatılamayan** uyarı;
+bağlantı **"Saklama ekranını aç"** → Ayarlar → Saklama) · **Bedel Bekleyen Dosyalar** (F11;
+yalnız bedel adımında bir yıldan uzun bekleyen dosya varken; yıllık hatırlatma) · **Şifreli
+Yedeği USB Belleğe Alın** (F11; yalnız son şifreli yedek indirmesinden 30 gün — ayar 7-90 —
+geçince, hiç indirme yoksa yönetici parolası kurulduktan 7 gün sonra: "Son şifreli yedek
+gg.aa.yyyy tarihinde indirildi (N gün önce)." / "Bu bilgisayarda henüz şifreli yedek
+indirilmedi."; bağlantı **"Ayarlar → Güvenlik'i aç"**; program dosyanın USB'ye kopyalandığını
+bilemez, kart "son indirme" der) · **Kişiler** ·
+**Ayarlar** · **İlişik Listesi** · **Raporlar** (F10) · **Katalog Excel Şablonu** (bir sayfaya
+gitmez, şablonu indirir).
 
 ### 4.6 Ayarlar → Güvenlik kartları
 
@@ -327,8 +348,19 @@ Sırasıyla: **Yönetici Parolası ve Şifreleme** (durumu, şifrelenen alanlar�
 "Parolayı değiştir" ve "Kilitle" düğmelerini taşır) · **Kurtarma Anahtarınız**
 (yalnız yeni üretilmiş anahtar beklerken) · **Kurtarma Anahtarını Doğrula**
 (yalnız anahtar doğrulanmamışken) · **Kurtarma Anahtarını Yenile** ·
-**Kurtarma anahtarı çıktısı** (belge adı, §2 E14) · **Şifreli Veritabanı
-Yedeği** · **Yedekten Geri Yükleme**.
+**Kurtarma anahtarı çıktısı** (belge adı, §2 E14) · **Görev Devri** (F11; adımlar
+"Parola ve anahtar yenilenir" · "Yeni anahtar saklanır" · "Görev devri notu basılır"; düğmeler
+**"Görev devrini başlat"** / **"Görev devrini yeniden başlat"**, diyalog başlığı **"Görev devri
+başlatılsın mı?"** (alanlar **"Mevcut yönetici parolası"** · **"Yeni yönetici parolası"** ·
+**"Parola (tekrar)"**), onay **"Parolayı ve anahtarı yenile"**; kartın altında **"Açık işler"**
+(görevi devralana kalan işlerin kişisiz sayıları, onay bekleyen saklama işlemi dahil); alanlar **"Görevi devreden (adı
+soyadı)"** · **"Görevi devralan (adı soyadı)"** · **"Ek not (isteğe bağlı)"**; indirme
+**"Görev devri notunu indir"**; kart adım adımdır: yalnız o anki adımın işi görünür, görev devrinin
+yeni anahtarı **bu kartın içinde** “Kurtarma Anahtarınız” paneliyle saklatılır — ekranın başında
+yalnız **"Görev devrinin yeni kurtarma anahtarı aşağıdaki “Görev Devri” kartında bekliyor."**
+bandı durur; not indirilince **"Not indirildi. …"**) · **Şifreli Veritabanı Yedeği** (F11: son
+indirme cümlesi, hatırlatmanın durumu — **"Hatırlatma süresi doldu: …"** / **"Genel Bakış N gün
+sonra yeniden hatırlatır."** — ve **"Hatırlatma süresi"** seçimi) · **Yedekten Geri Yükleme**.
 
 ### 4.7 Hızlı Kayıt ve İçe Aktarma ekranlarının adları
 
@@ -989,6 +1021,57 @@ aktarılamayan N satır var. …"**; ekranda **"N satır aktarılamıyor. …"**
 | Yıl sonu sayımı (`StockTake.is_year_end`) | kutu **"Yıl sonu sayımı"**; işaretsiz sayım **ara sayım** | dönem sonu sayımı, kesin sayım | TMY 32/1'in iki sayımı. İşaretsiz sayımın eki **"Ara sayım — sayılar cetvele aktarılmaz"** başlığını alır; ara sayımın ekinde "Gelecek yıla devir", ona göre "Fark" ve cetvel sütununa ilişkin not YOKTUR, "Kayda göre yıl sonu" yerine **"Kayda göre, belgenin düzenlendiği gün (…)"** yazar. Bir mali yılın tek yıl sonu sayımı olur (**"YYYY mali yılının yıl sonu sayımı zaten var (…). …"**) |
 | Kişi dökümü (KVKK md. 11) | belge **Kişi dökümü** (başlık **"KİŞİ DÖKÜMÜ"**, durum notu **"Kişisel veri içerir. Yalnız başvuru sahibine verilir."**); tablolar **ÜYELİK VE ÜYE KARTI** · **ÖDÜNÇ KAYDI** · **KAYIP VE HASAR DOSYALARI** · **ÖĞRETMENE TESLİM** | okuma geçmişi, okuduğu kitaplar, kişi raporu, kişi dosyası | Okul no kör indeksle TAM eşleşir; aynı numaralı birden çok kayıt ayrı adaydır, döküm SEÇİLEN kişinindir. Dosya kişisi tek kuraldır (önce üyelik, yoksa teslim alan öğretmen): öğrencinin üyeliğiyle açılan teslim dosyası öğretmenin dökümüne girmez. Kapsam notu serbest metinde adın aranmadığını söyler. İndirme adında kişi adı yoktur |
 | Bakanlık sistemi kullanımda (A21) | ayar **"Bakanlık sistemi kullanımda"**; hatırlatmalar **"Okuldan ayrılan kişi için Bakanlık otomasyon sistemindeki kaydı da güncelleyin. …"** (Ayrılış Havuzu ve Kişiler ekranında "Ayrıldı olarak işaretle" onayı — F10 düzeltme turu) · **"İlişik ve iade işlemlerinde Bakanlık otomasyon sistemindeki kaydı da güncelleyin. …"** (İlişik Listesi) | "Bakanlık sistemine gönder", "eşitle", "entegrasyon" | Varsayılan kapalıdır; yalnız hatırlatma açar. Konum cümlesi: **"Kütüphane Defteri okulun kütüphane işlerini yürüttüğü yerel araçtır; Bakanlık otomasyon sistemine bağlanmaz ve o sistemin yerine geçmez."** |
+
+### 4.18 Saklama ve anonimleştirme ekranının ve belge ibaresinin adları (F11)
+
+Ekran **Ayarlar → Saklama** (`?tab=saklama`); kartları sırasıyla **Saklama ve
+Anonimleştirme** · **Süresi Dolan Kayıtlar** (iki grup: **"Silinecek"** · **"Kişiyle bağı
+koparılacak (kayıt kalır)"**; ad tabloları **"Kaydı silinecek kişiler"** · **"Yalnız üyelik kaydı
+silinecek kişiler (kişi kaydı kalır)"**) · **Ne Kalır** · **Bedel Bekleyen Dosyalar** ·
+**Son İşlem** (işlemden sonra şifreli yedek indirilmediyse USB uyarısı ve **"Ayarlar → Güvenlik'i
+aç"**). Düğmeler **"Silinecek kişileri göster"** / **"Adları gizle"** · **"Onayla ve uygula"**; pencere
+**"Saklama işlemi uygulansın mı?"** (alan **"Yönetici parolası"**, kutu **"Bu işlemin geri
+alınamayacağını anladım"**, düğme **"Uygula"**). Süreler Kütüphane Politikası → **Vitrin ve
+Saklama** bölümündedir; yeni alan **"Okuldan ayrılan kişinin kaydında saklama (yıl)"**.
+**Ne Kalır** kartının maddeleri kılavuzun "Ne kalır" ara başlığıyla aynı sırayı izler (kişiyle
+bağı koparılmış ödünç, dosya ve teslim kayıtları — belge no ya da dosya numarası arşivdeki asılla
+eşleşebilir · verilmiş kart numarası yeniden verilmez, silinen üyeliğin kartı
+**"iptal edilmiş kart"** · belgenin izi ve ibare · kapanmış çok okunanlar ve sonlandırılmış yıl
+sonu raporu değişmez · bedel adımındaki dosya silinmez; F11 düzeltme turu D-20 — test iki
+listeyi karşılaştırır); altındaki satır yedeklerde kalan kopyaları sayar (önceki veritabanı
+dosyalarının kaçının 14 günden eski olduğu dahil: işlem onları siler, daha yenileri için elle
+silme önerilir — 27.09.2026 kullanıcı kararı) ve kılavuzun **Saklama ve Anonimleştirme**
+bölümüne gönderir (bölüm adı Başlık Düzeninde). **Son İşlem** kartı silinen güncelleme öncesi
+yedek ve önceki veritabanı sayılarını yazar. Ad tablolarının sütunları
+**"Ad soyad"** · **"Sınıf / üye türü"** · **"Ayrılış"** (kişi kaydı silinecekler) ya da
+**"Üyeliğin sonu"** (yalnız üyelik kaydı silinecekler), öbür liste ekranlarıyla aynı; bu
+tablolarda "Sınıf / görevi" yazılmaz (program personelin görevini tutmaz — V2-01; D-16 — aynı
+düzeltme Kayıp/hasar tutanağının kişi satırında da yapıldı). Kılavuzun ara başlıkları: **Süreler** · **Ne kalır** · **Onay** · **Yedeklerde kalan
+kopyalar** · **Resmî belgeler**; Yedek bölümünde **USB belleğe yedek hatırlatması** · **USB
+bellekteki yedekler** · **Geri yükleme provası**.
+
+| Kavram | Kullanılır | Kullanılmaz | Not |
+|---|---|---|---|
+| Anonimleştirme (`anonymized_at`, §6.4) | **anonimleştirme**, **"kişiyle bağı koparılır"**; belgede kişi alanı **"Anonimleştirildi"** | imha, arşivleme, maskeleme, silme (bu anlamda) | **Anonimleştirme ≠ silme**: kayıt kalır (sayım ve istatistik), yalnız kişiyle bağı koparılır, gerekçe ve açıklamaları temizlenir. **Silme** kaydın kendisini kaldırır (kişi kaydı, sona ermiş üyelik kaydı). Bağı koparılan kayıt için **"kişisel veri içermeyen"** ya da **"anonim hâle getirilir (md. 7/1)"** denmez: belge no ya da dosya numarası okul arşivindeki ıslak imzalı asılla eşleşebilir (KVKK 3/1-b; F11 düzeltme turu D-12, TB39) — metin "kişiyle bağı koparılır" der ve sınırı yazar. "İmha" yalnız imha tutanağı bağlamındadır (TMY 28/5, §4.14); okulun kendi yedek kopyaları için de "silme" denir |
+| Saklama taraması ve onay | **süresi dolan kayıtlar**; **onay bekleme başlangıcı**; ileti **"Onay bekleme süresi (6 ay) doldu: …"** | otomatik silme, temizlik, çöp, KVKK imhası | Program her gün tarar, **kendiliğinden hiçbir şey silmez**; işlem yalnız yönetici parolasıyla onaylanır, geri alınamaz, tek seferdedir. Liste onay sırasında değiştiyse **"Saklama listesi siz onaylarken değişti; …"** ve hiçbir şey yazılmaz |
+| Tetik öncesi yedek | adı `pre-anonim-<tarih>-<saat>` (kullanıcı metninde **"işlemden hemen önce alınan yedek"**) | anonim yedek, arşiv | 14 gün saklanır; işlem kendinden önce alınmış güncelleme öncesi yedekleri ve 14 günden eski önceki veritabanı dosyalarını siler |
+| Önceki veritabanı (`db-onceki-<tarih>-<saat>.sqlite3`, `backup_restore`) | **"geri yüklemeden kalan önceki veritabanı dosyası"**; Son İşlem kartında **"Silinen önceki veritabanı: …"** | yedek (bu dosya için), eski DB, çöp | Geri yükleme mevcut veritabanını silmez, veri klasöründe bu adla (`-wal`/`-shm` eşleriyle) kenara alır. **Saklama işlemi, adındaki tarih işlem anından 14 günden eski olanları eşleriyle siler** (27.09.2026 kullanıcı kararı; günlük ve işlem öncesi yedeklerle aynı süre ve gerekçe: yakın tarihli geri yüklemenin dönüş yolu kalır). Daha yenileri kalır; metin elle silmeyi ("gerekmiyorlarsa okul müdürlüğünün kararıyla siz silin") yalnız onlar için önerir. Yaş dosya zamanından değil addaki tarihten okunur |
+| Belge ibaresi (`BelgeIzi`, KM-12) | **"Anonimleştirilmiş kopya — ıslak imzalı asıl nüsha okul arşivindedir"** (tasarım §6.2 — birebir) | taslak, suret, sahte | Kişiyle bağı koparılmış kayıttan yeniden basılan E6 ve E15'in başında durur. Belge izi kişisizdir (tür, tarih, belge no ya da dosya numarası) |
+| USB bellekteki yedeklerin kuralı (§6.4 "dış kopyalar okulun elindedir") | **"Önerilen düzen"**; **"okulun sorumluluğundadır: düzeni okul müdürlüğü belirler"** (Yönerge 10/5'in öznesi personeldir, atıf personelin cümlesine bağlanır — D-19); **silme** | imha kuralı, imha, zorunlu (öneri için), yasal saklama süresi | Kılavuzun Yedek bölümü ve `docs/kurulum.md` §6.3 aynı altı maddeyi yazar: İndirilenler'de kopya bırakmama · son iki yedek · saklama işleminden sonra yeni yedek ve öncekilerin silinmesi · görev devrinden sonra aynısı · belleği elden çıkarmadan önce silme · kayıp bellekte okul müdürlüğüne bildirim (KVKK 12/5'in bildirimini okul müdürlüğü değerlendirir). Sayılar programın önerisidir; metin okul müdürlüğünün başka bir düzen belirleyebileceğini söyler |
+
+### 4.19 Güncelleme ekranının adları (F11)
+
+Ekran **Ayarlar → Güncelleme** (`?tab=guncelleme`); kart **Uygulama Güncellemesi**. Düğmeler
+**"Şimdi denetle"** (sürerken **"Denetleniyor…"**) · **"Doğrula ve indir"** (sürerken
+**"İndiriliyor…"**; yalnız Windows'ta); kutular **Kurulu sürüm** · **Yayımlanan son sürüm**;
+iletiler **"Uygulama güncel."** · **"Yeni sürüm hazır: …"** · snackbar **"Kurulum dosyası
+doğrulanarak indirildi."**. Denetim düşünce sunucunun iletisi aynen gösterilir; GitHub'a
+ulaşılamazsa ileti **"GitHub'a ulaşılamadı; okul ağında engellenmiş olabilir. Yeni sürümü
+indir.okulapp.org'dan elle denetleyebilirsiniz."** (sunucu `updates.ULASILAMADI_MESAJI` ile
+ön yüz `ULASILAMADI_METNI` birebir — test). Altında elle denetleme bağlantısı
+**okulapp.org/kutuphane-defteri** (dış tarayıcıda açılır; dosyalar indir.okulapp.org'dan
+iner). Pardus'ta indirme düğmesi yoktur; ekran paketin indirme sayfasından alınıp kurulduğunu
+söyler.
 
 ## 5. Kişisel veri ve metin
 

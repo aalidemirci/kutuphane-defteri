@@ -109,6 +109,10 @@ Mal Yönetmeliği · **OKY** Ortaöğretim Kurumları Yönetmeliği. Bölüm num
 | §8.5 ISBN künye getirme | Yönerge 11/23 · 11/3-h | **Çatışmaz:** 11/23 dışarı veri aktarımını yasaklar, ISBN sorgusu veri çıkarmaz, getirir. 11/3-h "resmî işlemler dışındaki" erişimi yasaklar; kataloglama Yönetmelik md. 8/1-a ile kurulmuş resmî bir iştir |
 | §8.5, §5.9 E3 | Yönerge 11/12 · 11/19 · 11/22 | Operasyonel engel: kategorisiz adrese erişim izni verilmez, talep Yardım Masası'ndan açılır (11/12) · MEBNET'te SSL denetimli proxy ve MEB kök sertifikası (11/19) · port önceliği 21/80/443 (11/22), Bakanlık ucu 210 portundadır |
 | §8.5 çevrimdışı yol | Yönerge 11/18 · 10/4 · 10/5 | Kurum bilgisayarına cep telefonu, mobil modem ya da kişisel erişim noktası bağlanamaz: çevrimdışı yol **ayrı cihaz** demektir. Dosya taşımada taşınabilir bellek kuralları |
+| §4.4 görev devri, E18 (F11) | Yönerge 6/4 | Kullanıcı **çalışması sona erince** kendisindeki donanımı ve bilişim sistemlerinin kullanımına yönelik şifreleri iade eder; erişim hakları kaldırılır. Görev devri notunun "teslim edilenler" listesinin (masa hesabının parolasının değiştirilmesi dahil) ve parola + kurtarma anahtarı yenilemesinin dayanağı. Fıkranın koşulu çalışmanın sonlanmasıdır: metin "çalışması sona eren kullanıcı" der, okulda kalan kişinin görev değişikliğinde "kıyasen uygulanır" diye ayrıca söyler (F11 düzeltme turu D-19; metinden ve öznesinden doğrulandı — `test_gorev_devri.py`, `test_bakim_kilavuz_metinleri.py`) |
+| §16 risk 13 dış yedek (F11) | Yönerge 10/5 · 11/23 | USB ya da harici diske konan gizli/önemli veri şifrelenerek saklanır (yedek zaten şifrelidir); bulut depolamaya veri aktarılmaz (Şifreli Veritabanı Yedeği kartı ve kılavuz) |
+| §6.4 "dış kopyalar okulun elindedir" — USB bellekteki yedekler (F11; kılavuzun Yedek bölümü, `docs/kurulum.md` §6.3) | Yönerge 10/5 (ilk cümle) | **Personel** bilgisayarındaki, USB belleğindeki ve harici diskindeki gizlilik dereceli bilgi içeren belgenin güvenliğini sağlar. Fıkranın öznesi personeldir: atıf personelin cümlesine bağlanır ("bellekteki yedeğin güvenliğini onu kullanan personel sağlar"); indirilen yedeğin saklanmasının ve silinmesinin okulun sorumluluğunda olduğu, düzeni okul müdürlüğünün belirlediği ayrı cümledir, 10/5'e dayandırılmaz (F11 düzeltme turu D-19). Metin "yükümlüdür" der, kullanıcı metni sözlük gereği "sağlar" der. Önerilen düzenin kendisi (son iki yedek) mevzuat hükmü değildir (§4) |
+| Görev devrinde eski kurtarma anahtarı kâğıdı (F11; kılavuzun Görev Devri bölümü, `docs/kurulum.md` §1.6) | Yönerge 10/3 | "Gizli bilgi içeren atık evrakı imha eder": metin alıntılanmaz, "yok edilir" diye aktarılır — sözlük §1 "imha"yı yalnız TMY 28/5 bağlamında kullanır |
 
 ### 3.4 KVKK ve Aydınlatma Tebliği
 
@@ -119,8 +123,10 @@ Mal Yönetmeliği · **OKY** Ortaöğretim Kurumları Yönetmeliği. Bölüm num
 | §3 aydınlatma metni (E13) | KVKK 10/1 · Aydınlatma Tebliği | Aydınlatmanın asgari unsurları ve usulü |
 | §8.5 ISBN künye getirme | KVKK 3/1-d · 10 · 9 | Kişisel veri "gerçek kişiye ilişkin"dir (3/1-d); dışarı çıkan ISBN esere aittir, bu yüzden kişisel veri işlenmez. Md. 10 aydınlatma yükümlülüğü kişisel verinin **elde edilmesine** bağlı olduğu için **doğmaz — E13'e satır eklenmez**; md. 9 (yurt dışına aktarım) tetiklenmez |
 | §8.4 kişi dökümü, E13 | KVKK 11 · 13/2 | İlgili kişinin hakları (11/1-a, b: işlenip işlenmediğini öğrenme, bilgi talep etme); başvuru en geç otuz gün içinde ücretsiz sonuçlandırılır (13/2). Kişi dökümü cevabın hazırlığıdır; cevabı veri sorumlusu (okul müdürlüğü) verir |
-| §6.4 saklama | KVKK 4/2 · 7 | Amaçla sınırlılık; sebep ortadan kalkınca silme, yok etme ya da anonimleştirme. Ayrıntılı usul için eksik Yönetmeliğe bakın (§2) |
+| §6.4 saklama | KVKK 4/2 · 4/2-d · 7 · 7/1 | Amaçla sınırlılık; sebep ortadan kalkınca silme, yok etme ya da anonimleştirme. F11: 4/2-d aydınlatma metninde (E13), Saklama ekranında ve kılavuzda BİREBİR alıntıdır (`dolasim_belgeleri.KVKK_4_2_D`, test); 7/1 atıftır. 6 aylık azami bekleme programın kuralıdır; ayrıntılı usul için eksik Yönetmeliğe bakın (§2) |
 | E19 masa kartı | KVKK 12/1 | Veri güvenliği önlemleri (görevli öğrencinin bilgilendirilmesi) |
+| Kaybolan ya da çalınan yedek belleği (F11; kılavuzun Yedek bölümü, `docs/kurulum.md` §6.3) | KVKK 12/5 | Kişisel veriler kanuni olmayan yollarla başkalarınca elde edilirse veri sorumlusu ilgilisine ve Kurula bildirir. Yedek şifreli olduğu için bildirimin gerekip gerekmediği programın hükmü değildir: metin "okul müdürlüğü değerlendirir" der (alıntısız) |
+| §4.4 görev devri, E18 (F11) | KVKK 12/4 | **Veri sorumluları ile veri işleyenler** öğrendikleri kişisel verileri Kanuna aykırı olarak başkasına açıklayamaz, işleme amacı dışında kullanamaz; yükümlülük görevden ayrılmalarından sonra da devam eder. Fıkranın öznesi veri sorumlusu (okul) ve veri işleyendir (3/1-ğ: veri sorumlusunun verdiği yetkiye dayanarak onun adına işleyen); okulun personeli veri işleyen sayılmaz. Metin kuralı öznesine bağlar ve "veri sorumlusu okuldur; görevi devreden de okulun bu kuralı gereği açıklamaz" der — yükümlülüğü doğrudan "görevi devreden"e yüklemez (F11 düzeltme turu D-19). Görev devri notu, kılavuz ve `docs/kurulum.md` §1.6 (metinden ve öznesinden doğrulandı — `test_gorev_devri.py`) |
 
 ### 3.5 TBK ve OKY
 
@@ -136,6 +142,29 @@ Mal Yönetmeliği · **OKY** Ortaöğretim Kurumları Yönetmeliği. Bölüm num
 
 Aşağıdaki kurallar programın ya da okulun tercihidir. Kullanıcı metninde
 mevzuat hükmü gibi sunulmaz:
+
+- **Saklama süreleri ve onay beklemesinin altı ayı** (tasarım §6.4, F11). KVKK
+  4/2-d ve 7/1 süreyi "amaç için gerekli" diye bırakır; yıl sayıları (ayrılış + 2,
+  sona erme + 2, ders yılı sonu + 1, kapanış + 2, geri alma + 2) okulun ayarı, altı
+  aylık azami bekleme programın kuralıdır. Silme, Yok Etme veya Anonim Hâle Getirme
+  Yönetmeliği depoya alınınca onun periyodik imha hükmüne göre gözden geçirilir (§2).
+  Kullanıcı metni süreleri "Kütüphane Politikası'ndaki süre" diye yazar.
+
+- **Yedeklerin 14 günü ve saklama işleminin 14 günden eski önceki veritabanı
+  dosyalarını silmesi** (tasarım §6.4 "Yedeklerdeki kalıntı"; `db-onceki-*` için
+  kullanıcı kararı (27.09.2026)). Günlük ve işlem öncesi yedeklerin 14 günü programın
+  kuralıdır; geri yüklemenin kenara aldığı önceki veritabanı dosyalarından tetik anından
+  14 günden eski olanların silinmesi aynı süreye ve gerekçeye dayanır (yakın tarihli
+  geri yüklemenin dönüş yolu korunur, eski artık silinir). KVKK 7/1 silmeyi ister ama
+  süreyi söylemez; 14 gün mevzuat hükmü diye sunulmaz.
+
+- **USB bellekte son iki yedeğin tutulması; saklama işleminden ve görev devrinden
+  sonra eski USB yedeklerinin silinmesi** (F11; kılavuzun Yedek bölümü, `docs/kurulum.md`
+  §6.3; "son iki yedek" önerisi **kullanıcı kararı (27.09.2026)** ile onaylandı —
+  tasarım §14.1 F11 ekleri, karar turu). Tasarım §6.4 dış kopyaların kuralını kılavuza
+  bırakır; Yönerge 10/5 yalnız güvenliği ve şifrelemeyi ister. Sayı ve sıra programın
+  önerisidir: metin "Önerilen düzen" der ve okul müdürlüğünün başka bir düzen
+  belirleyebileceğini yazar.
 
 - **Ara tatil ve yarıyılda iade tarihinin kaydırılması** (tasarım §9-5, A23).
   Ara tatil ve yarıyıl kanunen tatil günü değildir, TBK 93 kapsamına girmez.

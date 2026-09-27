@@ -30,6 +30,8 @@ from django.urls import path
 
 from apps.kutuphane import (
     urls_dokumler,
+    urls_gorev_devri,
+    urls_saklama,
     views,
     views_ag_doktoru,
     views_ayiklama,
@@ -810,3 +812,11 @@ urlpatterns += label_urls.urlpatterns
 # dökümü ve yönetim hesabı cetveli hazırlığı (E11), kişi dökümü (KVKK md. 11) —
 # `apps/kutuphane/urls_dokumler.py`; yönetici kipi, görevli izin listesinde YOK.
 urlpatterns += urls_dokumler.urlpatterns
+
+# --- F11 (S kolu): saklama ve anonimleştirme (§6.4) — `apps/kutuphane/urls_saklama.py`;
+# yönetici kipi, görevli izin listesinde YOK; tetik kişi kaydı siler (parola kapısı).
+urlpatterns += urls_saklama.urlpatterns
+
+# --- F11 (bakım kolu): görev devri — parola + kurtarma anahtarı yenileme ve Görev devri
+# notu (E18) — `apps/kutuphane/urls_gorev_devri.py`; yönetici kipi, izin listesinde YOK.
+urlpatterns += urls_gorev_devri.urlpatterns

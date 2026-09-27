@@ -117,6 +117,10 @@
     {% comment %}Eski .approval (UYGUNDUR) bloğu Tur 218'de kaldırıldı — EK-1 onayı
     artık işaretlenebilir seçenekli bölüm (talep 5); başka tüketicisi yoktu.{% endcomment %}
     .muted { color: var(--pr-faint); font-style: italic; font-size: 9pt; }
+    {% comment %}F11 (§6.2 BelgeIzi, KM-12): anonimleştirilmiş kayıttan yeniden üretilen
+    belgenin ibaresi — antetin hemen altında, her belgede aynı yerde.{% endcomment %}
+    .anonim-kopya { margin: 3pt 0 0; padding: 2pt 6pt; border: 0.75pt solid var(--pr-ink);
+                    text-align: center; font-size: 8.5pt; font-weight: bold; color: var(--pr-ink); }
   </style>{% comment %}Tur 644: alt şablonlar sayfa yönü/ek stil override edebilsin
   (calendar_pdf A4 landscape). Blok ve yorum TEK satır akışında — boş blokta çıktı
   bayt-bayt değişmez (bordro byte-golden HTML testleri).{% endcomment %}{% block extra_style %}{% endblock %}
@@ -132,7 +136,7 @@
     {% if unit %}<div class="unit">{{ unit }}</div>{% endif %}{% endif %}
   </div>
   <div class="rule"></div>
-  <div class="rule-thin"></div>
+  <div class="rule-thin"></div>{% if anonim_kopya_ibaresi %}<div class="anonim-kopya">{{ anonim_kopya_ibaresi }}</div>{% endif %}
 
   {% block content %}{% endblock %}
 </body>

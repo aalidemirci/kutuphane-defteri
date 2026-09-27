@@ -5,6 +5,14 @@
 // Denetim YALNIZ "Şimdi denetle" düğmesiyle yapılır (tasarım T11): sekme
 // açılınca da istek atılmaz. Sonuç kabuktaki banda da yayınlanır
 // (`denetimOlayi.ts`), kullanıcı başka ekrana geçtiğinde hatırlatma sürer.
+//
+// Hedef GitHub'dır (kullanıcı kararı 27.09.2026). MEB ağında GitHub engellenebilir:
+// sunucunun iletisi bunu söyler ve yeni sürümün indir.okulapp.org'dan elle
+// denetlenebileceğini yazar (program o adrese istek atmaz). Sunucuya hiç
+// ulaşılamazsa aynı ileti burada da gösterilir (`ULASILAMADI_METNI`). Hizmetin adı
+// açıklama metninde geçmez (sözlük "Sürüm"); yalnız bu iletide ve Hakkında'dadır.
+// Denetim düşünce iletinin altında elle denetleme bağlantısı durur (`INDIRME_SAYFASI`):
+// `target="_blank"` — masaüstü penceresi onu dış tarayıcıda açar.
 
 import { useState } from "react";
 
@@ -19,6 +27,22 @@ import { useSnackbar } from "../../ui/SnackbarProvider";
 import { updateApi } from "./api";
 import type { UpdateStatus } from "./api";
 import { denetimSonucunuYayinla } from "./denetimOlayi";
+
+/** Denetim GitHub'a ulaşamadığında (backend `updates.ULASILAMADI_MESAJI` ile birebir). */
+export const ULASILAMADI_METNI =
+  "GitHub'a ulaşılamadı; okul ağında engellenmiş olabilir. Yeni sürümü " +
+  "indir.okulapp.org'dan elle denetleyebilirsiniz.";
+
+/**
+ * Elle denetlemenin sayfası: programın okulapp.org'daki sayfası sürümü ve kurulum
+ * dosyalarının bağlantılarını verir; dosyaların kendisi indir.okulapp.org'dan iner (R2
+ * önekinin dizin sayfası yoktur — kök adres 404 verir, 27.09.2026 denetimi). Bağlantı
+ * `target="_blank"` ile açılır: masaüstü penceresi (pywebview, `OPEN_EXTERNAL_LINKS_IN_BROWSER`
+ * varsayılanı) onu DIŞ tarayıcıda açar. Program bu adrese kendisi istek ATMAZ.
+ */
+export const INDIRME_SAYFASI = "https://okulapp.org/kutuphane-defteri/";
+/** Bağlantının görünen adresi (şema ve sondaki bölü olmadan). */
+export const INDIRME_SAYFASI_ADI = "okulapp.org/kutuphane-defteri";
 
 /** Dosya boyutu — Türkçe sayı biçimiyle (ondalık virgül): "41,5 MB". */
 function formatBytes(bytes: number): string {
@@ -42,11 +66,7 @@ export default function UpdatePanel() {
       setStatus(sonuc);
       denetimSonucunuYayinla(sonuc);
     } catch (e) {
-      setError(
-        e instanceof ApiError
-          ? e.message
-          : "Güncelleme denetlenemedi. İnternet bağlantısını kontrol edin.",
-      );
+      setError(e instanceof ApiError ? e.message : ULASILAMADI_METNI);
     } finally {
       setChecking(false);
     }
@@ -75,8 +95,9 @@ export default function UpdatePanel() {
             <p className="text-title-medium text-on-surface">Uygulama Güncellemesi</p>
             <p className="mt-1 text-body-medium text-on-surface-variant">
               Yayımlanan son sürüm yalnız “Şimdi denetle” düğmesine bastığınızda denetlenir; program
-              açılışta internete çıkmaz. Programın internete çıkan tek isteği budur ve kişisel veri
-              taşımaz. Kurulum dosyası, bütünlüğü doğrulanmadan indirmeye sunulmaz.
+              açılışta internete çıkmaz. Bu istek kişisel veri taşımaz. Denetim okul ağında
+              engellenirse yeni sürümü indir.okulapp.org&apos;dan elle denetleyebilirsiniz. Kurulum
+              dosyası, bütünlüğü doğrulanmadan indirmeye sunulmaz.
             </p>
           </div>
           <Button
@@ -90,12 +111,29 @@ export default function UpdatePanel() {
         </div>
 
         {error && (
-          <div
-            role="alert"
-            className="mt-4 flex items-start gap-2 rounded-shape-sm bg-error-container px-4 py-3 text-body-medium text-on-error-container"
-          >
-            <Icon name="error" />
-            <span>{error}</span>
+          <div className="mt-4 space-y-2">
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-shape-sm bg-error-container px-4 py-3 text-body-medium text-on-error-container"
+            >
+              <Icon name="error" />
+              <span>{error}</span>
+            </div>
+            {/* Denetim hangi nedenle düşerse düşsün elle denetleme yolu verilir; bağlantı
+                dış tarayıcıda açılır (program o adrese istek atmaz). */}
+            <p className="text-body-small text-on-surface-variant">
+              Yeni sürümü ve kurulum dosyalarını tarayıcıda elle görebilirsiniz; dosyalar
+              indir.okulapp.org&apos;dan iner:{" "}
+              <a
+                href={INDIRME_SAYFASI}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-label-large font-medium text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                {INDIRME_SAYFASI_ADI}
+                <Icon name="open_in_new" size="sm" />
+              </a>
+            </p>
           </div>
         )}
 

@@ -218,6 +218,33 @@
 // kurucu görevi ve port kuralı (docs/kurulum.md §7 madde 3 ve 6), yazarsız eserin döküm başlığı
 // (`katalog_dokumu.YAZARSIZ`).
 //
+// F11 üç bölüm yazar ve Yedek bölümünü genişletir (tasarım §6.4 BAĞLAYICI, §4.4, §10 E18, T11;
+// 27.09.2026 kullanıcı kararları):
+// - "Saklama ve Anonimleştirme" Dökümler'in ardından, Yedek'in önündedir (kayıtların ömrü, sonra
+//   kopyaların ömrü). Sıra kullanıcının sorusunun sırasıdır: neden (KVKK 4/2-d birebir, 7/1
+//   alıntısız; ödünç kaydının amacı kitabın dönüşünü izlemektir) → anonimleştirme ≠ silme →
+//   süreler (§6.4'ün her satırı; varsayılanlar `LibraryPolicy`'den, 1-10 yıl; ayrılan kişi 2 yıl
+//   — karar 2) → ne kalır (Saklama ekranının "Ne Kalır" kartıyla aynı) → onay (ekran adları
+//   `modules/saklama` sabitlerinden; altı ay; görev devri notunun sayısı) → yedeklerde kalan
+//   (pre-anonim 14 gün, tetikte pre-migrate ve 14 günden eski db-onceki silinir — db-onceki
+//   27.09.2026 kullanıcı kararı, yaş adındaki geri yükleme tarihinden; elle konan dosyaya
+//   program dokunmaz — `desktop/backup.py::rotate_backups` yalnız kendi adlarını yönetir;
+//   USB'deki yedeğin kuralı Yedek bölümünde) → resmî belgelerin izi ve ibare (§6.2 metni
+//   birebir).
+// - Yedek bölümüne "USB bellekteki yedekler" (§6.4 "dış kopyalar okulun elindedir; kural
+//   kılavuzda yazılıdır"): okulun sorumluluğu (Yönerge 10/5), İndirilenler'de kopya bırakmama,
+//   önerilen düzen (son iki yedek — okul müdürlüğü başka düzen belirleyebilir), saklama işleminden
+//   ve görev devrinden sonra yeni yedek + eskilerin silinmesi, kayıp bellekte bildirim (KVKK 12/5,
+//   alıntısız; kararı okul müdürlüğü verir) ve "Geri yükleme provası" (program kendi denetiminde
+//   sınar; okul isterse başka bir demirbaş bilgisayarda, kurtarma anahtarıyla, sonra siler).
+// - "Görev Devri" (üç adım, ekrandaki alan adlarıyla; TB17/TB23 dürüst dille; KVKK 12/4, Yönerge
+//   6/4 ve 10/3 alıntısız) ve "Güncelleme" (yalnız "Şimdi denetle"; hedef GitHub — sözlük "Sürüm"
+//   satırı kılavuzun bu bölümünde hizmetin adını anmaya izin verir; ulaşılamama iletisi sunucunun
+//   `updates.ULASILAMADI_MESAJI`'yla birebir; program indir.okulapp.org'a istek atmaz).
+// "İmha" F11 bölümlerinde geçmez (sözlük §1 "Silme ve imha"): okulun kendi kopyaları "silinir",
+// kâğıt "yırtılarak yok edilir". Sunucu tarafı `test_bakim_kilavuz_metinleri.py` (atıflar fıkranın
+// metninde, süreler ve adlar koddan).
+//
 // Ad kaynakları: tepsi menüsü `desktop/tray.py` sabitleri, durum satırı
 // `desktop/katalog_kontrol.py::tepsi_satiri`, adres uyarısı `ip_denetle`,
 // kurucu görevleri `packaging/windows/kutuphane-defteri.iss` [Tasks], Ağ
@@ -246,7 +273,9 @@
 // 27/3, 28 (1, 4, 5), 31, 32/1, 32/2, 32/3 (ikinci cümle), 32/5, 32/6, 32/7, 32/8, 32/9, 34/2-c
 // ve 34/3-a (ikinci cümle) (tasinir-mal-yonetmeligi.md;
 // 23/6 ve 32/5'in metni kılavuzun kalıntı taramasına takılan bir sözcük taşır) ve
-// Ortaöğretim Kurumları Yönetmeliği 164/1-g (…-ilgili-maddeler.md). F10 alıntıları sunucu
+// Ortaöğretim Kurumları Yönetmeliği 164/1-g (…-ilgili-maddeler.md). F11: KVKK 4/2-d (birebir),
+// 7/1, 12/4 ve 12/5 (alıntısız); Yönerge 6/4, 10/3 ve 10/5 (alıntısız; 10/5 sade aktarım).
+// F10 alıntıları sunucu
 // tarafında `test_rapor_metinleri.py` ve `test_dokum_metinleri.py` belge sabitleriyle, bütün F10
 // atıfları (alıntılı ve alıntısız) `test_rapor_dokum_kilavuz_metinleri.py` ile atıf yapılan
 // fıkranın metninde aranır.
@@ -283,7 +312,10 @@ const BOLUMLER = {
   "ice-aktarma": { baslik: "İçe Aktarma", ikon: "upload_file" },
   raporlar: { baslik: "Raporlar ve Çok Okunanlar", ikon: "bar_chart" },
   dokumler: { baslik: "Dökümler ve Dışa Aktarım", ikon: "description" },
+  saklama: { baslik: "Saklama ve Anonimleştirme", ikon: "auto_delete" },
   yedek: { baslik: "Yedek ve Güvenlik Dosyası", ikon: "backup" },
+  "gorev-devri": { baslik: "Görev Devri", ikon: "swap_horiz" },
+  guncelleme: { baslik: "Güncelleme", ikon: "system_update" },
   "tepsi-ve-cikis": { baslik: "Tepsi, Çıkış ve Gün Değişimi", ikon: "power_settings_new" },
   "ag-katalogu": { baslik: "Ağ Kataloğu", ikon: "lan" },
 } as const;
@@ -791,7 +823,10 @@ export default function KilavuzPage() {
             <strong>“Ayrıldı olarak işaretle”</strong> (onay ister): kişi okuldan ayrılmış sayılır
             ve seçicilerden düşer. Kaydı silinmez; sicilde “Ayrıldı · gg.aa.yyyy” rozetiyle kalır,
             iade etmediği kitap varsa izlenebilir (bkz. İlişik Listesi bölümü). Sonraki bir e-Okul
-            listesinde yeniden görünürse kaydı yeniden aktif olur.
+            listesinde yeniden görünürse kaydı yeniden aktif olur. Ayrılışın üzerinden iki yıl
+            geçince (süre Kütüphane Politikası&apos;ndadır) kayıt, kütüphaneyle açık işi yoksa,
+            onayınızla silinmek üzere Ayarlar → Saklama&apos;ya düşer (bkz. Saklama ve
+            Anonimleştirme).
           </li>
           <li>
             <strong>“Aktif kalsın”</strong>: kişi havuzdan çıkar, hiçbir şey değişmez. Bir sonraki
@@ -1227,10 +1262,11 @@ export default function KilavuzPage() {
           </li>
           <li>
             <strong>Saklama süreleri:</strong> üyelik sonlandıktan, ödünç iade edildikten, kayıp ya
-            da hasar dosyası kapandıktan ve teslim geri alındıktan kaç yıl sonra kaydın kişiyle bağı
-            koparılacağını belirler. Bu süreleri uygulayan saklama taraması sonraki bir sürümde
-            gelecek; o zamana kadar üyelik ve ödünç kayıtları silinmez. Kütüphane aydınlatma metni
-            de bunu böyle söyler.
+            da hasar dosyası kapandıktan, teslim geri alındıktan ve kişi okuldan ayrıldıktan kaç yıl
+            sonra kaydın silineceğini ya da kişiyle bağının koparılacağını belirler. Süresi dolan
+            kayıtlar kendiliğinden silinmez; siz onaylayana dek{" "}
+            <Ekran to="/ayarlar?tab=saklama">Ayarlar → Saklama</Ekran>&apos;da beklerler (bkz.
+            Saklama ve Anonimleştirme). Kütüphane aydınlatma metni süreleri buradan alır.
           </li>
         </ul>
         <Ipucu>
@@ -1776,7 +1812,9 @@ export default function KilavuzPage() {
           adresi” ve “E-posta ya da telefon” alanlarına yazdıklarınız yalnız o basıma yazılır,
           programda saklanmaz; boş bırakırsanız elle doldurulacak satır basılır. Metin hangi
           bilgilerin tutulduğunu, masadaki öğrenci görevliler dahil kimin neyi gördüğünü ve
-          programın kayıtları bugün kendiliğinden silmediğini açıkça söyler.
+          kayıtların ne kadar saklandığını açıkça söyler: süreleri Kütüphane Politikası&apos;ndan
+          alır, süresi dolan kaydın onayınızla silindiğini ya da kişiyle bağının koparıldığını yazar
+          (bkz. Saklama ve Anonimleştirme).
         </p>
 
         <AltBaslik>Üyelik açmak</AltBaslik>
@@ -3977,13 +4015,196 @@ export default function KilavuzPage() {
       </Bolum>
 
       {/* ------------------------------------------------------------------ */}
+      <Bolum id="saklama">
+        <p>
+          Kişisel veriler işlendikleri amaç için gerekli süre kadar saklanır; süresi dolan kişi ve
+          üyelik kayıtları silinir, ödünç, kayıp/hasar ve teslim kayıtlarının kişiyle bağı
+          koparılır. Program süresi dolan kayıtları her gün tarar ama{" "}
+          <strong>kendiliğinden hiçbir şey silmez</strong>: silme ve anonimleştirme yalnız sizin
+          onayınızla, <Ekran to="/ayarlar?tab=saklama">Ayarlar → Saklama</Ekran> ekranından yapılır.
+          Ekran da işlem de yalnız yönetici kipindedir.
+        </p>
+        <Mevzuat kaynak="6698 sayılı Kişisel Verilerin Korunması Kanunu, md. 4/2-d">
+          “İlgili mevzuatta öngörülen veya işlendikleri amaç için gerekli olan süre kadar muhafaza
+          edilme.”
+        </Mevzuat>
+        <p>
+          Kanun, işlenmesini gerektiren sebepler ortadan kalkınca kişisel verinin silinmesini, yok
+          edilmesini ya da anonim hâle getirilmesini ister (KVKK md. 7/1). Kütüphanede bu sebep işin
+          kendisidir: ödünç kaydı, kitabın geri gelmesini izlemek için kişiye bağlıdır. Kitap dönüp
+          süre geçince kimin hangi kitabı aldığını tutmak gerekmez; kaç kitabın ödünç verildiği ise
+          okulun sayımı ve istatistiği için gerekir.
+        </p>
+        <p>
+          <strong>Anonimleştirme silme değildir:</strong> kayıt kalır, yalnız kişiyle bağı koparılır
+          ve açıklamaları temizlenir. Ödünç, kayıp/hasar ve teslim kayıtları böylece sayım ve
+          istatistik için kalır; program onları artık kimseye bağlamaz. <strong>Silme</strong>{" "}
+          kaydın kendisini kaldırır: kişinin ve sona ermiş üyeliğin kaydı.
+        </p>
+        <p>
+          Sınırı bilin: kişiyle bağı koparılan kayıt belge no ya da dosya numarasını, barkodu ve
+          tarihleri taşır. Okul arşivindeki ıslak imzalı asıl belge (teslim listesi, kayıp/hasar
+          tutanağı) aynı numarayla kişinin adını taşıdığı için kayıt o asılla eşleştirilebilir; bu
+          yüzden bu kayıtlar için “kişisel veri içermez” denmez. Asılların saklanması arşiv
+          kurallarına tabidir.
+        </p>
+
+        <AltBaslik>Süreler</AltBaslik>
+        <p>
+          Süreler <Ekran to="/ayarlar?tab=politika">Ayarlar → Kütüphane Politikası</Ekran>
+          &apos;nın “Vitrin ve Saklama” bölümündedir (1 ile 10 yıl arası). Süre her kayıt için ayrı
+          işler. Varsayılanlar:
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong>Okuldan ayrılan kişi</strong> (üye olsun ya da olmasın): ayrılıştan 2 yıl sonra
+            kaydı silinir. İade etmediği kaynak, geri alınmamış teslimi ya da kapanmamış kayıp/hasar
+            dosyası olan kişi silinmez; iş kapanınca listeye girer. Süresi henüz dolmamış bir kaydı
+            olan kişi de (ör. üyeliği yakın zamanda sona ermişse) o süre dolana dek bekler.
+          </li>
+          <li>
+            <strong>Sona eren üyelik:</strong> sona ermesinden 2 yıl sonra üyelik kaydı silinir,
+            ödünç ve kayıp/hasar kayıtlarının kişiyle bağı koparılır, gerekçe ve açıklamalar
+            temizlenir. Kişi okulda sürüyorsa kişi kaydı kalır. Açık ödüncü ya da kapanmamış
+            kayıp/hasar dosyası (bedel adımında bekleyen dahil) olan üyelik ve o kayıtların kişiyle
+            bağı iş kapanana dek kalır.
+          </li>
+          <li>
+            <strong>İade edilen ya da kayba dönüşen ödünçler</strong> (üyelik sürse de sona ermiş
+            olsa da): kapandığı ders yılının sonundan 1 yıl sonra kişiyle bağı koparılır. Yaz
+            tatilinde yapılan iade bir sonraki ders yılının sonuna sayılır. Kayıp/hasar dosyasına
+            bağlı ödünç, dosyanın kişiyle bağı koparılana dek bekler ve onunla birlikte koparılır.
+          </li>
+          <li>
+            <strong>Kapanmış kayıp/hasar dosyası:</strong> kapanışından 2 yıl sonra kişiyle bağı ve
+            açıklaması temizlenir.
+          </li>
+          <li>
+            <strong>Öğretmene teslim:</strong> geri alınmasından 2 yıl sonra öğretmenle bağı
+            koparılır. Aynı teslim listesindeki (aynı belge no) kitapların bağı birlikte,
+            sonuncusunun süresi dolunca koparılır; listeden bir kitap hâlâ teslimdeyse ya da açık
+            bir kayıp/hasar dosyasına bağlıysa liste bekler. Sınıf kitaplığına teslim kişiye bağlı
+            değildir, olduğu gibi kalır.
+          </li>
+          <li>
+            <strong>“Bedel belirlendi” ya da “Bedel teslim alındı”da bekleyen dosya</strong>{" "}
+            silinmez: bir yılı geçince Saklama ekranındaki “Bedel Bekleyen Dosyalar” listesine ve
+            Genel Bakış&apos;a düşer. Dosyayı Kayıp ve Hasar ekranından kapatın.
+          </li>
+        </ul>
+
+        <AltBaslik>Ne kalır</AltBaslik>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            Ödünç, kayıp/hasar ve teslim kayıtları kişiyle bağı koparılmış olarak kalır: sayım,
+            istatistik ve yıl sonu raporu onlardan hesaplanır. Bu kayıtlar artık kimseye yazılmaz,
+            kişi dökümünde de görünmez; belge no ya da dosya numarası arşivdeki asılla eşleşebilir.
+          </li>
+          <li>
+            Verilmiş kart numaraları hiçbir zaman yeniden verilmez; üyeliği silinmiş kişinin kartı
+            okutulursa masada “iptal edilmiş kart” denir.
+          </li>
+          <li>
+            Resmî belgelerin ıslak imzalı asılları okul arşivinde, kişisiz izleri programda kalır
+            (aşağıda “Resmî belgeler”).
+          </li>
+          <li>Çok okunanların kapanmış dönemleri ve sonlandırılmış yıl sonu raporu değişmez.</li>
+          <li>
+            Bedeli belirlenmiş ya da teslim alınmış ama kapanmamış kayıp/hasar dosyası silinmez;
+            Saklama ekranındaki “Bedel Bekleyen Dosyalar” listesinde kalır.
+          </li>
+        </ul>
+        <p>
+          Saklama ekranındaki “Ne Kalır” kartı aynı maddeleri aynı sırayla ve yedeklerde kalan
+          kopyaların sayısını gösterir.
+        </p>
+
+        <AltBaslik>Onay</AltBaslik>
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>
+            Süresi dolan kayıt bulununca Genel Bakış&apos;ta{" "}
+            <strong>“Saklama Süresi Dolan Kayıtlar”</strong> kartı çıkar; yalnız sayıyı gösterir.
+          </li>
+          <li>
+            Saklama ekranında neyin silineceğini ve neyin kalacağını okuyun. “Süresi Dolan Kayıtlar”
+            kartı iki gruptur: <strong>“Silinecek”</strong> (kişi kaydı, sona ermiş üyelik kaydı) ve{" "}
+            <strong>“Kişiyle bağı koparılacak (kayıt kalır)”</strong>. Adları görmek isterseniz{" "}
+            <strong>“Silinecek kişileri göster”</strong> düğmesine basın: kaydı silinecek kişiler ve
+            kişi kaydı kalıp yalnız üyelik kaydı silinecek kişiler ayrı tablolarda gelir; “Adları
+            gizle” listeyi kapatır.
+          </li>
+          <li>
+            <strong>“Onayla ve uygula”</strong> düğmesiyle açılan pencerede yönetici parolasını
+            yazın, “Bu işlemin geri alınamayacağını anladım” kutusunu işaretleyin ve “Uygula”ya
+            basın.
+          </li>
+        </ol>
+        <p>
+          İşlem tek seferde yapılır: bir adım yapılamazsa hiçbir kayıt değişmez. Siz onaylarken
+          liste değiştiyse işlem uygulanmaz, önizleme yenilenir. Onay{" "}
+          <strong>altı aydan uzun</strong> beklerse Genel Bakış&apos;taki kartta kapatılamayan bir
+          uyarı çıkar; uyarı ancak işlem onaylanınca kalkar. Kütüphane yöneticisi değişirken onay
+          bekleyen kayıtların sayısı görev devri notuna da yazılır; onay görevi devralana kalır.
+        </p>
+
+        <AltBaslik>Yedeklerde kalan kopyalar</AltBaslik>
+        <p>İşlem veritabanını değiştirir; kayıtların eski hâli bir süre daha yedeklerde kalır:</p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            İşlemden hemen önce şifreli bir yedek alınır (<Kod>pre-anonim-…</Kod>); yedek alınamazsa
+            işlem yapılmaz. Bu yedek günlük yedekler gibi 14 gün sonra kendiliğinden silinir. Yanlış
+            bir onay bu süre içinde o yedekten geri yüklenerek geri alınabilir; o yedekten sonra
+            girilen kayıtlar da kalkar.
+          </li>
+          <li>Günlük yedekler 14 günün sonunda kendiliğinden silinir.</li>
+          <li>
+            İşlem, kendinden önce alınmış güncelleme öncesi yedekleri (<Kod>pre-migrate-…</Kod>)
+            hemen siler.
+          </li>
+          {/* 27.09.2026 kullanıcı kararı: tetik, db-onceki dosyalarından tetik anından 14 günden
+              eskilerini eşleriyle siler (pre-anonim ve günlük yedeklerin süresi); elle silme
+              önerisi yalnız daha yenileri içindir. */}
+          <li>
+            İşlem, geri yüklemeden kalan önceki veritabanı dosyalarından (<Kod>db-onceki-…</Kod>) 14
+            günden eski olanları da siler; dosyanın yaşı adındaki geri yükleme tarihinden okunur.
+            Daha yenileri yakın tarihli bir geri yüklemeden dönüş için kalır: artık gerekmiyorlarsa
+            okul müdürlüğünün kararıyla siz silin. Yedek klasörüne elle koyduğunuz dosyalara program
+            dokunmaz: onları da gerekmiyorlarsa siz silin.
+          </li>
+          <li>
+            İndirip USB belleğe aldığınız yedekler programın dışındadır: işlemden sonra yeni bir
+            şifreli yedek alın ve işlemden önce alınmış olanları silin (bkz. Yedek ve Güvenlik
+            Dosyası, “USB bellekteki yedekler”). İşlemden sonra şifreli yedek indirmediyseniz “Son
+            İşlem” kartı bunu hatırlatır.
+          </li>
+        </ul>
+
+        <AltBaslik>Resmî belgeler</AltBaslik>
+        <p>
+          Kayıp/hasar tutanağı, teslim listesi, geri alma dökümü ve “Kütüphaneden ilişiği yoktur”
+          belgesi her üretildiğinde program belgenin kişisiz izini (tür, tarih, belge no ya da dosya
+          numarası) tutar. Islak imzalı asıl nüsha okul arşivindedir. Kişiyle bağı koparılmış bir
+          kayıttan belge yeniden basılırsa kişi adı yazılmaz ve belgenin başında{" "}
+          <strong>“Anonimleştirilmiş kopya — ıslak imzalı asıl nüsha okul arşivindedir”</strong>{" "}
+          yazar.
+        </p>
+        <Ipucu>
+          <p>
+            Kütüphane aydınlatma metni bu süreleri Kütüphane Politikası&apos;ndan alır; süreyi
+            değiştirirseniz metni yeniden basıp duyurun.
+          </p>
+        </Ipucu>
+      </Bolum>
+
+      {/* ------------------------------------------------------------------ */}
       <Bolum id="yedek">
         <p>
           Yönetici parolası kurulduktan sonra program her gün o günün şifreli{" "}
           <strong>günlük yedeğini</strong> alır (aynı gün ikinci yedek almaz) ve son 14 günün
           yedeklerini saklar. Program yeni bir sürüme güncellendiğinde, veritabanını güncellemeden
-          önce ayrıca bir yedek alır. Yedekler güçlü şifrelemeyle korunur; yalnız yönetici
-          parolasıyla ya da kurtarma anahtarıyla açılır.
+          önce ayrıca bir yedek alır (son beş güncellemenin yedeği kalır). Saklama işleminden hemen
+          önce de bir yedek alınır (bkz. Saklama ve Anonimleştirme). Yedekler güçlü şifrelemeyle
+          korunur; yalnız yönetici parolasıyla ya da kurtarma anahtarıyla açılır.
         </p>
         <Ipucu>
           <p>
@@ -4001,20 +4222,76 @@ export default function KilavuzPage() {
           md. 11/23).
         </p>
 
+        <AltBaslik>USB belleğe yedek hatırlatması</AltBaslik>
+        <p>
+          Program son şifreli yedek indirmesinin tarihini tutar. Son indirmeden 30 gün geçince (hiç
+          indirme yoksa yönetici parolası kurulduktan 7 gün sonra) <Ekran to="/">Genel Bakış</Ekran>
+          &apos;ta “Şifreli Yedeği USB Belleğe Alın” kartı çıkar. Süreyi “Şifreli Veritabanı Yedeği”
+          kartındaki “Hatırlatma süresi” seçimiyle 7 ile 90 gün arasında değiştirebilirsiniz.
+          Program dosyanın USB belleğe gerçekten kopyalandığını bilemez; kart yalnız son indirmeyi
+          söyler. Tarih veritabanında değil veri klasöründe durduğu için yedekten geri yükleme onu
+          geri sarmaz: yeni bir bilgisayarda kart, orada ilk şifreli yedek indirilene dek görünür.
+        </p>
+
+        <AltBaslik>USB bellekteki yedekler</AltBaslik>
+        <p>
+          USB belleğe (ya da okulun ağ diskine) aldığınız yedek programın dışındadır: program ona
+          ulaşamaz, onu silemez; saklama işlemi de ona dokunmaz. Onu saklamak ve zamanı gelince
+          silmek okulun sorumluluğundadır: düzeni okul müdürlüğü belirler, bellekteki yedeğin
+          güvenliğini onu kullanan personel sağlar (Yönerge md. 10/5: personel USB bellekteki
+          bilgilerin güvenliğini sağlar, USB ya da harici diske konan önemli veri şifrelenerek
+          saklanır). Yedek zaten şifrelidir; yine de belleği kilitli dolapta, bilgisayardan ayrı
+          saklayın. Önerilen düzen:
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            İndirilen yedek bilgisayarın İndirilenler klasörüne düştüyse onu USB belleğe taşıyın; bu
+            bilgisayarda kopya bırakmayın, Geri Dönüşüm Kutusu&apos;nu da denetleyin. Yedeği
+            e-postayla göndermeyin, ortak klasöre koymayın.
+          </li>
+          {/* Kullanıcı kararı (27.09.2026): "son iki yedek" önerisi onaylandı (tasarım §14.1
+              F11 ekleri, karar turu; docs/mevzuat/BENIOKU.md §4). Programın önerisidir, mevzuat
+              hükmü diye sunulmaz. */}
+          <li>
+            USB bellekte son iki yedeği tutun: yenisini aldığınızda daha eskilerini silin. Okul
+            müdürlüğü başka bir düzen belirleyebilir.
+          </li>
+          <li>
+            Saklama işleminden sonra yeni bir şifreli yedek alın ve işlemden önce alınmış USB
+            yedeklerini silin: eski yedekler silinen kayıtları taşımayı sürdürür.
+          </li>
+          <li>
+            Görev devrinden sonra da yeni bir şifreli yedek alın ve devirden önce alınmış USB
+            yedeklerini silin: onlar eski parolayla ve eski kurtarma anahtarıyla açılır, eski
+            parolayla birlikte devirden sonraki yedekleri de açtırır (bkz. Görev Devri).
+          </li>
+          <li>
+            Belleği başka bir işe vermeden ya da elden çıkarmadan önce içindeki yedekleri silin.
+          </li>
+          <li>
+            Bellek kaybolur ya da çalınırsa durumu hemen okul müdürlüğüne bildirin. Yedek
+            şifrelidir; başka bir bilgisayarda ancak alındığı günün yönetici parolasıyla ya da o
+            günün kurtarma anahtarıyla açılır, bugünkü parolayı değiştirmek onu korumaz. Kişisel
+            verilerin kanuni olmayan yollarla başkalarınca elde edilmesi hâlinde yapılacak bildirimi
+            (KVKK md. 12/5) okul müdürlüğü değerlendirir.
+          </li>
+        </ul>
+
         <AltBaslik>Yedekten geri yükleme</AltBaslik>
         <p>
           Yanlış veri girişinden sonra eski bir güne dönmek için Ayarlar → Güvenlik&apos;teki
           “Yedekten Geri Yükleme” kartında günlük yedeklerden birini seçin ya da elinizdeki yedek
           dosyasını yükleyin. Yedeğin alındığı dönemdeki yönetici parolasını ya da kurtarma
           anahtarını yazıp “Geri yükle”ye basın. O yedekten sonra girilen kayıtlar kalkar. Mevcut
-          veritabanı silinmez, veri klasöründe <Kod>db-onceki-…</Kod> adıyla kenara alınır. İşlemden
-          sonra gelen “Programı kapatıp yeniden açın” ekranındaki “Programdan çık” düğmesiyle (ya da
-          tepsideki simgeden “Çık”ı seçerek) programı kapatın ve yeniden açın; pencerenin çarpı
-          düğmesi programı kapatmaz. Ağ Kataloğu açıksa geri yükleme sırasında kapanır. Program
-          yeniden açılınca Ağ Kataloğunun ayarı geri yüklenen yedekten okunur: yedekte katalog
-          açıksa kendiliğinden kalkar; değilse Ayarlar → Ağ Kataloğu&apos;ndan yeniden açın ve Ağ
-          Doktoru&apos;nda beş denetimin geçtiğini görün (yedekteki port farklıysa güvenlik duvarı
-          kuralı da güncellenmelidir).
+          veritabanı silinmez, veri klasöründe <Kod>db-onceki-…</Kod> adıyla kenara alınır (saklama
+          işlemi bu dosyalardan 14 günden eski olanları siler). İşlemden sonra gelen “Programı
+          kapatıp yeniden açın” ekranındaki “Programdan çık” düğmesiyle (ya da tepsideki simgeden
+          “Çık”ı seçerek) programı kapatın ve yeniden açın; pencerenin çarpı düğmesi programı
+          kapatmaz. Ağ Kataloğu açıksa geri yükleme sırasında kapanır. Program yeniden açılınca Ağ
+          Kataloğunun ayarı geri yüklenen yedekten okunur: yedekte katalog açıksa kendiliğinden
+          kalkar; değilse Ayarlar → Ağ Kataloğu&apos;ndan yeniden açın ve Ağ Doktoru&apos;nda beş
+          denetimin geçtiğini görün (yedekteki port farklıysa güvenlik duvarı kuralı da
+          güncellenmelidir).
         </p>
         <p>
           Program hiç açılmıyorsa Windows&apos;ta Başlat menüsündeki “Kütüphane Defteri — Yedekten
@@ -4034,13 +4311,22 @@ export default function KilavuzPage() {
             Eski bilgisayarda <Ekran to="/ayarlar?tab=guvenlik">Ayarlar → Güvenlik</Ekran>&apos;teki
             “Şifreli Veritabanı Yedeği” kartından “Şifreli yedeği indir” ile yedek alıp USB belleğe
             kopyalayın. Yönetici parolasının ya da kurtarma anahtarının elinizde olduğunu
-            doğrulayın: yedek yalnız onlarla açılır.
+            doğrulayın: yedek yalnız onlarla açılır. Yedeği taşımadan hemen önce alın.
+          </li>
+          <li>
+            Aynı USB belleğe eski bilgisayarın veri klasöründeki <Kod>verilmis-kartlar.txt</Kod>{" "}
+            dosyasını da kopyalayın. Dosya kişisel veri taşımaz; verilmiş üye kartı numaralarının
+            kişisiz listesidir. Yedekten sonra basılmış bir kartın numarası yeni bilgisayarda başka
+            bir üyeye verilmesin diye gereklidir.
           </li>
           <li>
             Yeni bilgisayarın okul demirbaşı olduğunu doğrulayın, kütüphane masası hesabını açın ve
             programı o hesapta kurun (Windows&apos;ta kurulum yönetici onayı ister, kimliği BTR
             girer). Ağ Kataloğu kullanılıyorsa kurulumda “Yerel ağdan katalog taramasına izin ver
-            (güvenlik duvarı kuralı)” seçeneğini işaretli bırakın.
+            (güvenlik duvarı kuralı)” seçeneğini işaretli bırakın. Kurulumun sonunda program
+            açılırsa kurulum sihirbazında parola kurmadan kapatın; kurduysanız sorun değil: geri
+            yükleme o kurulumun güvenlik dosyasını <Kod>guvenlik-arsiv-…</Kod>, boş veritabanını{" "}
+            <Kod>db-onceki-…</Kod> adıyla kenara alır.
           </li>
           <li>
             Yedek dosyasını yeni bilgisayarın yedek klasörüne kopyalayın (Windows&apos;ta{" "}
@@ -4049,11 +4335,16 @@ export default function KilavuzPage() {
             simgeden “Çık”ı seçin; Windows&apos;ta Başlat menüsündeki “Kütüphane Defteri — Yedekten
             Geri Yükle” kısayolunu, Pardus&apos;ta uçbirimden{" "}
             <Kod>kutuphane-defteri --geri-yukle</Kod> komutunu çalıştırıp bu yedeği seçin. Eski
-            bilgisayardaki yönetici parolası ya da kurtarma anahtarı sorulur.
+            bilgisayardaki yönetici parolası ya da kurtarma anahtarı sorulur. Geri yükleme veri
+            klasörünü oluşturur; programı açmadan önce <Kod>verilmis-kartlar.txt</Kod> dosyasını
+            yeni bilgisayarın veri klasörüne koyun.
           </li>
           <li>
-            Programı açın; kitap, üye ve açık ödünç sayılarını eski bilgisayardaki son durumla
-            karşılaştırın.
+            Programı açın, kilidi eski bilgisayardaki yönetici parolasıyla açın; kitap, üye ve açık
+            ödünç sayılarını eski bilgisayardaki son durumla karşılaştırın. Sayılar tutunca yedek
+            klasörüne kopyaladığınız dosyayı silin: program elle konan dosyaları kendisi silmez, USB
+            bellekteki kopya yeter. Yeni bilgisayardan da bir şifreli yedek indirip USB belleğe
+            alın.
           </li>
           <li>
             Ağ Kataloğu kullanılıyorsa Ağ Doktoru&apos;nda beş denetimin geçtiğini görün. Yedekteki
@@ -4063,10 +4354,64 @@ export default function KilavuzPage() {
             değiştiyse katalog afişini yeniden basın ve yer imlerini güncelleyin (bkz. Ağ Kataloğu).
           </li>
           <li>
-            Yeni kurulum çalıştıktan sonra eski bilgisayardaki veri klasörünü ve yedekleri silin;
-            USB bellekteki yedeği bilgisayardan ayrı saklayın.
+            Yeni kurulum çalıştıktan sonra eski bilgisayardaki veri klasörünü ve yedekleri silin
+            (programı kaldırmak onları silmez); İndirilenler klasörünü ve Geri Dönüşüm
+            Kutusu&apos;nu da denetleyin. USB bellekteki yedekleri aşağıdaki “USB bellekteki
+            yedekler” düzenine göre saklayın.
           </li>
         </ol>
+
+        <AltBaslik>Geri yükleme provası</AltBaslik>
+        <p>
+          Bu akış programın kendi denetimlerinde “temiz bilgisayarda geri yükleme provası” olarak
+          sınanır: boş bir veri klasörüne şifreli yedek geri yüklenir, program açılır, kilit aynı
+          parolayla ve kurtarma anahtarıyla açılır, adlar, okul numaraları, katalog, üyelikler ve
+          açık ödünçler birebir çıkar.
+        </p>
+        <p>
+          Kendi yedeğinizin açıldığını görmek isterseniz (ör. bilgisayar değişmeden önce ya da yılda
+          bir) aynı provayı okulun başka bir demirbaş bilgisayarında yapın. Prova bu bilgisayardaki
+          veriye dokunmaz:
+        </p>
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>
+            Şifreli yedeği indirip USB belleğe alın; kurtarma anahtarının kâğıdını yanınıza alın.
+          </li>
+          <li>
+            Prova bilgisayarında programı kurun ya da (Windows&apos;ta) kurulum yapmadan çalışan
+            taşınabilir sürümü bir klasöre açın.
+          </li>
+          <li>
+            Yedeği o bilgisayarın yedek klasörüne kopyalayıp geri yükleme aracını çalıştırın
+            (taşınabilir sürümde Başlat menüsü kısayolu yoktur: klasördeki programı komut isteminden{" "}
+            <Kod>--geri-yukle</Kod> ile çalıştırın). Parola yerine{" "}
+            <strong>kurtarma anahtarını</strong> yazın; böylece kâğıttaki anahtarın da işlediğini
+            görürsünüz.
+          </li>
+          <li>
+            Programı açın, kilidi yönetici parolasıyla açın; kitap, üye ve açık ödünç sayılarını bu
+            bilgisayardakilerle karşılaştırın. Provada kayıt girmeyin.
+          </li>
+          <li>
+            Programdan “Çık” ile çıkın ve prova bilgisayarındaki veri, yedek ve günlük klasörlerini
+            silin (Windows&apos;ta <Kod>%LOCALAPPDATA%\KutuphaneDefteri</Kod>; Pardus&apos;ta{" "}
+            <Kod>~/.local/share/kutuphane-defteri</Kod> ve{" "}
+            <Kod>~/.local/state/kutuphane-defteri</Kod>). Programı kurduysanız kaldırın; kaldırmak
+            bu klasörleri silmez.
+          </li>
+        </ol>
+        <p>
+          Kâğıttaki anahtar yedeği açmazsa kütüphane bilgisayarındaki kayıtlar yerindedir: orada
+          “Kurtarma Anahtarını Yenile” kartından yeni bir anahtar üretip saklayın, yeni bir şifreli
+          yedek alın ve provayı o yedekle tekrarlayın.
+        </p>
+        <Ipucu>
+          <p>
+            Daha yeni bir sürümle alınmış bir yedeği eski sürüm programa geri yüklerseniz program
+            açılmaz ve “Program sürümü eski” iletisini verir: eski program yeni veriyi tanımaz,
+            açsaydı bozardı. Önce programı güncelleyin (bkz. Güncelleme).
+          </p>
+        </Ipucu>
 
         <AltBaslik>Kurtarma anahtarını yenilerseniz</AltBaslik>
         <p>
@@ -4100,9 +4445,11 @@ export default function KilavuzPage() {
           <p>
             Yenileme, başkasının eline geçmiş bir anahtara karşı koruma değildir: kayıtların
             anahtarı değişmez; eski yedekler ve veri klasöründe <Kod>guvenlik-arsiv-…</Kod> adıyla
-            saklanan önceki güvenlik dosyası eski anahtarla açılabilir. Anahtarın başkasının eline
-            geçtiğini düşünüyorsanız yönetici parolasını da değiştirin ve eski yedekleri gözden
-            geçirin.
+            saklanan önceki güvenlik dosyası eski anahtarla açılabilir ve onlarla birlikte eski
+            anahtar yenilemeden sonra alınan yedekleri de açtırır. Anahtarın başkasının eline
+            geçtiğini düşünüyorsanız okul müdürlüğünü bilgilendirin, kütüphane masası Windows
+            hesabının parolasını değiştirin ve USB bellekteki yedeklerin kimin elinde olduğunu
+            gözden geçirin; yönetici parolasını değiştirmek tek başına yetmez.
           </p>
         </Ipucu>
 
@@ -4141,6 +4488,137 @@ export default function KilavuzPage() {
             Program kişisel veri alanlarını şifreler, ama bu tam disk şifrelemesi değildir: sınıf ve
             şube, üye türü ve tarihler şifrelenmez. Bilgisayarın tamamını korumak için
             Windows&apos;ta BitLocker, Pardus&apos;ta LUKS disk şifrelemesi kullanın.
+          </p>
+        </Ipucu>
+      </Bolum>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* F11 (tasarım §4.4, E18): görev devri tek akıştır. Metin dürüsttür: kayıtların
+          şifreleme anahtarı değişmez; eski parola/anahtar eski bir yedekle ya da arşiv
+          dosyasıyla o anahtarı verir ve devirden SONRAKİ yedekleri de açar (TB17, TB23; F11
+          düzeltme turu — "kilidi artık açmaz" denmez, masa hesabının parolası değişir).
+          Atıflar fıkranın öznesine bağlıdır (KVKK 12/4: veri sorumlusu; Yönerge 6/4:
+          çalışması sona eren kullanıcı, görev değişikliğinde kıyasen). "İmha" denmez
+          (sözlük §1): eski kâğıt "yırtılarak yok edilir". */}
+      <Bolum id="gorev-devri">
+        <p>
+          Kütüphane yöneticisi tayin, görev değişikliği ya da emeklilikle ayrılınca yetki onda
+          kalmamalıdır. <Ekran to="/ayarlar?tab=guvenlik">Ayarlar → Güvenlik</Ekran>&apos;teki
+          “Görev Devri” kartı (yalnız yönetici kipinde) bunun tek yoludur. Üç adımı vardır:
+        </p>
+        <ol className="list-decimal space-y-2 pl-5">
+          <li>
+            <strong>Parola ve anahtar yenilenir.</strong> Görevi devreden ve görevi devralan
+            birlikte oturur. “Görev devrini başlat”a basın (daha önce görev devri yapılmışsa kart
+            önceki devrin adımlarını tamamlanmış gösterir ve düğmenin adı “Görev devrini yeniden
+            başlat”tır). Açılan pencerede “Mevcut yönetici parolası”nı görevi devreden, “Yeni
+            yönetici parolası”nı ve “Parola (tekrar)”ı görevi devralan yazar; sonra “Parolayı ve
+            anahtarı yenile”ye basın. Yeni parola en az 8 karakterdir ve eskisinden farklı
+            olmalıdır. Program aynı anda yeni bir kurtarma anahtarı üretir; bundan sonra kilidi yeni
+            parola ve yeni anahtar açar (eski parolanın sınırı aşağıda).
+          </li>
+          <li>
+            <strong>Yeni anahtar saklanır.</strong> Anahtar Görev Devri kartının içinde, “Kurtarma
+            Anahtarınız” panelinde bir kez gösterilir: yazdırın, PDF olarak USB belleğe kaydedin ya
+            da elle yazın, sonra iki grubunu geri yazarak doğrulayın (kurulumdaki gibi). Program
+            doğrulamadan kapanır ya da yeniden açılırsa anahtar ekrandan gider: kâğıda yazdıysanız
+            “Kurtarma Anahtarını Doğrula” kartından doğrulayın, yazmadıysanız görev devrini yeniden
+            başlatın.
+          </li>
+          <li>
+            <strong>Görev devri notu basılır.</strong> Doğrulamadan sonra kartta not bölümü açılır.
+            “Görevi devreden (adı soyadı)” ve “Görevi devralan (adı soyadı)” alanlarını doldurup
+            “Görev devri notunu indir”e basın. Adlar programda saklanmaz, yalnız basılan nota
+            yazılır; boş bırakırsanız notta elle doldurulacak çizgi çıkar. Not; teslim edilenleri
+            (yeni parolanın ikinci görevliye kapalı zarfla bildirilmesi, yeni anahtar zarfı,
+            kütüphane masası Windows hesabının değiştirilen parolası, okuyucu ve yazıcı, USB
+            bellekteki yedekler), notun düzenlendiği gündeki açık işlerin kişisiz sayılarını ve eski
+            yedeklerin durumunu yazar. Not son görev devrinin tarihini taşır: yeni bir devirde önce
+            “Görev devrini yeniden başlat”a basın. Üç kişi (görevi devreden, görevi devralan, okul
+            müdürü) imzalar; not müdürlükte saklanır.
+          </li>
+        </ol>
+        <p>
+          Kartın altındaki “Açık işler” listesi görevi devralana kalan işlerin sayılarını gösterir:
+          iade edilmemiş ödünç, geri alınmamış teslim, açık kayıp/hasar dosyası, sonuçlanmamış sayım
+          ya da ayıklama teklifi, onay bekleyen saklama işlemi gibi. Aynı sayılar nota basılır; not
+          kişi ve kitap adı taşımaz.
+        </p>
+        <Ipucu>
+          <p>
+            <strong>Sınırı bilin.</strong> Görev devri kayıtların şifreleme anahtarını değiştirmez;
+            yalnız parolanın ve kurtarma anahtarının açtığı kilit yenilenir. Bütün kayıtların yeni
+            bir anahtarla yeniden şifrelenmesi bu sürümde yoktur. Her yedek alındığı günün güvenlik
+            bilgisini taşır: devirden önce alınmış yedekler (bu bilgisayardaki günlük yedekler 14
+            gün içinde kendiliğinden silinir, güncelleme öncesi yedekler son beş güncellemeye kadar
+            kalır, parola kurulurken alınan yedek kendiliğinden silinmez; USB bellektekiler sizin
+            elinizdedir) ve veri klasöründe <Kod>guvenlik-arsiv-…</Kod> adıyla saklanan önceki
+            güvenlik dosyaları eski parola ve eski kurtarma anahtarıyla açılabilir. Eski parola ya
+            da eski anahtar bunlardan biriyle birlikte kayıtların anahtarını verir; o anahtar
+            devirden sonra alınan yedekleri de, bu bilgisayardaki güncel kayıtları da açar. Görev
+            devri bu yüzden görevi devredenin bu bilgisayara ve yedeklere erişimi kesildiğinde anlam
+            taşır. Kart ve not bu yedeklerin sayısını gösterir.
+          </p>
+        </Ipucu>
+        <p>
+          Kütüphane masası Windows hesabının parolasını da değiştirin ve yeni parolayı görevi
+          devredene vermeyin. Devirden sonra yeni bir şifreli yedek indirip USB belleğe alın ve
+          devirden önce alınmış USB yedeklerini silin (bkz. Yedek ve Güvenlik Dosyası, “USB
+          bellekteki yedekler”).
+        </p>
+        <p>
+          Eski kurtarma anahtarı kâğıdını, devirden önce alınmış yedekler saklandıkça müdürlükte
+          ayrı zarfta “Eski anahtar — [tarih] öncesi yedekler için” diye işaretleyip saklayın; o
+          yedekler kalmayınca kâğıdı yırtarak yok edin: gizli bilgi içeren atık evrak yok edilir
+          (Yönerge md. 10/3). Görevi devreden eski parolayı hiçbir yerde saklamaz ve kimseyle
+          paylaşmaz. Çalışması sona eren kullanıcı bilişim sistemlerinin kullanımına yönelik
+          şifreleri iade eder, erişim hakları kaldırılır (Yönerge md. 6/4); okulda kalan kişinin
+          görev değişikliğinde bu kural kıyasen uygulanır. Kanun, veri sorumlusunun ve veri
+          işleyenlerin öğrendikleri kişisel verileri Kanuna aykırı olarak başkasına
+          açıklayamayacağını ve işleme amacı dışında kullanamayacağını, bunun görevden ayrıldıktan
+          sonra da sürdüğünü söyler (KVKK md. 12/4). Veri sorumlusu okuldur; görevi devreden de
+          görevi sırasında öğrendiği kişisel verileri okulun bu kuralı gereği açıklamaz ve
+          kullanmaz.
+        </p>
+        <p>
+          Yönetici parolasının görevlendirilmiş en az iki kişide bulunması önerilir: devirden sonra
+          yeni parolayı ikinci görevliye de kapalı zarfla bildirin.
+        </p>
+      </Bolum>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* F11 (T11 v4, 27.09.2026 kullanıcı kararı): denetim GitHub'dan, yalnız düğmeyle;
+          ulaşılamama iletisi sunucudakiyle birebir (`updates.ULASILAMADI_MESAJI`). Hizmetin adı
+          bu bölümde açıkça yazılır: program dışarı hangi adrese çıktığını söyler (sözlük "Sürüm"). */}
+      <Bolum id="guncelleme">
+        <p>
+          Yeni sürüm olup olmadığını{" "}
+          <Ekran to="/ayarlar?tab=guncelleme">Ayarlar → Güncelleme</Ekran>&apos;deki “Şimdi denetle”
+          düğmesiyle öğrenirsiniz. Program açılışta ve kendi başına internete çıkmaz; denetim yalnız
+          bu düğmeyle yapılır ve kişisel veri taşımaz. Denetim, programın yayımlandığı GitHub
+          sayfasına sorulur: ekran kurulu sürümü ve yayımlanan son sürümü yan yana gösterir. Yeni
+          sürüm varsa Windows&apos;ta “Doğrula ve indir” kurulum dosyasını yine GitHub&apos;dan,
+          bütünlüğünü doğrulayarak indirir; programı tepsideki simgeden “Çık” ile kapatıp dosyayı
+          çalıştırın (kurulum yönetici onayı ister, kimliği BTR girer). Pardus&apos;ta yeni paket
+          indirme sayfasından alınıp kurulur. Program her sürüm geçişinden önce kendiliğinden bir
+          yedek alır; verileriniz kurulum klasörünün dışında durduğu için korunur.
+        </p>
+        <p>
+          Okul ağında GitHub engellenmiş olabilir. O zaman ekranda şu ileti çıkar: “GitHub&apos;a
+          ulaşılamadı; okul ağında engellenmiş olabilir. Yeni sürümü indir.okulapp.org&apos;dan elle
+          denetleyebilirsiniz.” İletinin altındaki <Kod>okulapp.org/kutuphane-defteri</Kod>{" "}
+          bağlantısı sayfayı tarayıcınızda açar: yeni sürümü orada görürsünüz, kurulum dosyaları{" "}
+          <Kod>indir.okulapp.org</Kod>&apos;dan iner. Program o adrese kendisi istek atmaz. Elle
+          indirilen kurulum dosyasının bütünlüğünü BTR, indirme sayfasındaki özet listesiyle
+          doğrular. Okul ağından GitHub&apos;a erişim istenirse talebi BTR, Ağ Kataloğu bölümündeki
+          erişim sınamasında anlatılan yoldan açar.
+        </p>
+        <Ipucu>
+          <p>
+            Güncellemeden sonra eski sürüm programı yeni veriyle açmaya çalışmayın: program veriyi
+            korumak için açılmaz ve “Program sürümü eski” der. Bu ileti daha yeni bir sürümle
+            alınmış bir yedeği eski programa geri yükleyince de çıkar; çözüm programı
+            güncellemektir.
           </p>
         </Ipucu>
       </Bolum>
@@ -4212,13 +4690,15 @@ export default function KilavuzPage() {
           Program günlerce kapanmadan açık kalabilir. Günde bir yapılması gereken işler bu yüzden
           açılışa değil tarihe bağlıdır: program açılışta ve açık kaldığı sürece saatte bir tarihi
           denetler; gün değiştiyse o günün şifreli yedeğini alır, 14 günden eski yedekleri siler ve
-          bilgisayarın ağ adresini denetler. Adres değiştiyse Ağ Doktoru&apos;nun “Katalog Durumu”
-          kartında adresin değiştiğini söyleyen ve “Afişi yeniden basın, yer imlerini güncelleyin.”
-          diyen uyarı çıkar (bkz. Ağ Kataloğu bölümü, “Adres değişirse”). Bir iş yapılamazsa (ör.
-          yönetici parolası henüz kurulmadıysa) bir saat sonra yeniden denenir. Yedek için kilidin
-          açılması gerekmez: kayıtlar kilitliyken de alınır. Bilgisayar kapalıyken ya da uykudayken
-          hiçbir iş yapılmaz; program açılınca ilk iş o günün yedeğidir, bilgisayar uykudan uyanırsa
-          yedek en geç bir saat içinde alınır.
+          bilgisayarın ağ adresini denetler. Aynı denetimde çok okunanlar listesi yenilenir ve
+          saklama süresi dolan kayıtlar taranır; tarama hiçbir kaydı değiştirmez, yalnız Genel
+          Bakış&apos;taki kartı günceller (bkz. Saklama ve Anonimleştirme). Adres değiştiyse Ağ
+          Doktoru&apos;nun “Katalog Durumu” kartında adresin değiştiğini söyleyen ve “Afişi yeniden
+          basın, yer imlerini güncelleyin.” diyen uyarı çıkar (bkz. Ağ Kataloğu bölümü, “Adres
+          değişirse”). Bir iş yapılamazsa (ör. yönetici parolası henüz kurulmadıysa) bir saat sonra
+          yeniden denenir. Yedek için kilidin açılması gerekmez: kayıtlar kilitliyken de alınır.
+          Bilgisayar kapalıyken ya da uykudayken hiçbir iş yapılmaz; program açılınca ilk iş o günün
+          yedeğidir, bilgisayar uykudan uyanırsa yedek en geç bir saat içinde alınır.
         </p>
 
         <AltBaslik>Uyku</AltBaslik>

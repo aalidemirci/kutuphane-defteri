@@ -9,6 +9,13 @@ migration gerekmez ve Django'nun şema karşılaştırmasına gölge düşürmez
 
 Damga her başarılı `migrate` sonrası yazılır. Damgadaki sürüm çalışan programdan
 YENİYSE program açılmaz: eski sürüm, yeni şemayı tanımadığı için veriyi bozardı.
+
+**İkinci hat (F11):** damga yoksa kapı açık kalırdı — ve geri yükleme damgayı
+SİLER (yedeğin hangi sürümle alındığı bilinmez). Daha yeni bir sürümün yedeği eski
+programa geri yüklenince veritabanının göç kaydı konuşur:
+`ensure_no_unknown_migrations` programın tanımadığı uygulanmış göç varsa aynı
+`SchemaTooNewError` (çıkış kodu 4) ile açılışı durdurur. Uçtan uca kanıt
+`desktop/tests/test_eski_surum_kapisi.py`'dedir (gerçek süreç, gerçek göç).
 """
 
 from __future__ import annotations
@@ -17,7 +24,7 @@ import json
 import logging
 import os
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -71,7 +78,9 @@ def _pre_key(pre: str) -> tuple[tuple[int, int | str], ...]:
     return tuple((0, int(part)) if part.isdigit() else (1, part.lower()) for part in parts)
 
 
-def version_key(value: str) -> tuple[tuple[int, ...], int, tuple[tuple[int, int | str], ...]]:
+def version_key(
+    value: str,
+) -> tuple[tuple[int, ...], int, tuple[tuple[int, int | str], ...]]:
     """Sürümü karşılaştırılabilir anahtara çevirir ("1.0.0-dev" < "1.0.0")."""
     head, _, pre = value.strip().partition("-")
     numbers: list[int] = []
@@ -105,6 +114,42 @@ def write_version_stamp(path: Path, app_version: str) -> None:
         "written_at": datetime.now().astimezone().isoformat(timespec="seconds"),
     }
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def ensure_no_unknown_migrations(unknown: Sequence[str], app_version: str) -> None:
+    """Veritabanında bu programın tanımadığı göç varsa açılışı durdurur (F11, ikinci hat).
+
+    Damga (`surum.json`) yoksa `ensure_stamp_compatible` geçer — geri yükleme
+    damgayı siler (`backup_restore.restore_database`), çünkü yedeğin hangi sürümle
+    alındığı bilinmez. Daha yeni bir sürümle alınmış yedek eski programa geri
+    yüklenirse kapı buradadır: veritabanının kendi göç kaydı, programın
+    tanımadığı adımları gösterir (`django_bootstrap.unknown_applied_migrations`).
+    Çıkış kodu ve başlık sürüm damgasıyla AYNIDIR (`SchemaTooNewError`, 4).
+
+    Göç adları YALNIZ günlüğe (`uygulama.log`) yazılır; kullanıcı iletisi sade Türkçedir
+    (27.09.2026 ana oturum kararı — sözlük §2 "iç kimlikler yüzeye çıkmaz" ve "Eski
+    program, yeni veri" satırı: kullanıcı metninde şema, migration, göç geçmez). Tanı
+    için BTR günlüğe bakar; iletinin ipucu günlük dosyasını anar. Günlüğe bütün adlar
+    yazılır (ileti kutusu taşması kaygısı günlükte yoktur).
+    """
+    if not unknown:
+        return
+    logger.error(
+        "Veritabanında bu sürümün (%s) tanımadığı %d göç var: %s",
+        app_version,
+        len(unknown),
+        ", ".join(unknown),
+    )
+    raise SchemaTooNewError(
+        "Bu veri, programın daha yeni bir sürümüyle güncellenmiş: veritabanında bu "
+        f"sürümün ({app_version}) tanımadığı değişiklikler var.",
+        hint=(
+            "Veriyi bozmamak için program açılmadı. Bu bilgisayardaki programı güncel "
+            "sürüme yükseltip yeniden açın. Bu durum daha yeni bir sürümle alınmış bir "
+            "yedeği eski programa geri yükleyince de görülür. Tanınmayan değişikliklerin "
+            "listesi programın günlük dosyasındadır (logs/uygulama.log)."
+        ),
+    )
 
 
 def ensure_stamp_compatible(path: Path, app_version: str) -> None:

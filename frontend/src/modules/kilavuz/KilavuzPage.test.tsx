@@ -248,8 +248,14 @@ import {
   KISI_DOKUMU_ADI,
   YONETIM_HESABI_ADI,
 } from "../dokumler/api";
+import { INDIRME_SAYFASI_ADI, ULASILAMADI_METNI } from "../guncelleme/UpdatePanel";
+import { DIS_YEDEK_KARTI_BASLIGI } from "../guvenlik/DisYedekKarti";
+import { GOREV_DEVRI_ADIMLARI, GOREV_DEVRI_BASLIGI } from "../guvenlik/GorevDevri";
 import { BAKANLIK_SISTEMI_AYARI } from "../kutuphane/BakanlikHatirlatmasi";
 import { ARA_SAYIM_ADI, YIL_SONU_SAYIMI } from "../sayim/api";
+import { ANONIM_KOPYA_IBARESI, SAKLAMA_ADRESI } from "../saklama/api";
+import { SAKLAMA_KARTI_BASLIGI } from "../saklama/SaklamaKartlari";
+import { BAG_BASLIGI, KALANLAR, KVKK_4_2_D, SILINECEK_BASLIGI } from "../saklama/SaklamaPaneli";
 import KilavuzPage, { KILAVUZ_BOLUMLERI } from "./KilavuzPage";
 
 function renderPage() {
@@ -294,7 +300,10 @@ const BEKLENEN_BASLIKLAR = [
   "İçe Aktarma",
   "Raporlar ve Çok Okunanlar",
   "Dökümler ve Dışa Aktarım",
+  "Saklama ve Anonimleştirme",
   "Yedek ve Güvenlik Dosyası",
+  "Görev Devri",
+  "Güncelleme",
   "Tepsi, Çıkış ve Gün Değişimi",
   "Ağ Kataloğu",
 ];
@@ -1886,7 +1895,10 @@ describe("KilavuzPage — Üyelik, Kart ve Belgeler (F6)", () => {
     expect(metin).toContain("(md. 10/1)");
     expect(metin).toContain("Listeleri daha önce aktardıysanız metni şimdi duyurun");
     expect(metin).toContain("programda saklanmaz");
-    expect(metin).toContain("programın kayıtları bugün kendiliğinden silmediğini");
+    // F11: metin saklama sürelerini ve onayı yazar ("bugün kendiliğinden silmez" sözü kalktı).
+    expect(metin).not.toContain("bugün kendiliğinden silmediğini");
+    expect(metin).toContain("kayıtların ne kadar saklandığını açıkça söyler");
+    expect(metin).toContain("süresi dolan kaydın onayınızla silindiğini");
     // Aydınlatma bölümün İLK alt başlığıdır (işin sırası: önce duyuru, sonra üyelik).
     const bolum = document.getElementById("uyelik") as HTMLElement;
     const altBasliklar = within(bolum)
@@ -1969,7 +1981,7 @@ describe("KilavuzPage — F6 ile değişen eski bölümler", () => {
     ).toEqual(new Set(["/kisiler?tab=uyeler"]));
   });
 
-  it("ödünç artık vardır: 'sonraki sürümde' sözleri kalkar, saklama taraması yok denir", () => {
+  it("ödünç artık vardır: 'sonraki sürümde' sözleri kalkar, saklama onaya bağlanır", () => {
     const { container } = renderPage();
     const metin = sayfaMetni(container);
 
@@ -1983,7 +1995,117 @@ describe("KilavuzPage — F6 ile değişen eski bölümler", () => {
     expect(bolumMetni("katalog")).toContain(
       "kurallar ödünç verilirken Dolaşım Masası'nda uygulanır",
     );
-    expect(bolumMetni("katalog")).toContain("o zamana kadar üyelik ve ödünç kayıtları silinmez");
+    expect(bolumMetni("katalog")).toContain("Süresi dolan kayıtlar kendiliğinden silinmez");
+    expect(bolumMetni("katalog")).not.toContain("saklama taraması sonraki bir sürümde");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F11 — Saklama ve Anonimleştirme (tasarım §6.4). Ekran adları `modules/saklama`
+// sabitlerinden; KVKK alıntısı backend `dolasim_belgeleri.KVKK_4_2_D` ile aynı metin.
+// ---------------------------------------------------------------------------
+describe("KilavuzPage — Saklama ve Anonimleştirme (F11)", () => {
+  it("süreleri, onayı, altı ay uyarısını, yedekleri ve belge ibaresini anlatır", () => {
+    renderPage();
+    const metin = bolumMetni("saklama");
+    expect(metin).toContain("kendiliğinden hiçbir şey silmez");
+    expect(metin).toContain(`“${KVKK_4_2_D}”`);
+    expect(metin).toContain("Anonimleştirme silme değildir");
+    expect(metin).toContain("ayrılıştan 2 yıl sonra kaydı silinir");
+    expect(metin).toContain("ders yılının sonundan 1 yıl sonra");
+    expect(metin).toContain("Sınıf kitaplığına teslim kişiye bağlı değildir");
+    expect(metin).toContain(SAKLAMA_KARTI_BASLIGI);
+    expect(metin).toContain("altı aydan uzun");
+    expect(metin).toContain("pre-anonim-…");
+    expect(metin).toContain(ANONIM_KOPYA_IBARESI);
+    // Sözlük §4.18: "imha" yalnız imha tutanağı bağlamında — burada yalnız okulun
+    // kendi kopyalarının silinmesi anlatılır.
+    expect(metin).not.toMatch(/imha/i);
+    expect(
+      screen.getAllByRole("link", { name: "Ayarlar → Saklama" }).map((a) => a.getAttribute("href")),
+    ).toContain(SAKLAMA_ADRESI);
+  });
+
+  it("neden, ne zaman, ne kalır, onay ve yedekler sırasıyla; ekran adları sabitlerden", () => {
+    renderPage();
+    const bolum = document.getElementById("saklama") as HTMLElement;
+    const altBasliklar = within(bolum)
+      .getAllByRole("heading", { level: 3 })
+      .map((h) => h.textContent);
+    expect(altBasliklar).toEqual([
+      "Süreler",
+      "Ne kalır",
+      "Onay",
+      "Yedeklerde kalan kopyalar",
+      "Resmî belgeler",
+    ]);
+    const metin = bolumMetni("saklama");
+    // Neden: KVKK 7/1 alıntısız atıf; ödünç kaydının amacı kitabın dönüşünü izlemektir.
+    expect(metin).toContain("(KVKK md. 7/1)");
+    expect(metin).toContain("ödünç kaydı, kitabın geri gelmesini izlemek için kişiye bağlıdır");
+    // Ekranın adları (modules/saklama sabitleri, sözlük §4.18).
+    expect(metin).toContain(`“${SILINECEK_BASLIGI}”`);
+    expect(metin).toContain(`“${BAG_BASLIGI}”`);
+    expect(metin).toContain("“Ne Kalır” kartı");
+    expect(metin).toContain("“Son İşlem” kartı");
+    // Yedeklerde kalan: işlem öncesi yedek, tetikte silinen güncelleme yedekleri, programın
+    // dokunmadığı dosyalar ve USB'deki kopyaların kuralı Yedek bölümünde.
+    expect(metin).toContain("yedek alınamazsa işlem yapılmaz");
+    expect(metin).toContain("pre-migrate-…");
+    expect(metin).toContain("db-onceki-…");
+    // 27.09.2026 kullanıcı kararı: işlem 14 günden eski önceki veritabanlarını siler (yaş
+    // adındaki geri yükleme tarihinden); elle silme önerisi yalnız daha yenileri içindir.
+    expect(metin).toContain("14 günden eski olanları da siler");
+    expect(metin).toContain("adındaki geri yükleme tarihinden okunur");
+    expect(metin).toContain("Daha yenileri yakın tarihli bir geri yüklemeden dönüş için kalır");
+    expect(metin).not.toContain("önceki veritabanı dosyalarına (db-onceki-…) ve yedek");
+    expect(metin).toContain("elle koyduğunuz dosyalara program dokunmaz");
+    expect(metin).toContain("“USB bellekteki yedekler”");
+    expect(metin).toContain("onay görevi devralana kalır");
+    expect(metin).toContain("kişi dökümünde de görünmez");
+    // Silme Yönetmeliği depoda yok: atıf yapılmaz (tasarım §6.4-4).
+    expect(metin).not.toMatch(/Yönetmeliği/);
+  });
+
+  it("“Ne kalır” listesi ekrandaki “Ne Kalır” kartıyla aynı sırada; “kişisiz” iddiası yok", () => {
+    renderPage();
+    const bolum = document.getElementById("saklama") as HTMLElement;
+    const baslik = within(bolum).getByRole("heading", { level: 3, name: "Ne kalır" });
+    const liste = baslik.nextElementSibling as HTMLElement;
+    const maddeler = within(liste)
+      .getAllByRole("listitem")
+      .map((li) => (li.textContent ?? "").replace(/\s+/g, " "));
+    // Sözlük §4.18: kartın maddeleri kılavuzun "Ne kalır" ara başlığıyla aynı sırayı izler.
+    const acilislar = [
+      "Ödünç, kayıp/hasar ve teslim kayıtları",
+      "Verilmiş kart numaraları",
+      "Resmî belgelerin ıslak imzalı asılları",
+      "Çok okunanların kapanmış dönemleri",
+      "Bedeli belirlenmiş ya da teslim alınmış",
+    ];
+    expect(maddeler).toHaveLength(KALANLAR.length);
+    acilislar.forEach((acilis, i) => {
+      expect(maddeler[i]).toMatch(new RegExp(`^${acilis}`, "u"));
+      expect(KALANLAR[i]).toMatch(new RegExp(`^${acilis}`, "u"));
+    });
+    // F11 düzeltme turu: bağı koparılan kayıt arşivdeki asılla eşleşebilir (KVKK 3/1-b).
+    const metin = bolumMetni("saklama");
+    expect(metin).not.toContain("kişisiz olarak kalır");
+    expect(metin).not.toContain("koparılarak anonim hâle getirilir");
+    expect(metin).toContain("“kişisel veri içermez” denmez");
+    expect(KALANLAR[0]).toContain("okul arşivindeki ıslak imzalı asılla eşleşebilir");
+    // Kod davranışıyla aynı: açık yükümlülükte bağ kalır, teslim listesi birlikte.
+    expect(metin).toContain("kişiyle bağı iş kapanana dek kalır");
+    expect(metin).toContain("dosyanın kişiyle bağı koparılana dek bekler");
+    expect(metin).toContain("sonuncusunun süresi dolunca koparılır");
+  });
+
+  it("aydınlatma metni, Kütüphane Politikası ve gün değişimi saklamaya bağlanır", () => {
+    renderPage();
+    expect(bolumMetni("uyelik")).toContain("(bkz. Saklama ve Anonimleştirme)");
+    expect(bolumMetni("tepsi-ve-cikis")).toContain("saklama süresi dolan kayıtlar taranır");
+    expect(bolumMetni("tepsi-ve-cikis")).toContain("tarama hiçbir kaydı değiştirmez");
+    expect(bolumMetni("kisiler")).toContain("Ayarlar → Saklama");
   });
 });
 
@@ -3543,5 +3665,179 @@ describe("KilavuzPage — Dökümler ve Dışa Aktarım (F10)", () => {
     );
     expect(yedek).toContain("“Kuralı ekle/güncelle” kuralı ayardaki portla yeniden yazar");
     expect(yedek).toContain("sabit adres ayırmayı yeni bilgisayarın ağ kartına taşımasını");
+  });
+});
+
+// F11 bakım kolu: dış yedek hatırlatması, kart defterinin taşınması, görev devri ve
+// güncelleme. Kart ve ileti adları ekrandaki sabitlerden okunur (sözlük §4.5, §4.6).
+describe("KilavuzPage — F11 bakım", () => {
+  it("yedek bölümü dış yedek kartını, süreleri ve kart defterinin taşınmasını anlatır", () => {
+    renderPage();
+    const yedek = bolumMetni("yedek");
+    expect(yedek).toContain(`“${DIS_YEDEK_KARTI_BASLIGI}” kartı çıkar`);
+    expect(yedek).toContain("7 ile 90 gün arasında");
+    expect(yedek).toContain("verilmis-kartlar.txt");
+    // F11 düzeltme turu: JSX'te etikete bitişik satır sonu boşluk bırakmaz — ad ile
+    // sonraki sözcük ayrı basılmalı ("verilmis-kartlar.txtdosyasını" değil).
+    expect(yedek).toContain("verilmis-kartlar.txt dosyasını yeni bilgisayarın veri klasörüne");
+    expect(yedek).not.toMatch(/\.txt(?=[a-zçğıöşü])/u);
+    // Kurucunun sonunda açılan sihirbazda parola kurulduysa geri yükleme onu kenara alır.
+    expect(yedek).toContain(
+      "kurulum sihirbazında parola kurmadan kapatın; kurduysanız sorun değil",
+    );
+    expect(yedek).toContain("Program sürümü eski");
+    expect(yedek).not.toMatch(/imha/i);
+  });
+
+  it("görev devri bölümü kartın adımlarını ve dürüst sınırı yazar", () => {
+    renderPage();
+    const bolum = bolumMetni("gorev-devri");
+    expect(bolum).toContain(`“${GOREV_DEVRI_BASLIGI}” kartı`);
+    expect(bolum).toContain("“Görev devrini başlat”");
+    expect(bolum).toContain("“Parolayı ve anahtarı yenile”");
+    expect(bolum).toContain("“Görev devri notunu indir”");
+    expect(bolum).toContain("şifreleme anahtarını değiştirmez");
+    expect(bolum).toContain("eski parola ve eski kurtarma anahtarıyla açılabilir");
+    expect(bolum).not.toMatch(/imha/i);
+    const baglanti = within(document.getElementById("gorev-devri") as HTMLElement).getByRole(
+      "link",
+      { name: "Ayarlar → Güvenlik" },
+    );
+    expect(baglanti).toHaveAttribute("href", "/ayarlar?tab=guvenlik");
+  });
+
+  it("güncelleme bölümü ulaşılamama iletisini ekrandakiyle birebir yazar", () => {
+    renderPage();
+    const bolum = bolumMetni("guncelleme");
+    expect(bolum).toContain(ULASILAMADI_METNI.replace(/\s+/g, " "));
+    expect(bolum).toContain("“Şimdi denetle”");
+    expect(bolum).toContain("Program o adrese kendisi istek atmaz");
+  });
+});
+
+// F11 kılavuz ve sözlük kolu: USB bellekteki yedeklerin kuralı (§6.4 "dış kopyalar okulun
+// elindedir; kural kılavuzda yazılıdır"), geri yükleme provası, görev devrinin alan adları ve
+// güncellemenin hedefi. Sunucu tarafı `test_bakim_kilavuz_metinleri.py` (atıflar fıkrada).
+describe("KilavuzPage — F11 yedekler, prova, görev devri ve güncelleme", () => {
+  it("Yedek bölümünün ara başlıkları iş sırasındadır", () => {
+    renderPage();
+    const bolum = document.getElementById("yedek") as HTMLElement;
+    const altBasliklar = within(bolum)
+      .getAllByRole("heading", { level: 3 })
+      .map((h) => h.textContent);
+    expect(altBasliklar).toEqual([
+      "USB belleğe yedek hatırlatması",
+      "USB bellekteki yedekler",
+      "Yedekten geri yükleme",
+      "Yeni bilgisayara taşıma",
+      "Geri yükleme provası",
+      "Kurtarma anahtarını yenilerseniz",
+      "Güvenlik dosyası bulunamazsa",
+    ]);
+  });
+
+  it("USB bellekteki yedek okulun sorumluluğundadır; önerilen düzen ve kayıp bellek", () => {
+    renderPage();
+    const yedek = bolumMetni("yedek");
+    expect(yedek).toContain("programın dışındadır: program ona ulaşamaz, onu silemez");
+    // F11 düzeltme turu: Yönerge 10/5'in öznesi personeldir; düzeni okul müdürlüğü belirler.
+    expect(yedek).toContain("okulun sorumluluğundadır: düzeni okul müdürlüğü belirler");
+    expect(yedek).toContain("güvenliğini onu kullanan personel sağlar (Yönerge md. 10/5:");
+    expect(yedek).toContain("Önerilen düzen:");
+    expect(yedek).toContain("USB bellekte son iki yedeği tutun");
+    expect(yedek).toContain("Okul müdürlüğü başka bir düzen belirleyebilir");
+    expect(yedek).toContain("Saklama işleminden sonra yeni bir şifreli yedek alın");
+    expect(yedek).toContain("Görev devrinden sonra da yeni bir şifreli yedek alın");
+    expect(yedek).toContain("Geri Dönüşüm Kutusu'nu da denetleyin");
+    expect(yedek).toContain("bugünkü parolayı değiştirmek onu korumaz");
+    expect(yedek).toContain("(KVKK md. 12/5) okul müdürlüğü değerlendirir");
+    // Kalıntı: taşımada yedek klasörüne elle konan dosyayı program silmez.
+    expect(yedek).toContain("program elle konan dosyaları kendisi silmez");
+    expect(yedek).toContain("Saklama işleminden hemen önce de bir yedek alınır");
+  });
+
+  it("geri yükleme provası: başka bir demirbaş bilgisayarda, kurtarma anahtarıyla, sonra silinir", () => {
+    renderPage();
+    const yedek = bolumMetni("yedek");
+    expect(yedek).toContain("“temiz bilgisayarda geri yükleme provası”");
+    expect(yedek).toContain("okulun başka bir demirbaş bilgisayarında yapın");
+    expect(yedek).toContain("Parola yerine kurtarma anahtarını yazın");
+    expect(yedek).toContain("Provada kayıt girmeyin");
+    expect(yedek).toContain("~/.local/state/kutuphane-defteri");
+    expect(yedek).toContain("kaldırmak bu klasörleri silmez");
+    expect(yedek).toContain("“Kurtarma Anahtarını Yenile” kartından yeni bir anahtar üretip");
+  });
+
+  it("görev devri: adımlar ve alan adları ekrandakiyle aynı; devirden sonra USB yedekleri", () => {
+    renderPage();
+    const bolum = bolumMetni("gorev-devri");
+    const [parolaAdimi, anahtarAdimi, notAdimi] = GOREV_DEVRI_ADIMLARI;
+    for (const adim of [parolaAdimi, anahtarAdimi, notAdimi]) {
+      expect(bolum).toContain(`${adim}.`);
+    }
+    for (const ad of [
+      "“Mevcut yönetici parolası”",
+      "“Yeni yönetici parolası”",
+      "“Parola (tekrar)”",
+      "“Görevi devreden (adı soyadı)”",
+      "“Görevi devralan (adı soyadı)”",
+      "“Açık işler”",
+    ]) {
+      expect(bolum).toContain(ad);
+    }
+    expect(bolum).toContain("devirden önce alınmış USB yedeklerini silin");
+    expect(bolum).toContain("gizli bilgi içeren atık evrak yok edilir (Yönerge md. 10/3)");
+    // Sözlük §1: kişiler hep "görevi devreden / görevi devralan" diye anılır.
+    expect(bolum).not.toMatch(/(?<!görevi )(?<!Görevi )devralanın/u);
+  });
+
+  it("görev devri: sınır dürüst, masa hesabı değişir, sonraki devrin düğmesi, atıflar öznesiyle", () => {
+    renderPage();
+    const bolum = bolumMetni("gorev-devri");
+    // F11 düzeltme turu: eski parola eski bir başlıkla devirden SONRAKİ yedekleri de açar
+    // (sunucu testi `test_gorev_devri.py::test_sinir_…` sabitler).
+    expect(bolum).not.toContain("kilidi artık açmaz");
+    expect(bolum).toContain("devirden sonra alınan yedekleri de, bu bilgisayardaki güncel");
+    expect(bolum).toContain("Kütüphane masası Windows hesabının parolasını da değiştirin");
+    expect(bolum).toContain("parola kurulurken alınan yedek kendiliğinden silinmez");
+    // Sonraki devirde kart eski devrin adımlarını gösterir; düğmenin adı farklıdır.
+    expect(bolum).toContain("“Görev devrini yeniden başlat”");
+    expect(bolum).toContain("notun düzenlendiği gündeki açık işlerin");
+    expect(bolum).not.toContain("devir günündeki");
+    // Yeni parolayı görevi devralan belirler; devreden onu "teslim" etmez.
+    expect(bolum).toContain("yeni parolanın ikinci görevliye kapalı zarfla bildirilmesi");
+    // Atıflar fıkranın öznesine ve koşuluna bağlı (Yönerge 6/4, KVKK 12/4).
+    expect(bolum).toContain("Çalışması sona eren kullanıcı");
+    expect(bolum).toContain("görev değişikliğinde bu kural kıyasen uygulanır");
+    expect(bolum).toContain("Veri sorumlusu okuldur");
+    expect(bolum).not.toContain("Görevi sona eren kullanıcı");
+  });
+
+  it("güncelleme: hedef GitHub, bağlantı ekrandakiyle aynı, dosyalar indir.okulapp.org'dan", () => {
+    renderPage();
+    const bolum = bolumMetni("guncelleme");
+    expect(bolum).toContain("programın yayımlandığı GitHub sayfasına sorulur");
+    expect(bolum).toContain("“Doğrula ve indir”");
+    expect(bolum).toContain(INDIRME_SAYFASI_ADI);
+    expect(bolum).toContain("kurulum dosyaları indir.okulapp.org'dan iner");
+  });
+
+  it("F11 sözlüğünün 'kullanılmaz' sözcükleri kılavuzda geçmez", () => {
+    const { container } = renderPage();
+    const metin = sayfaMetni(container);
+    for (const yasak of [
+      /dış yedek/i,
+      /harici yedek/i,
+      /otomatik silme/i,
+      /maskele/i,
+      /KVKK imhası/i,
+      /imha kuralı/i,
+      /\bRelease\b/,
+      /GitHub sürümü/i,
+      /restore/i,
+      /Silme,? Yok Etme/i,
+    ]) {
+      expect(metin).not.toMatch(yasak);
+    }
   });
 });

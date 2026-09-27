@@ -56,6 +56,36 @@ def has_pending_migrations() -> bool:
     return bool(executor.migration_plan(targets))
 
 
+def unknown_applied_migrations() -> list[str]:
+    """Veritabanına uygulanmış ama BU programın tanımadığı göçler (`uygulama.ad`).
+
+    Sürüm damgasının (`desktop/version.py`, `surum.json`) ikinci hattıdır: damga
+    yoksa (geri yükleme onu siler, elle silinmiş olabilir) daha yeni bir sürümün
+    şemasıyla yazılmış veritabanını eski program yine de açmamalıdır. Django
+    `migrate` tanımadığı uygulanmış göçü YOK SAYAR; eski program yeni şemaya eski
+    modelle yazar ve veriyi bozardı.
+
+    Yanlış alarm vermemek için yalnız programın TANIDIĞI uygulamalar sayılır
+    (yeni bir sürümde kaldırılmış bir uygulamanın eski kayıtları engel olmaz) ve
+    birleştirilmiş (squash) bir göçün `replaces` listesindeki adlar bilinir sayılır.
+    Göç tablosu yoksa (ilk açılış) liste boştur.
+    """
+    from django.db import connections
+    from django.db.migrations.loader import MigrationLoader
+
+    loader = MigrationLoader(connections["default"], ignore_no_migrations=True)
+    bilinen: set[tuple[str, ...]] = {tuple(anahtar) for anahtar in loader.disk_migrations}
+    uygulamalar = {str(anahtar[0]) for anahtar in loader.disk_migrations}
+    for goc in loader.disk_migrations.values():
+        bilinen.update(tuple(hedef) for hedef in (getattr(goc, "replaces", None) or ()))
+    uygulanmis = loader.applied_migrations or {}
+    return sorted(
+        f"{anahtar[0]}.{anahtar[1]}"
+        for anahtar in uygulanmis
+        if anahtar[0] in uygulamalar and tuple(anahtar) not in bilinen
+    )
+
+
 def run_migrations() -> None:
     """`migrate --no-input` — hata halinde açılış durur (pencere açılmaz)."""
     from django.core.management import call_command

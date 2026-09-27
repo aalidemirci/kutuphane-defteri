@@ -15,8 +15,8 @@
   indirme: okul no basılmaz (ad + sınıf yeter).
 - **Kütüphane aydınlatma metni** (E13, KVKK md. 10/1 + Aydınlatma Tebliği md. 4
   ve 5): veri sorumlusu, amaçlar, hukuki sebep ve yöntem, kimlerin gördüğü
-  (masadaki öğrenci görevliler DAHİL), aktarım, saklama (bugünkü gerçek — teknik
-  borç TB16: saklama taraması F11'de gelir), md. 11 hakları ve md. 13 başvuru
+  (masadaki öğrenci görevliler DAHİL), aktarım, saklama (F11: tasarım §6.4 kapsamı
+  aynen — süreler Kütüphane Politikası'ndan; TB16 kapandı), md. 11 hakları ve md. 13 başvuru
   yolu. Okul alanları `SchoolConfig`'ten (Okul Bilgileri ekranında düzenlenir);
   başvuru adresi ve e-posta basım isteğiyle gelir, saklanmaz. Kanun
   alıntıları `docs/mevzuat/6698-kvkk.md` metniyle BİREBİRDİR (test).
@@ -48,7 +48,7 @@ from apps.kutuphane.labels.card import line_height, member_type_text, wrap_text
 from apps.kutuphane.labels.geometry import mm_text
 from apps.kutuphane.labels.layout import FIT_SAFETY_MM
 from apps.kutuphane.labels.metrics import clean_text
-from apps.kutuphane.models import Loan, Membership
+from apps.kutuphane.models import LibraryPolicy, Loan, Membership
 from apps.okul import normalize
 from apps.okul.models import SchoolConfig
 from shared.letterhead import letterhead_context
@@ -520,6 +520,11 @@ KVKK_13_2: Final = (
     "Veri sorumlusu başvuruda yer alan talepleri, talebin niteliğine göre en kısa sürede ve "
     "en geç otuz gün içinde ücretsiz olarak sonuçlandırır."
 )
+#: KVKK md. 4/2-d (F11 — saklama bölümü; §6.4) — depodaki metinle BİREBİR (test sınar).
+KVKK_4_2_D: Final = (
+    "İlgili mevzuatta öngörülen veya işlendikleri amaç için gerekli olan süre kadar "
+    "muhafaza edilme."
+)
 #: Otomatik yedeklerin saklanması (desktop/backup.py: DEFAULT_KEEP_DAYS,
 #: DEFAULT_KEEP_PRE_MIGRATE) — metin bu değerlerle testte eşitlenir.
 YEDEK_GUN: Final = 14
@@ -549,8 +554,22 @@ def privacy_notice_context(
         "kvkk_5_2_c": KVKK_5_2_C,
         "kvkk_13_1": KVKK_13_1,
         "kvkk_13_2": KVKK_13_2,
+        "kvkk_4_2_d": KVKK_4_2_D,
         "yedek_gun": YEDEK_GUN,
         "yedek_guncelleme": YEDEK_GUNCELLEME,
+        "saklama": _saklama_sureleri(),
+    }
+
+
+def _saklama_sureleri() -> dict[str, int]:
+    """Saklama bölümünün süreleri (yıl) — Kütüphane Politikası'ndan (§6.4; F11)."""
+    politika = LibraryPolicy.load()
+    return {
+        "left_person_years": int(politika.retention_years_left_person),
+        "after_termination_years": int(politika.retention_years_after_termination),
+        "returned_loans_years": int(politika.retention_years_returned_loans),
+        "closed_cases_years": int(politika.retention_years_closed_cases),
+        "closed_deliveries_years": int(politika.retention_years_closed_deliveries),
     }
 
 

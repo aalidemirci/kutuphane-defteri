@@ -4,7 +4,7 @@
 // tarih YEREL tarihtir (`todayIso`): `toISOString()` UTC verir, gece yarısına
 // yakın alınan yedeğe bir önceki günün tarihini yazardı (CLAUDE.md §2).
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { api } from "../../lib/api";
 import { saveBlob } from "../../lib/download";
@@ -12,7 +12,11 @@ import { todayIso } from "../../lib/format";
 import Button from "../../ui/Button";
 import Card from "../../ui/Card";
 import Icon from "../../ui/Icon";
+import Select from "../../ui/Select";
 import { useSnackbar } from "../../ui/SnackbarProvider";
+import { guvenlikApi } from "./api";
+import type { DisYedekDurumu } from "./api";
+import { disYedekCumlesi, disYedekHatirlatmaCumlesi } from "./DisYedekKarti";
 
 function hataMesaji(error: unknown): string {
   return error instanceof Error ? error.message : "Şifreli yedek oluşturulamadı.";
@@ -23,20 +27,51 @@ function yedekDosyaAdi(): string {
   return `kutuphane-defteri-yedek-${todayIso()}.kdbak`;
 }
 
+/** Hatırlatma süresi seçenekleri (gün; sunucu 7-90 aralığını ayrıca denetler). */
+const SURE_SECENEKLERI = [7, 14, 30, 60, 90].map((gun) => ({
+  value: String(gun),
+  label: `${gun} gün`,
+}));
+
 export default function SifreliYedekleme({ parolaKurulu }: { parolaKurulu: boolean }) {
   const snackbar = useSnackbar();
   const [calisiyor, setCalisiyor] = useState(false);
+  // F11 dış yedek hatırlatması: son indirme tarihi (sunucu, indirmeyle yazar) + süre.
+  const [disYedek, setDisYedek] = useState<DisYedekDurumu | null>(null);
+
+  const disYedegiOku = useCallback(() => {
+    guvenlikApi
+      .disYedek()
+      .then(setDisYedek)
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (parolaKurulu) disYedegiOku();
+  }, [parolaKurulu, disYedegiOku]);
 
   async function indir() {
     setCalisiyor(true);
     try {
       const yedek = await api.postBlob("/backups/encrypted/");
       saveBlob(yedek, yedekDosyaAdi());
-      snackbar.success("Şifreli veritabanı yedeği indirildi.");
+      snackbar.success("Şifreli veritabanı yedeği indirildi. Dosyayı USB belleğe kopyalayın.");
+      disYedegiOku();
     } catch (error) {
       snackbar.error(hataMesaji(error));
     } finally {
       setCalisiyor(false);
+    }
+  }
+
+  const hatirlatma = disYedek ? disYedekHatirlatmaCumlesi(disYedek) : null;
+
+  async function sureDegisti(deger: string) {
+    try {
+      setDisYedek(await guvenlikApi.disYedekSuresi(Number(deger)));
+      snackbar.success("Hatırlatma süresi kaydedildi.");
+    } catch (error) {
+      snackbar.error(error instanceof Error ? error.message : "Hatırlatma süresi kaydedilemedi.");
     }
   }
 
@@ -67,6 +102,33 @@ export default function SifreliYedekleme({ parolaKurulu }: { parolaKurulu: boole
               {calisiyor ? "Şifreli yedek hazırlanıyor…" : "Şifreli yedeği indir"}
             </Button>
           </div>
+          {parolaKurulu && disYedek && (
+            <div className="mt-5 flex flex-wrap items-end gap-4">
+              <div className="min-w-48 flex-1 space-y-1">
+                <p className="text-body-medium text-on-surface">{disYedekCumlesi(disYedek)}</p>
+                {hatirlatma &&
+                  (disYedek.remind ? (
+                    <p
+                      role="status"
+                      className="flex items-start gap-2 rounded-shape-sm bg-tertiary-container px-3 py-2 text-body-small text-on-tertiary-container"
+                    >
+                      <Icon name="notification_important" size="sm" />
+                      <span>{hatirlatma}</span>
+                    </p>
+                  ) : (
+                    <p className="text-body-small text-on-surface-variant">{hatirlatma}</p>
+                  ))}
+              </div>
+              <Select
+                label="Hatırlatma süresi"
+                className="w-40"
+                options={SURE_SECENEKLERI}
+                value={String(disYedek.reminder_days)}
+                onChange={(e) => void sureDegisti(e.target.value)}
+                helperText="Genel Bakış bu süre dolunca hatırlatır."
+              />
+            </div>
+          )}
         </div>
       </div>
     </Card>

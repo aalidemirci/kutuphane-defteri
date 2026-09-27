@@ -37,8 +37,14 @@ açılmamışken hassas alanlar zaten okunamaz (şifreli token döner) ve yazıl
    - `GET setup/status/` — açılış sağlık denetimi; yanıtı kişisel veri içermez
      ve istek zaten oturum belirteci gerektirir. Kurulum sihirbazının YAZMA
      uçları kapalı kalır;
-   - `/api/v1/updates/` — kişisel veri içermeyen sürüm denetimi;
    - `/api/v1/app/quit/` — Çık (parolasız; tepsisiz Linux'ta tek çıkış yolu, TB13).
+
+   `/api/v1/updates/` kilitliyken KAPALIDIR (F11 düzeltme turu): sürüm denetimi
+   yalnız Ayarlar → Güncelleme'deki "Şimdi denetle" düğmesiyledir (T11 v4) ve o
+   ekran kilit açıkken görünür; kilit ekranı güncelleme ucunu çağırmaz. Önceki
+   muafiyetin gerekçesi ("kilit ekranında başlayan otomatik sürüm denetimi")
+   kalktı; kullanılmayan muafiyet kilitli programa GitHub'dan kurucu indirip
+   önbelleğe yazdırabilen gereksiz bir yüzeydi.
 
 Parola hiç kurulmamışsa ("kurulum" durumu) kapı bir şey yapmaz: kişi yazan
 uçları izin sınıfı (`permissions.RequiresAdminPassword`, 409) keser.
@@ -67,8 +73,6 @@ ALLOWED_PREFIXES = (
     # Açılış sağlık denetimi (bkz. dosya başlığı). YALNIZ bu tekil yol; kurulum
     # sihirbazının diğer uçları kapalıdır.
     "/api/v1/setup/status/",
-    # Kişisel veri içermez; kilit ekranında başlayan otomatik sürüm denetimi (F8).
-    "/api/v1/updates/",
 )
 # Kilitliyken izin verilen TEKİL yollar (tam yol eşleşmesi): Çık (F5, §4.2-4)
 # kilitliyken parolasızdır; tepsisiz Linux'ta tek çıkış yoludur (TB13). Ön ek

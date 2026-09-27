@@ -41,12 +41,27 @@ KVKK: çözülen içerik diske YALNIZ hedef veritabanı dosyası olarak yazılı
 Ayrı bir düz kopya bırakılmaz. Mevcut (bozuk) veritabanı da SİLİNMEZ:
 `db-onceki-<damga>.sqlite3` adıyla kenara alınır — veri kurtarma denemesi
 için tek nüsha oydu.
+
+KENARA ALINAN VERİTABANININ AKIBETİ (27.09.2026 kullanıcı kararı; tasarım §6.4
+"Yedeklerdeki kalıntı"): geri yükleme onu silmez; onaylı saklama tetiği, tetik
+anından 14 günden eski olanları `-wal`/`-shm` eşleriyle siler
+(`old_databases_before` + `remove_old_databases_named`, çağıran
+`apps.kutuphane.services.saklama`). Yaş dosyanın ADINDAKİ damgadan okunur, dosya
+zamanından değil: `os.replace` dosya zamanını korur, yani dosya zamanı kenara
+alınma anını değil eski veritabanına son yazılan anı söyler (program yaz tatilinde
+kapalı kaldıysa haftalar öncesini) — dosya zamanına bakılsa dün yapılan geri
+yüklemenin dönüş yolu ertesi tetikte silinirdi. Damga değişmez (taşıma, kopyalama,
+virüs tarayıcısı dosya zamanını değiştirebilir) ve `-wal`/`-shm` eşleri aynı damgayı
+taşıdığı için bir çift birlikte karar görür.
 """
 
 from __future__ import annotations
 
 import logging
+import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -69,6 +84,16 @@ logger = logging.getLogger("kutuphane_defteri.restore")
 SQLITE_MAGIC = b"SQLite format 3\x00"
 # Kenara alınan eski veritabanının ad öneki (integrity ipucu bu adı anar).
 OLD_DB_PREFIX = "db-onceki"
+#: Kenara alınan veritabanının adındaki damga: geri yükleme anının YEREL saati,
+#: saniyesiyle (`_swap_database_files`). Saklama tetiği dosyanın yaşını bundan okur.
+OLD_DB_STAMP_FORMAT = "%Y-%m-%d-%H%M%S"
+#: SQLite'ın yan dosyaları; kenara alınan veritabanının adıyla yanına taşınır.
+_SQLITE_EKLERI = ("-wal", "-shm")
+#: Programın ürettiği adlar: `db-onceki-<damga>.sqlite3` ve `-wal`/`-shm` eşleri. Bu
+#: biçimde olmayan (elle konmuş, yol ayırıcılı) ada saklama tetiği dokunmaz.
+_OLD_DB_NAME_RE = re.compile(
+    rf"^{re.escape(OLD_DB_PREFIX)}-(\d{{4}}-\d{{2}}-\d{{2}}-\d{{6}})\.sqlite3(?:-wal|-shm)?$"
+)
 
 _SOURCE_CURRENT = "guncel"
 _SOURCE_EMBEDDED = "gomulu"
@@ -163,6 +188,97 @@ def restore_database(
 
 
 # ---------------------------------------------------------------------------
+# Kenara alınan veritabanının akıbeti (saklama tetiği — tasarım §6.4)
+# ---------------------------------------------------------------------------
+def old_database_stamp(name: str) -> datetime | None:
+    """`db-onceki-<damga>.sqlite3[-wal|-shm]` adındaki geri yükleme anı (yerel, saf).
+
+    Programın ürettiği biçimde olmayan ad (elle konmuş dosya, yol ayırıcılı ad,
+    geçersiz tarih) için None: saklama tetiği o dosyaya dokunmaz.
+    """
+    eslesme = _OLD_DB_NAME_RE.match(name)
+    if eslesme is None:
+        return None
+    try:
+        return datetime.strptime(eslesme.group(1), OLD_DB_STAMP_FORMAT)
+    except ValueError:
+        return None
+
+
+def is_old_database_file(name: str) -> bool:
+    """Ad bir önceki veritabanının KENDİSİ mi (`-wal`/`-shm` eşi değil)? Sayım içindir."""
+    return old_database_stamp(name) is not None and name.endswith(".sqlite3")
+
+
+def old_databases_before(data_dir: Path, cutoff: datetime) -> list[str]:
+    """Adındaki damga `cutoff`'tan ÖNCE olan önceki veritabanı dosyalarının ADLARI (SİLMEZ).
+
+    Eşler (`-wal`/`-shm`) aynı damgayı taşıdığı için veritabanıyla birlikte listelenir.
+    `cutoff` saat dilimli ise yerel saate çevrilir (damga yerel saattir). Yalnız saklama
+    tetiği ANINDA sorulur; silinemeyenler sonra yalnız ADLARIYLA yeniden denenir
+    (`remove_old_databases_named`). Ölçünün neden dosya zamanı değil ad olduğu modül
+    başlığındadır.
+    """
+    sinir = timezone.localtime(cutoff).replace(tzinfo=None) if timezone.is_aware(cutoff) else cutoff
+    try:
+        yollar = sorted(data_dir.glob(f"{OLD_DB_PREFIX}-*")) if data_dir.is_dir() else []
+    except OSError:
+        return []
+    adlar: list[str] = []
+    for yol in yollar:
+        damga = old_database_stamp(yol.name)
+        if damga is not None and damga < sinir and yol.is_file():
+            adlar.append(yol.name)
+    return adlar
+
+
+def _ana_ad(ad: str) -> str:
+    for ek in _SQLITE_EKLERI:
+        if ad.endswith(ek):
+            return ad[: -len(ek)]
+    return ad
+
+
+def remove_old_databases_named(data_dir: Path, names: Iterable[str]) -> tuple[list[str], list[str]]:
+    """ADI verilen önceki veritabanı dosyalarını siler: (silinen adlar, silinemeyen adlar).
+
+    * Yalnız programın ürettiği biçimdeki ad (`old_database_stamp` tanır); öbür adlara
+      dokunulmaz ve beklemede de kalmaz. Dosya zamanına BAKILMAZ: hangi dosyaların
+      silineceğini çağıran tetik anında belirler; sistem saati sonradan kaysa da
+      yeniden deneme yalnız bu adları siler (F11 düzeltme turu D-7 ilkesi).
+    * Önce veritabanının kendisi, sonra `-wal`/`-shm` eşleri. Kendisi silinemezse (ör. bir
+      veritabanı aracında açık) eşleri de SİLİNMEZ, bekler: kalan kopyanın işlenmiş
+      sayfaları `-wal`'da olabilir, eşini silmek o kopyayı eksik bırakırdı.
+    * Klasörde olmayan dosya silinmiş sayılmaz ama beklemede de kalmaz.
+    """
+    gruplar: dict[str, list[str]] = {}
+    for ad in dict.fromkeys(names):
+        if old_database_stamp(ad) is not None:
+            gruplar.setdefault(_ana_ad(ad), []).append(ad)
+    silinen: list[str] = []
+    kalan: list[str] = []
+    for ana in sorted(gruplar):
+        ana_kaldi = False
+        for ad in sorted(gruplar[ana], key=lambda a: (a != ana, a)):
+            if ana_kaldi:
+                kalan.append(ad)
+                continue
+            try:
+                (data_dir / ad).unlink()
+            except FileNotFoundError:
+                continue
+            except OSError:
+                logger.warning("Önceki veritabanı dosyası silinemedi: %s", ad)
+                kalan.append(ad)
+                ana_kaldi = ad == ana
+                continue
+            silinen.append(ad)
+    if silinen:
+        logger.info("Saklama tetiği: %d önceki veritabanı dosyası silindi.", len(silinen))
+    return silinen, kalan
+
+
+# ---------------------------------------------------------------------------
 # İç yardımcılar
 # ---------------------------------------------------------------------------
 def _parse_state(raw: bytes) -> dict[str, Any] | None:
@@ -243,17 +359,17 @@ def _swap_database_files(db_path: Path, content: bytes) -> Path | None:
         temp.write_bytes(content)
         eski_hedef: Path | None = None
         if db_path.exists():
-            damga = timezone.localtime().strftime("%Y-%m-%d-%H%M%S")
+            damga = timezone.localtime().strftime(OLD_DB_STAMP_FORMAT)
             eski_hedef = db_path.with_name(f"{OLD_DB_PREFIX}-{damga}.sqlite3")
             db_path.replace(eski_hedef)
-            for ek in ("-wal", "-shm"):
+            for ek in _SQLITE_EKLERI:
                 kalinti = db_path.with_name(db_path.name + ek)
                 if kalinti.exists():
                     kalinti.replace(eski_hedef.with_name(eski_hedef.name + ek))
             logger.info("Önceki veritabanı kenara alındı: %s", eski_hedef.name)
         else:
             # Hedef yokken kalan başıboş WAL/SHM yeni dosyayı zehirlemesin.
-            for ek in ("-wal", "-shm"):
+            for ek in _SQLITE_EKLERI:
                 db_path.with_name(db_path.name + ek).unlink(missing_ok=True)
         temp.replace(db_path)
         return eski_hedef

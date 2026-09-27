@@ -27,6 +27,8 @@ const download = vi.hoisted(() => ({ saveBlob: vi.fn() }));
 
 vi.mock("./api", () => ({ guvenlikApi: guvenlik }));
 vi.mock("./SifreliYedekleme", () => ({ default: () => null }));
+// Görev Devri kartının kendi testi vardır (`GorevDevri.test.tsx`).
+vi.mock("./GorevDevri", () => ({ default: () => null }));
 vi.mock("./YedektenGeriYukleme", () => ({ default: () => null }));
 vi.mock("../../lib/download", async (importOriginal) => {
   const gercek = await importOriginal<typeof import("../../lib/download")>();
@@ -245,6 +247,20 @@ describe("GuvenlikAyarlari", () => {
     // Doğrulanınca anahtar bellekten bırakılır (panel kalkar) ve durum yeniden okunur.
     await waitFor(() => expect(screen.queryByTestId("kurtarma-anahtari")).toBeNull());
     expect(guvenlik.durum.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it("görev devrinin anahtarı üstteki panelde değil, Görev Devri kartında bekler", async () => {
+    guvenlik.durum.mockResolvedValue(DOGRULANMAMIS);
+    bekleyenKurtarmaAnahtariniYaz(YENI_ANAHTAR, "gorev-devri");
+    ekranaBas();
+
+    expect(
+      await screen.findByText(/Görev devrinin yeni kurtarma anahtarı aşağıdaki “Görev Devri”/),
+    ).toBeInTheDocument();
+    // Panel (anahtar) üstte çizilmez; doğrulama ve yenileme kartları da anahtar beklerken yok.
+    expect(screen.queryByTestId("kurtarma-anahtari")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Doğrula" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Kurtarma anahtarını yenile" })).toBeNull();
   });
 
   it("yenilemede yanlış parola: ileti gösterilir, yeni anahtar gösterilmez", async () => {

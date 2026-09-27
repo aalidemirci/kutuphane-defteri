@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from django.urls import path
 
-from apps.okul import views, views_app, views_calendar, views_mode, views_pool
+from apps.okul import views, views_app, views_calendar, views_mode, views_pool, views_yedek
 
 urlpatterns = [
     # Arayüzden düzenli çıkış (tasarım §4.2-4, TB13). Görevli kipinde gövdede yönetici
@@ -156,6 +156,12 @@ urlpatterns = [
         "backups/encrypted/",
         views.EncryptedBackupDownloadView.as_view(),
         name="encrypted-backup-download",
+    ),
+    # F11 dış yedek hatırlatması (§16 risk 13): son indirme + süre; kilit ve kip keser.
+    path(
+        "backups/external/",
+        views_yedek.DisYedekView.as_view(),
+        name="backup-external-reminder",
     ),
     # Yedekten geri yükleme (Güvenlik sekmesi — çalışan program içinden)
     path("backups/", views.BackupListView.as_view(), name="backup-list"),

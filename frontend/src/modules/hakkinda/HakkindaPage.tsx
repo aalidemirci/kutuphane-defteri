@@ -112,11 +112,11 @@ export default function HakkindaPage() {
               <li>
                 Program çevrimdışı çalışır; veriler yalnız bu bilgisayarda tutulur. Program açılışta
                 internete çıkmaz. Dış istek yalnız sizin başlattığınız iki durumda gider: Ayarlar →
-                Güncelleme'de “Şimdi denetle” düğmesine bastığınızda yayımlanan son sürümü soran
-                anonim denetim ve — ayarlardan açtıysanız — bir kitabın numarasından künye getiren
-                ISBN sorgusu. İkincisi varsayılan olarak kapalıdır ve dışarı yalnız kitabın
-                numarasını gönderir. Hiçbir durumda kişisel veri dışarı çıkmaz, Ağ Kataloğu ise
-                internete hiç çıkmaz.
+                Güncelleme'de “Şimdi denetle” düğmesine bastığınızda yayımlanan son sürümü
+                GitHub&apos;dan soran anonim denetim ve — ayarlardan açtıysanız — bir kitabın
+                numarasından künye getiren ISBN sorgusu. İkincisi varsayılan olarak kapalıdır ve
+                dışarı yalnız kitabın numarasını gönderir. Hiçbir durumda kişisel veri dışarı
+                çıkmaz, Ağ Kataloğu ise internete hiç çıkmaz.
               </li>
               <li>
                 Ağ Kataloğu (varsayılan olarak kapalı) okul ağındaki bilgisayarlara ve tahtalara

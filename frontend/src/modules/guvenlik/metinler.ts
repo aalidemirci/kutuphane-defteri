@@ -72,8 +72,9 @@ export const YENILEME_METNI =
 
 /** Yenileme onay diyaloğu: sonuç (başlık soru, gövde sonuç — sözlük §3). */
 export const YENILEME_SONUCU_METNI =
-  "Yeni bir kurtarma anahtarı üretilir ve bir kez gösterilir. Zarftaki eski anahtar bu " +
-  "bilgisayarda kilidi artık açmaz.";
+  "Yeni bir kurtarma anahtarı üretilir ve bir kez gösterilir. Bu bilgisayarın güvenlik " +
+  "dosyasında kilidi bundan sonra yeni anahtar açar; zarftaki eski anahtar eski yedeklerle " +
+  "ve arşivlenen güvenlik dosyasıyla açmayı sürdürür (aşağıya bakın).";
 
 /**
  * Eski yedekler (backend `backup_restore`: yedek, alındığı günün güvenlik dosyasını

@@ -7,6 +7,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { ApiError } from "../../lib/api";
 import { SnackbarProvider } from "../../ui/SnackbarProvider";
 import { DENETIM_OLAYI } from "./denetimOlayi";
 
@@ -17,7 +18,7 @@ vi.mock("./api", () => ({
 }));
 vi.mock("../../lib/download", () => ({ saveBlob: mocks.saveBlob }));
 
-import UpdatePanel from "./UpdatePanel";
+import UpdatePanel, { INDIRME_SAYFASI, INDIRME_SAYFASI_ADI } from "./UpdatePanel";
 
 const GUNCEL = {
   current_version: "2026.9.0",
@@ -162,8 +163,45 @@ describe("UpdatePanel", () => {
     renderPanel();
     await denetle();
 
+    // Kullanıcı kararı (27.09.2026): ileti dürüsttür ve indirme alanını önerir.
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Güncelleme denetlenemedi. İnternet bağlantısını kontrol edin.",
+      "GitHub'a ulaşılamadı; okul ağında engellenmiş olabilir. Yeni sürümü " +
+        "indir.okulapp.org'dan elle denetleyebilirsiniz.",
     );
+  });
+
+  it("denetim düşünce elle denetleme bağlantısı dış tarayıcıda açılır; sunucu iletisi aynen", async () => {
+    const ileti =
+      "GitHub güncelleme denetimi geçici olarak sınırlandı ya da okul ağında engellendi. " +
+      "Daha sonra yeniden deneyin ya da yeni sürümü indir.okulapp.org'dan elle denetleyin.";
+    mocks.check.mockRejectedValue(new ApiError(502, "update_error", ileti));
+    renderPanel();
+    await denetle();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(ileti);
+    const baglanti = screen.getByRole("link", { name: new RegExp(INDIRME_SAYFASI_ADI) });
+    // pywebview `target="_blank"` bağlantıyı dış tarayıcıda açar; program istek atmaz.
+    expect(baglanti).toHaveAttribute("href", INDIRME_SAYFASI);
+    expect(baglanti).toHaveAttribute("target", "_blank");
+    expect(baglanti).toHaveAttribute("rel", "noreferrer");
+    expect(INDIRME_SAYFASI).toMatch(/^https:\/\/okulapp\.org\//);
+  });
+
+  it("denetim başarılıysa elle denetleme bağlantısı çizilmez", async () => {
+    mocks.check.mockResolvedValue(GUNCEL);
+    renderPanel();
+    await denetle();
+
+    expect(await screen.findByText("Uygulama güncel.")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("açıklama elle denetleme yolunu söyler; 'tek istek' demez (iki kapı vardır)", () => {
+    renderPanel();
+
+    // Hizmetin adı yalnız ulaşılamama iletisinde ve Hakkında'da geçer (sözlük "Sürüm").
+    expect(screen.getByText(/indir\.okulapp\.org'dan elle/)).toBeInTheDocument();
+    expect(screen.queryByText(/GitHub/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/tek isteği/)).not.toBeInTheDocument();
   });
 });

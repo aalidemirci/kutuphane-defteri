@@ -4,8 +4,17 @@ Yalnız sabit proje deposunun ``latest release`` kaydı okunur. Windows kurucusu
 GitHub'ın ``sha256:...`` varlık özetiyle; eski Release kayıtlarında bu alan yoksa
 aynı Release'teki ``SHA256SUMS.txt`` ile doğrulanmadan kullanıcıya verilmez.
 
-Çevrimdışı ilke (tasarım §1) korunur: denetim yalnız FE'den gelen istekle koşar,
-açılış zincirine girmez; ağ yoksa Türkçe hata döner, banner sessizce yutar.
+**Hedef GitHub'da kalır** (kullanıcı kararı 27.09.2026; tasarım T11, F5 ekleri 15
+kapandı): denetim `api.github.com`'a, kurulum dosyası indirmesi `github.com`'a
+gider. `indir.okulapp.org` paketlerin İNDİRME alanıdır (paketleme.yml R2
+yüklemesi); program o adrese istek ATMAZ. MEB ağında GitHub engellenebildiği için
+ulaşılamazsa ileti bunu dürüstçe söyler ve yeni sürümün `indir.okulapp.org`'dan
+elle denetlenebileceğini yazar (`ULASILAMADI_MESAJI` — yalnız metin).
+
+Çevrimdışı ilke (tasarım §1, T11) korunur: denetim yalnız kullanıcının "Şimdi
+denetle" düğmesiyle koşar; açılış zincirine, gün değişimi kapısına ya da arka plana
+girmez (koruma testleri: `apps/okul/tests/test_dis_istek_kapilari.py`,
+`desktop/tests/test_acilista_dis_istek.py`). Ağ yoksa Türkçe hata döner.
 """
 
 from __future__ import annotations
@@ -32,6 +41,14 @@ USER_AGENT = "Kutuphane-Defteri-Updater"
 INSTALLER_PATTERN = re.compile(r"^kutuphane-defteri-.+-win64-setup\.exe$", re.IGNORECASE)
 MAX_INSTALLER_BYTES = 250 * 1024 * 1024
 CACHE_SECONDS = 15 * 60
+
+#: Paketlerin elle indirildiği alan — program bu adrese istek ATMAZ, yalnız iletide anar.
+INDIRME_ALANI = "indir.okulapp.org"
+#: Denetim GitHub'a ulaşamadığında (kullanıcı kararı 27.09.2026, metin birebir).
+ULASILAMADI_MESAJI = (
+    "GitHub'a ulaşılamadı; okul ağında engellenmiş olabilir. Yeni sürümü "
+    f"{INDIRME_ALANI}'dan elle denetleyebilirsiniz."
+)
 
 _cache_lock = threading.Lock()
 _cached_release: tuple[float, ReleaseInfo] | None = None
@@ -150,14 +167,15 @@ def _read_url(url: str, *, max_bytes: int) -> bytes:
         if exc.code == 404:
             raise ReleaseNotFoundError("GitHub'da henüz yayımlanmış bir sürüm bulunmuyor.") from exc
         if exc.code in {403, 429}:
+            # 403 GitHub'ın hız sınırı da olabilir, okul ağının engeli de: ikisi söylenir.
             raise UpdateError(
-                "GitHub güncelleme denetimi geçici olarak sınırlandı; daha sonra yeniden deneyin."
+                "GitHub güncelleme denetimi geçici olarak sınırlandı ya da okul ağında "
+                "engellendi. Daha sonra yeniden deneyin ya da yeni sürümü "
+                f"{INDIRME_ALANI}'dan elle denetleyin."
             ) from exc
         raise UpdateError(f"GitHub güncelleme sunucusu HTTP {exc.code} hatası verdi.") from exc
     except (URLError, TimeoutError, OSError) as exc:
-        raise UpdateError(
-            "Güncelleme sunucusuna ulaşılamadı. İnternet bağlantısını kontrol edin."
-        ) from exc
+        raise UpdateError(ULASILAMADI_MESAJI) from exc
 
 
 def _safe_release_url(value: Any) -> str:
@@ -217,7 +235,11 @@ def _decode_payload(raw: bytes) -> Any:
     try:
         return json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise UpdateError("GitHub sürüm yanıtı okunamadı.") from exc
+        # Okul ağının engelleme sayfası (HTML) da buraya düşer.
+        raise UpdateError(
+            "GitHub sürüm yanıtı okunamadı; yanıt okul ağının engelleme sayfası olabilir. "
+            f"Yeni sürümü {INDIRME_ALANI}'dan elle denetleyebilirsiniz."
+        ) from exc
 
 
 def _latest_prerelease() -> ReleaseInfo:

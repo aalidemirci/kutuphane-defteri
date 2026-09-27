@@ -148,3 +148,25 @@ def test_programa_aktarim_iletisi_sunucununkiyle_aynidir() -> None:
     assert eslesme is not None, f"{_SAYIM_API} içinde `PROGRAMA_AKTARIM_KAPALI` yok."
     assert eslesme.group(1) == PROGRAMA_AKTARIM_MESSAGE
     assert "TMY" not in PROGRAMA_AKTARIM_MESSAGE
+
+
+# --- F11: güncelleme ulaşılamama iletisi (kullanıcı kararı 27.09.2026, metin birebir) ---
+_GUNCELLEME_PANELI = Path("frontend") / "src" / "modules" / "guncelleme" / "UpdatePanel.tsx"
+
+
+def test_guncelleme_ulasilamama_iletisi_sunucununkiyle_aynidir() -> None:
+    """Sunucuya hiç ulaşılamazsa ön yüz aynı iletiyi kendisi yazar (`ULASILAMADI_METNI`);
+    ön yüzde dize parçalarla (`"…" + "…"`) yazılmıştır, parçalar birleştirilip karşılaştırılır."""
+    from apps.okul.services.updates import INDIRME_ALANI, ULASILAMADI_MESAJI
+
+    eslesme = re.search(
+        r'^export const ULASILAMADI_METNI =\s*((?:"[^"]*"\s*\+?\s*)+);$',
+        _on_yuz_kaynagi(_GUNCELLEME_PANELI),
+        flags=re.MULTILINE,
+    )
+    assert eslesme is not None, f"{_GUNCELLEME_PANELI} içinde `ULASILAMADI_METNI` yok."
+    assert "".join(re.findall(r'"([^"]*)"', eslesme.group(1))) == ULASILAMADI_MESAJI
+    # Elle denetleme bağlantısının sayfası okulapp.org'dadır; dosyalar indirme alanından iner.
+    kaynak = _on_yuz_kaynagi(_GUNCELLEME_PANELI)
+    assert 'export const INDIRME_SAYFASI = "https://okulapp.org/kutuphane-defteri/";' in kaynak
+    assert INDIRME_ALANI in kaynak

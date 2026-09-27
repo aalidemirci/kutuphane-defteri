@@ -41,7 +41,7 @@ içermez.
 | Masaüstü | pywebview + **iki** waitress dinleyicisi. Yönetim: 127.0.0.1, rastgele port. Katalog: 8765 portu, varsayılan kapalı. Sistem tepsisi: Windows'ta pystray, Linux'ta Qt |
 | Paket | Windows: PyInstaller onedir + Inno Setup (**yönetici kurulumu**) · Linux: `.deb` (KS hattı) |
 | Güvenlik | **Zorunlu** yönetici parolası · Fernet alan şifrelemesi: adlar, okul no, kart no ve kişi metinleri · kimlik alanları için HMAC **kör indeks** · şifreli yedek · görevli/yönetici kipi |
-| Sürüm | CalVer (`VERSION`) + `surum.json` damgası + GitHub Release + indir.okulapp.org manifesti |
+| Sürüm | CalVer (`VERSION`) + `surum.json` damgası + GitHub Release (denetim buradan) + indir.okulapp.org (elle indirme alanı; T11, 27.09.2026 kullanıcı kararı) |
 
 Geliştirme ve test yalnız Docker'da yapılır, host'a Python ya da Node kurulmaz.
 Kapı zinciri `scripts/gates.sh` KS'den gelir ve **F0'dan itibaren** CI'da koşar.
@@ -82,7 +82,7 @@ Kapı zinciri `scripts/gates.sh` KS'den gelir ve **F0'dan itibaren** CI'da koşa
 | T8 | Barkod **salt rakamdır**, Code128-C ile basılır. Üreteç bağımlılıksızdır: `shared/barcode128.py`, bilinen test vektörleriyle | TR-Q klavyede okuyucunun "-" karakteri "*" olur (R3 §2). Harfli kodlarda ı/i karışması da beklenir. Rakam bu sorunları ortadan kaldırır |
 | T9 | Celery yoktur. Periyodik işler **"gün değişimi kapısından"** geçer: açılışta ve süreç içinde saatte bir, son çalışma tarihi bugünden eskiyse günlük yedek, rotasyon, saklama taraması ve IP denetimi koşar | Program tepside günlerce açık kalabilir. KS'nin "her gün yeniden açılır" varsayımı geçersizdir (SU-17, EK-17) |
 | T10 | SMS, veli bildirimi ve bildirim modülü yoktur. Yerine **tek kişilik iade hatırlatma pusulası** gelir | Veli verisi toplanmaz |
-| T11 *(v3: 23.09.2026)* | **Dış istek yalnız kullanıcının başlattığı iki kapıdan çıkar:** (1) **güncelleme denetimi** — "Denetle" düğmesiyle, indir.okulapp.org manifestinden; (2) **ISBN ile künye sorgusu** (U13, §8.5) — ayarla açılır, **varsayılan kapalıdır**, her sorguyu kullanıcı başlatır. Başka hiçbir dış bağlantı yoktur: **açılışta ağ yok, telemetri yok, kişisel veri çıkmaz** | MEB ağında GitHub engelli (R6 §4). KS'nin UpdateBanner'ı her açılışta dış istek atıyor (EK-5). U13'ten önce tek kapı vardı; künye sorgusu ikinci kapıyı açar, ama ilkenin özü (kullanıcı başlatır, açılışta ağ yok, dışarı kişisel veri çıkmaz) korunur. Cümlenin bütün kopyaları eşitlenir: CLAUDE.md §3, `docs/kurulum.md`, `HakkindaPage.tsx`, `denetimOlayi.ts`, §5.9 E3 |
+| T11 *(v4: 27.09.2026)* | **Dış istek yalnız kullanıcının başlattığı iki kapıdan çıkar:** (1) **güncelleme denetimi** — "Şimdi denetle" düğmesiyle, **GitHub Release'ten** (`api.github.com`; kurulum dosyası `github.com`'dan, SHA-256 doğrulamalı). GitHub'a ulaşılamazsa ileti dürüsttür: "GitHub'a ulaşılamadı; okul ağında engellenmiş olabilir. Yeni sürümü indir.okulapp.org'dan elle denetleyebilirsiniz." — program indir.okulapp.org'a istek ATMAZ, o alan paketlerin elle indirildiği yerdir; (2) **ISBN ile künye sorgusu** (U13, §8.5) — ayarla açılır, **varsayılan kapalıdır**, her sorguyu kullanıcı başlatır. Başka hiçbir dış bağlantı yoktur: **açılışta ağ yok, telemetri yok, kişisel veri çıkmaz** (koruma testleri: `apps/okul/tests/test_dis_istek_kapilari.py` kaynak düzeyinde, `desktop/tests/test_acilista_dis_istek.py` gerçek açılışta ve gün değişimi kapısının işlerinde ağ tuzağıyla — F11 düzeltme turu D-8) | *v4 (27.09.2026 kullanıcı kararı, F5 ekleri 15 kapandı):* denetim GitHub'da kalır; manifest yolu açılmadı. MEB ağında GitHub engellenebilir (R6 §4) — bu yüzden ulaşılamama iletisi elle indirme alanını gösterir. KS'nin UpdateBanner'ı her açılışta dış istek atıyor (EK-5). U13'ten önce tek kapı vardı; künye sorgusu ikinci kapıyı açar, ama ilkenin özü (kullanıcı başlatır, açılışta ağ yok, dışarı kişisel veri çıkmaz) korunur. Cümlenin bütün kopyaları eşitlenir: CLAUDE.md §3, `docs/kurulum.md`, `HakkindaPage.tsx`, `denetimOlayi.ts`, §5.9 E3 |
 | T12 | Servis katmanı baştan alt modüllere bölünür | KS'de `services.py` 2.800 satıra şişti (TB12) |
 | T13 | OpenAPI ve drf-spectacular yoktur. Tipler elle yazılır, serializer alan listesi anlık görüntüyle test edilir | KS/DD kalıbı |
 | T14 | **Kör indeks.** Okul no ve kart no için `HMAC-SHA256(HKDF(DEK, "kd-kor-indeks"), normalize(değer))` hesaplanır. Tam eşleşme bu indeksle yapılır, sıralama Python'da yapılır | U9. KS'nin "BLIND INDEX YOKTUR" kararından (crypto.py:28) bilinçli sapmadır. Okuma geçmişi okul no ve kart no üzerinden kişiye bağlanıyordu (GA-1, KM-3) |
@@ -94,14 +94,14 @@ Kapı zinciri `scripts/gates.sh` KS'den gelir ve **F0'dan itibaren** CI'da koşa
 
 | Öğe | Değer |
 |---|---|
-| Ortam değişkeni öneki | `KD_*`. KS adları alınır. **`CATALOG_DIR` ve `COURSE_ALIAS_FILE` alınmaz**, çünkü ders çizelgeleri bu projede yok. **`UPDATE_REPOSITORY` de alınmaz**, çünkü güncelleme denetimi GitHub API'sinden değil indir.okulapp.org manifestinden yapılır (T11). `KD_KATALOG_PORT` ve `KD_KATALOG_HOST` yalnız geliştirme ve test içindir; gerçek kaynak `KatalogAyari`dır |
+| Ortam değişkeni öneki | `KD_*`. KS adları alınır. **`CATALOG_DIR` ve `COURSE_ALIAS_FILE` alınmaz**, çünkü ders çizelgeleri bu projede yok. `KD_UPDATE_REPOSITORY` yalnız geliştirme ve test içindir (öntanımlı proje deposu); güncelleme denetimi GitHub Release'ten yapılır (T11 v4, 27.09.2026 kullanıcı kararı — önceki metin "manifestten" diyordu). `KD_KATALOG_PORT` ve `KD_KATALOG_HOST` yalnız geliştirme ve test içindir; gerçek kaynak `KatalogAyari`dır |
 | Veri dizini | `%LOCALAPPDATA%\KutuphaneDefteri` · XDG `kutuphane-defteri` |
 | Oturum | çerez `kd_oturum`, başlık `X-KD-Token` |
 | Yedek | `.kdbak`, MAGIC `KDBAK\x02`, HKDF bilgisi `KutuphaneDefteri/backup/...` · kör indeks HKDF bilgisi `kd-kor-indeks` |
 | Windows | yeni Inno AppId GUID · mutex **`KutuphaneDefteri` ve `Global\KutuphaneDefteri`**. Inno `AppMutex` **kullanılmaz**; kapatma yolu §4.2-5'tedir · adlı olaylar `KutuphaneDefteri.Goster` / `.Kapat` · AUMID `KutuphaneDefteri.Desktop` · exe `kutuphane-defteri.exe` |
 | Paket | `kutuphane_defteri.spec`, `rthook_kd.py`, logger `kutuphane_defteri`, iş parçacıkları `kd-wsgi` / `kd-katalog` / `kd-tepsi` (yalnız Windows) / `kd-gunluk` |
 | Güvenlik duvarı | `Kutuphane Defteri Katalog` (ASCII) · port kaynağı HKLM kayıt defteri değeri (§5.7) |
-| Site / dağıtım | palet `kd`, `src/data/kd-release.json`, R2 `kutuphane-defteri/` + `manifest.json` |
+| Site / dağıtım | palet `kd`, `src/data/kd-release.json`, R2 `kutuphane-defteri/` (elle indirme alanı; manifest yok, program oraya istek atmaz — T11 v4; F11 düzeltme turu D-10) |
 
 **Kimlik kalıntısı taraması** (F0 kapısı): büyük/küçük harfe duyarsız ve TR
 katlamalıdır. Kaynak kodu, basılı evrak şablonlarını ve ön yüz metinlerini kapsar.
@@ -338,6 +338,16 @@ yönetim sunucusu → sağlık denetimi → WebView2 → pencere. Farkları:
 6. **Temiz kapanış işareti** veri dizinine yazılır. Açılışta işaret yoksa panoya "son
    oturumdaki ödünç ve iadeleri kontrol edin" kartı ve son işlemler listesi düşer
    (T15).
+7. *F11 eki (27.09.2026) — eski program yeni veriyi açmaz, iki hat.* (a) Sürüm damgası
+   (`data/surum.json`): damgadaki sürüm çalışandan yeniyse açılış bütünlük, yedek ve
+   göçten ÖNCE 4 koduyla durur, damga ezilmez. (b) Geri yükleme damgayı SİLER (yedeğin
+   sürümü bilinmez); bu yüzden Django hazırlandıktan sonra, göç ve göç öncesi yedekten
+   önce veritabanının göç kaydı denetlenir: programın TANIDIĞI bir uygulamada
+   tanımadığı uygulanmış göç varsa aynı hata ve kod (`SchemaTooNewError`, 4; ileti
+   "…bu sürümün tanımadığı değişiklikler var…"). Kaldırılmış uygulamaların eski
+   kayıtları ve squash'ın `replaces` adları alarm vermez. Uçtan uca kanıt gerçek
+   süreçle koşar (`desktop/tests/test_eski_surum_kapisi.py`,
+   `test_geri_yukleme_provasi.py::test_yeni_surumun_yedegi_eski_programda_acilmaz`).
 
 ### 4.3 Tehdit modeli
 
@@ -438,14 +448,33 @@ Ayrıca `GÜVENLİK_DOSYASI_KAYIP` ve `YENİDEN_BAŞLAT_GEREK` durumları vardı
 
 **Görev devri** (SU-25). Güvenlik ekranında yönetici kipinde çalışır:
 - parola değişir;
-- kurtarma sarmalı yeni anahtarla yeniden yazılır, eski anahtar bu kurulumun kilidini
-  artık açmaz (*F1 eki (22.09.2026):* "Kurtarma anahtarını yenile" F1'e çekildi; DEK
-  değişmediği için eski yedekler ve arşivlenen güvenlik dosyası eski anahtarla
-  açılabilir kalır — §14.1 F1 ekleri, 8);
+- kurtarma sarmalı yeni anahtarla yeniden yazılır; güncel güvenlik dosyasında kilidi
+  yalnız yeni anahtar açar (*F1 eki (22.09.2026):* "Kurtarma anahtarını yenile" F1'e
+  çekildi; DEK değişmediği için eski yedekler ve arşivlenen güvenlik dosyası eski
+  anahtarla açılabilir kalır — §14.1 F1 ekleri, 8);
 - yeni anahtar saklanır ve saklandığı doğrulanır (aynı damga);
 - devir-teslim notu (E18) basılır.
 
 Eski yedekler eski parola ve anahtarla açılabilir kalır; kılavuz bunu anlatır.
+*F11 düzeltme turu (27.09.2026, D-5):* sınır bundan geniştir — eski parola ya da eski
+anahtar, ESKİ bir güvenlik başlığıyla (devirden önceki yedek, `guvenlik-arsiv-*`,
+`pre-parola-*`) DEK'i verir; yedek anahtar çifti DEK'ten türediği için devirden SONRA
+alınan yedekler de açılır, arşiv `guvenlik.json` yerine konursa güncel veritabanı da.
+"Eski parola kilidi artık açmaz" hiçbir metinde yazılmaz; görev devri, görevi
+devredenin bu bilgisayara (masa hesabının parolası değişir — Yönerge 6/4 "erişim
+hakları kaldırılır") ve yedeklere erişimi kesildiğinde anlam taşır (TB17, TB23).
+
+*F11 eki (27.09.2026, bakım kolu):* ilk iki adım TEK sunucu çağrısıdır
+(`POST library/handover/start/` → `app_password.start_handover`): parola ve kurtarma
+sarmalı aynı atomik yazımla yenilenir (önce arşive kopya — "yarım devir" ara hâli
+yoktur), kurtarma bölümü doğrulama damgasız ve görev devri damgasıyla yazılır.
+Yeni parola eskisiyle aynı olamaz. Görev devri notu (E18, `POST
+library/handover/note/`) ancak güncel kurtarma bölümünde devir + doğrulama damgası
+varken basılır (aksi 409 `gorev_devri_eksik`); sonraki "Kurtarma anahtarını yenile"
+devir damgasını düşürür. Görevi devreden ve devralanın adları yalnız basım anında
+kullanılır, saklanmaz. DEK döndürme v1 dışında kalır (TB17, TB23): not ve kılavuz
+bunu sayılarıyla yazar. Uçlar `library/` önekindedir (kilitliyken 423, görevli
+kipinde 403); arayüz Ayarlar → Güvenlik → **Görev Devri** kartıdır.
 
 **Tepsi kip matrisi** (tepsi `KipDurumu`'nu okur, testle kilitlenir):
 
@@ -968,7 +997,7 @@ Personelin unvanı ve branşı modelde yoktur (§6.1).
 
 | Veri | Kural | Varsayılan |
 |---|---|---|
-| Hiç üye olmamış ve ayrılmış kişi | **Ayrılışta SİLİNMEZ** (F1 eki 7): kayıt kalır; saklama taraması aday gösterir, yönetici onayıyla silinir | süre F11'de kararlaşır (TB16) |
+| Hiç üye olmamış ve ayrılmış kişi | **Ayrılışta SİLİNMEZ** (F1 eki 7): kayıt kalır; saklama taraması aday gösterir, yönetici onayıyla silinir. *F11:* üye olmuş ayrılan kişi de aynı kuralla (açık işi yoksa) | **ayrılış + 2 yıl** (KULLANICI KARARI 27.09.2026; TB16 kapandı — §14.1 F11 ekleri S-1) |
 | Sonlanmış üyeliğin ödünç ve dosya bağları | `terminated_at + N` sonunda `membership=NULL` + `anonymized_at`. `override_reason` ve gerekçe metinleri temizlenir | N = 2 yıl |
 | Sonlanmış üyelik satırı + kişi kaydı | Açık yükümlülük yoksa aynı süre sonunda katı silinir | N = 2 yıl |
 | **Aktif** üyenin iade edilmiş ödünçleri | Ders yılı sonu + M sonunda kişi bağı koparılır, `override_reason` temizlenir | M = 1 yıl (A3) |
@@ -990,10 +1019,23 @@ bulunur:
 - `pre-migrate` yedeklerde **son 5 güncellemeye kadar**. KS bu yedekleri yaşa göre
   değil adede göre tutar. Onaylı anonimleştirme tetiği, tetik anından eski
   `pre-migrate` yedeklerini de siler;
+- geri yüklemenin veri klasöründe kenara aldığı önceki veritabanında
+  (`db-onceki-<tarih>-<saat>.sqlite3` ve `-wal`/`-shm` eşleri) — **tetik, adındaki tarihi
+  tetik anından 14 günden eski olanları siler**; daha yenileri yakın tarihli geri yüklemenin dönüş yolu
+  olarak kalır, gerekmiyorlarsa kütüphane yöneticisi siler (KULLANICI KARARI 27.09.2026 —
+  §14.1 F11 ekleri, karar turu KT-3);
 - kullanıcının indirdiği şifreli yedekler ve dış kopyalar (USB) okulun elindedir. İmha
   kuralı kılavuzda yazılıdır.
 
 Aydınlatma metni bu kapsamı aynen yazar.
+
+*F11 eki (27.09.2026):* kuralların ayrıntısı (ders yılı sonunun tanımı, kişi bağının F7
+kuralıyla tutarlılığı, şube tesliminin kapsam dışı kalması, tetiğin tek işlemi ve önizleme
+parmak izi, belge ibaresi) §14.1 **"F11 ekleri — S kolu"**ndadır. *F11 düzeltme turu:*
+yeniden eşleşmeye karşı üç bekletme kuralı (öğretmen teslimi belge no düzeyinde; kişisini
+tesliminden bulan dosya teslimiyle; açık ya da süresi dolmamış dosyaya bağlı ödünç dosyayla)
+ve bağı koparılan kaydın arşivdeki ıslak imzalı asılla eşleşebildiği sınırı — §14.1 **"F11
+ekleri — düzeltme turu"** D-1, D-3, D-12.
 
 ---
 
@@ -1434,7 +1476,7 @@ Bütün PDF'ler KS'nin evrak şablon sistemi ve `shared/pdf.py` tek kapısı üz
 | E15 | **Teslim listesi** (şube ya da öğretmen) + geri alma dökümü. Şube tesliminde Dayanıklı Taşınırlar Listesi işlevini görür | U11; TMY 32/5 ve 23/6'ya kıyasen, 23/4 (§9-11) | F7 |
 | E16 | Bağış ön kayıt listesi (komisyona sunulur) · karardan sonra **Bağış değerlendirme sonucu** (kabul/ret, gerekçeler, karar tarih/sayısı; VİF'e dayanak ve bağışçıya bilgi — "bağış kabul tutanağı" TMY'de yoktur; F8 ekleri 13) | Md. 10/3 · TMY 16/1, 13/2-c | F8 |
 | E17 | Alfabetik katalog dökümü (yazar / eser / konu) | Md. 8/1-a, 11/1 | F10 |
-| E18 | Görev devri notu | — | F11 |
+| E18 | Görev devri notu: devir ve doğrulama anları, teslim edilenler (boş kutu; masa hesabının parolası değişir), notun düzenlendiği günün açık işlerinin kişisiz sayıları, eski parolanın sınırı, eski yedekler ve eski kâğıdın akıbeti (TB17, TB23), üç imza; adlar yalnız basım anında (§4.4 F11 eki; F11 düzeltme turu D-5, D-6, D-18, D-19) | KVKK 12/4 (öznesi veri sorumlusu) · Yönerge 6/4 (görev değişikliğinde kıyasen) | F11 |
 | E19 | **Masa kartı**: görevli öğrenci için tek sayfa kullanım ve gizlilik uyarısı | KVKK 12/1 | F6 |
 | E20 | Okuma ödülü **iç çıktısı**: yalnız yönetici kipinde, "iç kullanım" ibareli, ağa, panoya ve E9'a girmez (profil yasağı testine bağlı) | Kılavuz 7 (öneri) | F10 |
 
@@ -1512,7 +1554,7 @@ imha kararı kalem düzeyindedir (28/5), ekonomik değeri olan hurdada 28/8.
     kipi
   - spec: segno, pystray, six
   - `giris.py`: `DESKTOP_RUNTIME_MODULES`
-  - `paketleme.yml`: manifest
+  - `paketleme.yml`: R2 yüklemesi (elle indirme alanı; program manifest okumaz — T11 v4)
 - **KS backend:**
   - `settings.py`: `ALLOWED_HOSTS` koşullu, `synchronous=FULL`, `secure_delete`,
     `KipMiddleware`, "ağ servisi sunmaz" docstring'inin ters çevrilmesi
@@ -1533,7 +1575,7 @@ imha kararı kalem düzeyindedir (28/5), ekonomik değeri olan hurdada 28/8.
   - `imports.py`, `excel_ogrenci.py`, `eokul.py`: gender, mutabakat, personel
     birleştirme
   - `setup.py`: sihirbaz sırası, demirbaş
-  - `updates.py`: manifest, izin listesi indir.okulapp.org
+  - `updates.py`: GitHub Release (izin listesi `github.com`, `api.github.com`), dürüst ulaşılamama iletisi (T11 v4)
 - **KS FE:**
   - `KurulumKapisi`, `GuvenlikKapisi`, `modules/kurulum`: parola ilk adım
   - `modules/guvenlik`: "Parolayı kaldır" ve `OgrenciFotograflari` çıkar, görev devri
@@ -1600,7 +1642,7 @@ ifadeleri ters çevrilir: `settings.py:3-7`, `server.py:8`, `docs/kurulum.md:83-
 | D10 | "Basıldı" işareti PDF üretilince konuyor | Onaylı işaret | F4 |
 | D11 | `.upper()` Türkçe değil, soyad sezgisi yanlış | `tr_upper` + yazar biçimi kuralı | F2 |
 | D12 | İstisna gerekçesi boş kalabiliyor, sonlandırma nedeni doğrulanmıyor | Zorunlu alan + serializer | F6 — kapandı (§14.1 F6 ekleri 12) |
-| D13 | Anonimleştirme eksik (üyelik satırı, not metinleri) | §6.4 | F11 |
+| D13 | Anonimleştirme eksik (üyelik satırı, not metinleri) | §6.4 | F11 — kapandı (§14.1 F11 ekleri S-1, S-2: sona ermiş üyelik satırı silinir; istisna gerekçesi ve açıklaması, kartsız ödünç gerekçesi, sorumlu notu temizlenir) |
 | D14 | Nadir eser denetimi ve komisyon bağı yok | §6.2 | F8 — kapandı (§14.1 F8 ekleri 5, 7; düzeltme turu 22, 23, 26) |
 | D15 | Ayıklamada kalem silme ve teklif geri çekme yok | §6.2 | F8 — kapandı (§14.1 F8 ekleri 2; düzeltme turu 25) |
 | D16 | Sayım fazlası eski barkodu raf alanına yazıyor | `surplus_barcode` | F9 — kapandı (§14.1 F9 ekleri 7) |
@@ -1641,7 +1683,7 @@ ifadeleri ters çevrilir: `settings.py:3-7`, `server.py:8`, `docs/kurulum.md:83-
 | **F8 Komisyon + ayıklama** | Komisyon · ayıklama (D7, D15, TMY yolu) · devir · nadir eser (D14) · bağış kararı → toplu katalog · E7, E8, E9, E16 · A8 kararı | Nadir eser ayıklanamaz · devir yalnız düzeye uygunsuzlukla · TMY yol eşlemesi testi · E9'da kişisel veri yok |
 | **F9 Sayım** | Anlık görüntü · iki ayrı seçenek: TMY 32/3 durdurması ve "hizmet arası" · iade her zaman açık · kuyruk · iptal · LOST uzlaştırma · **kayıp ve hasar dosyasının kayıttan düşme önerisinin düşülmesi** (TMY 27/1 + 10/1-e, kayıp/hasar tutanağıyla, komisyonsuz — F8 ekleri 34) · teslimdeki nüsha için kurul seçimi · D1, D4, D16, D17, D18 · E10 + **ekinde TMY 34/1 büyüklükleri** (A8; cetvel TKYS'de — F8 ekleri 13) | 32/3 durdurması açıkken edinim, kayıttan düşme, devir ve dosya çözümü kapalı, ödünç açık · hizmet arası açıkken yeni ödünç ve yeni teslim kapalı (F9 ekleri 27) · iki seçenek tutanakta ayrı satırda · iade hiçbir durumda kapanmaz · onayda durumu değişen kalem düşülmez · tutanakta ödünç alan kimliği yok · 32/7 |
 | **F10 Raporlar + dışa aktarım** | İstatistik (kişisiz, eşikli kırılımlar) · 10.000 eşiği (Md. 7) · çok okunanlar (k farklı üye; gün değişimi kapısına eklenir) + E12 · E11 (ciltsiz süreli yayın hariç), E17, E20 · dışa aktarım şeması + gidiş-dönüş · kişi dökümü · "Bakanlık sistemi kullanımda" hatırlatma ayarı · **sayıma "yıl sonu sayımı" işareti** (F9 ekleri K6 KARAR, 25.09.2026 — F10 sözleşmesine devredildi: işaretsiz sayımda E10 eki basılmaz ya da başlığı "Ara sayım — sayılar cetvele aktarılmaz" olur; bir alan + göç) | Gidiş-dönüş aynı kataloğu verir · §5.10-12 · profil yasağı testleri (§3) · ciltsiz süreli yayın E11'e girmez · işaretsiz sayımın eki cetvele aktarılacak sayı basmaz |
-| **F11 Bakım** | Dış yedek hatırlatması · saklama/anonimleştirme (gün değişimi kapısına eklenir; azami gecikme, `pre-anonim` rotasyonu, tetikte eski `pre-migrate` silme, BelgeIzi, kapanmış teslim) · görev devri (E18) · güncelleme (manifest, düğmeyle) | Eski exe yeni DB'yi açmaz · anonimleştirme sonrası yeniden basımda ibare var · açık yükümlülük varken kişi silinmez · temiz makinede geri yükleme provası |
+| **F11 Bakım** | Dış yedek hatırlatması · saklama/anonimleştirme (gün değişimi kapısına eklenir; azami gecikme, `pre-anonim` rotasyonu, tetikte eski `pre-migrate` silme, BelgeIzi, kapanmış teslim) · görev devri (E18) · güncelleme (GitHub Release, düğmeyle — T11 v4) | Eski exe yeni DB'yi açmaz · anonimleştirme sonrası yeniden basımda ibare var · açık yükümlülük varken kişi silinmez · temiz makinede geri yükleme provası |
 | **F12 Paketleme + saha kabulü** | Inno (yeni GUID, WebView2, iki mutex, kapatma olayı, güncelleme kipinde kural korunur) · `.deb` (ufw/firewalld) · `veri_sizintisi` ×2 · belgeler (kurulum, ağ kurulumu, yeni bilgisayara taşıma, kılavuz, masa kartı) · okulapp.org alanı (§17) · **ertelenen saha kapıları** | Temiz Windows 11'de uçtan uca: kurulum → sihirbaz → e-Okul → Excel katalog → etiket → dolaşım → ağdan arama → yedek/geri yükleme · Pardus'ta aynı zincir · tahtadan arama (S2'ye bağlı) · gerçek okuyucu |
 
 **Sıralama gerekçesi.** Ağ kataloğu (F5) dolaşımdan önce gelir. Katalog girildiği anda
@@ -2166,6 +2208,12 @@ Tahta, gerçek okul ağı ve Windows'a özgü davranışların saha kanıtı F12
     Bilgi notu hedefleri kaynak koddaki adresten türetir, yani notta yazan her zaman
     programın gerçekten gittiği adrestir. Denetimin manifeste taşınması ya da T11
     metninin düzeltilmesi kullanıcı kararıdır.
+    **Kullanıcı kararıyla kapandı (27.09.2026, F11):** denetim GitHub'da kalır; T11
+    (v4), CLAUDE.md §1 tablosu, §3 "Dış istek yalnız…" maddesi ve §6 "Sürüm"
+    maddesi GitHub Release'e göre düzeltildi. `indir.okulapp.org` paketlerin elle
+    indirme alanı olarak kalır (paketleme.yml R2 yüklemesi değişmedi); program o
+    adrese istek atmaz, ulaşılamama iletisinde yalnız anar. Bilgi notu hedefleri
+    bugünkü gibi kaynaktaki adresten türer.
 16. **F5 eki → F12 (saha).** Tahtadan erişim ve ekran klavyesiz gezinme (§5.10-15),
     eski Chromium ve Firefox ESR görünümü, güvenlik duvarı denetiminin yönetici
     olmayan masa hesabında çalışması, Windows'ta `SO_EXCLUSIVEADDRUSE` ile tüm
@@ -4014,6 +4062,466 @@ seçenek ve uygulanan her maddenin başındadır. Seçenekler kayıt için oldu�
     %95,49, dal %87,33). `makemigrations --check --dry-run`: "No changes detected" — göç
     değişmedi.
 
+**F11 ekleri — S kolu: saklama ve anonimleştirme (27.09.2026).** §6.4'ün uygulanması; tek
+göç `0010_saklama_ve_belge_izi` (bu fazın tek model değişikliği). Kurallar
+`apps/kutuphane/services/saklama.py`'dedir, testler `tests/test_saklama.py` ve
+`tests/test_saklama_uclari.py`. **D13 kapandı** (§13), **TB16 kapandı** (teknik borç).
+
+- **S-1 — §6.4 tablosu bir kural kümesidir.** Süreler `LibraryPolicy`'dedir (öbür dört süreyle
+  aynı kalıp, 1-10 yıl): yeni alan `retention_years_left_person` (KULLANICI KARARI
+  27.09.2026: ayrılış + 2 yıl). Ayrılmış kişi (üye olmuş ya da olmamış) KATI silinir; sona
+  ermiş üyeliğin kapalı ödünç ve dosya bağları koparılır ve üyelik satırı silinir (kartı
+  `CardRevocation`'a "Üyelik silindi" ile yazılır — okutulursa "iptal edilmiş kart";
+  `IssuedCard` kalır); aktif üyenin iade edilmiş ödünçleri ders yılı sonu + 1 yıl (A3);
+  kapanmış dosya kapanış + 2 yıl; kapanmış öğretmen teslimi geri alma + 2 yıl (AÇIK
+  GÜNCELLEMEYLE, `on_delete`'e güvenilmez). "İade edilmiş ödünç" = "İade edildi" ya da "Kayba
+  dönüştü" (kapanış anı). **"Ders yılı sonu"**: iade gününü kapsayan ders yılının bitişi; yaz
+  arasındaki iade bir sonraki ders yılının bitişine sayılır; ders yılı tanımlı değilse izleyen
+  30 Haziran. Kişi ancak bütün üyelikleri silinebilir ve bütün öğretmen teslimlerinin bağı
+  aynı tetikte koparılabilirken silinir (PROTECT); değilse bekler (`persons_held`).
+- **S-2 — D13: temizlenen metinler.** Ödünçte `override_reason`, `override_note` ve kartsız
+  ödünç gerekçesi (`cardless_reason` — kapalı liste ama şifreli gerekçe); kişisiz `cardless`
+  işareti kalır (DB kısıtı anonimleştirilmiş ödüncte boş gerekçeye izin verir). Dosyada
+  `responsible_note`. Üç tabloda `anonymized_at` + tutarlılık kısıtları
+  (`ck_loan_anonymized`, `ck_lossdamagecase_anonymized`, `ck_delivery_anonymized`).
+- **S-3 — kişi bağı F7'nin tek kuralıyla tutarlı.** Anonimleştirilmiş dosya hiçbir kişiye
+  yazılmaz: `person_case_q`, `section_case_q`, `case_person` ve ilişik anahtarı
+  `anonymized_at`'e bakar — üyelik bağı koparılınca `membership__isnull` doğru olur ve süzgeç
+  olmasa öğrencinin anonimleştirilmiş dosyası teslim bağı üzerinden ÖĞRETMENE yazılırdı (F10
+  düzeltme turu 15'in kurgusu; testli). Dosyanın ödünç ve teslim bağı KALIR (o satırların
+  kişi bağı kendi süreleriyle koparılır); öğretmen tesliminin bağı, kişiyi o teslimden bulan
+  (üyeliksiz) ve henüz anonimleştirilmemiş dosya varken koparılmaz — dosya kendi süresinden
+  önce kişisini yitirmesin. (Düzeltme turu D-1, D-3: teslim bağı belge no düzeyinde; bekletme
+  iki yönlüdür — dosya da teslimini, ödünç de dosyasını bekler.)
+- **S-4 — sapma: şube (sınıf kitaplığı) teslimi.** §6.4 "alan bağı koparılır" der; şube kişi
+  değildir (§6.3 "açık kalanlar"), bağı kalır. Yalnız öğretmen teslimi anonimleştirilir.
+- **S-5 — açık yükümlülük (kod kapısı).** Açık ödünç, açık teslim ve AÇIK dosya — "Bedel
+  teslim alındı"da bekleyen dahil (okulun açık işi; §6.4 "sessizce silinmez") — olan kişi ve
+  üyelik aday olmaz; tetik her kişi için `persons.open_obligations` ve `deletion_blocks`'u
+  yeniden sorar, biri doluysa bütün tetik geri sarılır (testli). Kullanıcının "Sil"i kendi
+  kuralıyla kalır (F7: bedeli teslim alınmış dosya "Sil"i engellemez) — saklama tetiği daha
+  sıkıdır.
+- **S-6 — çalışma biçimi.** Gün değişimi kapısına `saklama-taramasi` işi (hiçbir kaydı
+  değiştirmez; kişisiz özet ve onay bekleme başlangıcı `RetentionState`'e; tetikte
+  silinemeyen güncelleme öncesi yedeği yeniden siler — düzeltme turu D-7: ADIYLA, dosya
+  zamanına bakmadan). Genel Bakış: **"Saklama Süresi Dolan Kayıtlar"** ve
+  **"Bedel Bekleyen Dosyalar"** (bir yılı geçen bedel adımı — yıllık hatırlatma). Ayarlar →
+  **Saklama**: kişisiz önizleme, adlar yalnız "Silinecek kişileri göster" ile, "ne kalır",
+  son işlem, yedeklerdeki kalıntı. Onay: yönetici parolası + "geri alınamaz" kutusu +
+  önizlemenin **parmak izi** (SHA-256 — liste arada değiştiyse 409 `saklama_listesi_degisti`,
+  hiçbir şey yazılmaz). Uçlar yönetici kipinde; görevli izin listesi DEĞİŞMEDİ; tetik kişi
+  yazan uçlar listesindedir (`RequiresAdminPassword`).
+- **S-7 — tetik: tek işlem ve yedekler.** Sıra: `pre-anonim-<tarih>-<saat>.kdbak` (alınamazsa
+  tetik ÇALIŞMAZ; saat, aynı gün ikinci tetiğin sabahki yedeği yeniden kullanmaması içindir —
+  sözleşmedeki `pre-anonim-<tarih>` adına ek) → tek `transaction.atomic` (liste yeniden
+  hesaplanır ve parmak iziyle karşılaştırılır) → işlem kalıcı olunca tetik ANINDAN eski
+  `pre-migrate` yedekleri silinir (ölçü dosyanın yazılma zamanı) → `wal_checkpoint(TRUNCATE)`.
+  `desktop/backup.py` rotasyonu `pre-anonim`i günlük yedekler gibi 14 gün tutar. Geri
+  yüklemenin kenara aldığı `db-onceki-*` dosyalarına ve indirilen yedeklere program dokunmaz:
+  Saklama ekranı sayılarını, kılavuz ve aydınlatma metni akıbetini söyler. *(Karar turu KT-3
+  ile değişti: tetik `db-onceki-*`'nin 14 günden eskilerini siler; indirilen yedeklere yine
+  dokunmaz.)*
+- **S-8 — 6 ay.** Onay beklemesi, adayların ilk tespit edildiği günden ölçülür (`pending_since`;
+  aday kümesi boşalınca ve tetikten sonra sıfırlanır). Süre dolunca Genel Bakış kartında ve
+  Saklama ekranında kapatma düğmesi olmayan uyarı; işlem onaylanınca kalkar.
+- **S-9 — `BelgeIzi` ve ibare (KM-12, kod kapısı).** İz bırakan belgeler: E5, E6, E15 teslim
+  listesi ve geri alma dökümü (kişiyi adıyla anan, ıslak imzalı belgeler; E7 ve E10'daki adlar
+  §6.4 kapsamında değildir). İz kişisizdir (tür, tarih, belge no ya da dosya numarası, satır
+  sayısı, PDF'in SHA-256'sı) ve görünümde yazılır — belge üreticileri veritabanına yazmaz, iz
+  yazılamazsa belge yine verilir. Anonimleştirilmiş kayıttan (dosyanın ya da teslimin bağı
+  kopmuşsa) yeniden üretilen belgede kişi alanı "Anonimleştirildi" ve antetin altında
+  **"Anonimleştirilmiş kopya — ıslak imzalı asıl nüsha okul arşivindedir"** (§6.2 metni,
+  `documents/base.html`); iz `anonim_kopya` işaretlidir. Anonimleştirme izlere dokunmaz.
+- **S-10 — dondurulmuş sonuçlar.** Çok okunanların kapanmış penceresi ve sonlandırılmış E9
+  anonimleştirmeden sonra değişmez (test: beş farklı üyeli pencere, bütün bağlar koparılır,
+  yeniden hesap, aynı sıra; E9 `review_stats` aynı). Kişisiz ödünç satırı kalır;
+  sonlandırılmamış (taslak) raporun "farklı üye" sayısı bağı koparılan ödünçleri saymaz
+  (`_dolasim` zaten böyleydi).
+- **S-11 — TB24 değerlendirmesi.** `secure_delete` + tetik sonrası `checkpoint(TRUNCATE)`
+  anonimleştirmenin artığını WAL'den temizler (testli); `VACUUM` eklenmedi (özel kilit, dosya
+  boyu kadar yer, kazancı kuramsal) — TB24 gerekçesiyle kalır.
+- **S-12 — aydınlatma metni (E13)** §6.4 kapsamını aynen yazar: süreler politikadan, KVKK
+  4/2-d alıntısı (metinden doğrulandı) ve 7/1 atfı, onay ve altı ay, bedel dosyasının yıllık
+  hatırlatması, belge ibaresi, yedek süreleri ve tetiğin güncelleme yedeklerini silmesi.
+
+**F11 ekleri — B kolu: bakım — yedek, sürüm, görev devri, güncelleme (27.09.2026).** Model
+alanı ve göç YOK (bu kolun hiçbir kararı veritabanına yazmaz).
+
+- **B-1 — Dış yedek hatırlatması (§16 risk 13).** Son şifreli yedek indirmesinin anı
+  veritabanında değil veri dizinindeki `dis-yedek.json`'dadır (`apps/okul/services/dis_yedek.py`):
+  dış yedek bu bilgisayarın fiziksel olgusudur — veritabanında olsaydı geri yükleme onu geri
+  sarar, yeni bilgisayara taşınan veri "dış yedek alındı" derdi. Olayın kendisi
+  `encrypted_backup.create_encrypted_backup`'tır (program dosyanın USB'ye kopyalandığını
+  bilemez; kart "son indirme"yi söyler). Hatırlatma: son indirmeden 30 gün (ayar 7-90) sonra;
+  hiç indirme yoksa parola kurulumundan (`guvenlik.json` oluşturma damgası) 7 gün sonra.
+  Uç `GET/PUT backups/external/` (kilit ve kip keser); Genel Bakış kartı **Şifreli Yedeği USB
+  Belleğe Alın**, süre ayarı Güvenlik → Şifreli Veritabanı Yedeği kartında. Yazma hatası
+  indirmeyi durdurmaz.
+- **B-2 — Temiz makinede geri yükleme provası (kod kapısı).** Gerçek süreçlerle
+  (`desktop/tests/test_geri_yukleme_provasi.py` + alt süreç betiği `prova_betigi.py`):
+  eski makinede parola + doğrulanmış anahtar + uydurma kişi/katalog/üyelik/açık ödünç + dış
+  yedek; boş veri dizininde `--geri-yukle` (parolayla ve kurtarma anahtarıyla ayrı ayrı) →
+  `--autotest` → aynı parola/anahtarla kilit → çözülmüş adlar, okul no, katalog, üyelik ve açık
+  ödünç birebir. Kart defteri: taşınan `verilmis-kartlar.txt` yedekten sonra verilmiş kartı
+  korur; aynı bilgisayarda eski yedeğe dönüş defteri değiştirmez; defter taşınmazsa güvence
+  kalmaz (TB33 — bu sınır da testli ve taşıma kontrol listesinin gerekçesidir).
+- **B-3 — Eski exe yeni DB'yi açmaz: ikinci hat (§4.2-7).** Geri yükleme sürüm damgasını
+  sildiği için damga tek başına yetmiyordu: daha yeni sürümün yedeği eski programa geri
+  yüklenince program açılıyordu. `desktop.django_bootstrap.unknown_applied_migrations` +
+  `desktop.version.ensure_no_unknown_migrations` göç ve göç öncesi yedekten önce koşar; çıkış
+  kodu 4 ve başlık aynıdır, ileti "…tanımadığı değişiklikler…" der. Uçtan uca testler
+  (`test_eski_surum_kapisi.py`): damga + göç kaydı + yanlış alarm yok (kaldırılmış uygulama);
+  `docs/kurulum.md` §10.4 ve §11.
+- **B-4 — Görev devri tek akış (§4.4 F11 eki).** `app_password.start_handover` + `library/handover/`
+  uçları + Güvenlik → **Görev Devri** kartı; E18 `apps/kutuphane/gorev_devri.py` +
+  `documents/gorev_devri_notu.html` (gerçek uzunlukta veriyle en çok iki sayfa). Uçlar
+  `library/` önekindedir: kütüphane uç testi bütün uçların bu önekte olmasını ister ve açık
+  işler özeti kütüphane modellerini okur (`okul` `kutuphane`'yi import etmez). Notun atıfları
+  metinden doğrulandı: KVKK 12/4 (görevden ayrılınca da süren gizlilik), Yönerge 6/4 (çalışma
+  sona erince şifrelerin ve donanımın iadesi, erişim haklarının kaldırılması). "İmha"
+  kullanıcı metninde yok (sözlük §1): eski kâğıt "yırtılarak yok edilir".
+- **B-5 — TB17/TB23 değerlendirmesi.** DEK döndürme v1 dışında kalır (gerekçe teknik borçta:
+  kör indeks, `IssuedCard`/`CardRevocation`, yedeğe girmeyen kart defteri, yedek anahtarı ve
+  programın erişemediği USB yedekleri); iki kalem açık, belge ve kılavuz sınırı sayılarıyla
+  yazar.
+- **B-6 — Güncelleme (karar 1, F5 ekleri 15 kapandı).** Kod hedefi GitHub'da kalır; T11 v4,
+  CLAUDE.md §1/§3/§6, §2.3, §12, §17 düzeltildi. Ulaşılamama iletisi kullanıcı kararındaki
+  metindir (`updates.ULASILAMADI_MESAJI`; 403/429 ve okunamayan yanıt — engelleme sayfası —
+  da indirme alanını anar). Hizmetin adı Güncelleme ekranının açıklamasında geçmez (sözlük
+  "Sürüm"), iletide ve Hakkında'da geçer. Açılışta dış istek yok: kaynak düzeyinde kapalı
+  liste (`apps/okul/tests/test_dis_istek_kapilari.py` — ağ istemcisi import eden modüller ve
+  güncelleme işlevlerini çağıranlar) + gerçek açılışta ağ tuzağı
+  (`desktop/tests/test_acilista_dis_istek.py`, tuzağın kendini sınaması dahil). `version_key`
+  iki kopyasının eşitliği testlidir (`test_updates.py::test_version_key_iki_kopyasi_aynidir`).
+
+**F11 ekleri — ekranlar ve iki kolun bağlantıları (27.09.2026).** Göç DEĞİŞMEDİ (tek göç
+`0010_saklama_ve_belge_izi` kalır); görevli izin listesi değişmedi.
+
+- **E-1 — görev devri ↔ saklama.** Görev devrinin açık işler özetine (Görev Devri kartı ve
+  E18) **"Saklama süresi dolmuş, onay bekleyen kayıt"** satırı eklendi (`gorev_devri.acik_isler`
+  → `saklama.plan_hesapla`, kayıt yazmaz, yalnız sayı): onay ve altı ay sınırı görevi devralana
+  kalır. E18 açık işleri ikişer basar; satır sayfa bütçesini değiştirmez (en çok iki sayfa testi
+  yeşil).
+- **E-2 — E18 `BelgeIzi` bırakmaz (B kolunun açık sorusu, karar).** İz, KM-12'deki "arşiv
+  yükümlülüğü ize, KVKK yükümlülüğü içeriğe" ayrımı içindir: kişiyi adıyla anan ve saklama
+  süresiyle anonimleştirilen kayıttan yeniden basılabilen belgeler (E5, E6, E15). E18'in adları
+  hiç saklanmaz, yeniden basımı anonimleştirmeden etkilenmez; devir ve doğrulama damgası
+  `guvenlik.json`'dadır. `BelgeTuru`'na yeni değer ve göç eklenmedi.
+- **E-3 — "ne silinecek" önizlemesi.** Saklama ekranında "Süresi Dolan Kayıtlar" iki gruptur:
+  **"Silinecek"** (kişi kaydı, sona ermiş üyelik kaydı) ve **"Kişiyle bağı koparılacak (kayıt
+  kalır)"**; onay penceresi aynı ayrımı tekrarlar. "Silinecek kişileri göster" artık kişi kaydı
+  silinecekleri VE kişi kaydı kalıp yalnız sona ermiş üyelik kaydı silinecekleri ayrı tablolarda
+  verir (`saklama.silinecek_kisiler` → `scope` "person" | "membership" + `terminated_at`; aynı
+  plandan, tetikle birebir); "Adları gizle" listeyi kapatır, önizleme yenilenince adlar düşer.
+- **E-4 — saklama ↔ dış yedek.** İşlem USB bellekteki yedeklere dokunamaz. "Son İşlem" kartı,
+  son şifreli yedek indirmesi (`backups/external/`) son tetikten önceyse (ya da hiç yoksa) yeni
+  yedeği alıp eskilerini okul müdürlüğünün kararıyla silmeyi söyler ve Güvenlik'e bağlanır;
+  tetik sonrası ileti de yeni yedeği ister.
+- **E-5 — Görev Devri adım adım.** Kart yalnız o anki adımın işini gösterir; görev devrinin yeni
+  anahtarı modül belleğinde **"gorev-devri" kaynağıyla** bekler (`bekleyenAnahtar`) ve KARTIN
+  İÇİNDE aynı panelle (`KurtarmaAnahtariPaneli`) saklatılıp doğrulanır — Güvenlik ekranının
+  başında yalnız yönlendiren bant durur. Not indirilince 3. adım tamamlanmış görünür.
+- **E-6 — güncelleme iletisinin bağlantısı.** Denetim düşünce iletinin altında elle denetleme
+  bağlantısı durur: **`https://okulapp.org/kutuphane-defteri/`** (programın sayfası; dosyalar
+  indir.okulapp.org'dan iner). `indir.okulapp.org`'un kökü ve `kutuphane-defteri/` öneki dizin
+  sayfası vermez (27.09.2026 denetimi: 404) — bağlantı oraya verilemezdi. Bağlantı
+  `target="_blank"` ile açılır; pywebview onu dış tarayıcıda açar (`OPEN_EXTERNAL_LINKS_IN_BROWSER`
+  varsayılanı); program o adrese istek atmaz. Sayfa §17'deki ilk site eklemesiyle yayına girer
+  (F12); o güne dek bağlantı 404 verir. Ön yüzdeki ileti ile sunucununki eşitliği testlidir
+  (`test_on_yuz_sabitleri.py`).
+- **E-7 — Şifreli Veritabanı Yedeği kartı** hatırlatmanın durumunu da yazar: süre dolduysa
+  "Hatırlatma süresi doldu: …", dolmadıysa "Genel Bakış N gün sonra yeniden hatırlatır.".
+
+**F11 ekleri — kılavuz, sözlük ve kurulum belgesi (27.09.2026).** Kod ve göç değişmedi (üç
+küçük metin düzeltmesi dışında: K-5).
+
+- **K-1 — §6.4 "İmha kuralı kılavuzda yazılıdır" = USB bellekteki yedeklerin silme düzeni.**
+  Kılavuzun Yedek bölümünde "USB bellekteki yedekler" ve `docs/kurulum.md` §6.3 aynı altı maddeyi
+  yazar: İndirilenler'de kopya bırakmama · **son iki yedek** · saklama işleminden sonra yeni yedek
+  ve öncekilerin silinmesi · görev devrinden sonra aynısı · belleği elden çıkarmadan önce silme ·
+  kayıp bellekte okul müdürlüğüne bildirim (KVKK 12/5 alıntısız; bildirimin gerekip gerekmediğini
+  okul müdürlüğü değerlendirir — yedek şifrelidir). Sorumluluk Yönerge 10/5'e dayanır. "Son iki
+  yedek" programın **önerisidir** (metin "Önerilen düzen" der, okul müdürlüğü başka düzen
+  belirleyebilir; `docs/mevzuat/BENIOKU.md` §4). Kullanıcı metninde "imha" yoktur (sözlük §1
+  "Silme ve imha"). *("Son iki yedek" önerisi KULLANICI KARARI 27.09.2026 ile onaylandı —
+  karar turu KT-4.)*
+- **K-2 — elle konan yedek dosyası kalıntısı.** `rotate_backups` yalnız kendi adlarını yönetir;
+  taşımada yedek klasörüne kopyalanan `kutuphane-defteri-yedek-*` dosyası hiç silinmez ve §6.4'ün
+  "yedeklerdeki kalıntı" listesinde yoktu. Kod değişmedi: taşıma listesi (kılavuz, kurulum §7 madde 5)
+  sayılar tutunca o dosyanın silinmesini ister; saklama bölümü ve kurulum §6 programın elle konan
+  dosyaya ve `db-onceki-*`'ye dokunmadığını söyler. *(`db-onceki-*` için karar turu KT-3 ile
+  değişti: tetik 14 günden eskileri siler; metinler buna göre yazıldı.)*
+- **K-3 — geri yükleme provası okulun kendi denemesi olarak adım adım** (kılavuz, kurulum §7.1):
+  başka bir **demirbaş** bilgisayarda, parola yerine kurtarma anahtarıyla geri yükleme, parolayla
+  kilit, sayıların karşılaştırılması, sonra veri, yedek ve günlük klasörlerinin silinmesi
+  (kaldırma onları silmez). Kâğıttaki anahtar açmazsa "Kurtarma Anahtarını Yenile" + yeni yedek.
+- **K-4 — güncellemede hizmetin adı.** Sözlük "Sürüm" satırı: GitHub adı ulaşılamama iletisinde,
+  Hakkında'da, **kılavuzun Güncelleme bölümünde ve kurulum belgesinde** geçer (program dışarı hangi
+  adrese çıktığını söyler); Güncelleme ekranının açıklamasında geçmez (B-6 korunur). Kurulum §2 ve
+  §3.2 E-6'ya uyarlandı: elle denetleme programın sayfasından (`okulapp.org/kutuphane-defteri`),
+  dosyalar indir.okulapp.org'dan; oranın dizin sayfası yoktur.
+- **K-5 — sözlüğe uyum düzeltmeleri (başka kolların dosyaları, birer cümle).** Aydınlatma metni
+  "yedeklerin … saklanması ve **imhası**" → "**silinmesi**" (sözlük §1; sayfa bütçesi testi yeşil) ·
+  Görev Devri kartının 1. adımı "parolasını devreden, … devralan yazar" → "görevi devreden / görevi
+  devralan" (sözlük "Görev devri" satırı) · Saklama ekranı kılavuz bölümünü Başlık Düzeninde anar
+  ("Saklama ve Anonimleştirme").
+- **K-6 — kılavuzda eskimiş cümle.** Üyelik bölümü aydınlatma metni için "programın kayıtları
+  bugün kendiliğinden silmediğini" diyordu; artık sürelerin ve onayın yazıldığını söyler.
+- **K-7 — sözlük.** §1'e "Saklama ve anonimleştirme", "Silme ve imha", "Belge izi", "Geri yükleme
+  provası", "Eski program, yeni veri" satırları; "Yedek" ve "Sürüm" satırları genişledi; §4.2'ye
+  açılış iletilerinin başlıkları, §4.6'ya görev devrinin alan adları, §4.18'e "Ne Kalır" ve kılavuz
+  ara başlıkları ile USB kuralı satırı, yeni §4.19 Güncelleme ekranı. Testler:
+  `test_bakim_kilavuz_metinleri.py` (atıflar fıkrada — KVKK 4/2-d, 7/1, 12/5, Yönerge 10/3, 10/5;
+  süreler `LibraryPolicy`'den; kurulum §11 ↔ `desktop/errors.py`) ve `KilavuzPage.test.tsx`.
+
+**F11 ekleri — bütünleştirme (27.09.2026).** Kod ve göç değişmedi; bir test eklendi (BT-1).
+
+- **BT-1 — kod kapısının her maddesi bir testle.** Eski exe yeni DB'yi açmaz:
+  `desktop/tests/test_eski_surum_kapisi.py` (sürüm damgası, tanınmayan göç kaydı, kaldırılmış
+  uygulamanın eski kaydında yanlış alarm yok) ve
+  `test_geri_yukleme_provasi.py::test_yeni_surumun_yedegi_eski_programda_acilmaz` · yeniden
+  basımda ibare: `test_saklama.py::TestIbareVeBelgeIzi` (E6 ve E15, PDF metninde) · açık
+  yükümlülük varken kişi silinmez: `TestAcikYukumluluk` (açık ödünç, açık teslim, çözüm bekleyen
+  dosya — bu son durum bütünleştirmede eklendi: bedel adımına gelmemiş dosyanın kişisi ve üyeliği
+  kalır, dosyanın bağı koparılmaz; tetikte yeniden sorma ve geri sarma), `TestBedelBekleyen`
+  (bedel adımı), `TestKapanmisTeslim` (kişiyi tesliminden bulan açık dosya) · temiz makinede geri
+  yükleme provası: `desktop/tests/test_geri_yukleme_provasi.py` (gerçek alt süreç) · §6.4'ün her
+  satırı: `TestAyrilmisKisi`, `TestSonlanmisUyelik`, `TestIadeEdilmisOdunc`, `TestKapanmisDosya`,
+  `TestBedelBekleyen`, `TestKapanmisTeslim` · `pre-anonim` yedeği ve eski `pre-migrate` silme:
+  `TestTetik` ve `desktop/tests/test_backup_saklama.py` · 6 ay: `TestAltiAy` · çok okunanlar ve
+  E9: `TestDondurulmus` · açılışta dış istek yok: `apps/okul/tests/test_dis_istek_kapilari.py` ve
+  `desktop/tests/test_acilista_dis_istek.py` · D13:
+  `test_d13_uyelik_satiri_ve_not_metinleri_kapsamda`; TB16: `TestAyrilmisKisi` · görevli izin
+  listesi: `kip_izinleri.py` değişmedi; yeni uçlar §5.10-8 dolaşan testte kapalı
+  (`test_saklama_uclari.py::test_uclar_izin_listesinde_yok`, `test_gorev_devri.py` ve
+  `test_dis_yedek.py`'deki `test_gorevli_kipinde_kapali`).
+- **BT-2 — örnek belgeler** uydurma veriyle üretildi ve gözle denetlendi (depo dışında): E18 iki
+  sayfa (açık işler iki sütunda, eski yedeklerin sayısı ve en eskisinin tarihi, arşiv sayısı;
+  imza bloğu ikinci sayfada tam); saklama tetiğinden sonra yeniden basılan E6 ve E15'te antetin
+  altında çerçeveli ibare, kişi alanı "Anonimleştirildi", sınıf, açıklama ve imza altındaki ad
+  düşer; kaynak, tarihler ve bedel kaydı kalır.
+- **BT-3 — kapı.** Tam `bash scripts/gates.sh` yeşil (27.09.2026): depo sızıntısı (885
+  izlenen dosya) bulgusuz; backend `pytest` 4159 geçti, 2 atlandı (kapsam %95,57); masaüstü +
+  paketleme 677 geçti, 2 atlandı; ruff, ruff format, mypy (372 + 59 + 15 dosya); ön yüz
+  typecheck, eslint, prettier, vitest 125 dosya / 1373 test (kapsam: satır %95,61, dal %87,54).
+  `makemigrations --check --dry-run`: "No changes detected". Genişletilmiş depo sızıntısı
+  taraması (izlenen ve izlenmeyen 919 dosya) bulgusuz. Bir önceki koşuda masaüstü mypy,
+  F5'ten beri değişmemiş `desktop/tests/test_katalog_server.py`'deki iki
+  `type: ignore[import-untyped]` yorumunu "kullanılmayan" saydı; çalışma ağacındaki yerel mypy
+  önbelleği bayattı (aynı komut taze önbellekle ve yeniden koşuda temiz). Kod değişikliği
+  gerekmedi; CI temiz ağaçta koşar.
+
+**F11 ekleri — kararlar (27.09.2026).**
+
+- **KR-1 — KULLANICI KARARI 1 (27.09.2026): güncelleme denetimi GitHub'da kalır.** F5 ekleri
+  15 kapandı. Kod hedefi (`api.github.com` + `github.com`) değişmedi; T11 v4, CLAUDE.md §1/§3/§6,
+  §2.3 (D-10) ve §12/§17 buna göre yazıldı. `indir.okulapp.org` paket indirme alanıdır, program
+  oraya istek atmaz; ulaşılamama iletisi kararın metnidir (`updates.ULASILAMADI_MESAJI`).
+  Denetim yalnız "Şimdi denetle" düğmesiyle; açılışta ağ yok (B-6, D-8).
+- **KR-2 — KULLANICI KARARI 2 (27.09.2026): ayrılmış kişi ayrılıştan 2 yıl sonra silme adayı
+  olur** (`retention_years_left_person`, 1-10 yıl); silme yönetici onayıyla; açık ödünç, teslim
+  ya da dosyası olan kişi aday olmaz. TB16 kapandı (S-1, S-5).
+- **KR-3 — düzeltme turunun kod kararları** (tasarım kararı değişmedi, §6.4'ün "açık
+  yükümlülükte bağ koparılmaz" ilkesinin uygulanışı): öğretmen teslimi belge no düzeyinde
+  (D-1); kişisini tesliminden bulan dosya teslimini, dosyaya bağlı ödünç dosyasını bekler
+  (D-1, D-3); tetikte silinemeyen güncelleme yedeği ADIYLA yeniden denenir (D-7 — tek göç
+  `0010`'a bir alan eklendi, dal içi yayımlanmamış göç); kilit kapısında `updates/`
+  muafiyeti kalktı (D-9).
+- **KB-1 — KULLANICI KARARI (27.09.2026): seçenek (a) — belge no ve dosya numarası KALIR**
+  (karar turu KT-1). *Karardan önceki kayıt:* **(D-12) bağı koparılan kaydın arşivdeki asılla
+  eşleşmesi.** Kişiyle bağı koparılan teslim ve dosya satırı belge no'yu, dosya numarasını,
+  barkodu ve tarihleri taşır; okul arşivindeki ıslak imzalı E15/E6 asılları aynı numarayla
+  kişinin adını taşır (KVKK 3/1-b "başka verilerle eşleştirilerek dahi"). Seçenekler: (a)
+  bugünkü hâl + dürüst metin (uygulandı; aydınlatma metni, Saklama ekranı ve kılavuz "kişisel
+  veri içermeyen" demez, sınırı yazar) — **öneri: (a)**, çünkü asıl belge arşiv kuralına
+  tabidir ve program onu silemez, belge no ise E15'in yeniden basımının ve `BelgeIzi`'nin
+  anahtarıdır; (b) bağ koparılırken belge no ve dosya numarası da kişisiz bir sayıyla
+  değiştirilir (göç + E15/E6 yeniden basımı arşivdeki asılla eşleşemez, KM-12'nin "arşiv
+  yükümlülüğü ize" ayrımı zayıflar).
+- **KB-2 — KULLANICI KARARI (27.09.2026): seçenek (a) — görev devrinde DEK değişmez**; bugünkü
+  hâl + dürüst metin + masa hesabının parolası; DEK döndürme v1 sonrasına (karar turu KT-2).
+  *Karardan önceki kayıt:* **(D-5) görev devrinden sonra eski parolanın gücü.**
+  DEK değişmediği için eski parola ya da eski anahtar, eski bir başlıkla devirden SONRAKİ
+  yedekleri de açar. Seçenekler: (a) bugünkü hâl + dürüst metin + masa hesabının parolasının
+  değiştirilmesi (uygulandı) — **öneri v1 için: (a)**; (b) görev devri arşiv kopyası üretmesin
+  ve devirde veri klasöründeki `guvenlik-arsiv-*` ile `pre-parola-*` silinsin (tek başına
+  kapatmaz: 14 günlük günlük yedekler, güncelleme öncesi yedekler ve USB yedekleri eski başlığı
+  taşır; §4.4 F11 ekinin "önce arşive kopya" kararı değişir); (c) DEK'ten bağımsız, yalnız yeni
+  sarmallarla açılan bir yedek anahtarı ya da DEK döndürme (TB17 — v1 dışı; F12 sonrasına).
+
+**F11 ekleri — düzeltme turu (27.09.2026).** Denetimin 20 bulgusu yeniden doğrulandı (sondalar
+Docker'da, uydurma veriyle); hepsi gerçekti (biri — §2.3 manifest — iki kez raporlanmıştı).
+Her düzeltme kilitleyen testle; tasarım kararını değiştiren iki kalem KB-1 ve KB-2'dedir.
+
+- **D-1 — öğretmen teslimi belge no düzeyinde koparılır (orta).** Satır düzeyinde koparma aynı
+  belge no'nun öbür satırını öğretmene bağlı bırakıyordu: "Anonimleştirilmiş kopya" ibareli E15
+  "Teslim alan: Anonimleştirildi, <öğretmenin adı>" basıyordu (sonda). `plan_hesapla`: belgenin
+  bağı koparılmamış BÜTÜN satırları bu tetikte koparılabiliyorsa hepsi, değilse hiçbiri (açık
+  satır, açık dosyaya bağlı satır ya da süresi dolmamış satır belgeyi bekletir). Aynı tur:
+  kişisini teslim bağından bulan dosya, teslimi bu tetikte koparılmıyorsa bekler (yoksa
+  anonimleştirilmiş E6'nın "Teslim — belge no" satırı öğretmene yeniden bağlanırdı). Testler
+  `TestKapanmisTeslim` (üç yeni test; E15 ve geri alma dökümünde ad yok).
+- **D-2 — aydınlatma metni (E13) kodun gerçek davranışını yazar (orta).** "O güne dek iade
+  edilmemiş kaynak izlenebilir" kalktı; açık ödünç ya da kapanmamış dosyada üyelik ve bağların
+  iş kapanana dek kaldığı, süresi dolmamış başka kaydı olan kişinin beklediği, A3'ün iade edilen
+  ya da kayba dönüşen her ödünce (üyelik sürse de sona ermiş olsa da) uygulandığı, dosyaya bağlı
+  ödüncün dosyayla birlikte ve teslim listesinin birlikte koparıldığı yazıldı (Tebliğ md. 5/1-j).
+  Metin en uzun veriyle iki sayfada kaldı (test). Kılavuz aynı maddeleri yazar.
+- **D-3 — açık ya da süresi dolmamış dosyaya bağlı ödünç bekler (düşük).** Ödünç → dosya.loan →
+  dosya.membership zinciri anonimleştirilmiş ödüncü kişiye bağlıyordu (sonda). Kişi bağı
+  koparılmamış (bu tetikte de koparılmayacak) dosyaya bağlı ödünç iki süzgeçten de çıkar; böyle
+  ödüncü olan sona ermiş üyelik de silinmez. Testler: `TestAcikYukumluluk` (yeni test; mevcut
+  test artık "hiçbir şey tetiklenmez" der).
+- **D-4 — "önceki veritabanı" sayısı (düşük).** `-wal`/`-shm` yan dosyaları sayılıyordu (tek
+  geri yükleme = 3). Desen `db-onceki-*.sqlite3` (test).
+- **D-5 — görev devrinin sınırı dürüst yazıldı (yüksek).** "Eski yönetici parolası ve eski
+  kurtarma anahtarı bu bilgisayarda kilidi artık açmaz" gerçeğe aykırıydı: eski parola eski bir
+  başlıkla (arşiv, eski yedek, `pre-parola-*`) DEK'i verir, devirden SONRA alınan yedeği açar;
+  arşiv `guvenlik.json` yerine konursa güncel kilidi açar (sonda; artık
+  `test_gorev_devri.py::test_sinir_eski_parola_eski_baslikla_devirden_sonraki_yedegi_ve_kilidi_acar`
+  sabitler). E18, kart, kurtarma anahtarı yenileme penceresi (F1 metni), kılavuz, kurulum §1.6
+  ve §6.3, tasarım §4.4 ve risk 9, TB17/TB23 düzeltildi. E18'in teslim listesine ve kılavuza
+  "Kütüphane masası Windows hesabının parolası değiştirildi" (Yönerge 6/4 "erişim hakları
+  kaldırılır"); not `pre-parola-*` yedeğinin kendiliğinden silinmediğini de yazar. Arşivin
+  üretilmesi ve DEK'ten bağımsız yedek anahtarı: KB-2.
+- **D-6 — E18 başlığı dürüst (düşük).** Açık işler basım anının sayılarıdır: "DEVİR GÜNÜ AÇIK
+  İŞLER" → **"NOTUN DÜZENLENDİĞİ GÜN AÇIK İŞLER"**; kart ve kılavuz da "notun düzenlendiği gün"
+  der.
+- **D-7 — güncelleme öncesi yedeğin yeniden silinmesi adla (düşük).** Günlük tarama tetik anını
+  dosya zamanıyla karşılaştırıyordu; saat sonradan geri kayarsa tetikten SONRA alınmış yedek
+  silinirdi. Silinecekler yalnız tetik anında belirlenir (`backup.pre_migrate_before`);
+  silinemeyenlerin ADLARI `RetentionRun.pre_migrate_pending`'e yazılır ve kapı yalnız onları
+  yeniden dener (`backup.remove_pre_migrate_named` — yol ayırıcılı ya da biçim dışı ada
+  dokunmaz). Göç: `0010_saklama_ve_belge_izi`'ye alan eklendi (dal içi, yayımlanmamış);
+  `makemigrations --check` temiz. Testler: `TestTetik` (saat kayması), `test_backup_saklama.py`.
+- **D-8 — açılış testi gün değişimi kapısını da koşar (düşük).** `--autotest` kapıyı kurmadan
+  döndüğü için kapının işleri tuzak altında hiç koşmuyordu. Prova betiğine `gun-kapisi` komutu,
+  ağ tuzağına `--betik`; yeni test kapıyı gerçek işleriyle (günlük yedek, çok okunanlar, saklama
+  taraması) bir kez çalıştırır, kayıt boş (`test_gun_degisimi_kapisinin_isleri_disari_istek_atmaz`).
+  Katalog denetleyicisine bağlı iki iş (IP, saatlik katalog) burada kurulmaz; kaynak düzeyindeki
+  kapalı liste onları kapsar.
+- **D-9 — kilit kapısında `updates/` muafiyeti kalktı (düşük).** Gerekçesi (kilit ekranındaki
+  otomatik denetim) kalkmıştı; kilitli program GitHub'dan kurucu indirebiliyordu. Kilitliyken
+  `updates/latest/` ve `…/installer/` 423 (`test_updates.py::test_kilitliyken_guncelleme_uclari_kapali`).
+- **D-10 — §2.3 "Site / dağıtım" satırı** manifest demez (KR-1).
+- **D-11 — geri yükleme provası sihirbazı doldurulmuş yeni bilgisayarı da sınar (düşük).** Inno
+  `postinstall` programı açar; sihirbazda başka parola kurulmuşsa geri yükleme yabancı güvenlik
+  dosyasını `guvenlik-arsiv`, boş veritabanını `db-onceki` adıyla kenara alır; veri birebir
+  (`test_sihirbazda_baska_parola_kurulmus_yeni_bilgisayara_geri_yukleme`). Kontrol listesinin 3.
+  adımı (kılavuz, kurulum §7) bunu söyler.
+- **D-12 — "kişisel veri içermeyen" iddiası kalktı (orta).** Aydınlatma metni, Saklama ekranının
+  "Ne Kalır" kartı ve kılavuz bağı koparılan kaydın belge no ya da dosya numarasıyla arşivdeki
+  ıslak imzalı asılla eşleşebildiğini yazar; "anonim hâle getirilir (md. 7/1)" yerine "kişiyle
+  bağı koparılır" (sözlük). Sözcük "anonimleştirme" sözlük terimi olarak kalır. Daha güçlü
+  çözüm: KB-1.
+- **D-13 — E18 ek notu en çok 8 satır (orta).** 46 satırlık not üç, 300 satırlık yedi sayfaya
+  çıkıyordu. Fazla satırlar son satırda " · " ile birleşir (metin kaybolmaz); sayfa bütçesi
+  testi tek paragraf, 46 ve 300 satırla ve en uzun okul, ilçe ve müdür adıyla en çok iki sayfa.
+- **D-14 — CLAUDE.md §1/§3/§6** düğmenin gerçek adını yazar: "Şimdi denetle".
+- **D-15 — kılavuzda JSX boşluk hatası** ("verilmis-kartlar.txtdosyasını"): `{" "}`; test
+  boşluklu dizgeyi ve ".txt"ye bitişik harfi arar.
+- **D-16 — ad tablosunun sütunları** "Ad soyad · Sınıf / üye türü" (sözlük §4.18; "görevi" unvan
+  çağrıştırırdı, V2-01). Aynı etiket E6'da da ("Sınıf / görevi" → "Sınıf / üye türü").
+- **D-17 — sonraki görev devri (düşük).** Kılavuz ve kurulum §1.6 önceki devirden sonra kartın
+  adımları tamamlanmış gösterdiğini ve düğmenin "Görev devrini yeniden başlat" olduğunu yazar;
+  kartın not adımı da söyler. Eski devri 30 gün sonra kendiliğinden "önceki devir" sayan öneri
+  uygulanmadı (not devir anını ve düzenlenme tarihini ayrı yazdığı için eski devrin notu yanlış
+  tarih taşımaz).
+- **D-18 — yeni parolanın zarfı.** Teslim kalemi: "Yeni yönetici parolası: görevi devralan
+  belirledi; parolayı bilen ikinci görevliye kapalı zarfla bildirildi".
+- **D-19 — atıflar fıkranın öznesine ve koşuluna bağlandı (düşük).** KVKK 12/4'ün öznesi veri
+  sorumluları ile veri işleyenlerdir (okulun personeli 3/1-ğ'deki veri işleyen değildir): metin
+  kuralı onlara bağlar, "veri sorumlusu okuldur; görevi devreden de okulun bu kuralı gereği
+  açıklamaz" der. Yönerge 6/4 "çalışması sona eren kullanıcı"dır; okulda kalan kişinin görev
+  değişikliğinde "kıyasen uygulanır". Yönerge 10/5'in öznesi personeldir: kılavuz atfı
+  personelin cümlesine bağlar, düzeni okul müdürlüğünün belirlediğini ayrı söyler. E18,
+  kılavuz, kurulum ve `docs/mevzuat/BENIOKU.md` aynı dili kullanır (testler özne ve koşulu da
+  arar).
+- **D-20 — "Ne kalır" sırası.** Kılavuzun listesi ekrandaki kartın beş maddesini aynı sırayla
+  yazar (bedel adımındaki dosya eklendi); test iki listeyi karşılaştırır.
+- **D-21 — kapı.** Tam `bash scripts/gates.sh` yeşil (27.09.2026): depo sızıntısı (885 izlenen
+  dosya) bulgusuz; backend `pytest` 4170 geçti, 2 atlandı (kapsam %96); masaüstü + paketleme 681
+  geçti, 2 atlandı; ruff, ruff format, mypy (372 + 59 + 15 dosya); ön yüz typecheck, eslint,
+  prettier, vitest 125 dosya / 1375 test (kapsam: satır %95,61, dal %87,54).
+  `makemigrations --check --dry-run`: "No changes detected" (0010'daki yeni alanla). Genişletilmiş
+  depo sızıntısı taraması (izlenen ve izlenmeyen 920 dosya) bulgusuz. Örnek E18 uydurma veriyle
+  yeniden üretilip gözle denetlendi (iki sayfa; imza bloğu ikinci sayfada tam).
+
+**F11 ekleri — karar turu (27.09.2026).** Kullanıcı bekleyen iki kararı (KB-1, KB-2) ve kılavuz
+kolunun iki açık sorusunu (`db-onceki-*` dosyalarının akıbeti, K-1) yanıtladı; ana oturum bir
+sözlük çelişkisini kapattı. Göç: yayımlanmamış `0010_saklama_ve_belge_izi`'ye iki alan eklendi
+(yeni göç yok). **Bekleyen karar yok.**
+
+- **KT-1 — KB-1 (a), KULLANICI KARARI:** anonimleştirmede belge no ve dosya numarası KALIR. Kod
+  değişmedi; dürüst metinler (aydınlatma metni, Saklama ekranının "Ne Kalır" kartı, kılavuz:
+  "kişisel veri içermeyen" denmez, arşivdeki asılla eşleşme sınırı yazılır) kalır. TB39 kararla
+  kabul edildi.
+- **KT-2 — KB-2 (a), KULLANICI KARARI:** görev devrinde DEK değişmez; bugünkü hâl + dürüst metin +
+  masa hesabının parolasının değiştirilmesi. DEK döndürme ya da DEK'ten bağımsız yedek anahtarı v1
+  sonrasına. Kod değişmedi. TB17 ve TB23 kararla kabul edildi (kalan risk olarak açık).
+- **KT-3 — `db-onceki-*`, KULLANICI KARARI: "14 günden eskiler silinsin".** Saklama tetiği,
+  veritabanı işlemi kalıcı olduktan sonra (güncelleme öncesi yedeklerin silinmesinin hemen
+  ardından, WAL boşaltmadan önce) geri yüklemenin veri klasöründe kenara aldığı
+  `db-onceki-<damga>.sqlite3` dosyalarından **damgası tetik anından 14 günden eski olanları**
+  `-wal`/`-shm` eşleriyle siler (`saklama.onceki_veritabani_temizle`; dosya işleri
+  `backup_restore.old_databases_before` + `remove_old_databases_named`). 14 gün
+  `backup.DEFAULT_KEEP_DAYS`'tir: günlük ve `pre-anonim` yedeklerle aynı süre ve gerekçe (yakın
+  tarihli geri yüklemenin dönüş yolu korunur, eski artık temizlenir).
+  (a) **Ölçü adındaki damgadır, dosya zamanı değil.** Geri yükleme dosyayı `os.replace` ile taşır;
+  taşıma dosya zamanını korur, yani dosya zamanı eski veritabanına son yazılan anı söyler
+  (program yaz tatilinde kapalı kaldıysa haftalar öncesini) — ona bakılsa dün yapılan geri
+  yüklemenin dönüş yolu ertesi tetikte silinirdi. Damga geri yüklemenin anıdır (yerel saat,
+  saniyeli; üreten `_swap_database_files` ile okuyan aynı `OLD_DB_STAMP_FORMAT`'ı kullanır —
+  test), klasör kopyalama ya da virüs tarayıcısıyla değişmez ve eşler aynı damgayı taşır.
+  `pre-migrate`te ölçünün dosya zamanı olmasının gerekçesi başkadır: o adlar yalnız günü taşır.
+  (b) **Silinecekler yalnız tetik anında belirlenir** (D-7 ilkesi): silinemeyen dosyaların ADLARI
+  `RetentionRun.old_db_pending`'e, silinen veritabanı sayısı `old_db_removed`'a yazılır (eşler
+  sayılmaz — D-4); gün değişimi kapısı yalnız bu adları yeniden dener
+  (`onceki_veritabani_yeniden_dene`) ve damgayı yeniden karşılaştırmaz: tetikten sonra saat
+  kaymışken yapılan geri yüklemenin dosyası "eski" görünse de silinmez.
+  (c) Silinemeyen dosya tetiği başarısız saymaz; tetik başarısızsa (yedek alınamadı, işlem geri
+  sarıldı) hiçbir dosya silinmez.
+  (d) Veritabanının kendisi silinemezse eşleri de silinmez (kalan kopyanın işlenmiş sayfaları
+  `-wal`'da olabilir); programın biçiminde olmayan ada (elle konmuş, yol ayırıcılı, geçersiz
+  tarihli) dokunulmaz.
+  Ekran: "Ne Kalır" kartı önceki veritabanlarının sayısını ve kaçının 14 günden eski olduğunu
+  (`residue.old_databases_expired`) yazar, elle silmeyi yalnız daha yenileri için önerir; onay
+  penceresi de söyler, "Son İşlem" kartı "Silinen önceki veritabanı: …" yazar; tetik yanıtına
+  `old_db_removed` eklendi. Aydınlatma metni (E13, yedeklerdeki kalıntı maddesi), kılavuz (Saklama
+  ve Anonimleştirme → Yedeklerde kalan kopyalar; Yedek → Yedekten geri yükleme), `docs/kurulum.md`
+  §6, §6.1, §6.3, sözlük ("Yedek" satırı, §4.18'e "Önceki veritabanı" satırı),
+  `docs/mevzuat/BENIOKU.md` §4 ve §6.4 "Yedeklerdeki kalıntı" güncellendi; S-7 ve K-2'deki "program
+  dokunmaz" cümleleri işaretlendi. Göç: `RetentionRun.old_db_removed` + `old_db_pending`
+  yayımlanmamış `0010`'a eklendi. Testler: `test_saklama.py::TestTetik` (14 günden eski silinir,
+  yeni kalır, eşler, dosya zamanı ölçü değildir, elle konmuş dosyaya dokunulmaz; silinemeyen ad
+  yeniden denenir, saat kayması; yedek alınamadığında ve işlem geri sarıldığında hiçbiri
+  silinmez; sayım), `apps/okul/tests/test_backup_restore.py` (üreten ile okuyan aynı damga, biçim
+  dışı ad, veritabanı silinemezse eşleri kalır), `test_saklama_uclari.py`,
+  `test_dolasim_belgeleri.py`, `test_bakim_kilavuz_metinleri.py`, `SaklamaPaneli.test.tsx`,
+  `KilavuzPage.test.tsx`.
+- **KT-4 — K-1, KULLANICI KARARI: "son iki yedek" önerisi onaylandı.** Kod değişmedi; kılavuzda
+  (kaynak yorumu) ve `docs/mevzuat/BENIOKU.md` §4'te "kullanıcı kararı (27.09.2026)" diye
+  işaretlendi. Öneri olarak kalır: okul müdürlüğü başka düzen belirleyebilir.
+- **KT-5 — ANA OTURUM KARARI: göç adları kullanıcı iletisinden çıktı.**
+  `desktop.version.ensure_no_unknown_migrations` tanınmayan göç adlarını iletide gösteriyordu
+  (sözlük §2 iç kimlik kuralı ve "Eski program, yeni veri" satırıyla çelişki). Artık adların hepsi
+  yalnız günlüğe (`uygulama.log`) yazılır; ileti "…tanımadığı değişiklikler var." der, ipucu günlük
+  dosyasını anar. Test: `test_eski_surum_kapisi.py` (ileti adı İÇERMEZ, günlük İÇERİR — on iki adın
+  hepsi; uçtan uca testler adı günlükte bulur). `docs/kurulum.md` §10.4 ve sözlük buna göre.
+- **KT-6 — güncelleme denetiminin belgeleri tutarlı.** `docs/kurulum.md` §2 ve §3.2 ile kılavuzun
+  Güncelleme bölümü elle denetlemeyi aynı sayfayla (`okulapp.org/kutuphane-defteri`; dosyalar
+  indir.okulapp.org'dan) anlatıyordu (K-4); kurulum §2'ye sayfanın F12'de yayına gireceğini
+  söyleyen görünmez bakım notu (HTML yorumu) eklendi — kullanıcı metninde faz kodu geçmez
+  (sözlük §2).
+- **KT-7 — kapı.** Tam `bash scripts/gates.sh` yeşil (27.09.2026): depo sızıntısı (885 izlenen
+  dosya) bulgusuz; backend `pytest` 4185 geçti, 2 atlandı (kapsam %95,58); masaüstü + paketleme
+  681 geçti, 2 atlandı; ruff, ruff format, mypy (372 + 59 + 15 dosya); ön yüz typecheck, eslint,
+  prettier, vitest 125 dosya / 1376 test (kapsam: satır %95,62, dal %87,54).
+  `makemigrations --check --dry-run`: "No changes detected" (0010'daki iki yeni alanla). İlk
+  koşuda masaüstü `ruff format --check` iki dosyada düştü (biçimleme kapının kullandığı
+  `backend/pyproject.toml` yerine kök yapılandırmayla yapılmıştı); aynı yapılandırmayla
+  yeniden biçimlendirildi, ikinci koşu baştan sona yeşil.
+
 ### 14.2 Saha hazırlık hattı (kod dışı — F0 ile başlar)
 
 | # | İş | Kim |
@@ -4078,11 +4586,11 @@ seçenek ve uygulanan her maddenin başındadır. Seçenekler kayıt için oldu�
 | 6 | Güvenlik duvarında kalıntı kural ya da üçüncü parti güvenlik duvarı | Katalog erişilmez | Beş madde denetimi · kurulumda temizlik · belge |
 | 7 | Kip atlatma (yeni uç izin listesine yanlışlıkla girer) | Görevli kişisel veri görür | Fail-closed + URL ve parametre testleri |
 | 8 | Masadaki öğrencinin Windows oturumu üzerinden dosyaya erişmesi | Okuma verisi sızar | U9 şifreleme + masa hesabı + BitLocker · kalan sızıntı belgelenir |
-| 9 | Parola unutulması ya da görevden ayrılan kişi | Veri kaybı ya da yetkisiz erişim | Saklanan kurtarma anahtarı · iki parola sahibi · görev devri akışı |
+| 9 | Parola unutulması ya da görevden ayrılan kişi | Veri kaybı ya da yetkisiz erişim | Saklanan kurtarma anahtarı · iki parola sahibi · görev devri akışı (F11 uygulandı: §14.1 F11 ekleri B-4) · masa hesabının parolası değişir (D-5). Kalan risk: DEK değişmediği için eski parola eski bir başlıkla devirden SONRAKİ yedekleri de açar — koruma, görevi devredenin bilgisayara ve yedeklere erişiminin kesilmesidir (TB17, TB23; kalan risk KULLANICI KARARI 27.09.2026 ile kabul — §14.1 F11 ekleri KT-2) |
 | 10 | Geriye dönük giriş iş yükü, yanlış kitaba yapışan etiket | Aylar süren iş, bozuk kayıt | Yöntem A/B · basım sırası · doğrulama okutması · S9 |
 | 11 | Türkçe arama kalitesi | Katalog kullanılmaz | T7 + F2 test seti |
 | 12 | **Elektrik kesintisi** | Son işlemler kaybolur | `synchronous=FULL` · temiz kapanış işareti · UPS önerisi |
-| 13 | **Tek disk, bilgisayar değişimi, yeniden kurulum** | Veri kaybı | Dış yedek hatırlatması · taşıma kontrol listesi · temiz makinede geri yükleme provası |
+| 13 | **Tek disk, bilgisayar değişimi, yeniden kurulum** | Veri kaybı | Dış yedek hatırlatması · taşıma kontrol listesi · temiz makinede geri yükleme provası (F11 uygulandı: §14.1 F11 ekleri B-1, B-2) |
 | 14 | **Her güncelleme yönetici (BTR) ister** (U4) | Güncelleme gecikir | Kurulum belgesi · güncelleme kipinde kural korunur |
 | 15 | İmzasız exe + dinleyen port | SmartScreen ve antivirüs uyarısı | SHA256 belgesi · imzalama v2 işi |
 
@@ -4102,10 +4610,11 @@ seçenek ve uygulanan her maddenin başındadır. Seçenekler kayıt için oldu�
 - sitenin CLAUDE.md alan sahipliği tablosuna satır, kardeş depo listesi ve commit öneki
   "Kütüphane Defteri: …"
 
-**Uygulamanın okuduğu manifest** sitede değil R2'dedir:
-`indir.okulapp.org/kutuphane-defteri/manifest.json`. İçinde sürüm, yayın tarihi, dosya
-adları, boyutlar ve sha256 bulunur. Manifesti `paketleme.yml`'in yayın adımı üretir.
-Secret'lar tanımlı değilse elle yükleme adımı yazılıdır (EK-6).
+**Paketler** sitede değil R2'dedir: `indir.okulapp.org/kutuphane-defteri/` (elle indirme
+alanı; `paketleme.yml`'in yayın adımı yükler, secret'lar tanımlı değilse elle yükleme
+adımı yazılıdır — EK-6). *27.09.2026 kullanıcı kararı (T11 v4):* program güncellemeyi
+GitHub Release'ten denetler, R2'de bir manifest OKUMAZ; önceki "uygulamanın okuduğu
+manifest" satırı kaldırıldı. GitHub'a ulaşılamazsa program bu alanı yalnız iletide anar.
 
 **Sonraki sürümlerde:**
 - yalnız kendi alana yazılır;

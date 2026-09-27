@@ -16,10 +16,19 @@
 // da program çökerse anahtar gider: sihirbaz ve Güvenlik ekranı bu durumda
 // "kâğıttaki anahtarı doğrula" ya da "yenisini üret" yolunu sunar (sunucudaki
 // "saklandı" damgası yoktur). Sunucu damgayı yazınca bırakılır.
+//
+// Kaynak (F11): anahtarı hangi akışın ürettiği de burada durur. Görev devrinin anahtarı
+// ("gorev-devri") Güvenlik ekranının başındaki panelde değil, Görev Devri sihirbazının
+// "Yeni anahtar saklanır" adımında saklatılıp doğrulanır — adımlar tek kartta kalsın.
+// Öbür akışlar (kurulum, "Kurtarma anahtarını yenile") kaynak vermez.
 
 import { useSyncExternalStore } from "react";
 
+/** Anahtarı bekleten akış; `null` kurulum ya da "Kurtarma anahtarını yenile"dir. */
+export type BekleyenAnahtarKaynagi = "gorev-devri" | null;
+
 let bekleyen: string | null = null;
+let kaynak: BekleyenAnahtarKaynagi = null;
 const dinleyiciler = new Set<() => void>();
 
 /** Doğrulanmamış anahtar (yoksa null). */
@@ -27,10 +36,23 @@ export function bekleyenKurtarmaAnahtari(): string | null {
   return bekleyen;
 }
 
-/** Anahtarı bekletir (`null`: bırakır). Dinleyen bileşenler yeniden çizilir. */
-export function bekleyenKurtarmaAnahtariniYaz(anahtar: string | null): void {
-  if (bekleyen === anahtar) return;
+/** Bekleyen anahtarın kaynağı (anahtar yoksa null). */
+export function bekleyenAnahtarKaynagi(): BekleyenAnahtarKaynagi {
+  return kaynak;
+}
+
+/**
+ * Anahtarı bekletir (`null`: bırakır). Dinleyen bileşenler yeniden çizilir. `yeniKaynak`
+ * yalnız görev devrinde verilir; anahtar bırakılınca kaynak da sıfırlanır.
+ */
+export function bekleyenKurtarmaAnahtariniYaz(
+  anahtar: string | null,
+  yeniKaynak: BekleyenAnahtarKaynagi = null,
+): void {
+  const hedefKaynak = anahtar === null ? null : yeniKaynak;
+  if (bekleyen === anahtar && kaynak === hedefKaynak) return;
   bekleyen = anahtar;
+  kaynak = hedefKaynak;
   for (const dinleyici of dinleyiciler) dinleyici();
 }
 
@@ -44,4 +66,9 @@ function abone(dinleyici: () => void): () => void {
 /** Bekleyen anahtarı okuyan kanca (değişince bileşen yeniden çizilir). */
 export function useBekleyenKurtarmaAnahtari(): string | null {
   return useSyncExternalStore(abone, bekleyenKurtarmaAnahtari, bekleyenKurtarmaAnahtari);
+}
+
+/** Bekleyen anahtarın kaynağını okuyan kanca. */
+export function useBekleyenAnahtarKaynagi(): BekleyenAnahtarKaynagi {
+  return useSyncExternalStore(abone, bekleyenAnahtarKaynagi, bekleyenAnahtarKaynagi);
 }
