@@ -9,11 +9,20 @@ Tebliğ md. 5: sade dil, belirli amaç, yöntemin otomatik olup olmadığı,
 yanıltıcı bilgi yok. Tasarım §3'ün ek maddeleri: masadaki öğrenci görevliler
 dahil kimlerin gördüğü, Bakanlık sistemine geçişte taşınabilirlik, saklama.
 
-SAKLAMA BUGÜNKÜ GERÇEĞİ SÖYLER (TB16): ayrılış kaydı silmez — üye OLMAYAN
-kişininkini de —, saklama taraması henüz yoktur; üye olmuş kişinin kaydı
-kullanıcı "Sil"iyle de silinemez (apps/okul/services/persons.py::_ensure_deletable).
-Yedek süreleri desktop/backup.py sabitleridir; geri yüklemede kenara alınan
-`db-onceki-*` kopyası da anılır. Saklama taraması (F11) gelince bu bölüm değişir.
+SAKLAMA §6.4 KAPSAMINI AYNEN YAZAR (F11; TB16 kapandı): tablonun her satırı bir
+madde; süreler Kütüphane Politikası'ndan (`saklama` bağlamı —
+apps/kutuphane/services/saklama.py kuralları), silme ve bağ koparma yönetici
+onayıyla, altı ayı aşan beklemede uyarı; bedel adımındaki dosya silinmez, yılda bir
+hatırlatılır. F11 düzeltme turu (Tebliğ md. 5/1-j — yanıltıcı bilgi yok): açık
+yükümlülükte üyelik ve bağlar kalır; süresi dolmamış başka kaydı olan kişi bekler;
+A3 kapanmış (iade edilen ya da kayba dönüşen) her ödünce uygulanır; teslim listesi
+birlikte koparılır; bağı koparılan kayıt "kişisel veri içermeyen" DENMEZ — belge no
+ya da dosya numarası arşivdeki ıslak imzalı asılla eşleşebilir (KVKK 3/1-b). Yedek süreleri desktop/backup.py sabitleridir (günlük ve silme öncesi
+yedek 14 gün, güncelleme öncesi son 5; silme işlemi kendinden eski güncelleme
+yedeklerini siler); geri yüklemede kenara alınan `db-onceki-*` kopyası da anılır:
+silme işlemi 14 günden eskisini siler, yenisini kütüphane yöneticisi siler
+(27.09.2026 kullanıcı kararı; saklama.onceki_veritabani_temizle).
+KVKK 4/2-d ve 7/1 alıntıları docs/mevzuat/6698-kvkk.md ile BİREBİRDİR (test).
 
 ŞİFRELEME CÜMLESİ TB1'İ SÖYLER: adlar, okul no, kart no ve gerekçe metinleri
 şifreli; sınıf/şube, üye türü, eser ve ödünç tarihleri düzdür (Tebliğ md. 5:
@@ -97,10 +106,15 @@ iki sayfa.{% endcomment %}
 
   <div class="section">
     <div class="section-title">6. SAKLAMA</div>
+    <p class="para">Kişisel veriler Kanun md. 4/2-d'deki <span class="alinti">“{{ kvkk_4_2_d }}”</span> ilkesine göre saklanır; süresi dolan kişi ve üyelik kayıtları silinir, ödünç, kayıp/hasar ve teslim kayıtlarının kişiyle bağı koparılır (md. 7/1). Program süresi dolan kayıtları her gün tarar; silme ve bağ koparma kütüphane yöneticisinin onayıyla yapılır, onay altı aydan uzun beklerse program uyarır. Süreler:</p>
     <ul class="kisa">
-      <li>Üyelik sona erdiğinde (okuldan ayrılma, üyenin isteği ya da yanlış kayıt) kişinin kaydı, üyeliği ve ödünç kayıtları silinmez; iade edilmemiş kaynak varsa izlenebilir.</li>
-      <li>Programın bu sürümünde süresi dolan kayıtları silen ya da anonim hâle getiren saklama taraması yoktur; okuldan ayrılan kişilerin kayıtları (üye olsunlar ya da olmasınlar) ile üyelik ve ödünç kayıtları şimdilik süre sınırı olmadan saklanır, saklama süreleri belirlendiğinde bu metin yenilenir. Hiç üye olmamış ve açık yükümlülüğü olmayan kişinin kaydını kütüphane yöneticisi elle silebilir.</li>
-      <li>Programın kendiliğinden aldığı şifreli yedekler kütüphane bilgisayarında saklanır: günlük yedekler {{ yedek_gun }} gün, program güncellemesinden önce alınan yedekler son {{ yedek_guncelleme }} güncellemeye kadar. Geri yüklemede önceki veritabanı da bilgisayarda ayrı bir dosya olarak kalır; onu kütüphane yöneticisi siler. Kütüphane yöneticisinin indirdiği yedeklerin (ör. taşınabilir bellekteki kopyaların) saklanması ve imhası okul müdürlüğünün sorumluluğundadır.</li>
+      <li>Okuldan ayrılan kişinin kaydı (üye olsun ya da olmasın): ayrılıştan {{ saklama.left_person_years }} yıl sonra silinir. İade edilmemiş kaynağı, geri alınmamış teslimi ya da kapanmamış kayıp/hasar dosyası olan kişinin kaydı iş kapanana dek silinmez; süresi dolmamış başka bir kaydı varsa o süre dolana dek beklenir.</li>
+      <li>Sona eren üyelik (okuldan ayrılma, üyenin isteği ya da yanlış kayıt): sona ermesinden {{ saklama.after_termination_years }} yıl sonra üyelik kaydı silinir; ödünç ve kayıp/hasar kayıtlarının kişiyle bağı koparılır, gerekçe ve açıklamalar temizlenir. Açık ödüncü ya da kapanmamış kayıp/hasar dosyası olan üyelik ve o kayıtların kişiyle bağı iş kapanana dek kalır.</li>
+      <li>İade edilen ya da kayba dönüşen ödünçler: kapandığı ders yılının sonundan {{ saklama.returned_loans_years }} yıl sonra kişiyle bağı koparılır (kayıp/hasar dosyasına bağlı ödünç dosyayla birlikte).</li>
+      <li>Kapanmış kayıp/hasar dosyası: kapanışından {{ saklama.closed_cases_years }} yıl sonra kişiyle bağı ve açıklaması temizlenir. Bedeli belirlenmiş ya da teslim alınmış ama kapanmamış dosya silinmez, yılda bir hatırlatılır.</li>
+      <li>Öğretmene teslim: geri alınmasından {{ saklama.closed_deliveries_years }} yıl sonra öğretmenle bağı koparılır (aynı teslim listesindekiler birlikte, sonuncusunun süresi dolunca).</li>
+      <li>Kişiyle bağı koparılan kayıtlar sayım ve istatistik için kalır, program onları kimseye bağlamaz; ancak belge no ya da dosya numarası üzerinden okul arşivindeki ıslak imzalı asılla eşleştirilebilir (asılların saklanması arşiv kurallarına tabidir). Program belgenin yalnız kişisiz izini tutar, sonradan basılan kopyaya “Anonimleştirilmiş kopya” yazar. Hiç üye olmamış ve açık işi olmayan kişinin kaydını kütüphane yöneticisi elle de silebilir.</li>
+      <li>Programın kendiliğinden aldığı şifreli yedekler kütüphane bilgisayarında saklanır: günlük yedekler ve silme işleminden hemen önce alınan yedek {{ yedek_gun }} gün, program güncellemesinden önce alınan yedekler son {{ yedek_guncelleme }} güncellemeye kadar; silme işlemi kendinden önce alınmış güncelleme yedeklerini de siler. Geri yüklemede önceki veritabanı da bilgisayarda ayrı bir dosya olarak kalır; silme işlemi {{ yedek_gun }} günden eski olanını siler, daha yenisini gerekmiyorsa kütüphane yöneticisi siler. Kütüphane yöneticisinin indirdiği yedeklerin (ör. taşınabilir bellekteki kopyaların) saklanması ve silinmesi okul müdürlüğünün sorumluluğundadır.</li>
     </ul>
   </div>
 

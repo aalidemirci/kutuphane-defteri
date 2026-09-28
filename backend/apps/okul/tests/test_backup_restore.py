@@ -12,8 +12,10 @@ ucuz Argon2 profili ve gecikmesiz deneme `backend/conftest.py`'dendir.
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from contextlib import closing
+from datetime import datetime, timedelta
 from io import StringIO
 from pathlib import Path
 from typing import Any, cast
@@ -23,6 +25,7 @@ from desktop.backup_crypto import encrypt_bytes, ensure_public_config, private_k
 from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.utils import timezone
 
 from apps.okul.services import app_password, backup_restore
 from shared import crypto
@@ -111,6 +114,14 @@ def test_yedek_geri_yuklenir_eski_dosya_ve_wal_kenara_alinir(
     assert not (veri_dizini / "db.sqlite3-shm").exists()
     # Damga artık geri yüklenen veriyi tarif etmiyor → silinir (eksik damga engel değil).
     assert not (veri_dizini / "surum.json").exists()
+    # Saklama tetiği yaşı adın damgasından okur (27.09.2026 kullanıcı kararı): adı üreten ile
+    # okuyan aynı biçimi konuşur; damga geri yüklemenin yerel anıdır, eşler aynı damgayı taşır.
+    damga = backup_restore.old_database_stamp(sonuc.old_db_path.name)
+    assert damga is not None
+    assert abs(damga - timezone.localtime().replace(tzinfo=None)) < timedelta(minutes=5)
+    assert backup_restore.old_database_stamp(yan_wal.name) == damga
+    assert backup_restore.is_old_database_file(sonuc.old_db_path.name)
+    assert not backup_restore.is_old_database_file(yan_wal.name)
 
 
 def test_hedef_yokken_calisir_ve_basibos_wal_temizlenir(tmp_path: Path, veri_dizini: Path) -> None:
@@ -126,6 +137,93 @@ def test_hedef_yokken_calisir_ve_basibos_wal_temizlenir(tmp_path: Path, veri_diz
     assert db.read_bytes() == yeni
     assert sonuc.old_db_path is None
     assert not (veri_dizini / "db.sqlite3-wal").exists()
+
+
+# ---------------------------------------------------------------------------
+# Kenara alınan veritabanının akıbeti (saklama tetiği, 27.09.2026 kullanıcı kararı)
+# ---------------------------------------------------------------------------
+ESKI_AD = "db-onceki-2026-09-01-101010.sqlite3"
+
+
+def _aile(dizin: Path, ad: str) -> list[Path]:
+    yollar = [dizin / ad, dizin / f"{ad}-wal", dizin / f"{ad}-shm"]
+    for yol in yollar:
+        yol.write_bytes(b"x")
+    return yollar
+
+
+def test_onceki_veritabani_damgasi_addan_okunur() -> None:
+    beklenen = datetime(2026, 9, 1, 10, 10, 10)
+    for ek in ("", "-wal", "-shm"):
+        assert backup_restore.old_database_stamp(ESKI_AD + ek) == beklenen
+
+
+@pytest.mark.parametrize(
+    "ad",
+    [
+        "db-onceki-elle.sqlite3",
+        "db-onceki-2026-13-40-101010.sqlite3",
+        f"{ESKI_AD}.bak",
+        f"{ESKI_AD}-journal",
+        f"../{ESKI_AD}",
+        f"alt/{ESKI_AD}",
+        "db.sqlite3",
+        "guvenlik-arsiv-2026-09-01-101010.json",
+    ],
+)
+def test_programin_bicimi_olmayan_ad_taninmaz_ve_silinmez(ad: str, veri_dizini: Path) -> None:
+    assert backup_restore.old_database_stamp(ad) is None
+    disarida = veri_dizini.parent / ESKI_AD
+    disarida.write_bytes(b"x")
+    hedef = veri_dizini / Path(ad).name
+    hedef.write_bytes(b"x")
+
+    silinen, kalan = backup_restore.remove_old_databases_named(veri_dizini, [ad])
+
+    assert (silinen, kalan) == ([], [])
+    assert disarida.exists() and hedef.exists()
+
+
+def test_eskiler_addaki_damgaya_gore_esleriyle_listelenir(veri_dizini: Path) -> None:
+    eski = _aile(veri_dizini, ESKI_AD)
+    yeni = _aile(veri_dizini, "db-onceki-2026-09-20-080000.sqlite3")
+    (veri_dizini / "db-onceki-elle.sqlite3").write_bytes(b"x")
+    # Dosya zamanı ölçü değildir: yeni dosya çok eski, eski dosya çok yeni görünse de.
+    for yol in yeni:
+        os.utime(yol, (0, 0))
+    sinir = datetime(2026, 9, 15, 12, 0)
+
+    beklenen = sorted(yol.name for yol in eski)
+    assert backup_restore.old_databases_before(veri_dizini, sinir) == beklenen
+    # Saat dilimli sınır yerel saate çevrilir (damga yerel saattir).
+    assert backup_restore.old_databases_before(veri_dizini, timezone.make_aware(sinir)) == beklenen
+    assert backup_restore.old_databases_before(veri_dizini / "yok", sinir) == []
+
+
+def test_veritabani_silinemezse_esleri_de_kalir(
+    veri_dizini: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Kalan kopyanın işlenmiş sayfaları `-wal`'da olabilir: eşini silmek onu eksik bırakırdı."""
+    kilitli = _aile(veri_dizini, ESKI_AD)
+    ikinci = _aile(veri_dizini, "db-onceki-2026-09-02-101010.sqlite3")
+    ozgun = Path.unlink
+
+    def sil(yol: Path, missing_ok: bool = False) -> None:
+        if yol.name == ESKI_AD:
+            raise PermissionError("başka bir programda açık")
+        ozgun(yol, missing_ok=missing_ok)
+
+    monkeypatch.setattr(Path, "unlink", sil)
+    adlar = [yol.name for yol in (*kilitli, *ikinci)] + ["db-onceki-2026-09-03-101010.sqlite3"]
+
+    silinen, kalan = backup_restore.remove_old_databases_named(veri_dizini, adlar)
+
+    assert kalan == [ESKI_AD, f"{ESKI_AD}-shm", f"{ESKI_AD}-wal"]
+    assert all(yol.exists() for yol in kilitli)
+    assert silinen == sorted(yol.name for yol in ikinci)
+    assert not any(yol.exists() for yol in ikinci)
+    # Klasörde olmayan ad silinmiş sayılmaz, beklemede de kalmaz.
+    assert "db-onceki-2026-09-03-101010.sqlite3" not in silinen + kalan
 
 
 @pytest.mark.parametrize(

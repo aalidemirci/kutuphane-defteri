@@ -74,9 +74,23 @@ arayüz ile kılavuz ikisini de söyler:
   arşivlenen dosya eski anahtarla açılmaya devam eder. Yenilemenin amacı
   kaydedilemeyen ya da kaybolan kâğıdın yerine yenisini koymaktır.
 
-Güvenlik dosyasını değiştiren işlemler (doğrulama damgası, yenileme, parola
-değişimi, kurtarmayla parola yenileme, yarım geçişin tamamlanması) süreç içi bir
-kilitle sıralanır: oku-değiştir-yaz arasına başka bir yazım girip onu ezmesin.
+GÖREV DEVRİ (F11, §4.4 SU-25): `start_handover(current_password=…, new_password=…)`
+parolayı ve kurtarma anahtarını TEK atomik yazımda yeniler (önce arşive kopya,
+yenilemeyle aynı sıra); kurtarma bölümü doğrulama damgasız ve görev devri
+damgasıyla (`HANDOVER_FIELD`) yazılır. Yeni anahtar doğrulanınca Görev devri notu
+(E18, `apps.kutuphane.gorev_devri`) basılabilir. DEK döndürülmez (TB17, TB23 —
+v1 dışında). Sonucu yalnız "eski yedekler eski parolayla açılır" DEĞİLDİR (F11
+düzeltme turu, testli): eski parola ya da eski anahtar, eski bir güvenlik başlığıyla
+(eski yedeğin içindeki, arşiv dosyası, `pre-parola-*` yedeği) DEK'i verir; yedek
+anahtar çifti DEK'ten türediği için (`backup_crypto.private_key_from_data_key`)
+devirden SONRA alınan yedekler de açılır ve arşiv dosyası `guvenlik.json` yerine
+konursa güncel veritabanı da. Görev devri, görevi devredenin bu bilgisayara ve
+yedeklere erişimi kesildiğinde anlam taşır; not, kılavuz ve kurulum belgesi bunu
+söyler ve masa hesabının parolasının değiştirilmesini ister.
+
+Güvenlik dosyasını değiştiren işlemler (doğrulama damgası, yenileme, görev devri,
+parola değişimi, kurtarmayla parola yenileme, yarım geçişin tamamlanması) süreç içi
+bir kilitle sıralanır: oku-değiştir-yaz arasına başka bir yazım girip onu ezmesin.
 
 NEDEN GÜVENLİK DOSYASI VERİ DİZİNİNDE, DB'DE DEĞİL?
   * Yedekler (`backups/gunluk-*.kdbak`) X25519 + AES-256-GCM kapsayıcılarıdır;
@@ -156,6 +170,11 @@ MIN_PASSWORD_LENGTH = 8
 #: Kurtarma bölümündeki doğrulama damgası (ISO zaman damgası; F1 eki, karar 2).
 #: Sarmalla birlikte yaşar: yenilenen kurtarma bölümü damgasız yazılır.
 RECOVERY_CONFIRMED_FIELD = "dogrulandi"
+#: Kurtarma bölümündeki görev devri damgası (ISO zaman damgası; F11, §4.4 SU-25):
+#: bu kurtarma sarmalı bir görev devrinde (parola + anahtar birlikte) üretildi.
+#: Sarmalla birlikte yaşar: sonraki "Kurtarma anahtarını yenile" bölümü damgasız
+#: yazar, görev devri notu (E18) ancak damga + doğrulama varken basılır.
+HANDOVER_FIELD = "gorev_devri"
 #: Kenara alınan güvenlik dosyalarının ad öneki (`guvenlik-arsiv-<damga>.json`);
 #: geri yükleme (`backup_restore._ensure_state_file`) ve `recovery_metadata`
 #: aynı deseni kullanır.
@@ -907,6 +926,99 @@ def renew_recovery_key(*, password: str) -> str:
         "Kurtarma anahtarı yenilendi; önceki güvenlik dosyası %s olarak saklandı.", arsiv.name
     )
     return yeni_anahtar
+
+
+# Kullanıcı iletisi, parola değil (S105).
+HANDOVER_SAME_PASSWORD_MESSAGE = (
+    "Görev devrinde yeni yönetici parolası eskisinden farklı olmalıdır: eski parolayı "  # noqa: S105
+    "bilen kişi kilidi açmaya devam ederdi."
+)
+
+
+@sensitive_variables("current_password", "new_password", "yeni", "veri_anahtari", "yeni_anahtar")
+def start_handover(*, current_password: str, new_password: str) -> str:
+    """Görev devri (§4.4, SU-25; F11): parola ve kurtarma anahtarı TEK yazımda yenilenir.
+
+    Yalnız kilit açıkken: mevcut parola `verify_password` kuralıyla (sarmal +
+    bellekteki anahtarın parmak izi) doğrulanır; yanlışsa "Parola hatalı." +
+    kademeli gecikme ve hiçbir dosya değişmez. Yeni parola eskisiyle aynı olamaz.
+    Sonra `renew_recovery_key` ile aynı sıra izlenir:
+
+    1. güncel `guvenlik.json` `guvenlik-arsiv-<damga>.json` olarak KOPYALANIR
+       (asıl dosya yerinde kalır; kesinti dosyayı kayıp hâline düşürmez);
+    2. aynı DEK yeni parolayla VE yeni kurtarma anahtarıyla, yeni tuzlarla
+       sarmalanır; kurtarma bölümü doğrulama damgası OLMADAN, görev devri
+       damgasıyla (`HANDOVER_FIELD`) yazılır;
+    3. yeni durum atomik yazılır — iki sarmal aynı anda değişir: yarım devir
+       (parola yeni, anahtar eski) diye bir ara hâl yoktur.
+
+    Yeni anahtar yanıtla BİR KEZ döner; saklandığı `confirm_recovery_key` ile
+    doğrulanır (damga eklenir, görev devri damgası korunur). DEK DEĞİŞMEZ: kayıtlar,
+    kör indeks, yedek anahtarı ve kip etkilenmez. Sonuç (TB17, TB23): ESKİ parola ya da
+    ESKİ anahtar, eski bir güvenlik başlığıyla (devirden önceki yedek, arşivlenen dosya)
+    birlikte DEK'i verir — devirden SONRA alınan yedekleri de açar (modül başlığı);
+    görev devri notu bunu açıkça yazar.
+    """
+    with _state_lock:
+        state = _require_state()
+        yeni = _validate_password(new_password)
+        veri_anahtari = _check_password(state, current_password)
+        if yeni == current_password.strip():
+            raise AppPasswordError(HANDOVER_SAME_PASSWORD_MESSAGE)
+        kdf = crypto.KdfParams.from_dict(dict(state.get("kdf", {})))
+        parola_tuz = crypto.new_salt()
+        kurtarma_tuz = crypto.new_salt()
+        yeni_anahtar = generate_recovery_key()
+        yeni_durum = dict(state)
+        yeni_durum["parola"] = {
+            "salt": base64.b64encode(parola_tuz).decode("ascii"),
+            "sarmal": crypto.wrap_key(
+                veri_anahtari,
+                wrapping_key=crypto.derive_key(yeni, salt=parola_tuz, params=kdf),
+            ),
+        }
+        yeni_durum["kurtarma"] = {
+            "salt": base64.b64encode(kurtarma_tuz).decode("ascii"),
+            "sarmal": crypto.wrap_key(
+                veri_anahtari,
+                wrapping_key=crypto.derive_key(
+                    normalize_recovery_key(yeni_anahtar), salt=kurtarma_tuz, params=kdf
+                ),
+            ),
+            HANDOVER_FIELD: timezone.localtime().isoformat(timespec="seconds"),
+        }
+        arsiv = _copy_state_to_archive()
+        _write_state(yeni_durum)
+    logger.info(
+        "Görev devri: yönetici parolası ve kurtarma anahtarı yenilendi; önceki güvenlik "
+        "dosyası %s olarak saklandı.",
+        arsiv.name,
+    )
+    return yeni_anahtar
+
+
+def handover_info() -> dict[str, str | None] | None:
+    """Güncel kurtarma bölümünün görev devri damgaları; devir yoksa None. HATA YÜKSELTMEZ.
+
+    `started_at`: devrin (parola + anahtar yenilemesinin) anı; `confirmed_at`: yeni
+    anahtarın saklandığının doğrulandığı an (yoksa None). Sonraki bir "Kurtarma
+    anahtarını yenile" bölümü damgasız yazdığı için devir bilgisi de düşer.
+    """
+    try:
+        state = read_state()
+    except AppPasswordError:
+        return None
+    bolum = state.get("kurtarma") if isinstance(state, dict) else None
+    if not isinstance(bolum, dict):
+        return None
+    baslangic = bolum.get(HANDOVER_FIELD)
+    if not isinstance(baslangic, str) or not baslangic:
+        return None
+    dogrulandi = bolum.get(RECOVERY_CONFIRMED_FIELD)
+    return {
+        "started_at": baslangic,
+        "confirmed_at": dogrulandi if isinstance(dogrulandi, str) and dogrulandi else None,
+    }
 
 
 def unlock_with_recovery(*, recovery_key: str, new_password: str) -> None:

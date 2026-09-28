@@ -20,6 +20,11 @@
 Belgeler yalnız yönetici kipinde basılır (uçlar görevli izin listesinde değildir).
 PDF'ler yalnız `shared.pdf.html_to_pdf` kapısından üretilir. Bu modül veritabanına
 YAZMAZ. Hata iletilerinde kişi adı yoktur.
+
+**F11 — anonimleştirilmiş kopya** (§6.2 `BelgeIzi`, KM-12): saklama süresi dolup kişi
+bağı koparılmış dosya ya da teslimden yeniden üretilen belge kişiyi anmaz ("Anonimleştirildi")
+ve başında `belge_izi.ANONIM_KOPYA_IBARESI` basılır (`anonim_kopya_ibaresi` bağlam
+anahtarı, `documents/base.html`). Belgenin kişisiz izi görünümde yazılır (`views_ilisik`).
 """
 
 from __future__ import annotations
@@ -34,7 +39,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from apps.kutuphane import barcode as barcode_module
-from apps.kutuphane import selectors_teslim
+from apps.kutuphane import belge_izi, selectors_teslim
 from apps.kutuphane.models import (
     CaseType,
     Delivery,
@@ -115,11 +120,21 @@ def _kisi_adi(person: Student | Personnel | None) -> str:
 
 
 def recipient_text(delivery: Delivery) -> str:
-    """Teslim alanın belgedeki adı: '9/A sınıf kitaplığı' ya da öğretmenin adı."""
+    """Teslim alanın belgedeki adı: '9/A sınıf kitaplığı' ya da öğretmenin adı.
+
+    F11: saklama süresi sonunda öğretmen bağı koparılmış teslimde "Anonimleştirildi".
+    """
     if delivery.recipient_kind == DeliveryRecipientKind.SECTION:
         etiket = selectors_teslim.delivery_recipient_label(delivery)
         return f"{etiket} sınıf kitaplığı" if etiket else "Sınıf kitaplığı"
+    if delivery.anonymized_at is not None:
+        return belge_izi.ANONIM_KISI
     return _kisi_adi(delivery.personnel) or "—"
+
+
+def rows_anonymized(rows: Sequence[Delivery]) -> bool:
+    """Listedeki teslimlerden biri anonimleştirilmiş mi? (anonimleştirilmiş kopya ibaresi)"""
+    return belge_izi.herhangi_anonim(d.anonymized_at for d in rows)
 
 
 def turkish_money(value: Decimal) -> str:
@@ -217,8 +232,13 @@ def delivery_list_context(
             else ("Öğretmen" if tur == DeliveryRecipientKind.TEACHER else "Teslim alan")
         ),
         "receiver_name": (
-            alanlar[0] if tur == DeliveryRecipientKind.TEACHER and len(alanlar) == 1 else ""
+            alanlar[0]
+            if tur == DeliveryRecipientKind.TEACHER
+            and len(alanlar) == 1
+            and alanlar[0] != belge_izi.ANONIM_KISI
+            else ""
         ),
+        "anonim_kopya_ibaresi": belge_izi.ibare(rows_anonymized(rows)),
     }
 
 
@@ -302,8 +322,11 @@ def take_back_context(
             else ("Öğretmen" if tur == DeliveryRecipientKind.TEACHER else "Geri veren")
         ),
         "giver_name": alanlar[0]
-        if tur == DeliveryRecipientKind.TEACHER and len(alanlar) == 1
+        if tur == DeliveryRecipientKind.TEACHER
+        and len(alanlar) == 1
+        and alanlar[0] != belge_izi.ANONIM_KISI
         else "",
+        "anonim_kopya_ibaresi": belge_izi.ibare(rows_anonymized(rows)),
     }
 
 
@@ -369,12 +392,19 @@ def case_report_context(case: LossDamageCase, *, on: date | None = None) -> dict
     if nusha.external_asset_ref:
         kaynak.append(("TKYS kodu", nusha.external_asset_ref))
 
+    anonim = case.anonymized_at is not None
     ilgili: list[tuple[str, str]] = []
-    if ad:
+    if anonim:
+        # F11: kişi bağı ve sorumlu notu saklama süresi sonunda temizlendi; kopya kimseyi
+        # anmaz (teslim satırında öğretmenin adı da yazılmaz).
+        ilgili.append(("İlgili kişi", belge_izi.ANONIM_KISI))
+    elif ad:
         ilgili.append(("Adı soyadı", ad))
         etiket = _kisi_etiketi(kisi)
         if etiket:
-            ilgili.append(("Sınıf / görevi", etiket))
+            # Sözlük: "Sınıf / üye türü" — program personelin görevini ya da unvanını
+            # tutmaz (V2-01); "görevi" unvan çağrıştırırdı (F11 düzeltme turu).
+            ilgili.append(("Sınıf / üye türü", etiket))
     if case.loan is not None:
         lo = case.loan
         ilgili.append(
@@ -386,10 +416,15 @@ def case_report_context(case: LossDamageCase, *, on: date | None = None) -> dict
         )
     if case.delivery is not None:
         d = case.delivery
+        alan = (
+            "Öğretmene teslim"
+            if anonim and d.recipient_kind == DeliveryRecipientKind.TEACHER
+            else recipient_text(d)
+        )
         ilgili.append(
             (
                 "Teslim",
-                f"{recipient_text(d)} — belge no {d.document_no}, {d.delivered_on:%d.%m.%Y}",
+                f"{alan} — belge no {d.document_no}, {d.delivered_on:%d.%m.%Y}",
             )
         )
     if case.responsible_note.strip():
@@ -429,8 +464,20 @@ def case_report_context(case: LossDamageCase, *, on: date | None = None) -> dict
         "resolution": [{"label": e, "value": v} for e, v in cozum],
         "md19": MD19_ALINTI if ortaogretim else "",
         "payment_note": TAHSILAT_NOTU if ortaogretim else "",
-        "person_name": ad if ad and ad != SILINMIS_KISI else "",
+        "person_name": ad if ad and ad != SILINMIS_KISI and not anonim else "",
+        "anonim_kopya_ibaresi": belge_izi.ibare(case_report_anonymized(case)),
     }
+
+
+def case_report_anonymized(case: LossDamageCase) -> bool:
+    """Tutanak anonimleştirilmiş kayıttan mı üretiliyor? (dosyanın ya da teslimin bağı koptu)
+
+    Teslimin öğretmen bağı koparıldıysa "Teslim" satırı artık adı yazmaz; belge asıldan
+    farklıdır, ibare basılır. Ödüncün bağı koparılması tutanağı değiştirmez (yalnız tarih).
+    """
+    if case.anonymized_at is not None:
+        return True
+    return case.delivery is not None and case.delivery.anonymized_at is not None
 
 
 def case_report_pdf(case: LossDamageCase, *, on: date | None = None) -> bytes:

@@ -99,17 +99,6 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   alınana kadar bu Yönetmeliğe madde atfı yazılmaz
   (`docs/mevzuat/BENIOKU.md` §2).
 
-- **TB16 — Ayrılmış kişi kayıtları F11'e kadar süresiz duruyor (F1 eki 7, §6.4):**
-  kullanıcı kararıyla (22.09.2026) ayrılış artık hiçbir kaydı silmiyor; "hiç üye
-  olmamış ve yükümlülüksüz kişi ayrılışta katı silinir" dalı kalktı, çünkü ayrılanın
-  iade etmediği kitabı olabilir ve kaydı kaybolmamalı. Bedeli: okuldan ayrılmış
-  kişilerin ad, okul no (şifreli) ve sınıf/şube (düz) kayıtları saklama taraması
-  gelene kadar programda kalıyor — §6.4'ün "hemen sil" satırı artık boş. Azaltma:
-  kayıtlar şifreli ve yerel; kullanıcı gereksiz bir kaydı "Sil" ile kaldırabilir.
-  **Kapanışı F11'dedir:** saklama taraması ayrılmış kişileri aday gösterir, süre
-  (varsayılan öneri: ayrılıştan 2 yıl sonra) ve yönetici onayı orada kararlaşır;
-  aydınlatma metni (E13, F6) bu kapsamı aynen söyler.
-
 - **TB17 — Kurtarma anahtarı yenileme ele geçmiş anahtarı geçersiz kılmaz (F1 eki 8,
   §6.3):** "Kurtarma anahtarını yenile" aynı DEK'i yeni anahtarla sarmalar; veri
   yeniden şifrelenmez (yeniden şifreleme bütün kayıtları yeniden yazmak, eski yedekleri
@@ -121,6 +110,42 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   parolasının da değiştirilmesini, eski yedeklerin gözden geçirilmesini önerir. Gerçek
   çözüm (DEK döndürme + bütün kayıtların yeniden şifrelenmesi + yedeklerin yeniden
   mühürlenmesi) F11 bakım fazına bırakıldı.
+  **F11 değerlendirmesi (27.09.2026) — v1 dışında kalır, kalem açık kalır.** DEK
+  döndürme bir "yeniden şifrele" geçişinden fazlasıdır: (1) bütün şifreli alanlar
+  (kişi adları, okul no, kart no, gerekçe ve not metinleri, komisyon/kurul/onaylayan
+  adları, bağışçı) TEK işlemde yeniden yazılmalı; (2) kör indeks anahtarı DEK'ten
+  türediği için okul no ve kart no indeksleri, `IssuedCard` ve `CardRevocation`
+  satırları ve veri dizinindeki verilmiş kart defteri (`verilmis-kartlar.txt`, TB33)
+  yeniden hesaplanmalı — defter geri yüklemeden bağımsız olsun diye yedeğe girmez,
+  yani eski DEK'le yazılmış bir defter yeni DEK'le eşleşmez ve "kart no asla yeniden
+  kullanılmaz" güvencesi sessizce düşerdi; (3) yedek açık anahtarı (`yedekleme.json`)
+  değişir, bu bilgisayardaki eski yedekler ya yeniden mühürlenir ya silinir; (4) USB
+  bellekteki yedekler programın erişiminde değildir — döndürme onları zaten geçersiz
+  KILAMAZ. Yarıda kesilen bir döndürme (elektrik kesintisi) iki DEK'in karıştığı bir
+  veritabanı bırakabileceği için bu, F1'in şifreleme geçişi kadar dikkatli bir geçiş
+  ve kendi geri yükleme provasını ister; v1 bütçesini aşar. Karşılık olarak görev
+  devri (§4.4, F11) parola ve kurtarma anahtarını birlikte yeniler ve Görev devri notu
+  (E18) sınırı sayılarıyla yazar: devirden önce alınmış yedeklerin ve arşivlenmiş
+  güvenlik dosyalarının sayısı, günlük yedeklerin 14 gün içinde kendiliğinden silindiği,
+  USB yedeklerinin ve eski kâğıdın akıbeti. Kılavuzun "Görev Devri" bölümü ve
+  `docs/kurulum.md` §1.6 aynı dili kullanır.
+  **F11 düzeltme turu (27.09.2026, tasarım §14.1 D-5) — sınır ilk yazılandan geniştir:**
+  eski anahtar (ya da eski parola) eski bir güvenlik başlığıyla (yenilemeden/devirden
+  önceki yedeğin içindeki, `guvenlik-arsiv-*`, `pre-parola-*`) DEK'i verir; yedek anahtar
+  çifti DEK'ten türediği için (`backup_crypto.private_key_from_data_key`) yenilemeden ya da
+  devirden SONRA alınan yedekler de açılır, arşiv `guvenlik.json` yerine konursa güncel
+  veritabanının kilidi de. Önceki metinlerdeki "eski ikili bu bilgisayarda kilidi artık
+  açmaz" iddiası kaldırıldı (E18, kart, kurtarma anahtarı yenileme penceresi, kılavuz,
+  kurulum, tasarım §4.4); sınır testle sabitlendi
+  (`test_gorev_devri.py::test_sinir_eski_parola_eski_baslikla_devirden_sonraki_yedegi_ve_kilidi_acar`).
+  Azaltma: masa hesabının parolasının değiştirilmesi E18'in teslim listesine ve kılavuza
+  girdi; ele geçmiş anahtar için yönetici parolasını değiştirmek tek başına yetmez (kılavuz
+  bunu söyler). Arşiv kopyasının üretilmemesi ya da DEK'ten bağımsız yedek anahtarı
+  seçenekleri kullanıcı kararına sunuldu (§14.1 F11 ekleri KB-2). **Karar:** kalan risk olarak
+  KABUL EDİLDİ (27.09.2026 kullanıcı kararı, tasarım §14.1 F11 ekleri KB-2 — seçenek (a), karar
+  turu KT-2): görev devrinde DEK değişmez; bugünkü hâl, dürüst metin ve masa hesabının
+  parolasının değiştirilmesi kalır; DEK döndürme ya da DEK'ten bağımsız yedek anahtarı v1
+  sonrasına bırakıldı. Kod değişmedi; kalem açık kalır.
 
 - **TB18 — "Olası aynı kişi" adayı ad benzerliğiyle bulunur; adaşı eleyemez (F1 eki 7,
   §8.3)** *(daraltıldı: 22.09.2026 — gerekçe gösterimi + ikinci doğrulama)*: kural
@@ -228,13 +253,44 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   bütçesi dışındadır. Azaltma: görev devri notu (E18) eski anahtarın imhasını ve eski
   yedeklerin akıbetini yazar; kılavuz bunu açıkça söyler. Kapatma yolu F11'de
   değerlendirilir.
+  **F11 değerlendirmesi (27.09.2026) — açık kalır; azaltma uygulandı.** Kapatmanın tek
+  yolu DEK döndürmedir ve TB17'deki gerekçelerle v1 dışındadır; USB bellekteki eski
+  yedekleri zaten hiçbir döndürme geçersiz kılamaz. Uygulanan azaltma: görev devri tek
+  akıştır (`app_password.start_handover`: parola + kurtarma anahtarı aynı atomik
+  yazımla), yeni anahtar saklanıp doğrulanmadan Görev devri notu basılmaz; not devirden
+  önce alınmış yedeklerin (bu bilgisayarda, sayısı ve en eskisinin tarihiyle) ve
+  arşivlenmiş güvenlik dosyalarının ESKİ parola ve ESKİ anahtarla açılabildiğini, günlük
+  yedeklerin 14 gün içinde kendiliğinden silindiğini, güncelleme öncesi yedeklerin son
+  beş güncellemeye kadar kaldığını ve eski kâğıdın "Eski anahtar — <tarih> öncesi
+  yedekler için" diye ayrı zarfta saklanıp o yedekler kalmayınca yırtılarak yok
+  edileceğini yazar (kullanıcı metninde "imha" sözcüğü sözlük gereği yalnız imha
+  tutanağındadır). **Kalan risk (F11 düzeltme turu ile düzeltildi — önceki cümle
+  "o yedeğin anındaki veriyi açar" diyordu ve eksikti):** devirden önceki bir yedeği (ya da
+  arşiv dosyasını) ve eski parolayı ya da eski anahtarı birlikte ele geçiren kişi DEK'i
+  elde eder; bununla devirden SONRA alınan yedekleri de açar, bu bilgisayarın veri
+  klasörüne erişebiliyorsa güncel veriyi de. Görev devri bu yüzden görevi devredenin bu
+  bilgisayara (masa hesabının parolası değişir — E18 teslim listesi; Yönerge 6/4 "erişim
+  hakları kaldırılır") ve yedeklere erişimi kesildiğinde anlam taşır. Kapatma yolu DEK
+  döndürme ya da DEK'ten bağımsız yedek anahtarıdır (TB17). **Karar:** kalan risk olarak
+  KABUL EDİLDİ (27.09.2026 kullanıcı kararı, tasarım §14.1 F11 ekleri KB-2 — seçenek (a), karar
+  turu KT-2): bugünkü hâl + dürüst metin + masa hesabının parolası; kapatma v1 sonrasına.
 
 - **TB24 — Şifrelemeye geçişten önceki düz metin veritabanı dosyasında kalabilir
-  (§6.3):** `PRAGMA secure_delete=ON` yeni silmeleri kapsar, ama daha önce yazılmış
-  sayfalar ve WAL artığı için `VACUUM` çalıştırılmaz. Pratikte parola sihirbazın ilk
-  adımıdır ve `enable()` yalnız kişi tabloları boşken çalışır, yani geçişte düz kişi
-  verisi bulunmaz; kalan risk kuramsaldır. Tam koruma disk şifrelemesidir (BitLocker /
-  LUKS — `docs/kurulum.md`).
+  (§6.3)** *(F11'de değerlendirildi, 27.09.2026 — daraltıldı, kalır)*: `PRAGMA
+  secure_delete=ON` yeni silmeleri kapsar, ama daha önce yazılmış sayfalar için `VACUUM`
+  çalıştırılmaz. Pratikte parola sihirbazın ilk adımıdır ve `enable()` yalnız kişi
+  tabloları boşken çalışır, yani geçişte düz kişi verisi bulunmaz; kalan risk
+  kuramsaldır. **F11 değerlendirmesi:** onaylı saklama tetiği (§6.4) sildiği ve
+  güncellediği kayıtların eski değerlerini `secure_delete` ile sayfada ezer ve işlem
+  bittikten sonra `PRAGMA wal_checkpoint(TRUNCATE)` ile WAL'i dosyaya işleyip sıfıra
+  indirir (`services.saklama.wal_bosalt`; test `test_tetikten_sonra_wal_bosaltilir`) —
+  anonimleştirmenin kendi artığı WAL'de kalmaz. `VACUUM` tetiğe EKLENMEDİ: bütün dosyayı
+  yeniden yazar, dosya boyu kadar boş yer ister ve Ağ Kataloğu'nun salt okur bağlantısı
+  açıkken özel kilit alamaz; kazancı yalnız bu kuramsal geçiş artığıdır. Ağ Kataloğu o
+  an okuyorsa checkpoint "meşgul" döner (yanıttaki `wal_truncated`); olağan checkpoint
+  aynı işi sonra yapar. Dosya sisteminin eski blokları (serbest disk alanı) programın
+  denetiminde değildir. Tam koruma disk şifrelemesidir (BitLocker / LUKS —
+  `docs/kurulum.md`).
 
 - **TB25 — Okul ağı bilgisi depoya girmez (yayın kuralı; 23.09.2026):** keşif ve ağ
   belgelerinde gerçek IP blokları, alt ağ maskeleri, host numaraları, VLAN, SSID, proxy
@@ -338,6 +394,12 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   üyelik yeniden açılır (kılavuz). DEK değişirse (güvenlik dosyasını
   sıfırlayıp kuruluma dönmek) defterdeki indeksler eşleşmez; o yol yalnız boş
   veritabanında açıktır.
+  *F11 eki (27.09.2026):* taşıma kontrol listesi (`docs/kurulum.md` §7, kılavuz "Yedek ve
+  Güvenlik Dosyası") artık `data/verilmis-kartlar.txt`'yi de USB'ye alıp yeni
+  bilgisayarın `data` klasörüne koymayı söyler. Temiz makinede geri yükleme provası
+  (`desktop/tests/test_geri_yukleme_provasi.py`) iki yönü de sabitler: defter taşınınca
+  yedekten sonra verilmiş kartın numarası yeni bilgisayarda verilmez; taşınmazsa verilir
+  (bu kalemin kalan riski).
 - **TB34 — Görevli, kartını bildiği üyenin elindeki kitapları barkod deneyerek
   çıkarabilir (F6, tasarım §7.3, §4.4; 25.09.2026):** görevli kipinde ödünçteki bir
   kitap okutulunca masa "Bu kitap zaten bu üyede." ile "Bu kitap başka bir üyede."
@@ -409,7 +471,40 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   (27.09.2026 kullanıcı kararı, tasarım §14.1 F10 ekleri K2 — seçenek (a)); serbest tarih
   aralığı kalır, kod değişmedi.
 
+- **TB39 — Kişiyle bağı koparılan kayıt arşivdeki ıslak imzalı asılla eşleşebilir (F11
+  düzeltme turu; tasarım §6.4, §14.1 D-12; 27.09.2026):** saklama süresi sonunda öğretmen
+  teslimi ve kayıp/hasar dosyası satırından kişi bağı ve not metni silinir, ama belge no,
+  dosya numarası, barkod, kayıt no, tarihler ve bedel kalır. Okul arşivindeki ıslak imzalı E15
+  teslim listesi ve E6 tutanağı aynı numarayla kişinin adını taşır; veri sorumlusu satırı
+  kendi elindeki bu belgeyle yeniden kişiye bağlayabilir — KVKK 3/1-b'nin "başka verilerle
+  eşleştirilerek dahi" ölçütü tam karşılanmaz. **Azaltma (uygulandı):** program satırı artık
+  kimseye bağlamaz (kişi dökümü, ilişik, E6/E15 yeniden basımı "Anonimleştirildi" der); aynı
+  belge no'nun satırları birlikte koparılır, dosya ile teslim ve ödünç birbirini bekler
+  (D-1, D-3); aydınlatma metni, Saklama ekranı ve kılavuz "kişisel veri içermeyen" demez,
+  sınırı ve asılların arşiv kuralına tabi olduğunu yazar. **Kapatma seçeneği:** bağ koparılırken
+  belge no ve dosya numarası da kişisiz bir sayıyla değiştirilir (göç; E15/E6'nın yeniden
+  basımı arşivdeki asılla eşleşmez, `BelgeIzi`'nin arşiv bağı zayıflar). **Karar:** kalan risk
+  olarak KABUL EDİLDİ (27.09.2026 kullanıcı kararı, tasarım §14.1 F11 ekleri KB-1 — seçenek (a),
+  karar turu KT-1): belge no ve dosya numarası anonimleştirmede kalır; E15/E6'nın yeniden basımı
+  ve `BelgeIzi` arşivdeki asılla eşleşmeyi sürdürür, metinler sınırı dürüstçe yazar. Kod
+  değişmedi.
+
 ## Kapanan
+
+- **TB16 — Ayrılmış kişi kayıtları F11'e kadar süresiz duruyordu (F1 eki 7, §6.4)**
+  *(kapandı: 27.09.2026 — F11, KULLANICI KARARI 2)*. Açıkken: ayrılış hiçbir kaydı
+  silmiyordu (22.09.2026 kararı — ayrılanın iade etmediği kitap olabilir); okuldan
+  ayrılmış kişilerin ad, okul no (şifreli) ve sınıf/şube (düz) kayıtları saklama
+  taraması gelene dek süresiz kalıyordu. Kapanış: saklama taraması (gün değişimi
+  kapısı, `saklama-taramasi`) ayrılmış kişiyi **ayrılıştan 2 yıl sonra** silme adayı
+  gösterir (`LibraryPolicy.retention_years_left_person`, 1-10 yıl, varsayılan 2);
+  silme Ayarlar → Saklama'dan **yönetici parolasıyla** onaylanan, geri dönüşsüz ve tek
+  işlemlik tetikle yapılır, öncesinde `pre-anonim` yedeği alınır. İade edilmemiş
+  kaynağı, geri alınmamış teslimi ya da kapanmamış kayıp/hasar dosyası (bedel adımında
+  bekleyen dahil) olan kişi aday OLMAZ; tetik her kişi için açık yükümlülüğü yeniden
+  sorar. Aydınlatma metni (E13) §6.4 kapsamını aynen yazar. Kanıt:
+  `apps/kutuphane/tests/test_saklama.py` (`TestAyrilmisKisi`, `TestAcikYukumluluk`),
+  `test_dolasim_belgeleri.py::test_aydinlatma_metni_asgari_unsurlari_tasir`.
 
 - **TB11 — waitress'in kendi hata yanıtları Türkçe değil** *(kapandı:
   24.09.2026 — F5)*. Açıkken: istek uygulamaya hiç ulaşmadan reddedildiğinde

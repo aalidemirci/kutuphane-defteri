@@ -10,7 +10,7 @@ from desktop.backup import database_snapshot
 from desktop.backup_crypto import encrypt_bytes, load_public_key, recovery_metadata
 from django.conf import settings
 
-from apps.okul.services import app_password
+from apps.okul.services import app_password, dis_yedek
 
 
 class EncryptedBackupError(ValueError):
@@ -41,5 +41,8 @@ def create_encrypted_backup() -> tuple[bytes, str]:
     except (OSError, sqlite3.Error) as exc:
         raise EncryptedBackupError("Şifreli yedek oluşturulamadı.") from exc
 
+    # F11 (§16 risk 13): dış yedek hatırlatmasının saati bu indirmeyle sıfırlanır.
+    # Kayıt veri dizinindeki dosyadadır ve hata yükseltmez (`dis_yedek` modül başlığı).
+    dis_yedek.indirme_kaydet()
     timestamp = datetime.now().astimezone().strftime("%Y-%m-%d-%H%M%S")
     return encrypted, f"kutuphane-defteri-yedek-{timestamp}.kdbak"

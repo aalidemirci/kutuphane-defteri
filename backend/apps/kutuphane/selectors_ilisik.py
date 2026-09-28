@@ -280,7 +280,12 @@ def _loan_key(loan: Loan) -> PersonKey | None:
 
 
 def _case_key(case: LossDamageCase) -> PersonKey | None:
-    """Dosyanın kişi anahtarı — `selectors_teslim.case_person` ile AYNI kural (önce üyelik)."""
+    """Dosyanın kişi anahtarı — `selectors_teslim.case_person` ile AYNI kural (önce üyelik).
+
+    F11: anonimleştirilmiş dosya kimseye yazılmaz (teslim bağı kalsa da).
+    """
+    if case.anonymized_at is not None:
+        return None
     uyelik = case.membership
     if uyelik is not None:
         if uyelik.student_id is not None:

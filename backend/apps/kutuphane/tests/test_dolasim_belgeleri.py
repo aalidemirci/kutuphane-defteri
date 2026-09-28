@@ -326,6 +326,7 @@ def test_kanun_alintilari_depodaki_metinle_birebir() -> None:
     for bent, metin in belgeler.KVKK_11_HAKLAR:
         assert f"{bent}) {metin}" in kanun, bent
     assert belgeler.KVKK_5_2_C in kanun
+    assert f"d) {belgeler.KVKK_4_2_D}" in kanun
     assert f"(1) {belgeler.KVKK_13_1}" in kanun
     assert f"(2) {belgeler.KVKK_13_2}" in kanun
     assert [b for b, _ in belgeler.KVKK_11_HAKLAR] == ["a", "b", "c", "ç", "d", "e", "f", "g", "ğ"]
@@ -364,13 +365,46 @@ def test_aydinlatma_metni_asgari_unsurlari_tasir() -> None:
     assert "görevli olarak çalışan öğrenci ve personel" in metin
     # Konum dili (CLAUDE.md §2-13): yerine GEÇMEZ
     assert "o sistemin yerine geçmez" in metin
-    # Saklamanın bugünkü gerçeği (TB16): ayrılan kişinin kaydı üye OLMASA da kalır;
-    # geri yüklemede kenara alınan önceki veritabanı da anılır.
-    assert "saklama taraması yoktur" in metin
-    assert "okuldan ayrılan kişilerin kayıtları (üye olsunlar ya da olmasınlar)" in metin
-    assert "süre sınırı olmadan saklanır" in metin
+    # Saklama §6.4 kapsamını aynen yazar (F11; TB16 kapandı): her satır bir madde,
+    # süreler politikadan; geri yüklemede kenara alınan önceki veritabanı da anılır.
+    assert "saklama taraması yoktur" not in metin
+    assert "süre sınırı olmadan" not in metin
+    assert f"“{belgeler.KVKK_4_2_D}”" in metin
+    assert "Okuldan ayrılan kişinin kaydı (üye olsun ya da olmasın): ayrılıştan 2 yıl" in metin
+    assert "sona ermesinden 2 yıl sonra üyelik kaydı silinir" in metin
+    assert "ders yılının sonundan 1 yıl sonra" in metin
+    assert "kapanışından 2 yıl sonra" in metin
+    assert "geri alınmasından 2 yıl sonra" in metin
+    assert "yılda bir hatırlatılır" in metin
+    assert "altı aydan uzun beklerse program uyarır" in metin
+    assert "Anonimleştirilmiş kopya" in metin
     assert "Geri yüklemede önceki veritabanı" in metin
     assert "14 gün" in metin
+    # 27.09.2026 kullanıcı kararı: silme işlemi 14 günden eski önceki veritabanını siler;
+    # elle silme yalnız daha yenisi için söylenir.
+    assert "silme işlemi 14 günden eski olanını siler" in metin
+    assert "daha yenisini gerekmiyorsa kütüphane yöneticisi siler" in metin
+    assert "onu kütüphane yöneticisi siler" not in metin
+    # F11 düzeltme turu — metin kodun gerçek davranışını söyler (Tebliğ md. 5/1-j):
+    # açık yükümlülükte üyelik ve bağlar kalır (N yıldan sonra da), süresi dolmamış
+    # başka kaydı olan kişi bekler, A3 her kapanmış ödünce uygulanır ve bağı koparılan
+    # kayıt "kişisel veri içermeyen" diye sunulmaz (arşivdeki asılla eşleşebilir).
+    assert "O güne dek iade edilmemiş kaynak izlenebilir" not in metin
+    assert (
+        "olan üyelik ve o kayıtların kişiyle bağı iş kapanana dek kalır" in metin
+    ), "açık yükümlülük cümlesi"
+    assert "süresi dolmamış başka bir kaydı varsa o süre dolana dek beklenir" in metin
+    assert "Üyeliği süren üyenin iade edilmiş ödünçleri" not in metin
+    assert "İade edilen ya da kayba dönüşen ödünçler" in metin
+    # PDF metni "/" işaretinden sonra satırı bölebilir; eğik çizgisiz parça aranır.
+    assert "dosyasına bağlı ödünç dosyayla birlikte" in metin
+    assert "sonuncusunun süresi dolunca" in metin
+    assert "kişisel veri içermeyen sayım" not in metin
+    assert "anonim hâle getirilir" not in metin
+    assert (
+        "belge no ya da dosya numarası üzerinden okul arşivindeki ıslak imzalı asılla "
+        "eşleştirilebilir" in metin
+    )
     # Şifreleme cümlesi TB1'i söyler: her şey şifreli DEĞİLDİR (Tebliğ md. 5).
     assert "şifreli olarak durur" not in metin
     assert "kart numarası ve gerekçe açıklamaları şifrelidir" in metin

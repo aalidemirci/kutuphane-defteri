@@ -60,6 +60,11 @@ vi.mock("../agkatalogu/AgKataloguPaneli", () => ({
   default: () => <div>AĞ KATALOĞU PANELİ</div>,
 }));
 
+// Saklama (F11) kendi testinde (modules/saklama); burada yalnız sekme kablolaması.
+vi.mock("../saklama/SaklamaPaneli", () => ({
+  default: () => <div>SAKLAMA PANELİ</div>,
+}));
+
 import AyarlarPage from "./AyarlarPage";
 
 const AKTIF_YIL: SchoolYear = {
@@ -135,7 +140,7 @@ afterEach(() => {
 });
 
 describe("AyarlarPage — sekmeler", () => {
-  it("dokuz sekme vardır (bu sırayla); kaldırılan sekmeler geri gelmez", async () => {
+  it("on sekme vardır (bu sırayla); kaldırılan sekmeler geri gelmez", async () => {
     renderPage();
     await screen.findByText("2026-2027");
     expect(screen.getAllByRole("tab").map((t) => t.textContent?.trim())).toEqual([
@@ -151,6 +156,8 @@ describe("AyarlarPage — sekmeler", () => {
       expect.stringContaining("Güncelleme"),
       // Ağ Kataloğu (F5) sonda: varsayılan kapalı, ilk kurulumun işi değildir.
       expect.stringContaining("Ağ Kataloğu"),
+      // Saklama (F11) en sonda: süresi dolan kayıtların onayı yılda birkaç kez yapılır.
+      expect.stringContaining("Saklama"),
     ]);
     for (const ad of [/Ders Saatleri/, /Zümreler/, /Şube Kümeleri/, /Tatiller/]) {
       expect(screen.queryByRole("tab", { name: ad })).toBeNull();
@@ -164,6 +171,12 @@ describe("AyarlarPage — sekmeler", () => {
       "aria-selected",
       "true",
     );
+  });
+
+  it("Saklama sekmesi adresle açılır ve paneli gösterir", async () => {
+    renderPage("/ayarlar?tab=saklama");
+    expect(await screen.findByText("SAKLAMA PANELİ")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Saklama/ })).toHaveAttribute("aria-selected", "true");
   });
 
   it("kaldırılmış bir sekmenin adresi sessizce Ders Yılları sekmesine düşer", async () => {

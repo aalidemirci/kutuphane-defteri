@@ -29,6 +29,15 @@ düz kopya asla yazılmaz):
 
 Yedek adları tarihlidir ve deterministiktir: aynı gün ikinci kez açılan program o
 günün yedeğini yeniden ÜRETMEZ (sabah alınan yedek, akşam bozulan veriyle ezilmez).
+
+**Saklama tetiği** (tasarım §6.4, EK-18, V2-02; F11): onaylı anonimleştirme
+tetiğinden hemen ÖNCE `pre-anonim-<tarih>-<saat>.kdbak` alınır (`pre_anonim_backup`;
+aynı gün ikinci tetik ayrı dosya alır, sabahki yedeğin yerine geçmez). Bu yedek
+rotasyona girer ve günlük yedekler gibi **14 gün** tutulur (`rotate_backups`).
+Tetik, tetik anından eski `pre-migrate` yedeklerini de siler
+(`pre_migrate_before` + `remove_pre_migrate_named`): o yedekler anonimleştirilen
+bağları "son 5 güncellemeye kadar" taşırdı. Silinemeyenler ADIYLA yeniden denenir,
+dosya zamanıyla değil (saat kayması tetikten sonraki yedeği sildirmesin).
 """
 
 from __future__ import annotations
@@ -38,7 +47,7 @@ import re
 import sqlite3
 import tempfile
 from contextlib import closing
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from desktop.backup_crypto import (
@@ -54,6 +63,8 @@ from desktop.backup_crypto import (
 
 DAILY_PREFIX = "gunluk"
 PRE_MIGRATE_PREFIX = "pre-migrate"
+#: Onaylı saklama tetiğinden önceki yedek (§6.4; rotasyonda 14 gün).
+PRE_ANONIM_PREFIX = "pre-anonim"
 
 DEFAULT_KEEP_DAYS = 14
 DEFAULT_KEEP_PRE_MIGRATE = 5
@@ -98,14 +109,16 @@ def database_snapshot(source_path: Path) -> bytes:
             return snapshot_path.read_bytes()
 
 
-def _copy_database(source_path: Path, target_path: Path) -> bool:
+def _copy_database(source_path: Path, target_path: Path, *, data_dir: Path | None = None) -> bool:
     """Tutarlı SQLite görüntüsünü ŞİFRELİ yazar; yazıldıysa True döner.
 
     Düz kopya hiçbir durumda yazılmaz. Yedek anahtarı (`yedekleme.json`) yoksa,
     bozuksa ya da kurtarma başlığı (`guvenlik.json`) kullanılamıyorsa (yok,
     boş, bozuk, bölümleri eksik) yedek atlanır (False; gerekçeler modül başlığında).
+    `data_dir` anahtar dosyalarının dizinidir; verilmezse veritabanının dizini
+    (masaüstünde ikisi aynıdır; çalışan programın backend'i güvenlik dizinini verir).
     """
-    data_dir = source_path.parent
+    data_dir = data_dir if data_dir is not None else source_path.parent
     if not config_path(data_dir).is_file():
         logger.info("Yönetici parolası henüz kurulmadı; yedek alınmadı.")
         return False
@@ -234,6 +247,110 @@ def pre_migrate_backup(
     return target
 
 
+def pre_anonim_backup(
+    db_path: Path,
+    backup_dir: Path,
+    *,
+    data_dir: Path | None = None,
+    now: datetime | None = None,
+) -> Path | None:
+    """Onaylı saklama tetiğinden ÖNCE şifreli yedek alır (§6.4, EK-18); alınamazsa `None`.
+
+    Ad `pre-anonim-<YYYY-MM-DD>-<HHMMSS>.kdbak`: tarih rotasyonun okuduğu kısımdır,
+    saat aynı gün ikinci tetiğin ayrı yedek almasını sağlar. Aynı saniyede dosya
+    varsa üzerine yazılmaz (sonek eklenir). Yedek alınamazsa tetik ÇALIŞMAZ —
+    çağıranın kuralıdır (`apps.kutuphane.services.saklama`).
+    """
+    if not db_path.exists():
+        return None
+    an = now or datetime.now()
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    kok = f"{PRE_ANONIM_PREFIX}-{an:%Y-%m-%d-%H%M%S}"
+    target = backup_dir / f"{kok}{BACKUP_SUFFIX}"
+    sira = 1
+    while target.exists():
+        sira += 1
+        target = backup_dir / f"{kok}-{sira}{BACKUP_SUFFIX}"
+    if not _copy_database(db_path, target, data_dir=data_dir):
+        return None
+    logger.info("Saklama tetiği öncesi yedek alındı: %s", target.name)
+    return target
+
+
+def pre_migrate_before(backup_dir: Path, moment: datetime) -> list[Path]:
+    """`moment`'ten ÖNCE yazılmış güncelleme öncesi yedekler (SİLMEZ; ada göre sıralı).
+
+    Ölçü dosyanın yazılma zamanıdır (ad yalnız günü taşır; aynı gün tetikten SONRA
+    alınan güncelleme yedeği kalmalıdır). Yalnız tetik ANINDA sorulur: o an saat ile
+    dosya zamanları aynı saatten gelir.
+    """
+    if not backup_dir.is_dir():
+        return []
+    sinir = moment.timestamp()
+    eskiler: list[Path] = []
+    for path in sorted(backup_dir.glob(f"{PRE_MIGRATE_PREFIX}-*{BACKUP_SUFFIX}")):
+        try:
+            if path.stat().st_mtime < sinir:
+                eskiler.append(path)
+        except OSError:
+            continue
+    return eskiler
+
+
+def _pre_migrate_adi_mi(ad: str) -> bool:
+    """Yalnız yedek klasöründeki düz bir `pre-migrate-*.kdbak` adı (yol ayırıcısı yok)."""
+    return (
+        bool(ad)
+        and Path(ad).name == ad
+        and ad.startswith(f"{PRE_MIGRATE_PREFIX}-")
+        and ad.endswith(BACKUP_SUFFIX)
+    )
+
+
+def remove_pre_migrate_named(backup_dir: Path, names: list[str]) -> tuple[list[Path], list[str]]:
+    """ADI verilen güncelleme öncesi yedekleri siler: (silinenler, silinemeyen adlar).
+
+    Saklama tetiği silinecekleri tetik anında ADIYLA belirler; silinemeyenleri
+    (`RetentionRun.pre_migrate_pending`) gün değişimi kapısı yine ADIYLA yeniden dener.
+    Yeniden deneme dosya zamanına bakmaz: sistem saati sonradan geri kayarsa tetikten
+    SONRA alınmış bir güncelleme yedeği "tetikten eski" görünür ve silinirdi (F11
+    düzeltme turu). Klasörde olmayan ad silinmiş sayılmaz ama beklemede de kalmaz;
+    `pre-migrate-*.kdbak` biçiminde olmayan ada dokunulmaz.
+    """
+    removed: list[Path] = []
+    kalan: list[str] = []
+    for ad in names:
+        if not _pre_migrate_adi_mi(ad):
+            continue
+        path = backup_dir / ad
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            continue
+        except OSError:
+            logger.warning("Güncelleme öncesi yedek silinemedi: %s", ad)
+            kalan.append(ad)
+            continue
+        removed.append(path)
+    if removed:
+        logger.info("Saklama tetiği: %d güncelleme öncesi yedek silindi.", len(removed))
+    return removed, kalan
+
+
+def remove_pre_migrate_before(backup_dir: Path, moment: datetime) -> list[Path]:
+    """`moment`'ten ÖNCE yazılmış güncelleme öncesi yedekleri siler; sildiklerini döndürür.
+
+    Onaylı saklama tetiği (§6.4 "Yedeklerdeki kalıntı") o yedekleri siler: onlar
+    anonimleştirilen bağları "son 5 güncellemeye kadar" taşırdı. Tetik silinemeyen
+    adları da tutmak için iki adımı (`pre_migrate_before` + `remove_pre_migrate_named`)
+    ayrı çağırır; bu kısayol ikisini birleştirir.
+    """
+    removed, _kalan = remove_pre_migrate_named(
+        backup_dir, [path.name for path in pre_migrate_before(backup_dir, moment)]
+    )
+    return removed
+
+
 def rotate_backups(
     backup_dir: Path,
     *,
@@ -243,10 +360,11 @@ def rotate_backups(
 ) -> list[Path]:
     """Eskimiş yedekleri siler; sildiklerini döndürür.
 
-    Günlük yedekler GÜN (varsayılan 14), güncelleme öncesi yedekler ADET
-    (varsayılan son 5) ile sınırlanır — ikincisi haftalar sonra fark edilen bir
-    yükseltme sorununda hâlâ elde olmalıdır. Program dışı/elle konmuş dosyalara
-    (adı desenlerimize uymayan her şey) DOKUNULMAZ.
+    Günlük yedekler ve saklama tetiği öncesi (`pre-anonim`, §6.4) yedekler GÜN
+    (varsayılan 14), güncelleme öncesi yedekler ADET (varsayılan son 5) ile
+    sınırlanır — ikincisi haftalar sonra fark edilen bir yükseltme sorununda hâlâ
+    elde olmalıdır. Program dışı/elle konmuş dosyalara (adı desenlerimize uymayan
+    her şey) DOKUNULMAZ.
     """
     if not backup_dir.is_dir():
         return []
@@ -254,11 +372,12 @@ def rotate_backups(
     removed: list[Path] = []
 
     cutoff = day - timedelta(days=keep_days)
-    for path in sorted(backup_dir.glob(f"{DAILY_PREFIX}-*{BACKUP_SUFFIX}")):
-        taken = _parse_date(path)
-        if taken is not None and taken < cutoff:
-            path.unlink(missing_ok=True)
-            removed.append(path)
+    for prefix in (DAILY_PREFIX, PRE_ANONIM_PREFIX):
+        for path in sorted(backup_dir.glob(f"{prefix}-*{BACKUP_SUFFIX}")):
+            taken = _parse_date(path)
+            if taken is not None and taken < cutoff:
+                path.unlink(missing_ok=True)
+                removed.append(path)
 
     pre_migrate = [
         path

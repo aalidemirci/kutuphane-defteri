@@ -77,6 +77,8 @@ def izlenen_adimlar(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     )
     monkeypatch.setattr(main_mod, "rotate_backups", kaydet("rotasyon", []))
     monkeypatch.setattr(main_mod, "prepare_django", kaydet("django-hazirla"))
+    monkeypatch.setattr(main_mod, "unknown_applied_migrations", kaydet("taninmayan-goc", []))
+    monkeypatch.setattr(main_mod, "ensure_no_unknown_migrations", kaydet("goc-surumu"))
     monkeypatch.setattr(main_mod, "has_pending_migrations", kaydet("bekleyen-goc-var-mi", True))
     monkeypatch.setattr(main_mod, "pre_migrate_backup", kaydet("goc-oncesi-yedek"))
     monkeypatch.setattr(main_mod, "run_migrations", kaydet("goc"))
@@ -96,6 +98,9 @@ def test_acilis_sirasi_tasarimla_birebir(tmp_path: Path, izlenen_adimlar: list[s
         "gunluk-yedek",
         "rotasyon",
         "django-hazirla",
+        # F11 ikinci hat: damga silinmişse (geri yükleme) tanınmayan göç eski programı durdurur.
+        "taninmayan-goc",
+        "goc-surumu",
         "bekleyen-goc-var-mi",
         "goc-oncesi-yedek",
         "goc",

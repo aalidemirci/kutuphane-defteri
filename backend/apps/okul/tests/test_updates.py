@@ -350,15 +350,68 @@ def test_http_404_surum_yok_hatasidir(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_ag_yokken_baglanti_mesaji_verilir(
     monkeypatch: pytest.MonkeyPatch, hata: Exception
 ) -> None:
-    """Çevrimdışı okul olağan durumdur: ham soket hatası değil, anlaşılır Türkçe mesaj."""
+    """Çevrimdışı okul olağan durumdur: ham soket hatası değil, anlaşılır Türkçe mesaj.
+
+    Metin kullanıcı kararıyla (27.09.2026) birebirdir: MEB ağında GitHub engellenebilir,
+    yeni sürüm indir.okulapp.org'dan elle denetlenir (program o adrese istek atmaz).
+    """
 
     def patla(*_a: object, **_k: object) -> _SahteYanit:
         raise hata
 
     monkeypatch.setattr(updates, "urlopen", patla)
 
-    with pytest.raises(updates.UpdateError, match="İnternet bağlantısını kontrol edin"):
+    with pytest.raises(updates.UpdateError) as yakalanan:
         updates._read_url(updates.LATEST_RELEASE_URL, max_bytes=1024)  # noqa: SLF001
+    assert str(yakalanan.value) == (
+        "GitHub'a ulaşılamadı; okul ağında engellenmiş olabilir. Yeni sürümü "
+        "indir.okulapp.org'dan elle denetleyebilirsiniz."
+    )
+
+
+def test_guncelleme_hedefi_githubdir_indirme_alanina_istek_atilmaz() -> None:
+    """Kullanıcı kararı 1 (27.09.2026): denetim ve kurulum dosyası GitHub'dan; indirme
+    alanı (`indir.okulapp.org`) yalnız iletide geçer, hiçbir istek adresinde geçmez."""
+    from urllib.parse import urlparse
+
+    assert urlparse(updates.LATEST_RELEASE_URL).hostname == "api.github.com"
+    assert urlparse(updates.RELEASE_LIST_URL).hostname == "api.github.com"
+    assert updates.INDIRME_ALANI in updates.ULASILAMADI_MESAJI
+    # Güvenli adres süzgeci indirme alanını KABUL ETMEZ: sürüm yanıtı oraya
+    # yönlendirse bile program istek atmaz.
+    assert updates._safe_release_url("https://indir.okulapp.org/x.exe") == ""  # noqa: SLF001
+    assert updates._safe_release_url("https://github.com/x.exe") == "https://github.com/x.exe"  # noqa: SLF001
+
+
+def test_version_key_iki_kopyasi_aynidir() -> None:
+    """CLAUDE.md §3: `version_key` iki kopyadır (masaüstü + backend) ve AYNI kalmalıdır.
+
+    Eski program yeni veriyi açmaz kapısı (`desktop.version`) ile güncelleme önerisi
+    (`updates`) aynı sıralamayı kullanmazsa biri "güncel" derken öbürü "yeni" derdi.
+    """
+    from desktop import version as masaustu
+
+    ornekler = [
+        "2026.9.0",
+        "2026.10.0",
+        "2026.10",
+        " 2026.10.0 ",
+        "2026.10.0-beta.2",
+        "2026.10.0-beta.10",
+        "2026.10.0-beta.9",
+        "2026.10.0-rc.1",
+        "2026.10.0-dev",
+        "1.0.0-alpha",
+        "x.y",
+        "",
+    ]
+    for surum in ornekler:
+        assert masaustu.version_key(surum) == updates.version_key(surum), surum
+    for i, a in enumerate(ornekler):
+        for b in ornekler[i + 1 :]:
+            assert (masaustu.version_key(a) < masaustu.version_key(b)) == (
+                updates.version_key(a) < updates.version_key(b)
+            ), (a, b)
 
 
 # ===========================================================================
@@ -876,3 +929,31 @@ def test_kurucu_indirme_ucu_servis_hatasini_400_yapar(
 
     assert yanit.status_code == 400
     assert "zaten güncel" in yanit.json()["message"]
+
+
+def test_kilitliyken_guncelleme_uclari_kapali(
+    kilitli: Path, client: APIClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """F11 düzeltme turu: kilit kapısında `updates/` muafiyeti YOK (fail-closed).
+
+    Sürüm denetimi yalnız Ayarlar → Güncelleme'deki "Şimdi denetle" düğmesiyledir ve o
+    ekran kilit açıkken görünür; kilit ekranı güncelleme ucunu çağırmaz. Kilitli program
+    GitHub'a sormaz, kurucu indirip önbelleğe yazmaz.
+    """
+    cagrilar: list[str] = []
+
+    def kaydet(ad: str) -> Any:
+        def _cagri(**_kwargs: Any) -> Any:
+            cagrilar.append(ad)
+            return {}
+
+        return _cagri
+
+    monkeypatch.setattr(updates, "update_status", kaydet("durum"))
+    monkeypatch.setattr(updates, "download_latest_installer", kaydet("kurucu"))
+
+    for yol in ("/api/v1/updates/latest/", "/api/v1/updates/latest/installer/"):
+        yanit = client.get(yol)
+        assert yanit.status_code == 423, yol
+        assert yanit.json()["code"] == "locked"
+    assert cagrilar == []

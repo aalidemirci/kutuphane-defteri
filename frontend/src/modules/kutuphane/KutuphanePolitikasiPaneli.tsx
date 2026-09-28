@@ -129,6 +129,7 @@ export default function KutuphanePolitikasiPaneli() {
   const [saklamaOdunc, setSaklamaOdunc] = useState("");
   const [saklamaDosya, setSaklamaDosya] = useState("");
   const [saklamaTeslim, setSaklamaTeslim] = useState("");
+  const [saklamaAyrilan, setSaklamaAyrilan] = useState("");
   const [kunyeAcik, setKunyeAcik] = useState(false);
   const [kunyeBakanlik, setKunyeBakanlik] = useState(true);
   const [kunyeOpenLibrary, setKunyeOpenLibrary] = useState(true);
@@ -153,6 +154,7 @@ export default function KutuphanePolitikasiPaneli() {
     setSaklamaOdunc(String(p.retention_years_returned_loans));
     setSaklamaDosya(String(p.retention_years_closed_cases));
     setSaklamaTeslim(String(p.retention_years_closed_deliveries));
+    setSaklamaAyrilan(String(p.retention_years_left_person));
     setKunyeAcik(p.metadata_lookup_enabled);
     setKunyeBakanlik(p.metadata_lookup_ministry);
     setKunyeOpenLibrary(p.metadata_lookup_openlibrary);
@@ -208,6 +210,7 @@ export default function KutuphanePolitikasiPaneli() {
         saklamaTeslim,
         politika.retention_years_closed_deliveries,
       ),
+      retention_years_left_person: sayi(saklamaAyrilan, politika.retention_years_left_person),
       metadata_lookup_enabled: kunyeAcik,
       metadata_lookup_ministry: kunyeBakanlik,
       metadata_lookup_openlibrary: kunyeOpenLibrary,
@@ -387,6 +390,14 @@ export default function KutuphanePolitikasiPaneli() {
               value={saklamaTeslim}
               onChange={(e) => setSaklamaTeslim(e.target.value)}
               error={errors.retention_years_closed_deliveries}
+            />
+            <TextField
+              label="Okuldan ayrılan kişinin kaydında saklama (yıl)"
+              inputMode="numeric"
+              value={saklamaAyrilan}
+              onChange={(e) => setSaklamaAyrilan(e.target.value)}
+              error={errors.retention_years_left_person}
+              helperText="Ayrılıştan bu süre sonra kayıt silinmek üzere listeye girer; silme yönetici onayıyla yapılır (Ayarlar → Saklama)."
             />
           </div>
         </Bolum>

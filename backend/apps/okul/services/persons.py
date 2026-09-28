@@ -44,8 +44,9 @@ AYRILIŞ YOLU (§6.1): `left_at = localdate()`, öğrencide durum LEFT, personel
 `is_active=False`, havuz alanları temizlenir, sonra ayrılış kancaları. **Ayrılış
 kaydı SİLMEZ** — üyelik ve yükümlülükten bağımsız (eski "hiç üye olmamış ve
 yükümlülüksüz → katı sil" dalı F1 eki 7 ile kalktı). Ayrılmış kişinin kaydı
-saklama taramasına kalır (§6.4, F11: tarama aday gösterir, yönetici onayıyla
-silinir; süre F11'de kararlaştırılır).
+saklama taramasına kalır (§6.4, F11: ayrılıştan `retention_years_left_person` —
+varsayılan 2 — yıl sonra aday olur, açık işi yoksa yönetici onayıyla silinir;
+`apps.kutuphane.services.saklama`).
 
 SİLME (kullanıcının bilinçli eylemi, "Sil" düğmesi): açık yükümlülük varsa
 gerekçeyle reddedilir; hiç üye olmamışsa katı silinir; üye olmuşsa ayrılış

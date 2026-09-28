@@ -137,6 +137,7 @@ class LibraryPolicySerializer(serializers.ModelSerializer[LibraryPolicy]):
             "retention_years_returned_loans",
             "retention_years_closed_cases",
             "retention_years_closed_deliveries",
+            "retention_years_left_person",
             # ISBN ile künye getirme (U13, §8.5): ana bayrak varsayılan KAPALI.
             "metadata_lookup_enabled",
             "metadata_lookup_ministry",

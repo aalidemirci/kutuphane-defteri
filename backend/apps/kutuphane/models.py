@@ -55,6 +55,11 @@ Bu fazın kararları (tasarım §6.2, F2 sözleşmesi §1):
   görüntü; iki AYRI seçenek: TMY 32/3 durdurması ve sayım için hizmet arası;
   kurul ve harcama yetkilisi adları şifreli; kalem kişisizdir). Kurallar
   `services.stocktake`, kapılar `services.tmy_kapisi` ve `services.circulation`.
+- **F11 (saklama ve anonimleştirme, §6.4)**: `Loan`, `LossDamageCase` ve `Delivery`'ye
+  `anonymized_at` (kişi bağı koparıldı, gerekçe/not temizlendi — tutarlılık kısıtlarıyla),
+  `LibraryPolicy.retention_years_left_person`, `BelgeIzi` (resmî belgenin kişisiz izi),
+  `RetentionState` (tarama özeti, onay bekleme başlangıcı) ve `RetentionRun` (onaylı
+  tetiğin kişisiz kaydı). Kurallar `services.saklama`'dadır.
 
 CLAUDE.md §3 "soft-delete ileri FK'da süzmez": `obj.fk` erişimi silinmiş kaydı
 geri getirir. Evraka ad basan yollar `deleted_at`'i elle denetler; katalog
@@ -344,6 +349,16 @@ class LibraryPolicy(BaseModel):
         "kapanmış teslimlerde saklama (yıl)",
         default=2,
         validators=[MinValueValidator(1), MaxValueValidator(10)],
+    )
+    # F11 (tasarım §6.4 ilk satırı, TB16 — KULLANICI KARARI 27.09.2026): okuldan
+    # ayrılmış kişinin kaydı ayrılıştan bu süre sonra saklama taramasına silme ADAYI
+    # olur; silme yönetici onayıyla yapılır, açık işi olan kişi aday olmaz. Öbür
+    # dört süreyle aynı kalıp (ayar, 1-10 yıl); varsayılan kararın süresidir.
+    retention_years_left_person = models.PositiveSmallIntegerField(
+        "okuldan ayrılan kişinin kaydında saklama (yıl)",
+        default=2,
+        validators=[MinValueValidator(1), MaxValueValidator(10)],
+        help_text="Ayrılıştan bu süre sonra kayıt silme adayı olur; silme yönetici onayıyladır (§6.4).",
     )
     # -- ISBN ile künye getirme (U13, tasarım §8.5) ------------------------
     # Üçü de VARSAYILAN KAPALI değildir: ana bayrak kapalıdır, kaynak seçimleri
@@ -2316,6 +2331,10 @@ class Loan(BaseModel):
         default="",
         help_text="Kapalı listeden (yönetici kipi).",
     )
+    # F11 (§6.4): saklama süresi sonunda kişi bağı (`membership`) açık güncellemeyle
+    # koparılır, gerekçeler (`override_*`, `cardless_reason`) temizlenir ve bu damga
+    # yazılır. Satır kişisiz istatistik için kalır; `cardless` işareti kişisizdir.
+    anonymized_at = models.DateTimeField("anonimleştirilme zamanı", null=True, blank=True)
 
     class Meta:
         verbose_name = "ödünç"
@@ -2354,12 +2373,27 @@ class Loan(BaseModel):
                     | (~models.Q(override_reason="") & ~models.Q(override_note=""))
                 ),
             ),
-            # U12: kartsız ödünç işaretliyse gerekçe dolu; değilse boş.
+            # U12: kartsız ödünç işaretliyse gerekçe dolu; değilse boş. F11: anonimleştirilmiş
+            # ödüncün gerekçesi temizlenir, kişisiz "kartsız" işareti kalır (§6.4).
             models.CheckConstraint(
                 name="ck_loan_cardless_reason",
                 condition=(
                     models.Q(cardless=False, cardless_reason="")
-                    | (models.Q(cardless=True) & ~models.Q(cardless_reason=""))
+                    | (
+                        models.Q(cardless=True)
+                        & (~models.Q(cardless_reason="") | models.Q(anonymized_at__isnull=False))
+                    )
+                ),
+            ),
+            # F11: anonimleştirilmiş ödünç kişiye bağlı değildir ve gerekçe taşımaz.
+            models.CheckConstraint(
+                name="ck_loan_anonymized",
+                condition=models.Q(anonymized_at__isnull=True)
+                | models.Q(
+                    membership__isnull=True,
+                    override_reason="",
+                    override_note="",
+                    cardless_reason="",
                 ),
             ),
         ]
@@ -2467,6 +2501,10 @@ class Delivery(BaseModel):
     )
     returned_at = models.DateTimeField("geri alma zamanı", null=True, blank=True)
     lost_at = models.DateTimeField("kayba dönüşme zamanı", null=True, blank=True)
+    # F11 (§6.4): kapanmış öğretmen tesliminde saklama süresi sonunda alan bağı
+    # (`personnel`) AÇIK GÜNCELLEMEYLE koparılır ve bu damga yazılır. Şube (sınıf
+    # kitaplığı) teslimi kişiye bağlı değildir, bağı kalır.
+    anonymized_at = models.DateTimeField("anonimleştirilme zamanı", null=True, blank=True)
 
     class Meta:
         verbose_name = "teslim"
@@ -2522,6 +2560,13 @@ class Delivery(BaseModel):
             ),
             models.CheckConstraint(
                 name="ck_delivery_document_no", condition=~models.Q(document_no="")
+            ),
+            # F11: yalnız kapanmış teslim anonimleştirilir; anonimleştirilmiş teslimin
+            # öğretmen bağı yoktur.
+            models.CheckConstraint(
+                name="ck_delivery_anonymized",
+                condition=models.Q(anonymized_at__isnull=True)
+                | (~models.Q(status="OPEN") & models.Q(personnel__isnull=True)),
             ),
         ]
 
@@ -2744,6 +2789,11 @@ class LossDamageCase(BaseModel):
         blank=True,
         help_text="Asıl kayıttan düşme sayımda, TMY 27/1 yoluyla yapılır (F9).",
     )
+    # F11 (§6.4): kapanmış dosyada saklama süresi sonunda kişi bağı (`membership`)
+    # koparılır, `responsible_note` temizlenir ve bu damga yazılır. Anonimleştirilmiş
+    # dosya hiçbir kişiye yazılmaz (`selectors_teslim.person_case_q`); ödünç ve teslim
+    # bağı kalır (onların kişi bağı kendi süreleriyle koparılır).
+    anonymized_at = models.DateTimeField("anonimleştirilme zamanı", null=True, blank=True)
 
     class Meta:
         verbose_name = "kayıp/hasar dosyası"
@@ -2830,6 +2880,15 @@ class LossDamageCase(BaseModel):
             models.CheckConstraint(
                 name="ck_lossdamagecase_converted_damaged",
                 condition=~models.Q(resolution="CONVERTED_TO_LOSS") | models.Q(case_type="DAMAGED"),
+            ),
+            # F11: yalnız kapanmış dosya anonimleştirilir; üyelik bağı ve sorumlu notu boştur.
+            models.CheckConstraint(
+                name="ck_lossdamagecase_anonymized",
+                condition=models.Q(anonymized_at__isnull=True)
+                | (
+                    ~models.Q(resolution__in=OPEN_CASE_RESOLUTIONS)
+                    & models.Q(membership__isnull=True, responsible_note="")
+                ),
             ),
         ]
 
@@ -4175,3 +4234,147 @@ class StockTakeItem(BaseModel):
     @property
     def is_surplus(self) -> bool:
         return self.copy_id is None
+
+
+# ---------------------------------------------------------------------------
+# F11 — saklama ve anonimleştirme (§6.4, D13, TB16) ve resmî belgenin izi (§6.2 BelgeIzi,
+# KM-12). Üçü de KİŞİSİZDİR: ad, kimlik ya da kişiye giden bağ taşımaz.
+# ---------------------------------------------------------------------------
+class BelgeTuru(models.TextChoices):
+    """İz bırakan resmî belgeler (§6.2 `BelgeIzi`, KM-12; sözlük §2).
+
+    Kişiyi adıyla anan ve ıslak imzayla asılı okul arşivine giren belgelerdir: E5
+    ilişik belgesi, E6 kayıp/hasar tutanağı ve E15'in iki belgesi. E7 ve E10'daki
+    adlar (komisyon, kurul, onaylayan) saklama kapsamında değildir (§6.4 tablosu);
+    onların yeniden basımı anonimleştirmeden etkilenmez.
+    """
+
+    ILISIK_BELGESI = "E5", "Kütüphaneden ilişiği yoktur belgesi"
+    KAYIP_HASAR_TUTANAGI = "E6", "Kayıp/hasar tutanağı"
+    TESLIM_LISTESI = "E15_TESLIM", "Teslim listesi"
+    GERI_ALMA_DOKUMU = "E15_GERI_ALMA", "Geri alma dökümü"
+
+
+class BelgeIzi(models.Model):
+    """Resmî belgenin kişisiz izi — tür, tarih/sayı, sha256 (§6.2, KM-12; F11).
+
+    "Arşiv yükümlülüğü ize, KVKK yükümlülüğü içeriğe" ayrımı: belge her
+    üretildiğinde (PDF — basıldığı anlamına gelmez, D10) bir satır yazılır. Satır
+    KİŞİSİZDİR: `kapsam` yalnız belge no, dosya numarası, barkod ya da sayı taşır;
+    kişinin adı, kimliği ya da ona giden bir bağ YOKTUR. Anonimleştirme bu tabloya
+    dokunmaz. Anonimleştirilmiş kayıttan yeniden üretilen belge "Anonimleştirilmiş
+    kopya — ıslak imzalı asıl nüsha okul arşivindedir" ibaresini taşır ve
+    `anonim_kopya` işaretiyle yazılır (`apps.kutuphane.belge_izi`).
+
+    `BaseModel` DEĞİLDİR (`IssuedCard` kalıbı): yumuşak silme izi sessizce düşürürdü.
+    """
+
+    tur = models.CharField("belge türü", max_length=16, choices=BelgeTuru.choices)
+    belge_tarihi = models.DateField("belgenin tarihi")
+    belge_sayisi = models.CharField(
+        "belgenin sayısı",
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Belge no (E15) ya da dosya numarası; kişisel veri yazılmaz.",
+    )
+    kapsam = models.CharField(
+        "kapsam", max_length=255, blank=True, default="", help_text="Kişisiz kısa açıklama."
+    )
+    adet = models.PositiveIntegerField("satır ya da sayfa sayısı", default=0)
+    sha256 = models.CharField("PDF'in SHA-256 özeti", max_length=64)
+    uretildi = models.DateTimeField("üretildiği zaman", default=timezone.now, db_index=True)
+    anonim_kopya = models.BooleanField("anonimleştirilmiş kopya", default=False)
+
+    class Meta:
+        verbose_name = "belge izi"
+        verbose_name_plural = "belge izleri"
+        ordering = ["-uretildi", "-pk"]
+        indexes = [models.Index(fields=["tur", "belge_tarihi"], name="kutuphane_belgeizi_tur_idx")]
+        constraints = [
+            models.CheckConstraint(
+                name="ck_belgeizi_tur", condition=models.Q(tur__in=BelgeTuru.values)
+            ),
+            models.CheckConstraint(name="ck_belgeizi_sha256", condition=~models.Q(sha256="")),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.get_tur_display()} izi #{self.pk}"
+
+
+class RetentionState(models.Model):
+    """Saklama taramasının durumu — tek satır (pk=1), kişisiz (§6.4 çalışma biçimi).
+
+    Gün değişimi kapısındaki tarama (`services.saklama.gunluk_tarama`) yazar:
+
+    - `pending_since`: onay bekleyen adayların İLK tespit edildiği gün. Aday
+      kümesi boşken tarama onu boşaltır; onaylı tetik bütün adayları işlediği
+      için tetikten sonra da boşalır. Onay beklemenin azami süresi (6 ay) buna
+      göre ölçülür; süre dolunca Genel Bakış'ta kapatılamayan uyarı çıkar.
+    - `last_scan_on` + `last_scan`: son taramanın günü ve kişisiz özeti (kural
+      başına aday sayıları).
+    """
+
+    SINGLETON_PK = 1
+
+    pending_since = models.DateField("onay bekleme başlangıcı", null=True, blank=True)
+    last_scan_on = models.DateField("son tarama günü", null=True, blank=True)
+    last_scan = models.JSONField("son taramanın özeti", default=dict, blank=True)
+
+    class Meta:
+        verbose_name = "saklama taraması durumu"
+        verbose_name_plural = "saklama taraması durumu"
+
+    def __str__(self) -> str:
+        return "Saklama taraması durumu"
+
+    @classmethod
+    def load(cls) -> RetentionState:
+        """Tek satırı döndürür; yoksa KAYDEDİLMEMİŞ varsayılan örnek (okuma yazmaz)."""
+        return cls.objects.filter(pk=cls.SINGLETON_PK).first() or cls(pk=cls.SINGLETON_PK)
+
+
+class RetentionRun(models.Model):
+    """Onaylı saklama tetiğinin kişisiz kaydı (§6.4; F11).
+
+    Tetik geri dönüşsüzdür; ne yapıldığını yalnız SAYILARLA anlatır (hangi kişi
+    silindi YAZILMAZ). `backup_name` tetikten önce alınan `pre-anonim-…` yedeğinin
+    adıdır (14 gün rotasyonda kalır); `pre_migrate_removed` tetik anından eski
+    silinen güncelleme öncesi yedeklerin sayısıdır. `pre_migrate_pending` tetik
+    anında silinmesi gerekip silinemeyen güncelleme öncesi yedeklerin ADLARIDIR
+    (kişisiz; `pre-migrate-<sürüm>-<gün>.kdbak`): gün değişimi kapısı yalnız bu
+    adları yeniden dener — dosya zamanına bakmaz, sistem saati sonradan kaysa da
+    tetikten sonra alınmış yedek silinmez (F11 düzeltme turu).
+
+    `old_db_removed` / `old_db_pending` aynı kalıbın geri yükleme artığı için olanıdır
+    (27.09.2026 kullanıcı kararı): tetik, geri yüklemenin veri klasöründe kenara aldığı
+    `db-onceki-<damga>.sqlite3` dosyalarından adındaki damgası tetik anından 14 günden
+    eski olanları `-wal`/`-shm` eşleriyle siler; sayı silinen VERİTABANI sayısıdır (eşler
+    sayılmaz), bekleyenler silinemeyen dosyaların ADLARIDIR (kişisiz) ve yalnız adla
+    yeniden denenir.
+    """
+
+    ran_at = models.DateTimeField("tetik zamanı", default=timezone.now, db_index=True)
+    backup_name = models.CharField("tetik öncesi yedek", max_length=255)
+    summary = models.JSONField("özet", default=dict, blank=True)
+    pre_migrate_removed = models.PositiveIntegerField("silinen güncelleme öncesi yedek", default=0)
+    pre_migrate_pending = models.JSONField(
+        "silinemeyen güncelleme öncesi yedekler", default=list, blank=True
+    )
+    old_db_removed = models.PositiveIntegerField("silinen önceki veritabanı", default=0)
+    old_db_pending = models.JSONField(
+        "silinemeyen önceki veritabanı dosyaları", default=list, blank=True
+    )
+
+    class Meta:
+        verbose_name = "saklama tetiği"
+        verbose_name_plural = "saklama tetikleri"
+        ordering = ["-ran_at", "-pk"]
+        constraints = [
+            models.CheckConstraint(
+                name="ck_retentionrun_backup", condition=~models.Q(backup_name="")
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Saklama tetiği #{self.pk}"

@@ -51,7 +51,7 @@ Kardeşlerinden tek farkı **iki yüzeyi** olmasıdır:
 | Masaüstü | pywebview + iki waitress dinleyicisi · tepsi: Windows'ta pystray, Linux'ta Qt |
 | Paket | Windows: PyInstaller onedir + Inno Setup (**yönetici kurulumu**) · Linux: `.deb` |
 | Güvenlik | **Zorunlu** yönetici parolası · Fernet alan şifrelemesi · kör indeks · şifreli yedek (`.kdbak`) · görevli/yönetici kipi |
-| Sürüm | CalVer (`VERSION`) + GitHub Release + `indir.okulapp.org` manifesti |
+| Sürüm | CalVer (`VERSION`) + GitHub Release (program "Şimdi denetle" ile GitHub'dan denetler; `indir.okulapp.org` paketlerin indirme alanıdır, program oraya istek atmaz) |
 
 Sabit ödünç süresi, sayı sınırları, sayım ve ayıklama kuralları Okul
 Kütüphaneleri Yönetmeliği (RG 23.11.2024/32731) ile TMY'ye bağlıdır. Metinler
@@ -283,8 +283,11 @@ Kütüphaneleri Yönetmeliği (RG 23.11.2024/32731) ile TMY'ye bağlıdır. Meti
   `apps/okul/services/updates.py`) ve aynı kalmalıdır; ön sürüm eki doğal
   sıralanır (`beta.10 > beta.9`).
 - **Dış istek yalnız kullanıcının başlattığı İKİ kapıdan çıkar** (T11, 23.09.2026):
-  (1) güncelleme denetimi — "Denetle" düğmesiyle, `indir.okulapp.org`
-  manifestinden (MEB ağında GitHub engellidir); (2) ISBN ile künye sorgusu
+  (1) güncelleme denetimi — "Şimdi denetle" düğmesiyle, GitHub Release'ten
+  (`api.github.com`; kurulum dosyası `github.com`'dan — kullanıcı kararı
+  27.09.2026). MEB ağında GitHub engellenebilir: ulaşılamazsa ileti bunu söyler ve
+  yeni sürümün `indir.okulapp.org`'dan elle denetlenebileceğini yazar (program o
+  adrese istek atmaz, yalnız metinde anar); (2) ISBN ile künye sorgusu
   (U13, tasarım §8.5) — ayarla açılır, **varsayılan kapalıdır**, her sorguyu
   kullanıcı başlatır ve dışarı yalnız normalize ISBN gider. **Açılışta ağ yok,
   telemetri yok, kişisel veri çıkmaz.** Açılışta, arka planda ya da toplu içe
@@ -320,7 +323,8 @@ kayıtlıdır.
 | Veri `ProgramData`'da değil hesabın `%LOCALAPPDATA%`'sında | `ProgramData` bütün hesaplara okuma hakkı verirdi; önerilen hesap ayrı kütüphane masası hesabıdır | §4.5 |
 | Personel unvanı, branşı ve öğrenci cinsiyeti yok | Veri en aza indirme; branş öğretmeni kişiye bağlar | V2-01, §6.1 |
 | Üye sayıları (türe ve şubeye göre) eşiksiz basılıyor | 27.09.2026 kullanıcı kararı: üyelik sayısı ödünç verisi değildir, profil yasağının konusu sayılmaz. k eşiği ve tamamlayıcı gizleme yalnız ödünçten türeyen sayılara uygulanır | §14.1 F10 ekleri K1 |
-| e-Okul aktarımı kimseyi "ayrıldı" yapmıyor, ayrılış da kaydı silmiyor | 22.09.2026 kullanıcı kararı: listede bulunmayan kişi **Ayrılış Havuzu**'na düşer, kararı kullanıcı verir; ayrılan kişinin iade etmediği kaynak olabileceği için kayıt kalır. Ayrılmış kayıtların temizliği F11 saklama taramasına bağlıdır | §14.1 F1 ekleri, TB16 |
+| e-Okul aktarımı kimseyi "ayrıldı" yapmıyor, ayrılış da kaydı silmiyor | 22.09.2026 kullanıcı kararı: listede bulunmayan kişi **Ayrılış Havuzu**'na düşer, kararı kullanıcı verir; ayrılan kişinin iade etmediği kaynak olabileceği için kayıt kalır. Ayrılmış kayıtların temizliği F11 saklama taramasındadır (ayrılış + 2 yıl, açık işi olmayan kişi, yönetici onayıyla) | §14.1 F1 ekleri, F11 ekleri S-1 (TB16 kapandı) |
+| Saklama süresi dolan kayıtlar kendiliğinden silinmiyor, şube (sınıf kitaplığı) teslimi hiç anonimleştirilmiyor | §6.4: tarama yalnız aday gösterir, silme ve anonimleştirme yönetici parolasıyla onaylanan tek işlemdir (6 ayı aşan beklemede kapatılamayan uyarı). Şube kişi değildir (§6.3 açık kalanlar); yalnız öğretmen tesliminin bağı koparılır | §14.1 F11 ekleri S-4, S-6, S-8 |
 
 **Kural:** Bu tabloya ya da teknik borç kütüğüne giren bir konuyu yalnız
 *gerekçenin yanlış olduğunu* gösterebiliyorsan raporla; "auth yok" demekle
@@ -372,8 +376,9 @@ açılır, geliştirme konteynerinde değil.
   `test(masaustu): …`, `docs: …`. Türkçe karakterli mesaj PowerShell'den
   `git commit -F <dosya>` ya da heredoc ile geçilir.
 - **Sürüm:** CalVer, `VERSION` dosyası. `v*` etiketi paketleri üretir, GitHub
-  Release'i açar ve paketleri R2'ye yükler; manifest
-  `indir.okulapp.org/kutuphane-defteri/manifest.json`'dur.
+  Release'i açar ve paketleri R2'ye (`indir.okulapp.org/kutuphane-defteri/`,
+  elle indirme alanı) yükler. Program güncellemeyi GitHub Release'ten denetler;
+  R2'deki bir manifesti okumaz (kullanıcı kararı 27.09.2026).
 - **Yayın işleri dışa açıktır ve kullanıcı onaylıdır:** etiket, push, R2
   yüklemesi, site commit'i. Otonom oturum bunları kendi başına yapmaz.
 - **okulapp.org ortak yayın alanıdır.** Siteye yazarken
@@ -614,13 +619,76 @@ kuralıyla basılır), ödünçten türeyen bütün eşikler aynen kalır · K2 
 metin aranmaz, ara sayım ekinin sayıları belge günündendir. E11, E12, E17, E20 ve kişi
 dökümünün gerçek yazıcı çıktısı F12'ye ertelendi.
 
-Sıradaki: F11 Bakım (dış yedek hatırlatması · saklama ve anonimleştirme — gün değişimi
-kapısına eklenir; azami gecikme, `pre-anonim` rotasyonu, tetikte eski `pre-migrate` silme,
-BelgeIzi, kapanmış teslim; çok okunanlar anonimleştirmeden sonra yeniden hesaplanmaz · görev
-devri (E18) · güncelleme (manifest, düğmeyle)). Kod kapısı: eski exe yeni DB'yi açmaz ·
-anonimleştirme sonrası yeniden basımda ibare var · açık yükümlülük varken kişi silinmez ·
-temiz makinede geri yükleme provası. Tam tablo: tasarım §14.1. Saha hazırlık hattı (S1-S15,
-kod dışı): §14.2.
+**F11 Bakım — kod tarafı bitti (27.09.2026, dal `f11-bakim`).** Tek göç
+`0010_saklama_ve_belge_izi` (`LibraryPolicy.retention_years_left_person`; `Loan`,
+`LossDamageCase`, `Delivery` için `anonymized_at` + tutarlılık kısıtları; `RetentionState`,
+`RetentionRun` — silinemeyen güncelleme yedeklerinin ve önceki veritabanı dosyalarının
+ADLARIYLA, `BelgeIzi`) · **saklama ve
+anonimleştirme** (§6.4 BAĞLAYICI, `services/saklama.py`): ayrılmış kişi **ayrılış + 2 yılda**
+silme adayı (KULLANICI KARARI 27.09.2026 — **TB16 kapandı**); sona ermiş üyeliğin kapalı ödünç
+ve dosya bağları koparılır, üyelik satırı silinir (kart `CardRevocation`'a, `IssuedCard` kalır);
+iade edilen ya da kayba dönüşen ödünçler ders yılı sonu + 1 yıl (A3); kapanmış dosya kapanış + 2
+yıl; kapanmış öğretmen teslimi geri alma + 2 yıl, **belge no düzeyinde** (aynı teslim
+listesinin satırları birlikte — şube kişi değildir, bağı kalır); kişisini tesliminden bulan
+dosya teslimini, açık ya da süresi dolmamış dosyaya bağlı ödünç dosyasını bekler (yeniden
+eşleşmeye karşı — düzeltme turu D-1, D-3); bedel adımında bekleyen dosya yıllık hatırlatmaya
+düşer, sessizce silinmez; gerekçe ve sorumlu notu metinleri temizlenir (**D13 kapandı**);
+**açık ödünç, açık teslim ya da açık dosya varken kişi silinmez** (tetik her kişiyi yeniden
+sorar); bağı koparılan kayıt belge no ya da dosya numarasıyla arşivdeki ıslak imzalı asılla
+eşleşebilir — hiçbir metin "kişisel veri içermeyen" demez (TB39) · çalışma biçimi: gün
+değişimi kapısında `saklama-taramasi` (kayıt yazmaz) → Genel Bakış kartları → Ayarlar →
+**Saklama** (kişisiz önizleme, adlar yalnız istenince; onay yönetici parolası + "geri
+alınamaz" + önizlemenin parmak izi — liste değiştiyse 409) → TEK işlem tetik: önce
+`pre-anonim-<tarih>-<saat>.kdbak` (alınamazsa tetik yok; rotasyonda 14 gün), sonra tetik
+anından eski `pre-migrate` yedekleri ve geri yüklemenin kenara aldığı `db-onceki-*`
+dosyalarından **adındaki damgası tetik anından 14 günden eski olanlar** (`-wal`/`-shm`
+eşleriyle; KULLANICI KARARI 27.09.2026) silinir — silinecekler yalnız tetik anında belirlenir,
+silinemeyen ADIYLA yeniden denenir (saat kayması) — ve `wal_checkpoint(TRUNCATE)` (TB24
+değerlendirildi, kalır);
+onay beklemesi 6 ayı aşınca kapatılamayan uyarı · **`BelgeIzi`**
+(E5, E6, E15 teslim listesi ve geri alma dökümü; kişisiz) ve anonimleştirilmiş kayıttan yeniden
+basımda **"Anonimleştirilmiş kopya — ıslak imzalı asıl nüsha okul arşivindedir"** · çok
+okunanların kapanmış penceresi ve sonlandırılmış E9 anonimleştirmeden sonra değişmez · **dış
+yedek hatırlatması** (son şifreli yedek indirmesi veri dizinindeki `dis-yedek.json`'da —
+geri yükleme onu geri sarmasın; 30 gün, ayar 7-90) · **temiz makinede geri yükleme provası**
+gerçek alt süreçle (parolayla ve kurtarma anahtarıyla; kart defteri geri sarılmaz) · **eski
+program yeni veriyi açmaz**, iki hatta: sürüm damgası + veritabanının tanımadığı göç kaydı
+(geri yükleme damgayı sildiği için; çıkış kodu 4; göç adları yalnız günlüğe, ileti sade
+Türkçe) · **görev devri** (Güvenlik → Görev Devri:
+parola ve kurtarma anahtarı tek atomik yazımda yenilenir → yeni anahtar saklanıp doğrulanır →
+**E18 Görev devri notu**; adlar yalnız PDF'te, saklanmaz; DEK döndürme v1 dışında — TB17, TB23
+açık). **Sınır:** eski parola ya da eski anahtar, eski bir başlıkla (devirden önceki yedek,
+`guvenlik-arsiv-*`, `pre-parola-*`) DEK'i verir ve devirden SONRAKİ yedekleri de açar (testle
+sabit) — hiçbir metin "eski parola kilidi artık açmaz" demez; E18 masa hesabının parolasının
+değiştirilmesini ister, açık işleri "notun düzenlendiği gün"ün sayısı diye basar, ek notu en
+çok 8 satırdır; atıflar fıkranın öznesine bağlıdır (KVKK 12/4 veri sorumlusu, Yönerge 6/4
+görev değişikliğinde kıyasen) · **güncelleme GitHub Release'ten, yalnız "Şimdi denetle" ile**
+(KULLANICI KARARI 27.09.2026, F5 ekleri 15 kapandı; ulaşılamazsa ileti indir.okulapp.org'u
+yalnız metinde anar; kilitliyken `updates/` kapalı) · açılışta dış istek yok (kaynak düzeyinde
+kapalı liste + gerçek açılışta ve gün değişimi kapısının işlerinde ağ tuzağı) · aydınlatma
+metni §6.4'ü ve kodun gerçek davranışını yazar · kılavuzun bakım bölümleri, `docs/kurulum.md`
+(taşıma listesi — sihirbazı doldurulmuş yeni bilgisayar dahil, USB'deki yedeklerin önerilen
+düzeni, geri yükleme provası, çıkış kodları), sözlük. **Görevli izin listesi DEĞİŞMEDİ.**
+Sapmalar, kararlar ve düzeltme turu (denetimin 20 bulgusu, D-1…D-21): tasarım §14.1 **"F11
+ekleri"** (S, B, E, K kolları, bütünleştirme, kararlar, düzeltme turu, karar turu KT-1…KT-7);
+kalan riskler TB17, TB23, TB24, TB39. **Kararlar (27.09.2026) uygulandı; bekleyen karar yok:**
+KB-1 (a) belge no ve dosya numarası anonimleştirmede kalır (TB39 kabul) · KB-2 (a) görev
+devrinde DEK değişmez, masa hesabı parolası değişir, DEK döndürme v1 sonrası (TB17/TB23 kabul)
+· `db-onceki-*` tetikte 14 günden eskiler silinir (yukarıda) · USB'de "son iki yedek" önerisi
+onaylandı · ANA OTURUM KARARI: eski program iletisinde göç adları yok, yalnız günlükte.
+Gerçek Windows paketinde tetik, USB'den `--geri-yukle` provası, MEB ağında GitHub erişimi ve
+E18'in yazıcı çıktısı F12'ye ertelendi.
+
+Sıradaki: **F12 Paketleme + saha kabulü** — Inno (yeni GUID, WebView2, iki mutex, kapatma
+olayı, `LicenseFile`) · `.deb` (`copyright` dosyası) · `THIRD_PARTY_LICENSES` (TB28: PySide6,
+pystray ve öbür bağımlılıkların lisans metinleri ve LGPL kaynağı) · `veri_sizintisi` ×2 ·
+belgeler · okulapp.org alanı §17 (güncelleme iletisindeki elle denetleme bağlantısı
+`okulapp.org/kutuphane-defteri/` o güne dek 404 verir) · ertelenmiş saha kanıtları: tahta,
+gerçek okuyucu ve yazıcı, belgelerin yazıcı çıktısı (E5-E20), Windows paketinde saklama tetiği
+ve USB'den geri yükleme, okul ağı ve MEB ağında GitHub erişimi. Kod kapısı: temiz Windows 11'de
+ve Pardus'ta uçtan uca zincir (kurulum → sihirbaz → e-Okul → Excel katalog → etiket → dolaşım →
+ağdan arama → yedek/geri yükleme) · tahtadan arama · gerçek okuyucu. Tam tablo: tasarım §14.1.
+Saha hazırlık hattı (S1-S15, kod dışı): §14.2.
 
 ---
 

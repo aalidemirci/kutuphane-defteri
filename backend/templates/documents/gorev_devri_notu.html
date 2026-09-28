@@ -1,0 +1,126 @@
+{% extends "documents/base.html" %}
+{% comment %}Görev devri notu (E18; tasarım §4.4 SU-25, §10). Bağlam
+apps/kutuphane/gorev_devri.py::not_pdf'ten gelir: antet, `issued_on`, `asset_no`,
+`devreden`/`devralan` (yalnız basım anında; boşsa elle doldurulacak çizgi),
+`devir_ani`, `devir_gunu`, `dogrulama_ani`, `teslim_kalemleri` (boş kutuyla, elle
+işaretlenir), `acik_is_ciftleri` (kişisiz sayılar, iki sütun), `eski_yedek_sayisi`, `en_eski_yedek`,
+`arsiv_sayisi`, `ek_not`, `mudur`. Dürüst dil (TB17, TB23; F11 düzeltme turu): devir
+kayıtların şifreleme anahtarını değiştirmez; eski parola ya da eski anahtar ESKİ bir
+güvenlik başlığıyla (eski yedek, arşiv dosyası) birlikte o anahtarı verir ve devirden
+SONRA alınan yedekleri de açar — belge "kilidi artık açmaz" DEMEZ, masa hesabının
+parolasının değiştirilmesini ister. Açık işler basım anının sayılarıdır: başlık "notun
+düzenlendiği gün" der. Atıflar fıkranın öznesine bağlıdır (KVKK 12/4: veri sorumlusu;
+Yönerge 6/4: çalışması sona eren kullanıcı, görev değişikliğinde kıyasen). "Devir"
+TMY'de başka anlamdadır: belge "görevi devreden / devralan" der.
+text-transform YOK (başlıklar doğrudan büyük harf). Sayfa bütçesi: gerçek
+uzunlukta verilerle en çok iki sayfa (test_gorev_devri.py).{% endcomment %}
+{% block extra_style %}
+<style>
+  .kutulu { margin: 4pt 0 0; padding: 0; list-style: none; font-size: 9.5pt; line-height: 1.4; }
+  .kutulu li { margin-bottom: 3pt; }
+  .kutu { display: inline-block; width: 9pt; height: 9pt; border: 0.9pt solid var(--pr-ink);
+          margin-right: 6pt; vertical-align: -1pt; }
+  .liste { margin: 4pt 0 0 14pt; padding: 0; font-size: 9.5pt; line-height: 1.4; }
+  .liste li { margin-bottom: 3pt; }
+  .para { font-size: 9.3pt; margin: 5pt 0; line-height: 1.38; }
+  .section { margin-top: 7pt; }
+  .isler { table-layout: fixed; box-sizing: border-box; font-size: 8.8pt; margin: 5pt 0; }
+  .isler th, .isler td { box-sizing: border-box; padding: 3pt 6pt; }
+  .isler .ad { width: 39%; }
+  .isler .sayi { width: 11%; text-align: right; }
+  .isler tr { break-inside: avoid; page-break-inside: avoid; }
+  .sig-grid { margin-top: 16pt; table-layout: fixed; box-sizing: border-box; }
+  .sig-grid td { width: 33.3%; box-sizing: border-box; }
+  .sig-grid .space { height: 26pt; }
+  .dipnot { margin-top: 8pt; text-align: center; font-size: 8pt; color: var(--pr-secondary);
+            border-top: 0.6pt solid var(--pr-faint); padding-top: 4pt; }
+</style>
+{% endblock %}
+{% block content %}
+  <div class="doc-title">{{ document_title }}</div>
+  <div class="doc-subtitle">Kütüphane Defteri · kütüphane yöneticiliği görevinin devri</div>
+
+  <table class="info">
+    <tr><td class="label">Düzenlenme tarihi</td><td>{{ issued_on }}</td></tr>
+    <tr><td class="label">Bilgisayarın demirbaş no'su</td><td>{% if asset_no %}{{ asset_no }}{% else %}……………………………………{% endif %}</td></tr>
+    <tr><td class="label">Görevi devreden</td><td>{% if devreden %}{{ devreden }}{% else %}……………………………………………………{% endif %}</td></tr>
+    <tr><td class="label">Görevi devralan</td><td>{% if devralan %}{{ devralan }}{% else %}……………………………………………………{% endif %}</td></tr>
+  </table>
+
+  <div class="section">
+    <div class="section-title">PROGRAMDA YAPILANLAR</div>
+    <ul class="liste">
+      <li>Yönetici parolası değiştirildi ve yeni kurtarma anahtarı üretildi: {{ devir_ani }}.</li>
+      <li>Yeni kurtarma anahtarının saklandığı doğrulandı: {{ dogrulama_ani }}.</li>
+      <li>Kayıtların şifreleme anahtarı değişmedi; eski parolanın ve eski kurtarma anahtarının sınırı aşağıdadır.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <div class="section-title">TESLİM EDİLENLER</div>
+    <ul class="kutulu">
+      {% for kalem in teslim_kalemleri %}<li><span class="kutu"></span>{{ kalem }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="section">
+    <div class="section-title">NOTUN DÜZENLENDİĞİ GÜN AÇIK İŞLER</div>
+    <table class="doc-table isler">
+      <tr><th class="ad">İş</th><th class="sayi">Sayı</th><th class="ad">İş</th><th class="sayi">Sayı</th></tr>
+      {% for sol, sag in acik_is_ciftleri %}<tr><td class="ad">{{ sol.etiket }}</td><td class="sayi">{{ sol.sayi }}</td><td class="ad">{% if sag %}{{ sag.etiket }}{% endif %}</td><td class="sayi">{% if sag %}{{ sag.sayi }}{% endif %}</td></tr>
+      {% endfor %}
+    </table>
+    <p class="para">Sayılar kişisizdir; kimin hangi kitabı aldığı bu notta yer almaz. Ayrıntı
+    programın ilgili ekranlarındadır (Dolaşım Masası, İlişik Listesi, Sayım, Ayıklama).</p>
+  </div>
+
+  <div class="section flow">
+    <div class="section-title">ESKİ PAROLA, ESKİ KURTARMA ANAHTARI VE YEDEKLER</div>
+    <p class="para">Görev devri kayıtların şifreleme anahtarını değiştirmez; yalnız yönetici
+    parolasının ve kurtarma anahtarının açtığı kilit yenilenir. Bütün kayıtların yeni bir
+    anahtarla yeniden şifrelenmesi bu sürümde yoktur. Bu yüzden ESKİ yönetici parolası ya da
+    ESKİ kurtarma anahtarı, devirden önce alınmış bir yedekle ya da arşivlenmiş güvenlik
+    dosyasıyla birlikte kayıtların şifreleme anahtarını verir. Bu anahtar devirden SONRA alınan
+    yedekleri de, bu bilgisayardaki güncel kayıtları da açar. Görev devri, görevi devredenin bu
+    bilgisayara ve yedeklere erişimi kesildiğinde anlam taşır. Eski güvenlik bilgisini
+    taşıyanlar:</p>
+    <ul class="liste">
+      <li>bu bilgisayarın yedek klasöründe devirden önce alınmış {{ eski_yedek_sayisi }} yedek{% if en_eski_yedek %} (en eskisi {{ en_eski_yedek }}){% endif %} — günlük yedekler 14 gün içinde kendiliğinden silinir, güncelleme öncesi yedekler son beş güncellemeye kadar kalır, parola kurulurken alınan yedek kendiliğinden silinmez;</li>
+      <li>veri klasöründe “guvenlik-arsiv” adıyla saklanan {{ arsiv_sayisi }} önceki güvenlik dosyası;</li>
+      <li>USB bellekte ya da başka bir yerde saklanan bütün eski yedekler.</li>
+    </ul>
+    <p class="para">Kütüphane masası Windows hesabının parolası değiştirilir ve görevi devredene
+    verilmez; devirden sonra yeni bir şifreli yedek alınır, devirden önce alınmış USB yedekleri
+    silinir. Eski kurtarma anahtarı kâğıdı, devirden önce alınmış yedekler saklandıkça
+    müdürlükte ayrı zarfta “Eski anahtar — {{ devir_gunu }} öncesi yedekler için” diye
+    işaretlenerek saklanır; o yedekler kalmayınca kâğıt yırtılarak yok edilir. Görevi devreden
+    eski parolayı ve eski anahtarı hiçbir yerde saklamaz, kimseyle paylaşmaz. Eski parolanın ya
+    da eski anahtarın başkasının eline geçtiği düşünülüyorsa okul müdürlüğü bilgilendirilir.</p>
+    <p class="para">Çalışması sona eren kullanıcı, kendisinde bulunan donanımı ve bilişim
+    sistemlerinin kullanımına yönelik şifreleri iade eder; erişim hakları kaldırılır (MEB Bilgi
+    ve Sistem Güvenliği Yönergesi md. 6/4; okulda kalan kişinin görev değişikliğinde kıyasen
+    uygulanır). Veri sorumluları ile veri işleyenler öğrendikleri kişisel verileri Kanuna aykırı
+    olarak başkasına açıklayamaz ve işleme amacı dışında kullanamaz; bu yükümlülük görevden
+    ayrılmalarından sonra da devam eder (6698 sayılı Kanun md. 12/4). Görevi devreden, veri
+    sorumlusu olan okulun bu yükümlülüğü gereği görevi sırasında öğrendiği kişisel verileri
+    açıklamaz ve kullanmaz.</p>
+  </div>
+
+  {% if ek_not %}
+  <div class="section flow">
+    <div class="section-title">EK NOT</div>
+    <div class="field-box">{{ ek_not }}</div>
+  </div>
+  {% endif %}
+
+  <table class="sig-grid">
+    <tr>
+      <td><div class="space"></div><div class="line"></div><div class="name">{% if devreden %}{{ devreden }}{% else %}&nbsp;{% endif %}</div><div class="role">Görevi devreden</div></td>
+      <td><div class="space"></div><div class="line"></div><div class="name">{% if devralan %}{{ devralan }}{% else %}&nbsp;{% endif %}</div><div class="role">Görevi devralan</div></td>
+      <td><div class="space"></div><div class="line"></div><div class="name">{% if mudur %}{{ mudur }}{% else %}&nbsp;{% endif %}</div><div class="role">Okul müdürü</div></td>
+    </tr>
+  </table>
+
+  <div class="dipnot">Adlar programda saklanmaz; yalnız bu çıktıdadır. Bu not gizlidir; asılmaz, çoğaltılmaz.</div>
+{% endblock %}

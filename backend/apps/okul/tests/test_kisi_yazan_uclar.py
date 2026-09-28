@@ -69,6 +69,9 @@ KISI_YAZAN_UCLAR = frozenset(
         "library-loss-damage-case-list",
         "library-loss-damage-case-detail",
         "library-loss-damage-case-resolve",
+        # F11 saklama tetiği (§6.4): süresi dolmuş kişi, üyelik ve bağları siler ya da
+        # anonimleştirir — gövdede yönetici parolası da ister.
+        "library-retention-apply",
     }
 )
 
@@ -79,6 +82,14 @@ DIGER_UCLAR = frozenset(
         "app-quit",
         "backup-list",
         "backup-restore",
+        # F11 bakım kolu: dış yedek hatırlatması veri dizinindeki dosyaya (tarih ve
+        # süre) yazar; görev devri yönetici parolasını ve kurtarma anahtarını yeniler,
+        # görev devri notu (E18) adları yalnız basım anında kullanır — hiçbiri kişi
+        # sicili yazmaz.
+        "backup-external-reminder",
+        "library-handover",
+        "library-handover-note",
+        "library-handover-start",
         "class-section-detail",
         "class-section-list",
         "encrypted-backup-download",
@@ -163,6 +174,11 @@ DIGER_UCLAR = frozenset(
         # son işlemler yalnız okur; PDF uçları kayıt yazmaz; panonun POST'u
         # yalnız süreç içi "Kontrol ettim" onayıdır. Hepsi yönetici kipi işidir.
         "library-dashboard-circulation",
+        # F11 saklama (§6.4): durum, silinecek kişiler, bedel listesi ve pano yalnız okur.
+        "library-dashboard-retention",
+        "library-retention",
+        "library-retention-persons",
+        "library-retention-price-reminders",
         "library-dashboard-recent-transactions",
         "library-desk-card-pdf",
         "library-member-card-list",
@@ -406,7 +422,8 @@ def test_parolasizken_kisi_yazan_her_uc_yazma_yontemiyle_409_doner(parolasiz: Pa
     # + F6 kart basım işareti ve geri alma (POST)
     # + F6 dolaşım masası: ödünç ver ve iade al (POST)
     # + F7: toplu teslim ve geri alma (POST), dosya açma (POST), not (PATCH), çözüm (POST)
-    assert denenen == 2 + 2 * 3 + 4 + 2 + 1 + 1 + 5 + 2 + 2 + 2 + 3
+    # + F11: saklama tetiği (POST)
+    assert denenen == 2 + 2 * 3 + 4 + 2 + 1 + 1 + 5 + 2 + 2 + 2 + 3 + 1
     assert not Student.all_objects.exists()
 
 

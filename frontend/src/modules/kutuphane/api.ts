@@ -172,6 +172,8 @@ export interface LibraryPolicy {
   retention_years_returned_loans: number;
   retention_years_closed_cases: number;
   retention_years_closed_deliveries: number;
+  /** Okuldan ayrılan kişinin kaydında saklama (F11 — §6.4; kullanıcı kararı: 2 yıl). */
+  retention_years_left_person: number;
   /** ISBN ile künye getirme (U13, §8.5) — VARSAYILAN KAPALI dış kapı. */
   metadata_lookup_enabled: boolean;
   metadata_lookup_ministry: boolean;

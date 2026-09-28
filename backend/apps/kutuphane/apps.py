@@ -39,6 +39,7 @@ class KutuphaneConfig(AppConfig):
             memberships,
             policy,
             populer,
+            saklama,
         )
         from apps.okul import kip, masaustu_kanca
 
@@ -65,6 +66,10 @@ class KutuphaneConfig(AppConfig):
         # `prepare_django` ready()'yi masaüstü kapıyı kurmadan çağırır. Kapı
         # `False`'ı "bir saat sonra yeniden dene" diye okur (bakımda ya da hata).
         masaustu_kanca.gunluk_is_kaydet(populer.GUNLUK_IS_ADI, populer.kapi_isi)
+        # F11 (§6.4 çalışma biçimi 1): saklama taraması — süresi dolan kayıtları bulur,
+        # kişisiz özeti ve onay bekleme başlangıcını yazar; hiçbir kaydı değiştirmez
+        # (değişiklik yalnız yöneticinin onaylı tetiğiyle olur).
+        masaustu_kanca.gunluk_is_kaydet(saklama.GUNLUK_IS_ADI, saklama.kapi_isi)
 
         # `sender=self`: iki kanca da her `migrate`'te bu uygulama için BİR KEZ
         # çalışır. `pre_migrate` hiçbir göç koşmadan, `post_migrate` bütün

@@ -147,7 +147,13 @@ def document_no_used(document_no: str) -> bool:
 # Kayıp / hasar dosyası
 # ---------------------------------------------------------------------------
 def case_person(case: LossDamageCase) -> Person | None:
-    """Dosyanın bağlı olduğu kişi: üyeliğin kişisi, yoksa teslim alan öğretmen (TEK kural)."""
+    """Dosyanın bağlı olduğu kişi: üyeliğin kişisi, yoksa teslim alan öğretmen (TEK kural).
+
+    F11: anonimleştirilmiş dosya hiçbir kişiye bağlı değildir — teslim bağı kalsa da
+    (öğretmen teslimi kendi süresiyle koparılır) dosya öğretmene YAZILMAZ.
+    """
+    if case.anonymized_at is not None:
+        return None
     if case.membership is not None:
         return case.membership.person
     if case.delivery is not None and case.delivery.personnel is not None:
@@ -162,15 +168,24 @@ def person_case_q(person: Person) -> Q:
     Kişiye dosya soran HER yol bunu kullanır (açık yükümlülük, ilişik, kişi dökümü —
     F10 düzeltme turu): teslimdeki kitabı kaybeden öğrencinin üyeliğiyle açılan dosya
     öğretmenin değildir; öğretmenin dökümüne ya da yükümlülüğüne girmez.
+
+    F11: anonimleştirilmiş dosya hiçbir kişinin değildir. Üyelik bağı koparılınca
+    `membership__isnull` doğru olur; süzgeç olmasa öğrencinin anonimleştirilmiş dosyası
+    teslim bağı üzerinden ÖĞRETMENE yazılırdı.
     """
     if isinstance(person, Student):
         return Q(membership__student=person)
-    return Q(membership__personnel=person) | Q(membership__isnull=True, delivery__personnel=person)
+    return Q(membership__personnel=person) | Q(
+        membership__isnull=True, anonymized_at__isnull=True, delivery__personnel=person
+    )
 
 
 def section_case_q() -> Q:
-    """Şubenin açık işi sayılan dosyalar: üyeliği olmayan ve şube tesliminden doğan dosya."""
-    return Q(membership__isnull=True, delivery__section__isnull=False)
+    """Şubenin açık işi sayılan dosyalar: üyeliği olmayan ve şube tesliminden doğan dosya.
+
+    F11: anonimleştirilmiş dosya (yalnız kapanmış dosya anonimleştirilir) şubeye de yazılmaz.
+    """
+    return Q(membership__isnull=True, anonymized_at__isnull=True, delivery__section__isnull=False)
 
 
 def loss_damage_cases(
