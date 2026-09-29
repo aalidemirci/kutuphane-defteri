@@ -8,7 +8,9 @@
   çoğaltılmaz." dipnotu; okul no basılmaz; kişi sırası.
 - Kütüphane aydınlatma metni: md. 10/1 unsurları, masadaki öğrenci görevliler,
   saklamanın bugünkü gerçeği (TB16), md. 11 bentleri ve md. 5/2-ç, 13/1-2
-  alıntıları docs/mevzuat'taki Kanun metniyle BİREBİR; en çok iki sayfa.
+  alıntıları docs/mevzuat'taki Kanun metniyle BİREBİR; okuma ödülü iç çıktısı
+  (29.09.2026 kullanıcı kararı) amaçta, hukuki sebepte ve "kimler görür"de, atfı
+  docs/mevzuat'tan doğrulanır; en çok iki sayfa.
 - Masa kartı: tek sayfa; iletiler masa ekranının iletileriyle aynı.
 - Profil yasağı: belge modülleri konu/sınıflama/bölüm alanına dokunmaz.
 
@@ -30,7 +32,7 @@ from pypdf import PdfReader
 
 from apps.kutuphane import dolasim_belgeleri as belgeler
 from apps.kutuphane import selectors_dolasim, serializers_evrak
-from apps.kutuphane.models import Loan, Membership, TerminationReason
+from apps.kutuphane.models import LibraryPolicy, Loan, Membership, TerminationReason
 from apps.kutuphane.services import circulation
 from apps.kutuphane.tests.dolasim_ortak import (
     gecikmeli_yap,
@@ -312,13 +314,17 @@ def test_bos_liste_basilir_ve_bunu_soyler() -> None:
 # ============================================================ E13 aydınlatma metni
 
 
-def _kvkk_metni() -> str:
+def _mevzuat_metni(ad: str) -> str:
     yerel = Path(__file__).resolve().parents[4]
     for kok in (yerel, Path("/repo")):
-        yol = kok / "docs" / "mevzuat" / "6698-kvkk.md"
+        yol = kok / "docs" / "mevzuat" / ad
         if yol.is_file():
             return _tek(yol.read_text(encoding="utf-8"))
-    pytest.fail("KVKK metni bulunamadı.")
+    pytest.fail(f"{ad} bulunamadı.")
+
+
+def _kvkk_metni() -> str:
+    return _mevzuat_metni("6698-kvkk.md")
 
 
 def test_kanun_alintilari_depodaki_metinle_birebir() -> None:
@@ -415,16 +421,94 @@ def test_aydinlatma_metni_asgari_unsurlari_tasir() -> None:
     assert "ornek@example.org" in metin
     # Toplanmayan veriler
     assert "T.C. kimlik numarası" in metin
+    # 29.09.2026 kullanıcı kararı (tasarım §14.1 F12 ekleri İA-3): okuma ödülü iç çıktısı
+    # (E20) ödünç kaydından adlı sıralamanın çıktığı tek yerdir; amaç (Tebliğ md. 5/1-b,
+    # g), hukuki sebep (md. 5/1-h) ve kimlerin gördüğü ayrıca yazılır.
+    for beklenen in (
+        "Okul isterse, Uygulama Kılavuzu'nun 7. bölümündeki okuma ödülü önerisi için "
+        "adayların belirlenmesi",
+        "seçilen dönemde ödünç alıp iade ettikleri farklı eserlerin sayısına göre adı ve "
+        "sınıfıyla sıralar",
+        "sayı, okul numarası ve kitap adları basılmaz",
+        "Öneri bağlayıcı değildir, ödüle okul karar verir",
+        "okuma ödülü iç çıktısında okuma kültürünü oluşturmaya yönelik etkinlikler",
+        "Okuma ödülü iç çıktısı yalnız yönetici kipinde basılır",
+        "“İç kullanım” ibarelidir ve okul içinde ödül kararı için kullanılır",
+        "asılmaz, çoğaltılmaz; Ağ Kataloğuna, panoya, yıl sonu raporuna ve velilerle "
+        "paylaşılan çıktılara girmez",
+    ):
+        assert beklenen in metin, beklenen
+    assert "(md. 8/1-c)" in metin.replace("8/1- c", "8/1-c")
+    # Programın kendi metninde "okuyan" kalıbı yok, Kılavuz cümlesi alıntılanmaz (sözlük §1).
+    assert not re.search(r"okuyan", metin, flags=re.IGNORECASE)
+    # Ödünç ≠ okuduğu kitap: öğrenci bazlı ödünç sayısı aktarılmaz cümlesi kalır.
+    assert "öğrenci bazında ödünç sayısı öğretmenlere ya da e-Okul'a aktarılmaz" in metin
 
 
-def test_aydinlatma_metni_en_uzun_veride_en_cok_iki_sayfa(okul: SchoolConfig) -> None:
+def test_okuma_odulu_atiflari_depodaki_metinden_dogrulanir() -> None:
+    """E13'ün okuma ödülü satırlarının atfı depodaki metinlerle örtüşür (CLAUDE.md §2-13):
+    hukuki sebep Yönetmelik md. 8/1-c'nin kendi bendidir, öneri Kılavuz 7'dedir."""
+    yonetmelik = _mevzuat_metni("meb-okul-kutuphaneleri-yonetmeligi.md")
+    madde_8 = yonetmelik[yonetmelik.index("MADDE 8-") : yonetmelik.index("MADDE 9-")]
+    bent = "c) Okuma kültürünü oluşturmaya yönelik etkinlikler düzenler."
+    assert bent in madde_8
+    kilavuz = _mevzuat_metni("meb-okul-kutuphaneleri-yonetmeligi-uygulama-kilavuzu.md")
+    bolum_7 = kilavuz[kilavuz.index("## 7. ") : kilavuz.index("## 8. ")]
+    assert "öğrenciler ödüllendirilerek teşvik sistemi kurulabilir" in bolum_7
+    sablon = _tek(
+        (Path(__file__).resolve().parents[3] / "templates" / "documents")
+        .joinpath("aydinlatma_metni.html")
+        .read_text(encoding="utf-8")
+    )
+    govde = sablon[sablon.index("{% block content %}") :]
+    assert "okuma kültürünü oluşturmaya yönelik etkinlikler (md. 8/1-c)" in govde
+    assert "okuma kültürünü oluşturmaya yönelik etkinlikler" in bent.casefold()
+    assert "Uygulama Kılavuzu'nun 7. bölümündeki okuma ödülü önerisi" in govde
+
+
+#: İl ve ilçe hem antette ("<İLÇE> KAYMAKAMLIĞI") hem veri sorumlusu satırında basılır.
+#: Gerçek en uzun adlar (ilçe Mustafakemalpaşa, il Afyonkarahisar) ve alana kurum
+#: adının yazıldığı hâl. Alanın üst sınırı (64 + 64) gerçek bir yer adı değildir; o
+#: uydurma veride imza bloğu üçüncü sayfaya geçer (tasarım §14.1 F12 ekleri LD-8).
+EN_UZUN_YERLER = (
+    ("Mustafakemalpaşa", "Afyonkarahisar"),
+    ("Mustafakemalpaşa İlçe Millî Eğitim Müdürlüğü", "Afyonkarahisar Valiliği"),
+)
+
+
+@pytest.mark.parametrize(("ilce", "il"), EN_UZUN_YERLER)
+def test_aydinlatma_metni_en_uzun_veride_en_cok_iki_sayfa(
+    okul: SchoolConfig, ilce: str, il: str
+) -> None:
     okul.school_name = EN_UZUN_OKUL
     okul.principal_name = f"{EN_UZUN_AD} {EN_UZUN_SOYAD}"
+    okul.district, okul.province = ilce, il
     okul.save()
+    # Saklama süreleri üst sınırda (iki haneli; Kütüphane Politikası 1-10 yıl).
+    politika = LibraryPolicy.load()
+    for alan in (
+        "retention_years_left_person",
+        "retention_years_after_termination",
+        "retention_years_returned_loans",
+        "retention_years_closed_cases",
+        "retention_years_closed_deliveries",
+    ):
+        setattr(politika, alan, 10)
+    politika.save()
 
     pdf = belgeler.privacy_notice_pdf(basvuru_adresi="Örnek " * 49, iletisim="x" * 120)
 
     assert len(PdfReader(io.BytesIO(pdf)).pages) <= 2
+    # Boşluksuz en uzun iletişim değeri hücrede kırılır (29.09.2026): kırılmadığında
+    # sütunu genişletip etiketi üç satıra eziyor ve sayfadan taşıyordu.
+    ham = _metin(pdf)
+    assert "E-posta ya da telefon" in ham
+    assert "Başvuru adresi" in ham
+    # Okuma ödülü satırları en uzun veride de belgededir (bütçe onlarla ölçülür).
+    assert "Okuma ödülü iç çıktısı yalnız yönetici kipinde basılır" in _tek(ham)
+    # İl ve ilçe iki yerde basıldı: bütçe onlarla ölçüldü.
+    assert f"({ilce} / {il})" in _tek(ham)
+    assert "MUSTAFAKEMALPAŞA" in ham
 
 
 def test_bos_basvuru_alanlari_elle_doldurulacak_satir_birakir() -> None:

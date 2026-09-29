@@ -23,6 +23,33 @@ describe("HakkindaPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("geliştirici kartı: kardeş programlarla aynı biçimde ad ve e-posta (unvan ve kurum yok)", () => {
+    // 29.09.2026 kullanıcı kararı (tasarım §14.1 F12 ekleri İA-1): iletişim, kardeş
+    // programların Hakkında sayfasındaki biçimde verilir — ad + e-posta; unvan ve kurum adı
+    // herkese açık tanıtımda geçmez.
+    render(<HakkindaPage />);
+
+    expect(screen.getByRole("heading", { level: 2, name: "Geliştirici" })).toBeInTheDocument();
+    expect(screen.getByText("Ahmet Ali DEMİRCİ")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /aalidemirci@gmail\.com/ })).toHaveAttribute(
+      "href",
+      "mailto:aalidemirci@gmail.com",
+    );
+    expect(
+      screen.getByText(/talep, öneri, hata bildirimi ve şikâyetlerinizi bu e-posta adresine/),
+    ).toBeInTheDocument();
+    // KVKK: destek iletisine kişi verisi girmez; okulun kayıtları için başvuru okula yapılır.
+    expect(screen.getByText(/İletinize öğrenci, veli ya da personel bilgisi/)).toHaveTextContent(
+      "başvurular okul müdürlüğüne yapılır",
+    );
+    const kart = screen.getByRole("heading", { level: 2, name: "Geliştirici" }).parentElement;
+    const kartMetni = kart?.textContent ?? "";
+    expect(kartMetni).toContain("Ahmet Ali DEMİRCİ");
+    for (const unvanYaDaKurum of [/öğretmen/i, /müdür yardımcısı/i, /lisesi/i, /ortaokulu/i]) {
+      expect(kartMetni).not.toMatch(unvanYaDaKurum);
+    }
+  });
+
   it("konum notu: yerel araçtır, Bakanlık otomasyon sistemindeki kaydın yerine geçmez", () => {
     render(<HakkindaPage />);
 

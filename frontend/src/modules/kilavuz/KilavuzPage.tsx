@@ -3829,7 +3829,8 @@ export default function KilavuzPage() {
           kararına yardım eder. Sıra, dönem içinde ödünç alınıp iade edilmiş farklı eser sayısına
           göredir: aynı eserin yeniden alınması bir kez sayılır. Eşit olanlar aynı sıradadır ve
           sınırdaki eşitlerin hepsi girer. Yalnız okuldaki öğrenciler sıralanır. Çıktıda sayı ve
-          okul no yoktur. Ödünç kaydı okunan kitabı göstermez.
+          okul no yoktur. Ödünç kaydı okunan kitabı göstermez. Kütüphane aydınlatma metni bu çıktıyı
+          ölçütüyle, dayanağıyla ve kimlerin gördüğüyle birlikte ayrıca anlatır.
         </p>
         <p>
           Sekmede “Dönem” (istatistikteki seçicinin aynısı), “Sınıf” (bütün sınıflar ya da bir sınıf

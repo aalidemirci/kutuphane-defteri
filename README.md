@@ -73,7 +73,14 @@ indirildiyse adı `SHA256SUMS-<sürüm>.txt`; Linux'ta `sha256sum -c <dosya> --i
 Masaüstü ve paketleme iskeleti aynı ailenin sınav programından (kardeş depo), iş
 mantığı OYS (okulapp) kütüphane modülünden türetilmiştir.
 
-## Lisans
+## Lisans ve iletişim
+
+Copyright © 2026 Ahmet Ali DEMİRCİ — <aalidemirci@gmail.com>
+
+Talep, öneri ve hata bildirimleri e-postayla ya da deponun Issues sayfasından iletilir;
+güvenlik açıkları için [SECURITY.md](SECURITY.md). Hiçbir iletiye ve kayda öğrenci, veli
+ya da personel verisi, gerçek veri içeren ekran görüntüsü, yedek ya da veritabanı dosyası
+eklemeyin; Issues kayıtları herkese açıktır.
 
 [PolyForm Noncommercial License 1.0.0](LICENSE). Ticari olmayan kullanım
 serbesttir; ticari satış, ücretli dağıtım ya da barındırılan hizmet olarak

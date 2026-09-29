@@ -53,16 +53,6 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   yeniden ölçülecek; yavaşlık çıkarsa `synchronous` gevşetilmez, yazma
   işlemleri toplanır.
 
-- **TB4 — Logo geçici: kelebek çizimi (F0 kopyası):** `packaging/ikonlar/
-  logo_uret.py` kardeş projenin koltuk-karesi kelebeğini üretiyor; açıklaması
-  da o projenin salon krokisini anlatıyor. Kütüphaneye özgü bir çizim
-  gelene kadar ikon ve logo bu yer tutucudur. Değiştirmek için
-  `kutuphane-defteri-logo.png` yeniden üretilip `ikon_uret.py` koşulur
-  (sözleşme hazır). Aynı dosyadaki "kelebek" sözcüğü kimlik kalıntısı
-  taramasına (tasarım §2.3) takılır; logo değişince kendiliğinden kapanır.
-  okulapp.org'daki proje görseli (`public/kutuphane-defteri.png`) de aynı
-  logodan türeyecek (tasarım §17).
-
 - **TB5 — Linux derleme tabanı Debian 11 destek dışı (kardeş projeden devralındı;
   A6):** `.deb` Pardus 21 uyumu için `python:3.12-bullseye` kabında derlenir;
   Debian 11 LTS 31.08.2026'da bitti. Güvenlik deposu tarihli arşive
@@ -368,8 +358,9 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   konması (Windows için MSYS2 kaynakları tahminen onlarca MB; Qt kaynağı ~1 GB — ayna), (c) ikisi.
   **KULLANICI KARARI (28.09.2026, tasarım §14.1 F12 ekleri karar turu KT-1, KT-3):** beta için
   KB-1 (a) — `BENIOKU.txt`'de üreticinin metni olarak **yazılı teklif** (uygulandı: her sürüm,
-  beta dahil, yayımdan itibaren en az üç yıl; iletişim yolu GitHub deposunun Issues sayfası,
-  e-posta, kişi adı, unvan ve kurum adı yok; kaynak ücretsiz ağ sunucusundan, fiziksel
+  beta dahil, yayımdan itibaren en az üç yıl; iletişim yolu GitHub deposunun Issues sayfası
+  ve — 29.09.2026 kullanıcı kararıyla, tasarım F12 ekleri İA-2 — geliştiricinin e-posta
+  adresi; kişi adı, unvan ve kurum adı yok; kaynak ücretsiz ağ sunucusundan, fiziksel
   taşıyıcıda en çok gönderim maliyetine; kapı testli) ve KB-3 (a) — Qt/Chromium bildirimleri
   beta'da adresle (bugünkü hâl). **Düzeltme turu (29.09.2026, tasarım F12 ekleri DT-7):**
   teklif metni LGPL-3.0 bileşenleri için yalnız GPLv3 §6(b)'yi anıyordu; 6(b) fiziksel
@@ -577,7 +568,47 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   yalnız gerçek kurulumla sınanabilir ve yanlış bir tespit kurulu programda da katalogu
   kapatırdı.
 
+- **TB42 — Windows tepsisindeki simge elle çizilmiş 16 px kesimi kullanmıyor (tasarım §14.1
+  F12 ekleri L-1 "Sınır" ve LD-3; 29.09.2026):** pystray 0.19.5 Win32'de tek bir PIL
+  görüntüsü alır, onu kendisi Pillow'un varsayılan boyutlarıyla geçici bir `.ico`'ya yazar
+  ve `LoadImage(…, 0, 0, LR_DEFAULTSIZE | LR_LOADFROMFILE)` ile yükler (`_win32.py::
+  _assert_icon_handle`, kaynaktan doğrulandı). `tray.py` ona `.ico`'nun en büyük karesini
+  (256) verir; %100 ölçekte yüklenen 32 px kare 256'nın küçültmesidir ve kabuk onu 16'ya
+  indirir: tepsideki simge bulanıktır, etiket ve raf kahverengi lekeye döner. Program
+  günlerce tepside açık kaldığı için (T9) en sürekli görünen 16 px yüzey budur. Başlık
+  çubuğu, görev çubuğu, Başlat ve Gezgin `.ico`'nun kendi karelerini (elle çizilmiş
+  16/24/32) kullanır; Linux tepsisi ve penceresi hicolor temasından doğru boyutu alır.
+  **Durum:** beta bu hâliyle çıkar (uygulayıcı turu: "beta'da yapılmadı"). **ANA OTURUM
+  KARARI (30.09.2026): kararlı sürümden önce (a) yapılır** (tasarım F12 ekleri KT-5 madde 6;
+  aynı işte 48 px kesim de elle çizilir — ana çizimden küçültülen 48'de etiket
+  kahverengi-gri kalıyor). Seçenekler: (a) `PystrayTray`'de
+  `pystray.Icon`'un Win32 alt sınıfında `_assert_icon_handle` ezilir ve depodaki `.ico`
+  doğrudan `LoadImage(path, IMAGE_ICON, GetSystemMetrics(SM_CXSMICON),
+  GetSystemMetrics(SM_CYSMICON), LR_LOADFROMFILE)` ile yüklenir — elle çizilmiş 16 ve %150'de
+  24 kullanılır; pystray sürümü sabit olduğu için iç yöntem de sabittir, ama gerçek Windows'ta
+  (DPI farkındalığı dahil) sınanmadan pakete girmez; NOTLAR W13'e saha satırı eklenir; ya da
+  (b) kabul edilmiş kalan risk olarak kalır. Gözlem noktası: protokol 3.1 (tepsi simgesi).
+
 ## Kapanan
+
+- **TB4 — Logo geçiciydi: kardeş projenin kelebek çizimi (F0 kopyası)** *(kapandı:
+  29.09.2026 — KULLANICI KARARI, tasarım §14.1 F12 ekleri L-1)*. Açıkken:
+  `packaging/ikonlar/logo_uret.py` kardeş projenin koltuk-karesi kelebeğini üretiyor,
+  açıklaması o projenin salon krokisini anlatıyordu; ikon ve logo yer tutucuydu, dosya
+  kimlik kalıntısı taramasından muaftı. Kapanış: kullanıcı üç taslaktan A'yı ("Raf ve
+  etiket": lacivert karo, rafta kitap sırtları, barkodlu safran sırt etiketi, yaslanan
+  kitap) seçti. `logo_uret.py` ana çizimi (1024) ve 16/24/32 px'in elle çizilmiş piksel
+  kesimlerini yazar; `ikon_uret.py` 48 ve üstünü ana çizimden türetir, `.ico`'ya her
+  boyutu kendi karesiyle koyar (16/24/32 elle çizilmiş) ve dosyayı yeniden açıp denetler.
+  Kenar boşluğu bütün boyutlarda tek kuraldır (⌈boyut/32⌉ px, 16 boşluksuz): elle
+  çizilmiş kesimler ile ana çizim Windows'un ölçek adımlarında yan yana geçer, eski
+  düzende 32 → 48 geçişinde karo küçülüyordu. Kimlik taramasındaki muafiyet kalktı
+  (`TEKNIK_BORC_MUAFIYETLERI` boş). Kanıt: `packaging/tests/test_ikonlar.py` (`.ico`
+  boyutları ve kareleri, kesimlerin üreticiyle eşitliği, kenar boşluğu, piksel sondası,
+  simgenin göründüğü yüzeyler), `test_kimlik_kalintisi.py`. okulapp.org'daki proje görseli
+  (`public/kutuphane-defteri.png`) depodaki ana çizimden ikon üreticisiyle türer
+  (`ikon_uret.py --site`; site adımı, `docs/site-icerigi.md` §7). Kalan ayrıntı açık kalem
+  olarak ayrıca izlenir: Windows tepsisi elle çizilmiş 16'yı kullanmıyor — **TB42**.
 
 - **TB16 — Ayrılmış kişi kayıtları F11'e kadar süresiz duruyordu (F1 eki 7, §6.4)**
   *(kapandı: 27.09.2026 — F11, KULLANICI KARARI 2)*. Açıkken: ayrılış hiçbir kaydı

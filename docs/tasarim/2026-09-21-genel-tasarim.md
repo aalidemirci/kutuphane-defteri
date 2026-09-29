@@ -4830,9 +4830,10 @@ düzeltmesi kilitleyen testle.
   üreticinin metnine eklenir), (b) kaynak arşivlerinin Release'e ve `indir.okulapp.org`'a ayrı
   "kaynak" paketi olarak konması (Windows MSYS2 kaynakları onlarca MB; Qt kaynağı ~1 GB — ayna),
   (c) ikisi. Öneri beta için (a), kararlı sürümden önce Windows MSYS2 kaynakları için (b) idi;
-  karar öneriyle aynıdır. İletişim yolu GitHub deposunun Issues sayfasıdır (e-posta, kişi adı,
-  unvan, kurum adı yazılmaz); (b)'nin kaynak paketi Release'e konur (kararda `indir.okulapp.org`
-  anılmadı). Uygulama: KT-1; (b) KT-5 listesinde.
+  karar öneriyle aynıdır. İletişim yolu GitHub deposunun Issues sayfası ya da — 29.09.2026
+  kullanıcı kararıyla (İA-2) — geliştiricinin e-postasıdır; kişi adı, unvan ve kurum adı
+  yazılmaz (28.09.2026'daki ilk hâlinde e-posta da yazılmıyordu); (b)'nin kaynak paketi
+  Release'e konur (kararda `indir.okulapp.org` anılmadı). Uygulama: KT-1; (b) KT-5 listesinde.
 - **KB-2 — KULLANICI KARARI (28.09.2026): Pardus'un taşınabilir arşivinde Ağ Kataloğu
   AÇILAMAZ** (F5 ekleri 27'den süren karar) — Windows'un taşınabilir paketiyle aynı davranış;
   katalog yalnız kurulu pakette (`.deb`) açılır. Protokol §24.11 artık gözlem değil
@@ -4873,7 +4874,8 @@ düzeltmesi kilitleyen testle.
   turundaki ayıklamadan sonra yalnız Pardus'ta gerçek masaüstünde görülür (protokol §24.3,
   24.5 — Pardus 21 zorunlu). (f)
   `okulapp.org/kutuphane-defteri` site adımı yayına girene dek 404 verir (protokol §21.1 bunu
-  beklenen diye yazar); site görseli geçici logodan türer (TB4).
+  beklenen diye yazar); site görseli geçici logodan türer (TB4 — 29.09.2026'da kapandı, site
+  görseli yeni logodan türer: aşağıda "kullanıcı kararları (29.09.2026)" L-1).
 - **Sıradaki (ana oturum, kullanıcı onayıyla):** PR ve CI (Windows lisans kapısının ilk koşusu),
   beta etiketi `v2026.10.0-beta.1` (Release + R2), okulapp.org site adımı (ayrı depo), saha
   kabulü (kullanıcı, `docs/saha-kabulu.md`), kararlı sürümden önce yapılacaklar (karar turu
@@ -4899,14 +4901,16 @@ listesi DEĞİŞMEDİ.
   Nasıl istenir: GitHub deposunun Issues sayfası (kayıtta sürüm, platform, bileşen; "kayıtlar
   herkese açıktır: kişisel veri ve okul bilgisi yazmayın"). Kaynak ücretsizdir (ağ sunucusu, ör.
   Release); fiziksel taşıyıcıda ücret gönderim maliyetini aşmaz. Süre: her sürüm, beta dahil,
-  yayım tarihinden EN AZ ÜÇ YIL ve o sürüm için destek sürdükçe. **E-posta, kişi adı, unvan ve
-  kurum adı yazılmaz**; depo adresi tek sabittir (`DEPO_ADRESI`) ve güncelleme denetiminin
-  varsayılan deposuyla (`updates.py::GITHUB_REPOSITORY`) aynıdır — `.deb` `copyright`'ın
+  yayım tarihinden EN AZ ÜÇ YIL ve o sürüm için destek sürdükçe. **Kişi adı, unvan ve kurum adı
+  yazılmaz**; e-posta da ilk hâlinde yazılmıyordu, 29.09.2026 kullanıcı kararıyla Issues'un
+  yanına ikinci yol olarak eklendi (aşağıda İA-2); depo adresi tek sabittir (`DEPO_ADRESI`) ve güncelleme denetiminin varsayılan deposuyla
+  (`updates.py::GITHUB_REPOSITORY`) aynıdır — `.deb` `copyright`'ın
   `Upstream-Contact`'ı da aynı sabitten gelir ve teklife işaret eder. Kapı testleri
   (`test_lisans_kapisi.py`, üç yeni): depodaki `BENIOKU.txt` üreticinin `bilesenler.json`'dan
   ürettiği metinle BİREBİR (elle düzeltme ya da `uret.sh` koşulmadan değişen üretici metni
   kapıyı kırar); teklifin içeriği (süre, dayanak, ücret, adres, her LGPL bileşen sürümüyle) ve
-  e-posta, telif sahibinin adı, unvan ve kurum sözcüklerinin yokluğu; depo adresinin güncelleme
+  e-posta, telif sahibinin adı, unvan ve kurum sözcüklerinin yokluğu (e-posta denetimi İA-2'de
+  "dizinde tek adres, o da teklifin içinde" oldu); depo adresinin güncelleme
   deposu ve `Upstream-Contact` ile eşitliği. `uret.sh` Docker'da ağla yeniden koşuldu (66
   bileşen, 100 lisans dosyası); öncekiyle farkı YALNIZ `BENIOKU.txt`'deki teklif bölümüdür
   (öbür 101 dosya bayt bayt aynı). Belgeler: `docs/kurulum.md` (§3.1 ve §4.1'deki lisans
@@ -4988,6 +4992,12 @@ listesi DEĞİŞMEDİ.
      klasörüne eşit → kurulu; değilse taşınabilir. Taşınabilirde "Kuralı ekle/güncelle" ve
      güvenlik duvarı 1. maddesinin önerisi kalkar, `KatalogKontrol` Linux'taki gibi reddeder.
      Saha kabulünde gerçek kurulumla iki yönde sınanır (kurulu → açılır; zip → açılmaz).
+  6. **TB42 (a) — Windows tepsisinde elle çizilmiş küçük simge** (ANA OTURUM KARARI 30.09.2026;
+     `docs/teknik-borc.md` TB42). `PystrayTray`'de pystray'in Win32 alt sınıfında
+     `_assert_icon_handle` ezilir, depodaki `.ico` `SM_CXSMICON` boyutunda yüklenir; gerçek
+     Windows'ta DPI ölçekleriyle sınanmadan pakete girmez (NOTLAR W13'e saha satırı). Aynı işte
+     48 px kesim de elle çizilir: ana çizimden küçültülen 48'de barkodlu etiket kahverengi-gri
+     bir bloğa dönüşüyor (Windows 36/40/48'i bu kareden alır).
 
 **F12 ekleri — karar turunun doğrulama ve düzeltme turu (29.09.2026).** Karar turunun iki
 kolu (A: KB-2 kodu, B: KB-1 teklifi ve belgeler) denetlendi, denetimin 13 bulgusu kaynağında
@@ -5144,6 +5154,197 @@ kökten giderildi, testle kilitlendi:
   lisans denetimi 39 Python dağıtımı / 85 sistem kütüphanesi paketi / 296 proje dosyası,
   duman testleri (`--dagitim-duman` dahil), `.deb`, taşınabilir arşiv ve son veri sızıntısı
   denetimi tamam. PR'ın CI Linux işinde "Lisans denetimi başarılı" satırı yine izlenir.
+
+**F12 ekleri — kullanıcı kararları (29.09.2026): iletişim, aydınlatma ve logo.** Kullanıcı: "iletişim
+için diğer projelerde olduğu gibi benim bilgilerimi verebilirsin … aydınlatma metninde de
+gerekli güncellemeyi yap"; site alt bilgisi olduğu gibi kalır. Aynı gün verilen dört KULLANICI
+KARARI: (1) logo — üç taslaktan **A "Raf ve etiket"** seçildi (L-1); (2) iletişim — kullanıcının
+adı ve e-postası kardeş projelerdeki gibi kullanılır, **unvan ve kurum adı YOK** (İA-1; LGPL
+yazılı teklifine e-posta eklenmesi bu kararın uygulamasıdır — İA-2); (3) site alt bilgisi
+olduğu gibi kalır; (4) E13'te okuma ödülü aday listesinin hukuki sebebi ve yöntemi **ONAYLANDI**
+(İA-3). Göç YOK, yeni Python ya da npm bağımlılığı YOK, görevli izin listesi DEĞİŞMEDİ.
+okulapp.org sayfaları bu kaydın dışındadır (ayrı iş kolu, okulapp.org deposu).
+
+- **İA-1 — İletişim kardeş programlardaki biçimdedir: ad + e-posta; unvan ve kurum adı YOK.**
+  Hakkında → Geliştirici kartı Kelebek Sınav'ınkiyle zaten aynıydı (ad, `mailto:` bağlantısı,
+  "talep, öneri, hata bildirimi ve şikâyet" cümlesi); karta KVKK cümlesi eklendi (iletiye
+  öğrenci, veli ya da personel bilgisi, gerçek veri içeren ekran görüntüsü, yedek ya da
+  veritabanı dosyası eklenmez; programdaki kişisel verilere ilişkin başvuru okul müdürlüğünedir
+  — E13 §8). README "Lisans ve iletişim" (Disiplin Defteri README'siyle aynı telif + e-posta
+  satırı; Okul Zili README'sinde aynı ad ve e-posta "Geliştirici:" satırındadır). `docs/site-icerigi.md` §0 ve §6: sitede iletişim kardeş
+  sayfalardaki gibi e-posta düğmesiyle, ad sitenin Hakkımda sayfasında. Test:
+  `HakkindaPage.test.tsx` (ad, `mailto:`, KVKK cümlesi; kartta unvan ya da kurum sözcüğü yok).
+- **İA-2 — LGPL yazılı teklifine e-posta yolu — KULLANICI KARARI (2)'nin uygulaması (KB-1 ve
+  KT-1'in "e-posta yazılmaz" kuralı bu kararla değişti; iki kayıt da buna göre düzeltildi).**
+  Teklif artık "Issues kaydı açın … ya da geliştiriciye e-postayla yazın" der;
+  adres tek sabittir (`lisanslar.py::ILETISIM_EPOSTA`), `TELIF` ve `.deb` `copyright` aynı
+  sabitten gelir, e-postaya da kişi verisi konmayacağı yazılır, kaynağın adresi "kayda ya da
+  e-posta yanıtına" yazılır. Teklifte kişi adı, unvan ve kurum adı YİNE yoktur (kullanıcının
+  kararı iletişim yolunu genişletir; teklif metnine ad eklenmesi istenmedi). `uret.sh` Docker'da
+  ağla yeniden koşuldu (66 bileşen, 100 lisans dosyası): öncekiyle fark YALNIZ `BENIOKU.txt`'nin
+  teklif bölümüdür. Kapı testleri (`test_lisans_kapisi.py`): dizinde tek e-posta adresi ve o da
+  teklifin içinde; adres Hakkında ekranının `mailto:`'su ve `LICENSE`'ın telif bildirimiyle
+  aynı. Belgeler: `docs/kurulum.md` §3.1, `docs/saha-kabulu.md` 2.2, `docs/site-icerigi.md` §6,
+  `packaging/README.md`, `docs/teknik-borc.md` TB28. *Açık:* CLAUDE.md'nin iki yerindeki (§2-10
+  "LGPL kaynağı için yazılı teklif" ve §7 F12 paragrafı) "iletişim yolu GitHub deposunun Issues
+  sayfası — e-posta … YAZILMAZ" cümlesi "GitHub Issues ya da geliştiricinin e-postası; unvan ve
+  kurum adı yazılmaz" olur; ajan brifingini ana oturum kullanıcı onayıyla düzeltir (bu iş kolları
+  CLAUDE.md'ye yazmadı).
+- **İA-3 — E13 okuma ödülü iç çıktısını (E20) anlatır.** Programda ödünç kaydından adlı
+  sıralamanın çıktığı tek yer aydınlatma metninde yoktu; Tebliğ md. 5/1-b (amaç ayrıca
+  aydınlatılır), 5/1-g (belirli amaç) ve 5/1-h (hukuki sebep açıkça) gereği üç yere yazıldı:
+  **amaç** — okul isterse Uygulama Kılavuzu'nun 7. bölümündeki okuma ödülü önerisi için
+  adayların belirlenmesi; ölçüt seçilen dönemde ödünç alınıp iade edilmiş farklı eser; sayı,
+  okul no ve kitap adı basılmaz; öneri bağlayıcı değildir, ödüle okul karar verir ·
+  **hukuki sebep** — aynı md. 5/2-ç; yükümlülük Yönetmelik md. 8/1-c ("Okuma kültürünü
+  oluşturmaya yönelik etkinlikler düzenler.") · **kimler görür** — yalnız yönetici kipinde
+  basılır, "İç kullanım" ibarelidir, okul içinde ödül kararı için kullanılır; asılmaz,
+  çoğaltılmaz; Ağ Kataloğuna, panoya, yıl sonu raporuna ve velilerle paylaşılan çıktılara
+  girmez. Kılavuz 7'nin cümlesi E13'te alıntılanmaz ("okuyan" kalıbı programın kendi metninde
+  yoktur — sözlük §1). okulapp.org gizlilik sayfasının `#okuma-odulu` paragrafı bu olguları
+  aynı dille yazar (site iş kolu onu E13'e uydurdu: hukuki sebep, "farklı eserlerin", basılan
+  ve basılmayan alanlar, "asılmaz, çoğaltılmaz"); ilk kayıtta `docs/site-icerigi.md` §3'e
+  eklenen kısa paragraf bunların bir kısmını taşımıyordu ve "farklı kitapların" diyordu —
+  doğrulama turunda (aşağıda LD-5) site paragrafına eşitlendi. Kılavuzun Okuma ödülü bölümü
+  aydınlatma metnine gönderir. Sayfa bütçesi (en uzun okul adı, başvuru
+  adresi ve müdür adıyla en çok iki sayfa) şöyle korundu: bölümler sayfa sınırında
+  bölünebilir (başlık içeriğinden, madde ve tablo satırı kendi içinde ayrılmaz — bölünmez
+  bölümler sayfa sonunda 130 pt'ye varan boşluk bırakıyordu); §8 okul adını yinelemez
+  ("okul müdürlüğüne"; veri sorumlusu §1'de); gövde 8,5 pt, maddeler 8,4 pt, satır aralığı
+  1,28/1,27. Ölçülen bir kusur da giderildi: başvuru tablosunda boşluksuz uzun değer (en uzun
+  "E-posta ya da telefon") kırılmıyor, sütunu genişletip etiketi üç satıra eziyor ve sayfadan
+  taşıyordu — hücre artık `overflow-wrap: anywhere` ile kırılır, etiket sütunu %27. En uzun
+  veride ikinci sayfada 13 pt, olağan veride 173 pt boş kalır (önce 11 pt / 101 pt). Testler
+  (`test_dolasim_belgeleri.py`): yeni satırlar PDF metninde, "okuyan" yok; atıf
+  `docs/mevzuat`'tan (md. 8/1-c bendi, Kılavuz 7'nin öneri cümlesi); en uzun veride iki sayfa,
+  etiket tek satırda ve okuma ödülü satırı belgede. **KULLANICI KARARI (29.09.2026): ONAYLANDI**
+  — hukuki sebep KVKK md. 5/2-ç + Okul Kütüphaneleri Yönetmeliği md. 8/1-c (görev bağlayıcı),
+  yöntem Uygulama Kılavuzu 7'nin bağlayıcı olmayan önerisi (ödül yöntemi okulun tercihi); metin
+  olduğu gibi kalır. Seçilmeyen seçenek md. 5/2-f (meşru menfaat) idi: kamu kurumunun
+  yönetmelikle verilmiş görevinde metnin geri kalanıyla tutarsız olurdu.
+- **L-1 — Logo: taslak A "Raf ve etiket" (KULLANICI KARARI 1; TB4 kapandı).** Cilt laciverti
+  (#1c3259), köşeleri yuvarlatılmış karo; safran (#eea23f) raf üzerinde üç kitap sırtı (kâğıt
+  #f1f3f8 ve gök mavisi #8fb4ee), en uzun sırtta barkodlu safran sırt etiketi, ona yaslanan
+  dördüncü kitap; metin, gölge ve degrade yok. Üretim iki betiktir ve çıktılar depodadır
+  (paket derlemesi ikon üretmez): `packaging/ikonlar/logo_uret.py` ana çizimi
+  (`kutuphane-defteri-logo.png`, 1024) ve **16, 24, 32 px'in elle çizilmiş piksel kesimlerini**
+  (ölçeklenmez; 16'da iki sırt + etiket bandı + merdiven biçiminde yaslanan kitap, 24'te üç
+  sırt, 32'de etikette iki barkod çizgisi) yazar; `ikon_uret.py` 48, 64, 128, 256, 512'yi ve ön
+  yüzün `app-logo.png`'sini (192) ana çizimden türetir, `.ico`'ya yedi boyutu KENDİ kareleriyle
+  koyar (Pillow `append_images`; Pillow hiçbir boyutu kendisi küçültmez) ve dosyayı yeniden
+  açıp her karenin PNG ile piksel piksel aynı olduğunu denetler. **Kenar boşluğu tek kuraldır:**
+  karo tuval kenarına ⌈boyut/32⌉ px boşluk bırakır (24 ve 32'de 1, 48 ve 64'te 2, 256'da 8,
+  1024'te 32; doluluk ~%94, 24 ve 48'de %91,7), 16 boşluksuzdur. Gerekçe: Windows eksik boyutu
+  bir üstünden küçültür (Microsoft Learn, "Construct your Windows app's icon" → Icon scaling):
+  görev çubuğu %125'te 30 px'i elle çizilmiş 32'den, %150'de 36 px'i ana çizimden (48) alır,
+  Başlat sabitlemesi %100'de 32'yi, %125'te 48'i kullanır; Pardus'un hicolor temasında menü
+  24/32'yi, uygulama ızgarası 48+'yı seçer. Değerlendirmede elle çizilmiş karolar tuvali kenara
+  dek dolduruyor, ana çizim %8 boşlukla ~%86 kalıyordu: 32 → 48 geçişinde karo gözle görülür
+  biçimde küçülürdü. 16'da 1 px boşluk çizim alanının %23'ünü götürür ve onaylı 16 kesimi rafı
+  karonun iki kenarına dek yayar; komşusu 20 px (%125 başlık çubuğu) 24'ten küçültülür, fark
+  ~1,7 px. Kesimlerin içeriği taslakla aynıdır: 16 birebir; 24 ve 32'de yalnız dıştaki 1 px
+  halka (artık boşluk) ve karonun yuvarlak köşe pikselleri değişti, raf, sırtlar, etiket ve
+  yaslanan kitap piksel piksel aynı. Ana çizimde (1024) aynı kural karonun payını taslaktaki
+  24 px'ten 32 px'e, köşe yarıçapını 200'den 197 px'e getirdi; kitaplar aynı mutlak boyutta
+  kaldı, karoya göre ~%1,7 büyük durur (doğrulama turunda kayda geçti — LD-4). **Simgenin göründüğü yüzeyler ve doğrulama:** exe'nin kaynağı (spec
+  `ICON` → `.ico`), kurulum dosyası (Inno `SetupIconFile`), kısayollar (Inno `[Icons]`
+  `IconFilename`, sürüm adlı `.ico` kopyası), Programlar ve Özellikler (`UninstallDisplayIcon`
+  → exe'nin kaynağı), pencere (`desktop/window.py` WinForms `Icon`, `.ico` paket kökünde),
+  Windows tepsisi (`desktop/tray.py`: Pillow `.ico`'nun en büyük karesini açar → 256), Linux
+  tepsisi (Qt `QIcon.fromTheme("kutuphane-defteri")`, yoksa aynı 256), Linux penceresi (aynı
+  simge `QApplication.setWindowIcon` ile — doğrulama turunda eklendi, LD-2), `.deb` ve taşınabilir
+  arşiv (`build.sh`, `kur.sh`: hicolor 16…256; `.desktop` `Icon=kutuphane-defteri`), yönetim
+  arayüzü (`frontend/public/app-logo.png`: favicon + kenar çubuğu ve üst çubuk; Kelebek Sınav'da
+  da yalnız bu yerlerde, Hakkında'da logo YOK — eklenmedi). Test:
+  `packaging/tests/test_ikonlar.py` (`.ico`'nun yedi karesi ve PNG eşitliği, 16/24/32'nin
+  üreticinin elle çizdiği kesimle eşitliği ve ana çizimin küçültmesinden farkı, 16'nın yalnız
+  palet renklerinden oluşması, 48+ ve `app-logo.png`'nin ana çizimden güncelliği, kenar boşluğu
+  kuralı, piksel sondası — baskın renk cilt laciverti, safran var, geçici logonun üç rengi hiçbir
+  simgede yok —, yüzeylerin bu dosyaları kullandığı), `desktop/tests/test_tray.py` (tepsi
+  256 px kareyi alır). Kimlik kalıntısı taramasındaki `logo_uret.py` muafiyeti kalktı
+  (`TEKNIK_BORC_MUAFIYETLERI` boş). **Ağ Kataloğu'na simge KONMADI:** sayfalar simge isteğini
+  `<link rel="icon" href="data:,">` ile bilinçli kapatır (§5.4; `test_koruma.py`); yeni uç
+  açılmaz, veri URI'si her sayfanın gövdesine eklenirdi ve katalog programın değil okulun
+  adını taşır. **Sınır:** pystray Windows'ta yalnız tek bir görüntü alır ve onu kendisi `.ico`'ya
+  çevirip varsayılan boyutta yükler; tepsideki 16 px simge 256 px karenin küçültmesidir, elle
+  çizilmiş 16 oraya ulaşmaz (başlık çubuğu, görev çubuğu, Başlat ve Gezgin `.ico`'nun kendi
+  karelerini kullanır). Değiştirmek pystray'in iç yöntemini ezmeyi gerektirir; beta'da
+  yapılmadı — açık kalem **TB42** (LD-3). okulapp.org'daki proje görseli depodaki ana çizimden
+  `ikon_uret.py --site` ile türer (`docs/site-icerigi.md` §7; site adımı ayrı; LD-4).
+
+**F12 ekleri — logo ve metin kararlarının doğrulama ve düzeltme turu (29.09.2026).** Bağımsız
+doğrulama logo iş kolunu (L-1), site iş kolunu ve İA-1…İA-3'ü yeniden ölçtü: `.ico`'nun yedi
+karesi, kesimlerin kaynağı, saydamlık, kenar boşluğu, üreticilerin bayt bayt tekrarlanabilirliği,
+yüzeylerin yolları ve E13/site/E20 olgularının örtüşmesi doğru bulundu. Gerçek çıkan bulgular
+kökünden düzeltildi; kullanıcı kararı gerektirenler açık bırakıldı. Göç YOK, yeni bağımlılık
+YOK, görevli izin listesi DEĞİŞMEDİ.
+
+- **LD-1 — Doğrulanan (bulgu değil).** `.ico` yapısı (7 kare, PNG sıkıştırmalı 32 bit — eski
+  `.ico` ile aynı yapı), karelerin PNG'lerle eşitliği, alfa kutuları, 32 → 48 geçişinde karo
+  sıçramasının olmaması, eski logonun renklerinin hiçbir simgede bulunmaması, spec/Inno/
+  `window.py`/`tray.py`/`.desktop`/`build.sh`/`kur.sh`/`kaldir.sh` yolları.
+- **LD-2 — Linux penceresine simge atanmıyordu (gerileme değil; önceki logoda da böyleydi).**
+  pywebview'a `icon=` verilmiyor, `desktop/` hiçbir yerde `setWindowIcon` çağırmıyordu: Qt
+  penceresinin simgesi boş kalır, X11'de `_NET_WM_ICON` yazılmaz ve simgeyi pencereden okuyan
+  masaüstlerinde (XFCE görev listesi, Alt+Tab) genel simge görünürdü. Düzeltme:
+  `tray.py::prepare_qt_application` uygulama örneği kurulduktan sonra
+  `app.setWindowIcon(_qt_icon(…))` atar (tema simgesi hicolor 16…256'yı, yani elle çizilmiş
+  16/24/32'yi de verir; tema yoksa `.ico`'nun 256'lık karesi); atanamazsa program sürer ve
+  günlüğe yazar. Tepsi kurulamasa da atanır (`QtTray.start` Qt'yi yükleyince önce bunu
+  yapar). pywebview'ın `icon=` yolu seçilmedi: `.ico` için Qt'nin ico eklentisini ister.
+  Test: `test_tray.py` (tepsili ve tepsisiz masaüstünde uygulama simgesi, tema simgesinin
+  önceliği, atanamazsa sürme), `test_ikonlar.py` (yüzeyin kaynakta bulunması). Protokol 24.3
+  görev listesi ve Alt+Tab gözlemini ister.
+- **LD-3 — Windows tepsisi elle çizilmiş 16'yı kullanmıyor: açık kalem TB42.** Sınır L-1'de ve
+  kapanan TB4'ün içinde duruyordu; kütüğün "Açık" bölümünde izlenmesi için TB42 olarak ayrıldı,
+  protokol 3.1'e gözlem ve §26.6'ya satır eklendi. Düzeltme yolu (a) — pystray'in Win32
+  `_assert_icon_handle`'ını ezip depodaki `.ico`'yu `SM_CXSMICON` boyutunda yüklemek — gerçek
+  Windows'ta sınanmadan pakete girmez; **karar ana oturumda/kullanıcıda** (kararlı sürümden önce).
+- **LD-4 — Site görseli taslaktan türetilmişti.** okulapp.org'un `public/kutuphane-defteri.png`'si
+  taslak A'nın `logo-1024.png`'sinden üretilmişti; depodaki ana çizim taslaktan kenar boşluğu
+  kuralıyla ayrıldığı için (pay 24 → 32, yarıçap 200 → 197) sitede kitaplar karoya göre ~%1,7
+  küçük kalıyordu (226 px karoda 2.344 pikselde 32'den büyük fark). Düzeltme: `ikon_uret.py`'ye
+  `--site DOSYA` seçeneği eklendi (varsayılan koşu siteye yazmaz); ölçü Kelebek Sınav'ın
+  görseliyle aynıdır (256 px, 15 px saydam pay, görünür kutu 15..241) ve kaynak depodaki ana
+  çizimdir. Site görseli bu komutla yeniden üretildi (doğrulayıcının depodan türettiği adayla
+  piksel piksel aynı). `docs/site-icerigi.md` §7 reçeteyi ve komutu yazar; hazır `-256.png`
+  kesiminin bu ölçüde olmadığını söyler. Test: `test_ikonlar.py` (256 px, kutu 15..241, ana
+  çizimden türeme, baskın renk).
+- **LD-5 — `docs/site-icerigi.md` §3'ün "Okuma ödülü" paragrafı siteyle ve E13 ile aynı
+  değildi.** Site iş kolu gizlilik sayfasını E13'e uydurmuştu (hukuki sebep 5/2-ç + Yönetmelik
+  8/1-c, "farklı eserlerin", basılan ve basılmayan alanlar, "asılmaz, çoğaltılmaz"); kaynak
+  belge eski kısa metinde kalmıştı ("farklı kitapların", hukuki sebep yok) — site bir gün
+  kaynaktan yeniden yazılsa onaylı hukuki sebep kaybolurdu. §3 site paragrafına eşitlendi
+  (yalnız son cümle ek: aydınlatma metnine gönderme; sayfada o konu kendi bölümündedir), İA-3'ün
+  kaydı düzeltildi.
+- **LD-6 — İA-1'in README kaydı.** Okul Zili README'sinde aynı telif satırı yoktur; ad ve e-posta
+  "Geliştirici:" satırındadır. Kayıt düzeltildi.
+- **LD-7 — Yerel `frontend/dist` eski logoyu taşıyordu.** Derleme betikleri yalnız
+  `frontend/dist/index.html`'in varlığına bakıyordu; `npm run build` koşulmadan yapılan yerel
+  paket yeni `.ico` ile eski arayüz logosunu birlikte taşıyabilirdi (CI her seferinde derler,
+  etkilenmez). Düzeltme: `build.sh` ve `build.ps1` `frontend/public`'teki her dosyayı
+  `frontend/dist`'teki karşılığıyla bayt bayt karşılaştırır (Vite `public/`i aynen kopyalar;
+  `.gitattributes` metin dosyalarını her platformda LF tutar); farklı ya da eksikse derleme
+  durur. İki parça da ayrı ayrı sınandı (eski, eksik, alt dizinde boşluklu ad; güncel dist
+  geçer). Yerel `frontend/dist` yeniden derlendi. Test: `test_ikonlar.py` (iki betikte
+  karşılaştırmanın varlığı ve yeri). Yerel `dist/paket-linux` eski derlemedir; bir sonraki
+  paket derlemesi onu yeniden kurar.
+- **LD-8 — E13 sayfa bütçesi testi il ve ilçeyi kısa tutuyordu.** Test "Örnek İlçe"/"Örnek İl"
+  ile koşuyordu (CLAUDE.md §3: kısa fixture yanlış yeşil verir). İl ve ilçe hem antette hem
+  veri sorumlusu satırında basılır. Test artık gerçek en uzun adlarla (ilçe
+  "Mustafakemalpaşa", il "Afyonkarahisar") ve alana kurum adı yazılmış hâliyle ("… İlçe Millî
+  Eğitim Müdürlüğü" / "… Valiliği"), saklama süreleri üst sınırda (10 yıl) koşar; ikisinde de
+  en çok iki sayfa. **Bilinen sınır:** alanların üst sınırında (64 + 64 karakter, gerçek bir
+  yer adı değil) imza bloğu üçüncü sayfaya geçer; sınırı daraltmak göç ister, F12'de göç
+  yoktur — değiştirilmedi.
+- **Açık (kullanıcı kararı):** (1) 48 px'te barkodlu etiket içi kahverengi-gri harmanlanır
+  (elle çizilmiş 32'de parlak safran + iki çizgi; Windows 36/40/48 px bu kareden alır) —
+  seçenekler: 48'i de elle çizmek (`logo_uret.py::KUCUK` + `ikon_uret.py::HAND_DRAWN_SIZES`),
+  ana çizimde barkodu daha az ve kalın çizmek, olduğu gibi kabul; (2) TB42'nin (a)/(b)'si;
+  (3) E13 ve sitede "velilerle paylaşılan" ifadesi CLAUDE.md §2-5 ve sözlükteki "paylaşılabilecek"
+  ifadesinden dardır (olgu çelişmez; onaylı metne dokunulmadı); (4) CLAUDE.md §2-10 ve §7 F12'deki
+  "e-posta … YAZILMAZ" cümleleri ile §7'ye logo/İA-3 cümlesi (ajan brifingini ana oturum
+  kullanıcı onayıyla düzeltir).
 
 ### 14.2 Saha hazırlık hattı (kod dışı — F0 ile başlar)
 

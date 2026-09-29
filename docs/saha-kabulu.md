@@ -182,7 +182,8 @@ openpyxl). Veri dosyaları **depoya girmez**: çıktı klasörü `deneme-verisi/
     profilinde DEĞİL). Programda **Hakkında ve Lisans → Üçüncü Taraf Bileşenler** kartı LGPL
     kitaplıkların telif bildirimini ve bu klasördeki lisans dosyalarını gösterir.
     `BENIOKU.txt`'de "LGPL BİLEŞENLERİNİN KAYNAK KODU İÇİN YAZILI TEKLİF" bölümü vardır (en
-    az üç yıl; istek yolu programın GitHub deposunun Issues sayfası).
+    az üç yıl; istek yolu programın GitHub deposunun Issues sayfası ya da geliştiricinin
+    e-posta adresi — 29.09.2026 kullanıcı kararı, tasarım F12 ekleri İA-2).
   - *Sorun olursa:* Veri BTR'nin profilinde oluştuysa (W10) kurulum günlüğünü ve
     `uygulama.log`'u saklayın. Kurulum klasörüne yazma hatası (W8) `uygulama.log`'a
     "Paket ortamı uyarısı:" ile başlayan satır olarak düşer.
@@ -252,7 +253,13 @@ openpyxl). Veri dosyaları **depoya girmez**: çıktı klasörü `deneme-verisi/
   - *Yap:* Programı Başlat menüsünden açın.
   - *Gör:* Pencere açılır, **Kurulum Sihirbazı** gelir; adım rayı **Yönetici Parolası** ·
     **Okul Bilgileri** · **Ders Yılı ve Kapalı Günler**. Saatin yanında tepsi simgesi görünür.
-  - *Kaynak:* W9; F0 kod kapısı (exe açılır, tepsiye iner).
+    Başlat menüsündeki kısayolda, görev çubuğunda, pencerenin başlık çubuğunda ve tepside
+    program simgesi aynıdır: lacivert karo üzerinde safran raf ve kitap sırtları. Görev
+    çubuğundaki ve Başlat'taki karo komşu simgelere göre belirgin büyük ya da küçük değildir.
+    Tepsideki küçük simge bu sürümde başlık çubuğundakinden biraz bulanık olabilir (bilinen
+    sınır, TB42): çizim aynı olmalı, boş ya da başka bir simge olmamalı. Bulanıklık rahatsız
+    edecek düzeydeyse bulgu kaydına (§27) ekran ölçeğiyle (%100, %125, %150) birlikte yazın.
+  - *Kaynak:* W9; F0 kod kapısı (exe açılır, tepsiye iner); TB4 (simge yüzeyleri); TB42.
 - [ ] **3.2 Yönetici parolası ve kurtarma anahtarı**
   - *Yap:* Deneme için bir parola belirleyin (gerçek parolanızı kullanmayın). Kurtarma
     anahtarını **yazdırın** (gerçek yazıcı) ve ayrıca **PDF olarak** kaydedin; iki grubu
@@ -1027,8 +1034,10 @@ her derlemede koşar; burada gerçek masaüstü sınanır.
   - *Yap:* Programı menüden açın; çarpıya basın; tepsi simgesinden açın; tepsiden Çık.
     Tepsisi olmayan bir masaüstünde (GNOME) de deneyin.
   - *Gör:* Tepsili masaüstünde çarpı gizler, tepsi geri getirir, Çık süreci bitirir; tepsisiz
-    masaüstünde çarpı pencereyi küçültür ve çıkış yolu üst çubuktaki **Çık**'tır.
-  - *Kaynak:* CLAUDE.md §7 F0 (Pardus Qt tepsisi); risk 4.
+    masaüstünde çarpı pencereyi küçültür ve çıkış yolu üst çubuktaki **Çık**'tır. Menüdeki,
+    görev listesindeki, Alt+Tab'daki ve tepsideki simge aynıdır (lacivert karo, safran raf,
+    kitap sırtları); görev listesinde ve Alt+Tab'da genel (boş pencere) simgesi görünmez.
+  - *Kaynak:* CLAUDE.md §7 F0 (Pardus Qt tepsisi); risk 4; TB4 (simge yüzeyleri).
 - [ ] **24.4 Sihirbaz ve deneme verisi**
   - *Yap:* §3'ü kısaca yapın; §6.1-6.2, §7.1-7.3 ve §9.1-9.3'ü (üyelik, kart basımı, kart
     okutma) deneme dosyalarıyla tekrarlayın (daha kısa sürmesi için `--eser 300` ile ayrı bir
@@ -1300,6 +1309,7 @@ adımı gösterir.
 |---|---|---|
 | TB2 NAT arkasındaki tahtalarda adres başına sınır | gözlem | 12.11 |
 | TB3 `synchronous=FULL` maliyeti HDD'li Windows'ta | ölçüm | 17.4 |
+| TB4 geçici logo (kapandı 29.09.2026; yeni simgenin yüzeyleri) | Windows'ta Başlat, görev çubuğu, başlık çubuğu ve tepside; Pardus'ta menü, görev listesi ve tepside yeni simgenin görünmesi | 3.1, 24.3 |
 | TB5 Pardus 21 desteği kararı | hangi Pardus sürümünde denendiği | 24.1 (kayıt çizelgesi 0.2) |
 | TB6 imzasız exe | SmartScreen, SHA-256 | 1.3.2, 2.1 |
 | TB12 tüm arayüzde özel kullanım (kalan saha kanıtı W15) | port paylaşımı denemesi | 12.3 |
@@ -1311,6 +1321,7 @@ adımı gösterir.
 | TB36 büyük koleksiyonda E11 ve E17 PDF süresi | ölçüm | 15.2 |
 | TB40 Pardus paketi açık programı kapatmaz (KB-4; kararlı öncesi iş yalnız sorun görülürse) | program açıkken yeniden kurma gözlemi | 24.12 |
 | TB41 Windows'un taşınabilir sürümünde Ağ Kataloğu kesin kapıyla kapalı değil (DT-3; kararlı öncesi iş — KT-5 madde 5) | beta'da varsayılan kapalı olduğunun gözlemi; kararlı öncesi kesin kapının gerçek kurulum ve zip ile iki yönde sınanması | 23.1 |
+| TB42 Windows tepsisindeki simge elle çizilmiş 16 px kesimi kullanmıyor (L-1 "Sınır", LD-3; karar bekliyor, kararlı öncesi) | tepsideki simgenin ekran ölçeğiyle birlikte gözlemi (bulanıklık) | 3.1 |
 
 ### 26.7 CLAUDE.md §7 ve kullanıcı kararları (27.09.2026, 28.09.2026)
 

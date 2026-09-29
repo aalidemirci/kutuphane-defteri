@@ -223,8 +223,8 @@ Kütüphaneleri Yönetmeliği (RG 23.11.2024/32731) ile TMY'ye bağlıdır. Meti
     çıktısındaki npm paketlerini `gates.sh` listeyle karşılaştırır. **LGPL
     kaynağı için yazılı teklif** (KB-1, 28.09.2026 kullanıcı kararı) `BENIOKU.txt`'de
     üreticinin metnidir (`lisanslar.py::_yazili_teklif`; en az üç yıl, istek yolu
-    GitHub deposunun Issues sayfası — e-posta, kişi adı, unvan, kurum adı
-    YAZILMAZ); kapı testi depodaki `BENIOKU.txt`'nin üreticinin çıktısıyla
+    GitHub Issues ya da geliştiricinin e-postası — unvan ve kurum adı yazılmaz;
+    29.09.2026 kullanıcı kararı, tasarım F12 ekleri İA-2); kapı testi depodaki `BENIOKU.txt`'nin üreticinin çıktısıyla
     birebir olduğunu sınar: metin değişince `uret.sh` koşulur. Program ağdan
     dağıtıldığı için LGPL-3.0 bileşenlerinde GPL-3.0 md. **6(d)** geçerlidir (6(b)
     yalnız fiziksel taşıyıcıda): Release notu (`paketleme.yml`) kaynağa yönlendirir,
@@ -765,8 +765,8 @@ DT-3 (aşağıda):** KULLANICI KARARI KB-1 (a) — beta için LGPL
 kaynağına **yazılı teklif**: `THIRD_PARTY_LICENSES/BENIOKU.txt`'de üreticinin metni
 (`lisanslar.py::_yazili_teklif`; teklifin kapsadığı LGPL bileşenler `bilesenler.json`'dan
 türer; her sürüm, beta dahil, yayımdan itibaren EN AZ ÜÇ YIL; kaynak ücretsiz ağ sunucusundan,
-fiziksel taşıyıcıda en çok gönderim maliyetine; iletişim yolu GitHub deposunun Issues sayfası —
-e-posta, kişi adı, unvan, kurum adı YAZILMAZ; kapı testi: dosya üreticinin çıktısıyla birebir,
+fiziksel taşıyıcıda en çok gönderim maliyetine; iletişim yolu GitHub Issues ya da geliştiricinin
+e-postası — unvan ve kurum adı yazılmaz (29.09.2026 kullanıcı kararı, İA-2); kapı testi: dosya üreticinin çıktısıyla birebir,
 teklif içeriği, depo adresi güncelleme deposuyla aynı) · KB-2 — Pardus'un **taşınabilir
 arşivinde de Ağ Kataloğu açılamaz** (Windows'un taşınabilir sürümüyle aynı; yalnız `.deb` —
 §2-1) · KB-3 (a) — beta'da Qt/Chromium bildirimleri adresle · KB-4 (a) — beta için belge
@@ -779,7 +779,10 @@ Linux paketi) · (3) KB-4 (b) KOŞULLU — saha kabulünde protokol §24.12'de s
 `.deb` `prerm`'i açık programı düzenli kapatır · (4) saha kabulünün engelleyici ve önemli
 bulguları (protokol §27; sonuç en az "Koşullu kabul") ve PR'ın ilk CI Windows koşusunda
 görülenler (NOTLAR W21-W26) · (5) DT-3 (a) Windows'un taşınabilir sürümünde de kesin kapı
-(Inno kaldırıcısı + HKLM `InstallLocation` ölçütü; TB41). **Karar turunun doğrulama ve düzeltme turu (29.09.2026, denetimin
+(Inno kaldırıcısı + HKLM `InstallLocation` ölçütü; TB41) · (6) TB42 (a) Windows tepsisinde
+elle çizilmiş 16 px kesim (pystray `_assert_icon_handle` Win32 alt sınıfta; gerçek Windows'ta
+DPI ölçekleriyle sınanır) + 48 px kesimin de elle çizilmesi (etiket tonu) — ANA OTURUM KARARI
+30.09.2026. **Karar turunun doğrulama ve düzeltme turu (29.09.2026, denetimin
 13 bulgusu, hepsi gerçek — tasarım §14.1 "F12 ekleri — … düzeltme turu" DT-1…DT-10):** Pardus'ta
 taşınabilir sürüm açıkken `.deb` de kuruluysa ileti ve bant `./kaldir.sh` + menüden açmayı
 söyler (`kur.sh`'in menü kaydı ve `~/.local/bin` kısayolu `.deb`'inkini gölgeliyordu) ·
@@ -799,6 +802,15 @@ yerleşir — ANA OTURUM KARARI CI-6), koşucunun colorama'sı yalıtılmış sa
 pywebview Android dosyası süzülür; denetim son aşama TOC'larını okur, en dar kökün sınıfını
 kullanır; Windows ve Linux Python kümeleri testte sabittir; `paket_kapanisi.py` paketin DLL
 kapanışını dosyalar üzerinden sınar, duman testleri Windows'un sistem PATH'iyle koşar (W26).
+İkinci koşuda Windows paketi dahil CI yeşil. **29.09.2026 kullanıcı kararları (tasarım F12 ekleri
+"iletişim, aydınlatma ve logo", İA-1…İA-3, L-1):** iletişimde geliştiricinin adı ve e-postası
+kardeş projelerdeki gibi (README, Hakkında, LGPL teklifi, site; unvan ve kurum adı yok; site alt
+bilgisi aynen) · E13'e okuma ödülü aday listesi (hukuki sebep KVKK 5/2-ç + Yönetmelik 8/1-c,
+yöntem Kılavuz 7'nin bağlayıcı olmayan önerisi — onaylandı) · **logo "Raf ve etiket"** (lacivert
+karo, rafta kitaplar, barkodlu safran sırt etiketi): `logo_uret.py` ana çizim + elle çizilmiş
+16/24/32, `ikon_uret.py` 48 ve üstü, `.ico` (yedi kare) ve site görseli (`--site`); kenar payı
+⌈boyut/32⌉ px, 16 paysız; Linux'ta Qt uygulama simgesi atanır; derleme eski `frontend/dist` ile
+durur; **TB4 kapandı**, Windows tepsi sınırı TB42 (kararlı öncesi (6)).
 
 Sıradaki (ana oturum, kullanıcı onayıyla): PR + CI (Windows lisans kapısının ikinci koşusu —
 NOTLAR W21-W26; Linux'ta `--dagitim-duman` ilk koşuda geçti) → beta etiketi `v2026.10.0-beta.1` (Release + R2) → okulapp.org site adımı (ayrı depo,

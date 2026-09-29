@@ -111,6 +111,19 @@ Write-Host "    python: $PythonExe"
 if (-not (Test-Path (Join-Path $Repo "frontend\dist\index.html"))) {
     throw "frontend/dist/index.html yok. Önce arayüzü derleyin: npm run build"
 }
+# Vite public/'i dist/'e AYNEN kopyalar: farklı bir dosya, dist'in eski bir derleme olduğunu
+# gösterir (29.09.2026: logo değişti, yerel dist eski logoyu taşıyordu; CI her seferinde
+# derler). Eski dist pakete girmez.
+$PublicKok = Join-Path $Repo "frontend\public"
+$DistKok = Join-Path $Repo "frontend\dist"
+foreach ($Kaynak in Get-ChildItem -LiteralPath $PublicKok -File -Recurse) {
+    $Goreli = $Kaynak.FullName.Substring($PublicKok.Length).TrimStart("\", "/")
+    $Hedef = Join-Path $DistKok $Goreli
+    if (-not (Test-Path -LiteralPath $Hedef) -or
+        (Get-FileHash -LiteralPath $Kaynak.FullName).Hash -ne (Get-FileHash -LiteralPath $Hedef).Hash) {
+        throw "frontend/dist eski: '$Goreli' public/ ile aynı değil. Arayüzü yeniden derleyin: npm run build"
+    }
+}
 
 # --- 2. Python bağımlılıkları (yalıtılmış sanal ortam) ---------------------
 # Paket YALNIZ gereksinim dosyalarının kurduğu dağıtımlarla derlenir. Neden sanal ortam:

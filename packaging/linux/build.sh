@@ -127,6 +127,17 @@ if [ ! -f "$DEPO/frontend/dist/index.html" ]; then
     echo "      docker compose run --rm frontend npm run build" >&2
     exit 1
 fi
+# Vite `public/`i `dist/`e AYNEN kopyalar: farklı bir dosya, dist'in eski bir derleme
+# olduğunu gösterir (29.09.2026: logo değişti, yerel dist eski logoyu taşıyordu; CI her
+# seferinde derler). Eski dist pakete girmez.
+while IFS= read -r -d '' kaynak; do
+    goreli="${kaynak#"$DEPO/frontend/public/"}"
+    if ! cmp -s "$kaynak" "$DEPO/frontend/dist/$goreli"; then
+        echo "HATA: frontend/dist eski: '$goreli' public/ ile aynı değil. Arayüzü yeniden derleyin:" >&2
+        echo "      docker compose run --rm frontend npm run build" >&2
+        exit 1
+    fi
+done < <(find "$DEPO/frontend/public" -type f -print0)
 
 # --- 4. PyInstaller ----------------------------------------------------------
 bilgi "PyInstaller onedir (Qt: $QT_ILE)"

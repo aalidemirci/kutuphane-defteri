@@ -665,8 +665,9 @@ def _tr_kucuk(metin: str) -> str:
 def test_benioku_lgpl_kaynagi_icin_yazili_teklif_tasir() -> None:
     """KB-1 (28.09.2026 kullanıcı kararı, beta): LGPL-2.1 madde 6(c) yazılı teklifi (GPL-3.0
     madde 6(b) fiziksel taşıyıcıda; ağdan dağıtımda 6(d)) — en az üç yıl, ücretsiz ya da en
-    çok gönderim maliyetine, iletişim yolu GitHub deposunun Issues sayfası. Teklifte
-    e-posta, kişi adı, unvan ve kurum adı yoktur."""
+    çok gönderim maliyetine, iletişim yolu GitHub deposunun Issues sayfası ve (29.09.2026
+    kullanıcı kararı, tasarım F12 ekleri İA-2) geliştiricinin e-posta adresi. Teklifte
+    başka e-posta, kişi adı, unvan ve kurum adı yoktur."""
     metin = (LISANSLAR / L.BENIOKU_ADI).read_text(encoding="utf-8")
     teklif = metin[metin.index(L.TEKLIF_BASLIGI) : metin.index("\nOrtak metinler:")]
     for beklenen in (
@@ -676,6 +677,7 @@ def test_benioku_lgpl_kaynagi_icin_yazili_teklif_tasir() -> None:
         "Kaynak ücretsiz verilir",
         "maliyetini aşmaz",
         f"    {L.KAYNAK_TEKLIF_ADRESI}\n",
+        f"ya da geliştiriciye e-postayla yazın:\n    {L.ILETISIM_EPOSTA}\n",
         L.PAKET_ICERIGI_ADI,
         f"{L.YEREL_DIZIN_ADI}/",
     ):
@@ -697,9 +699,13 @@ def test_benioku_lgpl_kaynagi_icin_yazili_teklif_tasir() -> None:
     for b in lgpl:
         assert f"  - {L.benioku_basligi(b)} (" in teklif, b.ad
     assert f"Qt {PYTHON['pyside6'].surum} kitaplıkları" in teklif
-    # İletişim yolu yalnız depo: e-posta yok; telif sahibinin adı, unvan ve kurum adı yok.
-    assert not re.search(r"[\w.+-]+@[\w-]+\.\w+", metin)
-    govde = _tr_kucuk(teklif.replace(L.KAYNAK_TEKLIF_ADRESI, ""))
+    # İletişim yolu depo ve geliştiricinin e-postası (İA-2): dizinde BAŞKA e-posta yok, tek
+    # adres de teklifin içindedir; telif sahibinin adı, unvan ve kurum adı yok. Kişi verisi
+    # uyarısı e-posta yolunu da kapsar.
+    assert re.findall(r"[\w.+-]+@[\w-]+\.\w+", metin) == [L.ILETISIM_EPOSTA]
+    assert L.ILETISIM_EPOSTA in teklif
+    assert "E-postaya da öğrenci, veli ya da personel verisi koymayın" in " ".join(teklif.split())
+    govde = _tr_kucuk(teklif.replace(L.KAYNAK_TEKLIF_ADRESI, "").replace(L.ILETISIM_EPOSTA, ""))
     sozcukler = set(re.findall(r"\w+", govde))
     telif_sahibi = re.sub(r"^\d+\s+|\s*<.*$", "", L.TELIF)
     for ad in telif_sahibi.split():
@@ -722,6 +728,21 @@ def test_teklifin_deposu_guncelleme_deposu_ve_deb_iletisim_adresiyle_ayni() -> N
     assert f"Upstream-Contact: {L.KAYNAK_TEKLIF_ADRESI}\n" in deb
     assert f"Source: {L.DEPO_ADRESI}\n" in deb
     assert "yazılı teklif BENIOKU.txt'dedir" in deb
+
+
+def test_teklifin_e_postasi_hakkinda_ve_lisansla_ayni() -> None:
+    """İA-2 (29.09.2026 kullanıcı kararı): teklifin e-posta yolu programın Hakkında
+    ekranındaki geliştirici adresi ve LICENSE'ın telif bildirimiyle aynı adrestir; `.deb`
+    `copyright`'ın telif satırı da aynı sabitten gelir."""
+    hakkinda = (REPO / "frontend" / "src" / "modules" / "hakkinda" / "HakkindaPage.tsx").read_text(
+        encoding="utf-8"
+    )
+    assert f'href="mailto:{L.ILETISIM_EPOSTA}"' in hakkinda
+    lisans = (REPO / "LICENSE").read_text(encoding="utf-8")
+    assert f"Copyright (c) 2026 Ahmet Ali DEMİRCİ <{L.ILETISIM_EPOSTA}>" in lisans
+    assert f"<{L.ILETISIM_EPOSTA}>" in L.TELIF
+    deb = L.deb_copyright(lisans)
+    assert f"Copyright: {L.TELIF}\n" in deb
 
 
 def test_benioku_sayisal_olmayan_surumu_parantezle_yazar() -> None:

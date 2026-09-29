@@ -61,14 +61,17 @@ Kaynak, istenen program sürümünün paketindeki bileşen sürümleriyle birebi
 verilir. Nasıl istenir: programın GitHub deposundaki Issues (sorun kayıtları)
 sayfasında bir kayıt açın:
     https://github.com/aalidemirci/kutuphane-defteri/issues
-Kayda programın sürümünü (Hakkında ekranında yazar), platformu (Windows ya
-da Linux) ve istediğiniz bileşeni yazın. Kayıtlar herkese açıktır: kişisel
-veri ve okul bilgisi yazmayın.
+ya da geliştiriciye e-postayla yazın:
+    aalidemirci@gmail.com
+Kayda ya da iletiye programın sürümünü (Hakkında ekranında yazar), platformu
+(Windows ya da Linux) ve istediğiniz bileşeni yazın. Issues kayıtları herkese
+açıktır: kişisel veri ve okul bilgisi yazmayın. E-postaya da öğrenci, veli ya
+da personel verisi koymayın.
 
 Kaynak ücretsiz verilir: bir ağ sunucusunda (ör. programın GitHub Releases
-sayfasında) indirilebilir olarak sunulur ve adresi kayda yazılır. Kaynağın
-fiziksel bir taşıyıcıyla gönderilmesi istenirse alınacak ücret bu gönderimin
-maliyetini aşmaz.
+sayfasında) indirilebilir olarak sunulur ve adresi kayda ya da e-posta
+yanıtına yazılır. Kaynağın fiziksel bir taşıyıcıyla gönderilmesi istenirse
+alınacak ücret bu gönderimin maliyetini aşmaz.
 
 Program ağ üzerinden (GitHub Releases ve indir.okulapp.org) dağıtılır. Ağdan
 dağıtımda LGPL-3.0 bileşenleri için GPL-3.0 madde 6(d) geçerlidir: kaynağa

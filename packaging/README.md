@@ -22,7 +22,12 @@ packaging/
 │   └── fonts.paket.conf         paket içi fontconfig — spec bunu (Windows)
 │                                `_internal/etc/fonts/fonts.conf` adıyla koyar
 ├── fontlar/                     DejaVu Sans 4 kesim + lisans (pakete gömülür)
-├── ikonlar/                     logo_uret.py + ikon_uret.py + PNG kesimleri + .ico
+├── ikonlar/                     program simgesi ("Raf ve etiket", 29.09.2026) — çıktılar
+│   │                            depodadır, derleme ikon üretmez
+│   ├── logo_uret.py             ana çizim (1024) + elle çizilmiş 16/24/32 kesimleri
+│   └── ikon_uret.py             48+ kesimler, .ico (her boyut kendi karesiyle),
+│                                frontend/public/app-logo.png; `--site DOSYA` yalnız
+│                                okulapp.org görselini yazar; testi test_ikonlar.py
 ├── depo_sizintisi.py            depoda kişisel veri denetimi (KVKK kapısı)
 ├── veri_sizintisi.py            dağıtım paketinde kişisel veri denetimi
 │                                (paket dizini + son arşivler .zip/.deb/.tar.gz)
@@ -54,7 +59,7 @@ packaging/
 ## Linux paketi üretme
 
 ```bash
-docker compose run --rm frontend npm run build     # frontend/dist şart
+docker compose run --rm frontend npm run build     # frontend/dist şart ve güncel olmalı
 bash packaging/linux/docker-build.sh               # .deb + .tar.gz
 bash packaging/linux/test-kurulum.sh               # debian:11 + debian:12 provası
 ```
@@ -402,7 +407,9 @@ KT-1):** beta için `BENIOKU.txt`'de **yazılı teklif** vardır — üreticinin
 (`lisanslar.py::_yazili_teklif`; kapsadığı LGPL bileşenler `bilesenler.json`'dan
 türer, Windows'taki LGPL-2.1'li MSYS2 DLL'leri dahil): her sürüm, beta dahil, yayımdan
 itibaren en az üç yıl; istek yolu deponun Issues sayfası (`DEPO_ADRESI`, güncelleme
-denetiminin deposuyla aynı — kapı testli); e-posta, kişi adı, unvan, kurum adı yazılmaz.
+denetiminin deposuyla aynı — kapı testli) ya da geliştiricinin e-posta adresi
+(`ILETISIM_EPOSTA`, Hakkında ekranı ve `LICENSE` ile aynı — kapı testli; **29.09.2026
+kullanıcı kararı**, tasarım F12 ekleri İA-2); kişi adı, unvan, kurum adı yazılmaz.
 Metin `uret.sh` ile üretilir; kapı testi depodaki `BENIOKU.txt`'nin üreticinin çıktısıyla
 birebir aynı olduğunu sınar. **Kararlı sürümden önce** Windows'un MSYS2 kaynak arşivleri
 Release'e ayrı bir "kaynak" paketi olarak konur (KB-1 (b); `docs/teknik-borc.md` TB28).

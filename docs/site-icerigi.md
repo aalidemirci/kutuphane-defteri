@@ -17,8 +17,13 @@ buradan alır.
 - **Sayfalar** (tasarım §17): `kutuphane-defteri/index` (tanıtım, özellikler, indirme),
   `kutuphane-defteri/kilavuz` (kurulum ve ilk adımlar), `kutuphane-defteri/gizlilik`.
 - **Metin kuralları** (bu belgedeki bütün metinler bunlara uyar):
-  - Kurum adı, unvan ve kişi adı yazılmaz; programı yazandan söz etmek gerekirse "bir
-    ortaöğretim kurumunda çalışıyor" düzeyinde kalınır, unvan ve kurum adı verilmez.
+  - **Unvan ve kurum adı yazılmaz**; programı yazandan söz etmek gerekirse "bir ortaöğretim
+    kurumunda çalışıyor" düzeyinde kalınır. Geliştiricinin **adı ve e-postası** kardeş
+    programların sayfalarındaki gibi kullanılabilir (29.09.2026 kullanıcı kararı; 27.09'daki
+    "kişi adı yazılmaz" kuralı bu kararla değişti): iletişim e-posta düğmesiyle verilir, adı ve
+    iletişim bilgileri sitenin Hakkımda sayfasındadır (§6 "Soru, öneri ya da hata nereye
+    bildirilir?"). Öğrenci, veli ya da personel adı ve okulun adı hiçbir metinde yer almaz.
+    Site alt bilgisi olduğu gibi kalır.
   - Okul ağının gerçek IP blokları, adresleri ve sunucu adları yazılmaz.
   - Konum dili: program "okulun kütüphane işlerini yürüttüğü **yerel araç**"tır. Bakanlık
     otomasyon sisteminin yerine geçtiği, onunla eşitlendiği ya da ona veri gönderdiği
@@ -87,6 +92,27 @@ diskinin şifrelenmesi (BitLocker) önerilir.
 **Masadaki öğrenci görevli.** Görevli kipinde yalnız masa işleri açıktır: üyenin adı ve kalan
 ödünç hakkı görünür, gecikme gerekçesi ve kişi listeleri görünmez. Yönetici işleri parolayla
 açılır.
+
+**Okuma ödülü.** Ödünç kayıtlarından adlı bir sıralama yalnız bir yerde çıkar: okul isterse,
+yalnız yönetici kipinde bir **okuma ödülü aday listesi** (programdaki adıyla okuma ödülü iç
+çıktısı) basılabilir. Amacı, Okul Kütüphaneleri Yönetmeliği Uygulama Kılavuzu'nun 7.
+bölümündeki okuma ödülü önerisi için adayların belirlenmesidir; öneri bağlayıcı değildir,
+ödül verilip verilmeyeceğine okul karar verir. Hukuki sebebi programdaki öbür kütüphane
+kayıtlarınınkiyle aynıdır: 6698 sayılı Kanun md. 5/2-ç ("Veri sorumlusunun hukuki
+yükümlülüğünü yerine getirebilmesi için zorunlu olması"); yükümlülük burada Okul
+Kütüphaneleri Yönetmeliği md. 8/1-c'deki okuma kültürünü oluşturmaya yönelik
+etkinliklerden doğar. Liste yalnız öğrencileri, seçilen dönemde ödünç alıp iade ettikleri
+farklı eserlerin sayısına göre sıralar ve yalnız sırayı, adı soyadı ve sınıfı/şubeyi basar;
+ödünç ya da eser sayısı, okul numarası ve kitap adları basılmaz. Çıktı "İç kullanım"
+ibarelidir ve okul içinde ödül kararı için kullanılır: asılmaz, çoğaltılmaz; Ağ Kataloğuna,
+panoya, yıl sonu raporuna ve velilerle paylaşılan çıktılara girmez. Kütüphane aydınlatma
+metni bunu da yazar.
+
+*Site adımı notu (sayfaya yazılmaz):* gizlilik sayfasının `#okuma-odulu` paragrafı yukarıdaki
+metnin son cümlesi dışında aynısıdır (29.09.2026; aydınlatma metni sayfada kendi bölümünde
+anlatılır). Hukuki sebep ve yöntem kullanıcı kararıyla onaylıdır (tasarım
+§14.1 F12 ekleri İA-3); metin değişirse aydınlatma metni, bu paragraf ve gizlilik sayfası
+birlikte değişir.
 
 **İnternete giden istekler.** Yalnız kullanıcının başlattığı iki durumda:
 
@@ -206,16 +232,40 @@ Program PolyForm Noncommercial lisansıyla dağıtılır: ticari olmayan kullan�
 ticari satış, ücretli dağıtım ya da barındırılan hizmet olarak sunum için ayrı yazılı izin
 gerekir. Pakete giren üçüncü taraf bileşenlerin lisans metinleri paketle birlikte gelir;
 LGPL lisanslı bileşenlerin kaynak kodu için yazılı teklif de oradadır (`BENIOKU.txt`; istek
-yolu programın GitHub deposundaki Issues sayfası).
+yolu programın GitHub deposundaki Issues sayfası ya da geliştiricinin e-posta adresi).
 
 **Bilgisayar değişirse?**
 Eski bilgisayardan şifreli yedek alınır, yeni bilgisayara program kurulur ve yedek geri
 yüklenir; adımlar kılavuzda bir kontrol listesi olarak yazılıdır.
 
+**Soru, öneri ya da hata nereye bildirilir?**
+Teknik destek, öneri ve hata bildirimleri için e-posta gönderebilirsiniz
+(`mailto:aalidemirci@gmail.com?subject=Kütüphane Defteri hakkında` — kardeş programların
+sayfalarındaki "E-posta gönder" düğmesiyle aynı biçim) ya da programın GitHub deposunda
+Issues kaydı açabilirsiniz. İletiye ve kayda öğrenci, veli ya da personel verisi, okulun adı,
+gerçek veri içeren ekran görüntüsü, yedek ya da veritabanı dosyası eklemeyin; Issues
+kayıtları herkese açıktır. Programdaki kişisel verilere ilişkin başvurular okul müdürlüğüne
+yapılır.
+
 ## 7. Proje görseli
 
-`public/kutuphane-defteri.png` programın logosundan türetilir. Bugünkü logo geçicidir
-(teknik borç TB4, `docs/teknik-borc.md`); kütüphaneye özgü çizim gelince görsel de yenilenir.
+`public/kutuphane-defteri.png` programın logosundan türetilir. Logo 29.09.2026 kullanıcı
+kararıyla kesinleşti: "Raf ve etiket" — lacivert karo, safran raf üzerinde kitap sırtları,
+barkodlu safran sırt etiketi, yaslanan kitap (tasarım §14.1 F12 ekleri L-1; teknik borç TB4
+kapandı). Kaynak dosya `packaging/ikonlar/kutuphane-defteri-logo.png`'dir (1024×1024, saydam
+kenar boşluğu 32 px); logo yeniden çizilmez ya da renkleri değiştirilmez.
+
+Site görseli bu kaynaktan **ikon üreticisiyle** türetilir, taslak dosyasından ya da elle
+kırpılarak değil. Ölçüsü kardeş Kelebek Sınav'ın görseliyle aynıdır: 256×256 RGBA, 15 px
+saydam pay (görünür kutu 15..241); karo saydam paydan kırpılır, 226 px'e LANCZOS ile
+küçültülür ve 15 px payla ortalanır. Hazır `-256.png` kesimi bu ölçüde DEĞİLDİR (8 px pay,
+program simgesinin kuralı). Komut (Docker'da; betik varsayılan koşusunda siteye yazmaz):
+
+    docker compose run --rm -w /repo -v "<okulapp.org>/public:/site" backend \
+        python packaging/ikonlar/ikon_uret.py --site /site/kutuphane-defteri.png
+
+Ölçüyü `packaging/tests/test_ikonlar.py` sınar. Logo değişirse site görseli bu komutla
+yeniden üretilir.
 
 ## 8. Ekran görüntüleri
 

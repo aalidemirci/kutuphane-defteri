@@ -51,6 +51,9 @@ or QApplication(sys.argv)` ile alır (`platforms/qt.py`: `setup_app` ve
   kutusu "son pencere kapandı" sayılıp programı sonlandırmasın. pywebview son
   pencere gerçekten kapanınca döngüyü kendisi bitirir (`_app.exit()`).
 
+Uygulamanın pencere simgesi de burada atanır (`prepare_qt_application`); tepsi
+kurulamasa da pencere program simgesini taşır.
+
 `isSystemTrayAvailable()` yanlışsa (tepsisiz GNOME) tepsi kurulmaz; pencere
 çarpıda küçültülür (`WindowController`, okulzili yedeği).
 
@@ -521,8 +524,16 @@ def load_qt() -> SimpleNamespace:
     )
 
 
-def prepare_qt_application(qt: Any) -> Any:
-    """pywebview'ın da kullanacağı tek `QApplication` örneği (ana iş parçacığında)."""
+def prepare_qt_application(qt: Any, icon_path: Path | None = None) -> Any:
+    """pywebview'ın da kullanacağı tek `QApplication` örneği (ana iş parçacığında).
+
+    **Pencere simgesi.** pywebview'a `icon=` verilmez; Qt penceresi simgesini
+    `QApplication.windowIcon()`'dan alır. Burada atanmazsa pencerenin simgesi
+    boş kalır ve X11'de `_NET_WM_ICON` yazılmaz: simgeyi pencereden okuyan
+    masaüstlerinde (XFCE görev listesi, Alt+Tab) genel simge görünür. Tema
+    simgesi hicolor 16…256'yı, yani elle çizilmiş 16/24/32'yi de verir (tasarım
+    §14.1 F12 ekleri L-1). Simge atanamazsa program sürer, günlüğe yazılır.
+    """
     app = qt.QApplication.instance()
     if app is None:
         # pywebview `platforms/qt.py` içe aktarılırken aynısını yapar (bazı
@@ -531,6 +542,11 @@ def prepare_qt_application(qt: Any) -> Any:
         os.environ["QT_STYLE_OVERRIDE"] = ""
         app = qt.QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
+    try:
+        # QIcon/QPixmap uygulama örneği kurulmadan yaratılamaz: sıra bu.
+        app.setWindowIcon(_qt_icon(qt, icon_path))
+    except Exception:  # noqa: BLE001 — simgesiz pencere de açılır
+        logger.warning("Pencere simgesi atanamadı.", exc_info=True)
     return app
 
 
@@ -579,7 +595,7 @@ class QtTray:
     def start(self) -> bool:
         try:
             qt = self._qt_loader()
-            app = prepare_qt_application(qt)
+            app = prepare_qt_application(qt, self._icon_path)
         except Exception:  # noqa: BLE001 — Qt yoksa pencere de açılmaz; hata orada söylenir
             logger.warning("Qt yüklenemedi; sistem tepsisi kurulmadı.", exc_info=True)
             return False

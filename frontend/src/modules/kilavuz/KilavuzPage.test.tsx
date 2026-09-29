@@ -3526,6 +3526,10 @@ describe("KilavuzPage — Raporlar ve Çok Okunanlar (F10)", () => {
     expect(metin).toContain(
       "program not ya da başarı bilgisi tutmaz ve bu ilişkilendirmeyi yapmaz",
     );
+    // 29.09.2026 kullanıcı kararı: aydınlatma metni (E13) bu çıktıyı ayrıca anlatır.
+    expect(metin).toContain(
+      "Kütüphane aydınlatma metni bu çıktıyı ölçütüyle, dayanağıyla ve kimlerin gördüğüyle",
+    );
   });
 
   it("Dökümler bölümü Raporlar sekmesine ve dışa aktarımın geri yükleme bağlantısına gönderir", () => {

@@ -1098,11 +1098,16 @@ def _elle_bilesenler() -> list[tuple[Bilesen, list[tuple[str, str]]]]:
 
 
 #: Programın herkese açık deposu. LGPL kaynağı için yazılı teklifin iletişim yolu bu
-#: deponun Issues sayfasıdır (KB-1, 28.09.2026 kullanıcı kararı: teklifte e-posta, kişi
-#: adı, unvan ve kurum adı YAZILMAZ). Güncelleme denetiminin varsayılan deposuyla aynıdır
+#: deponun Issues sayfası ve geliştiricinin e-posta adresidir (KB-1, 28.09.2026 kullanıcı
+#: kararı: Issues; 29.09.2026 kullanıcı kararı — tasarım §14.1 F12 ekleri İA-2: kardeş
+#: programlardaki gibi e-posta da verilir; teklifte kişi adı, unvan ve kurum adı YAZILMAZ).
+#: Güncelleme denetiminin varsayılan deposuyla aynıdır
 #: (`backend/apps/okul/services/updates.py::GITHUB_REPOSITORY`; kapı testi eşitler).
 DEPO_ADRESI = "https://github.com/aalidemirci/kutuphane-defteri"
 KAYNAK_TEKLIF_ADRESI = f"{DEPO_ADRESI}/issues"
+#: Geliştiricinin e-posta adresi — Hakkında ekranındaki ve LICENSE'taki (Required Notice)
+#: adresin aynısı (kapı testi eşitler). Teklifin ikinci istek yolu ve `TELIF`'in adresi.
+ILETISIM_EPOSTA = "aalidemirci@gmail.com"
 TEKLIF_BASLIGI = "LGPL BİLEŞENLERİNİN KAYNAK KODU İÇİN YAZILI TEKLİF"
 
 
@@ -1123,7 +1128,9 @@ def _yazili_teklif(bilesenler: list[Bilesen]) -> list[str]:
     erişim (Release notu — `.github/workflows/paketleme.yml`; KB-1 düzeltme turu,
     29.09.2026). Bileşen listesi `bilesenler.json`'dan türer: pakete yeni bir LGPL bileşen
     girerse teklife kendiliğinden girer. Kararlı sürümden önce Windows'un MSYS2 kaynak
-    arşivleri ayrıca Release'e konur (KB-1 (b), tasarım §14.1 F12 ekleri).
+    arşivleri ayrıca Release'e konur (KB-1 (b), tasarım §14.1 F12 ekleri). İstek yolu
+    deponun Issues sayfası ya da geliştiricinin e-posta adresidir (29.09.2026 kullanıcı
+    kararı, F12 ekleri İA-2; kişi adı, unvan ve kurum adı yazılmaz).
     """
     lgpl = [b for b in bilesenler if b.tur == "python" and "LGPL" in b.etkin_lisans]
     satirlar = [
@@ -1159,14 +1166,17 @@ def _yazili_teklif(bilesenler: list[Bilesen]) -> list[str]:
         "verilir. Nasıl istenir: programın GitHub deposundaki Issues (sorun kayıtları)",
         "sayfasında bir kayıt açın:",
         f"    {KAYNAK_TEKLIF_ADRESI}",
-        "Kayda programın sürümünü (Hakkında ekranında yazar), platformu (Windows ya",
-        "da Linux) ve istediğiniz bileşeni yazın. Kayıtlar herkese açıktır: kişisel",
-        "veri ve okul bilgisi yazmayın.",
+        "ya da geliştiriciye e-postayla yazın:",
+        f"    {ILETISIM_EPOSTA}",
+        "Kayda ya da iletiye programın sürümünü (Hakkında ekranında yazar), platformu",
+        "(Windows ya da Linux) ve istediğiniz bileşeni yazın. Issues kayıtları herkese",
+        "açıktır: kişisel veri ve okul bilgisi yazmayın. E-postaya da öğrenci, veli ya",
+        "da personel verisi koymayın.",
         "",
         "Kaynak ücretsiz verilir: bir ağ sunucusunda (ör. programın GitHub Releases",
-        "sayfasında) indirilebilir olarak sunulur ve adresi kayda yazılır. Kaynağın",
-        "fiziksel bir taşıyıcıyla gönderilmesi istenirse alınacak ücret bu gönderimin",
-        "maliyetini aşmaz.",
+        "sayfasında) indirilebilir olarak sunulur ve adresi kayda ya da e-posta",
+        "yanıtına yazılır. Kaynağın fiziksel bir taşıyıcıyla gönderilmesi istenirse",
+        "alınacak ücret bu gönderimin maliyetini aşmaz.",
         "",
         "Program ağ üzerinden (GitHub Releases ve indir.okulapp.org) dağıtılır. Ağdan",
         "dağıtımda LGPL-3.0 bileşenleri için GPL-3.0 madde 6(d) geçerlidir: kaynağa",
@@ -2488,7 +2498,7 @@ def npm_farki(on_yuz: dict[str, Any], bilesenler: Sequence[Bilesen]) -> list[str
 # deb-copyright — DEP-5 (Debian makine okunur telif biçimi 1.0)
 # =============================================================================
 
-TELIF = "2026 Ahmet Ali DEMİRCİ <aalidemirci@gmail.com>"
+TELIF = f"2026 Ahmet Ali DEMİRCİ <{ILETISIM_EPOSTA}>"
 LISANS_KISA_ADI = "LicenseRef-PolyForm-Noncommercial-1.0.0"
 
 

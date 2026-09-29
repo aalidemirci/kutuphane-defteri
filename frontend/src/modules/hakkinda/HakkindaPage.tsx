@@ -56,6 +56,13 @@ export default function HakkindaPage() {
               Programla ilgili talep, öneri, hata bildirimi ve şikâyetlerinizi bu e-posta adresine
               iletebilirsiniz.
             </p>
+            {/* KVKK (CLAUDE.md §2-12, SECURITY.md): kişi verisi destek iletisine girmez. Okulun
+                kayıtlarına ilişkin KVKK başvurusunun yeri okul müdürlüğüdür (E13 §8). */}
+            <p className="mt-2 text-body-small text-on-surface-variant">
+              İletinize öğrenci, veli ya da personel bilgisi, gerçek veri içeren ekran görüntüsü,
+              yedek ya da veritabanı dosyası eklemeyin. Programdaki kişisel verilere ilişkin
+              başvurular okul müdürlüğüne yapılır.
+            </p>
           </div>
         </div>
       </Card>

@@ -204,7 +204,8 @@ Ağ Kataloğu için güvenlik duvarı kuralı kurulum sırasında eklenir.
 Kurulum klasöründe (`C:\Program Files\Kütüphane Defteri`) programın lisansı
 (`LICENSE.txt`) ve pakete giren üçüncü taraf bileşenlerin lisans metinleri de bulunur
 (`THIRD_PARTY_LICENSES\`; dizini, LGPL bileşenlerinin kaynak adresleri ve kaynak kodu için
-yazılı teklif `BENIOKU.txt`'de — istek yolu programın GitHub deposunun Issues sayfasıdır).
+yazılı teklif `BENIOKU.txt`'de — istek yolu programın GitHub deposunun Issues sayfası ya da
+geliştiricinin e-posta adresidir).
 
 İmzasız paket olduğu için SmartScreen "tanınmayan uygulama" uyarısı verebilir:
 "Ek bilgi" → "Yine de çalıştır". Önce §9'daki SHA-256 doğrulamasını yapın.
