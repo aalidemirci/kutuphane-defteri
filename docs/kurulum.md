@@ -163,7 +163,7 @@ ekranındaki bağlantıda aynı sayfayı gösterir; dosyalar indir.okulapp.org'd
 | Dosya | Kimin için |
 |---|---|
 | `kutuphane-defteri-<sürüm>-win64-setup.exe` | Windows 10/11 — önerilen kurulum |
-| `kutuphane-defteri-<sürüm>-win64-portable.zip` | Windows — kurulumsuz (Ağ Kataloğu sunulmaz, otomatik başlatma yok, §3.3) |
+| `kutuphane-defteri-<sürüm>-win64-portable.zip` | Windows 10/11 — kurulumsuz (Ağ Kataloğu sunulmaz, otomatik başlatma yok, §3.3) |
 | `kutuphane-defteri_<sürüm>_amd64.deb` | Pardus ve Debian tabanlılar — önerilen |
 | `kutuphane-defteri-<sürüm>-linux-x64.tar.gz` | Linux — kurulum için sistem yöneticisi (sudo) yetkisi gerekmez (Ağ Kataloğu yok, §4.2) |
 | `SHA256SUMS.txt` | İndirilen dosyayı doğrulamak için (§9); `indir.okulapp.org`'da sürümlü adla: `SHA256SUMS-<sürüm>.txt` |

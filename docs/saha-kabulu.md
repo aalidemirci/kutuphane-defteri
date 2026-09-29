@@ -1250,6 +1250,7 @@ adımı gösterir.
 | W23 lisans sayfası UTF-8 metni Türkçe harfleri bozmadan gösterir; lisans dosyaları kurulur | 2.2 |
 | W24 pip kısıt dosyası (lisans listesinin sürümleri) Windows'ta çözülür | paket hattı (CI); sahada dolaylı: 2.5 (`--bagimlilik-duman`) |
 | W25 MSYS2 paketlerinin SPDX lisans denetimi ve DLL düzeyindeki izinler | paket hattı (CI); sahada 2.2 (lisans dizini) |
+| W26 paketin statik DLL kapanışı; duman testleri Windows'un sistem PATH'iyle | paket hattı (CI); sahada dolaylı: 2.5 (`--pdf-duman`, `--bagimlilik-duman`) |
 
 ### 26.4 `packaging/windows/NOTLAR.md` — ilk Windows koşusu çek-listesi
 

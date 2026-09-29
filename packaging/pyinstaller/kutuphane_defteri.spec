@@ -132,15 +132,30 @@ binaries += collect_dynamic_libs("webview")
 # "yalnız Windows" diye bildirir); Android arşivi hiçbir pakette kullanılmaz. Süzgeçsiz
 # `collect_*` ikisini de Linux paketine koyuyordu. Derleme sonrası denetim
 # (`lisanslar.py paket`) bu dosyaları pakette görürse derlemeyi durdurur.
-def _webview_platform_disi(hedef_dizin: str, kaynak: str) -> bool:
-    yol = hedef_dizin.replace("\\", "/")
-    if Path(kaynak).name.casefold() == "pywebview-android.jar":
+#
+# Süzgeç İKİ yerde uygulanır: burada (spec'in kendi `collect_*` girdileri; Linux'ta PE
+# DLL'leri bağımlılık çözümlemesine hiç girmesin) ve Analysis'ten SONRA (aşağıda).
+# pywebview kendi PyInstaller kancasını taşır (`webview/__pyinstaller/hook-webview.py`,
+# `pyinstaller40` giriş noktası) ve Windows'ta `collect_data_files('webview',
+# subdir='lib')` ile Android arşivini de Analysis SIRASINDA ekler — 29.09.2026 CI Windows
+# koşusunda yalnız girdi süzgeci olduğu için arşiv pakete girdi. `lib/runtimes/win-arm64`
+# ve `win-x86` Windows'ta KALIR: `webview/platforms/edgechromium.py` üç dizini de
+# `interop_dll_path` ile PATH'e ekler ve bulamadığında FileNotFoundError verir.
+def _webview_platform_disi(hedef: str) -> bool:
+    """Paket içi hedef yol (ör. `webview/lib/pywebview-android.jar`) bu platformda yersiz mi?"""
+    yol = hedef.replace("\\", "/")
+    if yol.rsplit("/", 1)[-1].casefold() == "pywebview-android.jar":
         return True
-    return not WINDOWS and (yol == "webview/lib" or yol.startswith("webview/lib/"))
+    return not WINDOWS and yol.startswith("webview/lib/")
 
 
-datas = [oge for oge in datas if not _webview_platform_disi(oge[1], oge[0])]
-binaries = [oge for oge in binaries if not _webview_platform_disi(oge[1], oge[0])]
+def _girdi_hedefi(oge: tuple[str, str]) -> str:
+    """spec girdisi (kaynak, hedef dizin) → paket içi hedef yol."""
+    return oge[1].replace("\\", "/").rstrip("/") + "/" + Path(oge[0]).name
+
+
+datas = [oge for oge in datas if not _webview_platform_disi(_girdi_hedefi(oge))]
+binaries = [oge for oge in binaries if not _webview_platform_disi(_girdi_hedefi(oge))]
 
 if WINDOWS:
     dll_dir = Path(os.environ.get("KD_DLL_DIR", str(REPO / "packaging" / "windows" / "dll")))
@@ -352,6 +367,50 @@ def _pyphen_sozlugu_atilir(hedef: str) -> bool:
 a.datas = [oge for oge in a.datas if not _pyphen_sozlugu_atilir(oge[0])]
 
 # ---------------------------------------------------------------------------
+# Analysis SONRASI lisans süzgeçleri. PyInstaller'ın kancaları ve ikili bağımlılık
+# çözümlemesi dosyaları Analysis SIRASINDA ekler; spec girdisini süzmek onları görmez.
+# Kurallar TEK kaynaktadır (`packaging/lisanslar/lisanslar.py`, yalnız standart
+# kitaplık). Derleme sonrası denetim (`lisanslar.py paket`) paketin SON TOC'larını
+# (COLLECT/PYZ/PKG/EXE) ve diskteki hâlini aynı kurallarla yeniden sınar.
+# ---------------------------------------------------------------------------
+sys.path.insert(0, str(REPO / "packaging" / "lisanslar"))
+import lisanslar as _lisanslar  # noqa: E402 — yalnız standart kitaplık
+
+a.datas = [oge for oge in a.datas if not _webview_platform_disi(oge[0])]
+a.binaries = [oge for oge in a.binaries if not _webview_platform_disi(oge[0])]
+
+# Universal CRT (LİSANS KAPISI, 29.09.2026 CI Windows koşusu): PyInstaller 6.11
+# `ucrtbase.dll` ve `api-ms-win-*.dll`'i `_win_includes` listesinde tutar ve python312.dll'in
+# bağımlılığını PATH'te bulduğu ilk kopyadan toplar — koşucuda Temurin JDK'nın `bin`
+# klasöründen 43 sahipsiz dosya girdi. UCRT Windows 10/11'de işletim sisteminin
+# bileşenidir; uygulama klasöründeki kopya kullanılmaz (Microsoft Learn, "Universal CRT
+# deployment" → "Local deployment"). Program yalnız Windows 10/11'i hedefler (Inno
+# `MinVersion=10.0`). Kural ve gerekçe: `lisanslar.UCRT_DLL`.
+a.binaries, _ucrt_ayiklanan = _lisanslar.ucrt_suz(a.binaries)
+a.datas, _ucrt_veri = _lisanslar.ucrt_suz(a.datas)
+if _ucrt_ayiklanan or _ucrt_veri:
+    _lisanslar.yaz(
+        f"LİSANS: Universal CRT'den {len(_ucrt_ayiklanan) + len(_ucrt_veri)} dosya ayıklandı "
+        "(Windows 10/11 sistemdekini kullanır)."
+    )
+
+# Paket içi fontconfig yapılandırması (Windows; 29.09.2026 doğrulama turu). hooks-contrib
+# `hook-weasyprint` MSYS2'nin `etc/fonts` ağacını (fonts.conf + conf.d) toplar; Windows'ta
+# libfontconfig yapılandırmayı DLL'in yanındaki `etc/fonts/fonts.conf`'tan okur ve
+# `FONTCONFIG_FILE`'ı dinlemez. MSYS2 varsayılanı Windows font dizinini tarar (evrak
+# sistem fontuyla dizilir); bu yüzden o dosya projenin `fonts.paket.conf`'udur. Değiştirme
+# TOC'ta yapılır: önceden build.ps1 dosyayı lisans denetiminden SONRA eziyordu ve
+# `paket-icerigi.txt` pakette olmayan MSYS2 dosyasını anlatıyordu. conf.d pakete girmez:
+# projenin fonts.conf'u `<include>` taşımadığı için hiç yüklenmiyordu. `lisanslar.py paket`
+# diskte yalnız bu dosyayı kabul eder; `--pdf-duman` PDF'in DejaVu ile dizildiğini sınar.
+if WINDOWS:
+    a.datas, _fontconfig_ayiklanan = _lisanslar.fontconfig_yerlestir(a.datas)
+    _lisanslar.yaz(
+        f"fontconfig: MSYS2'nin etc/fonts ağacından {len(_fontconfig_ayiklanan)} dosya "
+        "ayıklandı; etc/fonts/fonts.conf = packaging/pyinstaller/fonts.paket.conf."
+    )
+
+# ---------------------------------------------------------------------------
 # Qt'nin yalnız GPL'li modülleri (LİSANS KAPISI, F12 düzeltme turu): PyInstaller'ın
 # PySide6 kancaları QtWebEngine'in Quick/Qml bağımlılığı üzerinden BÜTÜN QML
 # modüllerini ve eklentilerini toplar; aralarında Qt'nin açık kaynak sürümünde yalnız
@@ -363,9 +422,6 @@ a.datas = [oge for oge in a.datas if not _pyphen_sozlugu_atilir(oge[0])]
 # Derleme sonrası denetim aynı kuralı paketin diskteki hâlinde sınar.
 # ---------------------------------------------------------------------------
 if WITH_QT and not WINDOWS:
-    sys.path.insert(0, str(REPO / "packaging" / "lisanslar"))
-    import lisanslar as _lisanslar  # noqa: E402 — yalnız standart kitaplık
-
     a.binaries, a.datas, _qt_gpl_ayiklanan = _lisanslar.qt_gpl_suz(a.binaries, a.datas)
     # `yaz` konsolun kodlayamadığı harfi kaçışa çevirir (CI konsolu CP1252 olabilir).
     _lisanslar.yaz(

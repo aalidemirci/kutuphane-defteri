@@ -9,20 +9,27 @@ Dizin ELLE yazılmaz; bu betik üretir. Üç alt komut:
     Depodaki `THIRD_PARTY_LICENSES/` dizinini üretir. Geliştirme kabında koşar
     (backend imajı) ve ağ ister: yalnız paket ortamında kurulan dağıtımların
     (pywebview, pystray, pythonnet, PySide6 …) üstverisi PyPI'dan, lisans
-    dosyaları tekerlek ya da kaynak arşivinden okunur. Ön yüz girdisi
-    `on_yuz_paketleri.mjs`'nin JSON çıktısıdır. Sarmalayıcı: `uret.sh`.
+    dosyaları tekerlek ya da kaynak arşivinden okunur. Kapanış Linux ve Windows
+    için AYRI çözülür (ortam işaretleri platform platform değerlendirilir; paket
+    ortamının derleme araçlarıyla gelen dağıtımları da `KURULUYU_TERCIH_EDEN`
+    kuralıyla hesaba katılır). Ön yüz girdisi `on_yuz_paketleri.mjs`'nin JSON
+    çıktısıdır. Sarmalayıcı: `uret.sh`.
 
 ``paket``
     Derlenmiş paketin GERÇEKTEN içerdiği bileşenleri denetler ve lisans dizinini
     pakete koyar. Derleme ortamında, PyInstaller'dan hemen sonra koşar (yalnız
-    standart kitaplık): PyInstaller'ın ara çıktısındaki TOC dosyalarından pakete
-    giren her dosyanın kaynağı okunur ve sınıflandırılır — kurulu bir Python
-    dağıtımı (RECORD), Python'un kendisi, depo dosyası, Windows'ta MSYS2 paketi
-    (pacman yerel veritabanı), Linux'ta Debian paketi (dpkg). Listede olmayan
+    standart kitaplık): PyInstaller'ın SON aşama TOC dosyalarından (COLLECT, PYZ,
+    PKG, EXE — spec süzgeçlerinden sonraki hâl) pakete giren her dosyanın kaynağı
+    okunur ve sınıflandırılır — kurulu bir Python dağıtımı (RECORD), Python'un
+    kendisi, depo dosyası, Windows'ta MSYS2 paketi (pacman yerel veritabanı; DLL
+    dışı dosyada `mtree` özeti de), Linux'ta Debian paketi (dpkg). Listede olmayan
     dağıtım, sahibi bilinmeyen dosya, yalnız GPL'li yerel kütüphane (bilinen ad
-    listesi; MSYS2'de paketin SPDX lisansı) ya da Qt'nin yalnız GPL'li bir modülü
+    listesi; MSYS2'de paketin SPDX lisansı), Qt'nin yalnız GPL'li bir modülü
     (dosya düzeyinde: kitaplık, bağlayıcı, QML dizini ve onlara bağlanan her ELF)
-    derlemeyi DURDURUR. Çağıran: build.ps1, build.sh.
+    ya da Windows'un Universal CRT'si derlemeyi DURDURUR; Windows'ta paket içi fontconfig
+    yapılandırması projenin `fonts.paket.conf`'u değilse de. Depo, Python kökleri ve
+    site-packages iç içe olabildiği için (sanal ortam depo içindedir) dosyayı kapsayan en
+    dar kök sınıfı belirler. Çağıran: build.ps1, build.sh.
 
 ``kisitlar``
     Paket ortamının pip kısıt dosyasını (`-c`) listedeki sürümlerden yazar: pakete
@@ -46,6 +53,8 @@ import argparse
 import ast
 import email
 import email.message
+import gzip
+import hashlib
 import importlib.metadata as im
 import io
 import json
@@ -365,8 +374,21 @@ URETILEN_LISANS: dict[str, tuple[str, str]] = {
     "proxy-tools": ("MIT", "Copyright (c) Jonathan Tushman"),
 }
 
-#: Pakete kendisi girer ama bağımlılıkları GİRMEZ (derleme araçları).
+#: Pakete kendisi girer ama bağımlılıkları GİRMEZ (derleme araçları). Bağımlılıkları yine
+#: de paket ORTAMINA kurulur; `KURULUYU_TERCIH_EDEN` onları ayrıca sınar.
 OZYINELENMEYEN = frozenset({"pyinstaller", "pyinstaller-hooks-contrib", "setuptools"})
+
+#: Vendored bağımlılıklarının paket ortamında KURULU olanını kendi kopyasına tercih eden
+#: dağıtım → o bağımlılıkları sayan ek. setuptools ≥71 `setuptools/_vendor`'ı `sys.path`'in
+#: SONUNA ekler ve `import packaging` gibi üst düzey adlarla import eder (PyInstaller 6.11
+#: `hook-setuptools` bu yüzden 71'den sonra vendored modülleri ayrıca saymaz): ortamda
+#: kurulu olan dağıtım setuptools'la birlikte (cffi → `_shimmed_dist_utils`) pakete girer.
+#: Hangi dağıtımların bu yolla girebileceğini setuptools'un `core` eki listeler; üretici
+#: bunları paket ortamının kapanışıyla (`Uretici._kapanis(ortam=True)`, derleme araçlarının
+#: bağımlılıkları dahil) platform platform kesiştirir. 29.09.2026 CI Windows koşusu:
+#: `packaging` (PyInstaller'ın bağımlılığı, paket ortamında hep kurulu) Windows paketine
+#: girdi; liste onu yalnız Linux'ta, qtpy üzerinden biliyordu.
+KURULUYU_TERCIH_EDEN: dict[str, str] = {"setuptools": "core"}
 
 #: Pinlenmemiş ama pakete giren dağıtımlar (ad, platformlar, gerekçe).
 EK_KOKLER: tuple[tuple[str, tuple[str, ...], str], ...] = (
@@ -528,6 +550,7 @@ class Uretici:
         self.on_bellek = on_bellek
         self._bilgiler: dict[tuple[str, str], _DagitimBilgisi] = {}
         self._surumler: dict[str, list[str]] = {}
+        self._hafif: dict[tuple[str, str], list[str]] = {}
 
     # ----------------------------------------------------------- ağ yardımcıları
     @staticmethod
@@ -638,10 +661,32 @@ class Uretici:
                 bilgi.dosyalar = _arsivden_bilgi(kaynak, surum).dosyalar
         return bilgi
 
-    # -------------------------------------------------------------- çözüm
-    def coz(self) -> dict[str, _Cozulen]:
-        """Backend + paketleme pinlerinden iki platformun bağımlılık kapanışı."""
-        from packaging.requirements import Requirement
+    def _gereksinimler(self, ad: str, surum: str, platform: str, *, hafif: bool) -> list[str]:
+        """Dağıtımın `Requires-Dist` satırları.
+
+        `hafif=False`: lisans dosyalarıyla birlikte (`bilgi`, gerekirse tekerlek indirir).
+        `hafif=True`: yalnız paket ORTAMINA kurulan ama pakete girmeyen derleme araçları
+        bağımlılıkları için (altgraph, pefile …): kurulu üstveri ya da PyPI JSON'u —
+        lisans dosyası gerekmez, kaynak arşivi derlenmez.
+        """
+        anahtar = (normal_ad(ad), surum)
+        if not hafif or anahtar in self._bilgiler:
+            return self.bilgi(ad, surum, platform).gereksinimler
+        if anahtar not in self._hafif:
+            try:
+                kurulu: im.Distribution | None = im.distribution(ad)
+            except im.PackageNotFoundError:
+                kurulu = None
+            if kurulu is not None and kurulu.version == surum:
+                self._hafif[anahtar] = list(kurulu.requires or [])
+            else:
+                veri = self._json(f"https://pypi.org/pypi/{ad}/{surum}/json")["info"]
+                self._hafif[anahtar] = [str(g) for g in veri.get("requires_dist") or []]
+        return self._hafif[anahtar]
+
+    @staticmethod
+    def kokler() -> list[tuple[str, Any, frozenset[str], str, bool]]:
+        """Backend + paketleme pinleri ve `EK_KOKLER`, platform platform."""
         from packaging.specifiers import SpecifierSet
 
         kuyruk: list[tuple[str, Any, frozenset[str], str, bool]] = []
@@ -652,9 +697,27 @@ class Uretici:
         for ad, platformlar, _gerekce in EK_KOKLER:
             for platform in platformlar:
                 kuyruk.append((ad, SpecifierSet(), frozenset(), platform, False))
+        return kuyruk
 
-        secilen: dict[str, str] = {}
-        sonuc: dict[str, _Cozulen] = {}
+    def _kapanis(
+        self,
+        kokler: Sequence[tuple[str, Any, frozenset[str], str, bool]],
+        secilen: dict[str, str],
+        *,
+        ortam: bool,
+    ) -> dict[str, tuple[str, str, set[str]]]:
+        """Köklerin bağımlılık kapanışı: normal ad → (ad, sürüm, platformlar).
+
+        `ortam=False`: pakete girebilen dağıtımlar (derleme araçlarının bağımlılıkları
+        izlenmez — `OZYINELENMEYEN`). `ortam=True`: paket ORTAMINA kurulan her dağıtım
+        (`pip install -r … -r …` ne kurarsa). İşaretler her platform için ayrı
+        değerlendirilir (`_ORTAMLAR`): `sys_platform == "win32"` yalnız Windows kümesine
+        girer. Sürüm seçimi iki geçişte ortaktır (`secilen`); çakışma üreticiyi durdurur.
+        """
+        from packaging.requirements import Requirement
+
+        kuyruk = list(kokler)
+        sonuc: dict[str, tuple[str, str, set[str]]] = {}
         islenen: set[tuple[str, str, frozenset[str]]] = set()
         while kuyruk:
             ad, belirtec, ekler, platform, ozyinele = kuyruk.pop(0)
@@ -667,23 +730,80 @@ class Uretici:
                 raise SystemExit(
                     f"HATA: sürüm çakışması: {ad} {secili} seçildi, {belirtec} isteniyor."
                 )
-            bilgi = self.bilgi(ad, secili, platform)
-            kayit = sonuc.setdefault(n, _Cozulen(bilgi=bilgi))
-            kayit.platformlar.add(platform)
+            sonuc.setdefault(n, (ad, secili, set()))[2].add(platform)
             anahtar = (n, platform, ekler)
-            if anahtar in islenen or not ozyinele or n in OZYINELENMEYEN:
+            if anahtar in islenen or (not ortam and (not ozyinele or n in OZYINELENMEYEN)):
                 continue
             islenen.add(anahtar)
-            ortam = {**_ORTAK_ORTAM, **_ORTAMLAR[platform]}
-            for ham in bilgi.gereksinimler:
+            isaretler = {**_ORTAK_ORTAM, **_ORTAMLAR[platform]}
+            for ham in self._gereksinimler(ad, secili, platform, hafif=ortam):
                 istek = Requirement(ham)
                 if istek.marker is not None and not any(
-                    istek.marker.evaluate({**ortam, "extra": ek}) for ek in (ekler or {""})
+                    istek.marker.evaluate({**isaretler, "extra": ek}) for ek in (ekler or {""})
                 ):
                     continue
                 kuyruk.append(
                     (istek.name, istek.specifier, frozenset(istek.extras), platform, True)
                 )
+        return sonuc
+
+    def _kuruluyu_tercih_edenler(
+        self,
+        paket: dict[str, tuple[str, str, set[str]]],
+        ortam: dict[str, tuple[str, str, set[str]]],
+    ) -> list[tuple[str, Any, frozenset[str], str, bool]]:
+        """`KURULUYU_TERCIH_EDEN` kuralının pakete soktuğu dağıtımlar (ek kök olarak).
+
+        Bir platformda pakete giren aracın EK'le gelen (ekin dışında gelmeyen) her
+        gereksinimi, o platformun paket ortamında kuruluysa o platformda pakete girer.
+        """
+        from packaging.requirements import Requirement
+
+        ek_kokler: list[tuple[str, Any, frozenset[str], str, bool]] = []
+        for arac, ek in KURULUYU_TERCIH_EDEN.items():
+            kayit = paket.get(arac)
+            if kayit is None:
+                continue
+            ad, surum, platformlar = kayit
+            for platform in sorted(platformlar):
+                isaretler = {**_ORTAK_ORTAM, **_ORTAMLAR[platform]}
+                for ham in self._gereksinimler(ad, surum, platform, hafif=False):
+                    istek = Requirement(ham)
+                    if (
+                        istek.marker is None
+                        or not istek.marker.evaluate({**isaretler, "extra": ek})
+                        or istek.marker.evaluate({**isaretler, "extra": ""})
+                    ):
+                        continue
+                    kurulu = ortam.get(normal_ad(istek.name))
+                    if kurulu is not None and platform in kurulu[2]:
+                        ek_kokler.append(
+                            (istek.name, istek.specifier, frozenset(istek.extras), platform, True)
+                        )
+        return ek_kokler
+
+    def coz(
+        self, kokler: Sequence[tuple[str, Any, frozenset[str], str, bool]] | None = None
+    ) -> dict[str, _Cozulen]:
+        """Pakete girebilen dağıtımlar, İKİ platform için ayrı ayrı (Linux ve Windows kümesi).
+
+        Üç geçiş: (1) çalışma zamanı kapanışı; (2) paket ortamının tam kapanışı (derleme
+        araçlarının bağımlılıkları dahil — pip'in o platformda kurduğu küme); (3) (1)'e
+        `KURULUYU_TERCIH_EDEN` kuralıyla (2)'den gelenler eklenerek yeniden. Pakete
+        girmeyen ortam dağıtımları (altgraph, pefile, pywin32-ctypes) listeye girmez.
+        """
+        kok_listesi = list(kokler) if kokler is not None else self.kokler()
+        secilen: dict[str, str] = {}
+        paket = self._kapanis(kok_listesi, secilen, ortam=False)
+        ortam = self._kapanis(kok_listesi, secilen, ortam=True)
+        ek_kokler = self._kuruluyu_tercih_edenler(paket, ortam)
+        if ek_kokler:
+            paket = self._kapanis(kok_listesi + ek_kokler, secilen, ortam=False)
+        sonuc: dict[str, _Cozulen] = {}
+        for n, (ad, surum, platformlar) in paket.items():
+            # Tekerlek, dağıtımın kullanıldığı platformun etiketiyle indirilir.
+            bilgi = self.bilgi(ad, surum, sorted(platformlar)[0])
+            sonuc[n] = _Cozulen(bilgi=bilgi, platformlar=set(platformlar))
         return sonuc
 
 
@@ -795,15 +915,21 @@ Bu bileşen yalnız Windows kurulum dosyasında (setup.exe) bulunur; taşınabil
 """
 
 VC_NOTU = """\
-Microsoft Visual C++ ve Universal C çalışma zamanı
-===================================================
+Microsoft Visual C++ çalışma zamanı
+===================================
 
 Windows paketi, Python'un ve derlenmiş eklentilerin çalışması için Microsoft'un
-yeniden dağıtılabilir C/C++ çalışma zamanı dosyalarını (vcruntime140*.dll,
-msvcp140*.dll; gerekirse ucrtbase.dll ve api-ms-win-crt-*.dll) taşıyabilir. Bu
-dosyalar Microsoft'un Visual Studio lisansındaki "Distributable Code" koşullarıyla
-dağıtılır; değiştirilmez. Python'un Windows sürümünün lisans metni
-(yerel-kutuphaneler/ altındaki python-LICENSE.txt) aynı koşulları anlatır.
+yeniden dağıtılabilir Visual C++ çalışma zamanı dosyalarını (vcruntime140*.dll;
+gerekirse msvcp140*.dll) taşıyabilir. Bu dosyalar Microsoft'un Visual Studio
+lisansındaki "Distributable Code" koşullarıyla dağıtılır; değiştirilmez.
+Python'un Windows sürümünün lisans metni (yerel-kutuphaneler/ altındaki
+python-LICENSE.txt) aynı koşulları anlatır.
+
+Universal C çalışma zamanı (ucrtbase.dll ve api-ms-win-*.dll) pakette YOKTUR:
+Windows 10 ve sonrasında işletim sisteminin bileşenidir ve Windows 10/11
+uygulama klasöründeki kopyayı değil, sistemdekini kullanır. Program yalnız
+Windows 10 ve 11'de çalışır.
+  https://learn.microsoft.com/en-us/cpp/windows/universal-crt-deployment
 
 Hangi dosyaların pakette bulunduğu paket-icerigi.txt'de yazılıdır.
 """
@@ -924,7 +1050,7 @@ def _elle_bilesenler() -> list[tuple[Bilesen, list[tuple[str, str]]]]:
     sonuc.append(
         (
             Bilesen(
-                ad="Microsoft Visual C++ / Universal C çalışma zamanı",
+                ad="Microsoft Visual C++ çalışma zamanı",
                 surum="derleme ortamındaki sürüm",
                 tur="ikili",
                 platformlar=["windows"],
@@ -1474,21 +1600,127 @@ def qt_gpl_paket_denetimi(paket_dizini: Path) -> list[str]:
 #: yalnız GPL'dir.
 PYPHEN_IZINLI = frozenset({"hyph_en_US.dic", "README_hyph_en_US.txt"})
 
-#: Windows'ta sistem dizininden gelmesine izin verilen Microsoft çalışma zamanı.
+#: Windows'ta sistem dizininden gelmesine izin verilen Microsoft Visual C++ çalışma zamanı.
+#: Universal CRT (`UCRT_DLL`) burada YOKTUR: pakete hiç girmez.
 _MS_CALISMA_ZAMANI = re.compile(
-    r"^(vcruntime140(_1)?|msvcp140(_\d+)?|concrt140|vcomp140|ucrtbase|api-ms-win-crt-.+)\.dll$",
+    r"^(vcruntime140(_1)?|msvcp140(_\d+)?|concrt140|vcomp140)\.dll$",
     re.IGNORECASE,
 )
 
+#: Windows'un Universal C çalışma zamanı (UCRT): `ucrtbase.dll` ve API kümesi yönlendiricileri
+#: (`api-ms-win-core-*.dll`, `api-ms-win-crt-*.dll`). UCRT Windows 10 / Windows Server 2016 ve
+#: sonrasında İŞLETİM SİSTEMİNİN bileşenidir; Windows 10 ve 11 uygulama klasöründeki kopyayı,
+#: daha yeni olsa bile, KULLANMAZ — sistem dizinindekini yükler (Microsoft Learn, "Universal
+#: CRT deployment", "Local deployment" bölümü:
+#: https://learn.microsoft.com/en-us/cpp/windows/universal-crt-deployment). Program yalnız
+#: Windows 10/11'i hedefler (Inno `MinVersion=10.0`). PyInstaller 6.11 bu adları
+#: `_win_includes` listesinde tutar ve bağımlılık çözümünde PATH'te bulduğu ilk kopyayı pakete
+#: alır (`depend/dylib.py`; kendi yorumu da Windows 10+'da gereksiz olduğunu yazar). 29.09.2026
+#: CI Windows koşusu: koşucunun PATH'indeki Temurin JDK klasöründen (`…\bin\ucrtbase.dll`
+#: ve 42 `api-ms-win-*.dll`) sahipsiz 43 dosya pakete girdi. Kural: spec `ucrt_suz` ayıklar,
+#: derleme denetimi pakette görürse (TOC ya da disk) DURUR.
+UCRT_DLL = re.compile(r"^(api-ms-win-[a-z0-9-]+|ucrtbase)\.dll$", re.IGNORECASE)
+
+
+def ucrt_suz(
+    toc: Sequence[tuple[str, str, str]],
+) -> tuple[list[tuple[str, str, str]], list[str]]:
+    """spec için: Universal CRT dosyalarını PyInstaller TOC'undan ayıklar → (kalan, atılan)."""
+    kalan: list[tuple[str, str, str]] = []
+    atilan: list[str] = []
+    for oge in toc:
+        if UCRT_DLL.match(_toc_adi(oge[0])):
+            atilan.append(oge[0])
+        else:
+            kalan.append(oge)
+    return kalan, atilan
+
+
+#: Windows paketindeki fontconfig yapılandırması: projenin dosyası, `etc/fonts/fonts.conf`
+#: hedefiyle. MSYS2'nin libfontconfig'i Windows'ta yapılandırmayı DLL'in yanındaki
+#: `etc/fonts/fonts.conf`'tan okur ve `FONTCONFIG_FILE`'ı dinlemez (fonts.paket.conf başlığı).
+PAKET_FONTS_CONF = REPO / "packaging" / "pyinstaller" / "fonts.paket.conf"
+FONTCONFIG_HEDEFI = "etc/fonts/fonts.conf"
+
+
+def fontconfig_yerlestir(
+    datas: Sequence[tuple[str, str, str]],
+) -> tuple[list[tuple[str, str, str]], list[str]]:
+    """spec için (yalnız Windows): MSYS2'nin `etc/fonts` ağacını TOC'tan ayıklar, projenin
+    `fonts.paket.conf`'unu `etc/fonts/fonts.conf` hedefiyle ekler → (yeni TOC, atılanlar).
+
+    hooks-contrib `hook-weasyprint` PATH'te bulduğu `libfontconfig-1.dll`'in yanındaki
+    `../etc/fonts` ağacını (fonts.conf + conf.d) pakete koyar. 29.09.2026 doğrulama turuna
+    dek build.ps1 fonts.conf'u lisans denetiminden SONRA eziyordu: TOC ve
+    `paket-icerigi.txt` pakette olmayan MSYS2 dosyasını anlatıyordu; conf.d'deki 25 dosya
+    ise hiç yüklenmiyordu (projenin fonts.conf'u `<include>` taşımaz). Değiştirme artık
+    TOC'ta: pakete giren dosya ile denetlenen dosya aynıdır, çalışma davranışı değişmez.
+    """
+    kalan: list[tuple[str, str, str]] = []
+    atilan: list[str] = []
+    for oge in datas:
+        if oge[0].replace("\\", "/").startswith("etc/fonts/"):
+            atilan.append(oge[0])
+        else:
+            kalan.append(oge)
+    kalan.append((FONTCONFIG_HEDEFI, str(PAKET_FONTS_CONF), "DATA"))
+    return kalan, atilan
+
+
+def fontconfig_paket_denetimi(paket_dizini: Path) -> list[str]:
+    """Windows paketinin DİSKTEKİ fontconfig yapılandırması: tek bir `etc/fonts` dizini ve
+    içinde YALNIZ projenin `fonts.paket.conf`'u (`fonts.conf` adıyla).
+
+    spec `fontconfig_yerlestir`'in ikinci sigortası: MSYS2'nin yapılandırması pakete girerse
+    evrak sistem fontuyla dizilebilir ve `paket-icerigi.txt` paketi yanlış anlatır.
+    """
+    dizinler = sorted(
+        p for p in paket_dizini.rglob("fonts") if p.is_dir() and p.parent.name.lower() == "etc"
+    )
+    if len(dizinler) != 1:
+        return [
+            f"paket içi fontconfig yapılandırması: {len(dizinler)} `etc/fonts` dizini var, "
+            "tam bir tane olmalı — spec `fontconfig_yerlestir`"
+        ]
+    dizin = dizinler[0]
+    conf = dizin / "fonts.conf"
+    hatalar: list[str] = []
+    fazla = sorted(
+        p.relative_to(dizin).as_posix() for p in dizin.rglob("*") if p.is_file() and p != conf
+    )
+    if fazla:
+        hatalar.append(
+            f"paket içi fontconfig dizininde projenin fonts.conf'u dışında dosya var "
+            f"({len(fazla)} dosya, ör. {fazla[0]}) — spec `fontconfig_yerlestir`"
+        )
+    if not conf.is_file() or conf.read_bytes() != PAKET_FONTS_CONF.read_bytes():
+        hatalar.append(
+            f"paket içi {conf.relative_to(paket_dizini).as_posix()} projenin "
+            "packaging/pyinstaller/fonts.paket.conf dosyası değil — spec `fontconfig_yerlestir`"
+        )
+    return hatalar
+
+
 _TOC_KODLARI = frozenset({"PYMODULE", "PYSOURCE", "EXTENSION", "BINARY", "DATA"})
+
+#: Paketin SON hâlini anlatan TOC dosyaları (PyInstaller 6 `Target._save_guts`,
+#: `<workpath>/<Sınıf>-NN.toc`): COLLECT onedir klasörüne kopyalanan her dosyayı (EXE,
+#: `a.binaries`, `a.datas`, `Tree`'ler), PYZ gömülü arşivdeki modülleri, PKG ve EXE
+#: çalıştırılabilire gömülenleri (betikler, önyükleme modülleri) listeler. `Analysis-NN.toc`
+#: OKUNMAZ: Analysis anının listesidir; spec'in Analysis'ten SONRA süzdüğü dosyaları (pyphen
+#: sözlükleri, `qt_gpl_suz`, `ucrt_suz`, `_webview_platform_disi`) hâlâ taşır — okunsaydı
+#: pakete girmeyen bir dosya yüzünden derleme dururdu.
+SON_TOC_ONEKLERI = ("COLLECT", "PYZ", "PKG", "EXE")
 
 
 def toc_kaynaklari(calisma: Path) -> set[str]:
-    """PyInstaller ara çıktısındaki TOC dosyalarından pakete giren kaynak yollar."""
+    """PyInstaller ara çıktısındaki SON aşama TOC dosyalarından pakete giren kaynak yollar."""
     kaynaklar: set[str] = set()
-    tocs = sorted(calisma.glob("*.toc"))
-    if not tocs:
-        raise SystemExit(f"HATA: {calisma} içinde PyInstaller TOC dosyası yok.")
+    tocs = sorted(t for t in calisma.glob("*.toc") if t.name.split("-", 1)[0] in SON_TOC_ONEKLERI)
+    if not any(t.name.startswith("COLLECT-") for t in tocs):
+        raise SystemExit(
+            f"HATA: {calisma} içinde PyInstaller COLLECT TOC dosyası yok (onedir derlemesi mi?)."
+        )
 
     def dolas(oge: object) -> None:
         if isinstance(oge, list | tuple):
@@ -1522,6 +1754,46 @@ def _normal_yol(yol: str | Path) -> str:
 def _altinda_mi(yol: str, kok: str) -> bool:
     kok = kok.rstrip("\\/") + os.sep
     return yol.startswith(kok)
+
+
+def _en_dar_sinif(yol: str, siniflar: Sequence[tuple[str, Sequence[str]]]) -> str | None:
+    """`yol`'u kapsayan EN DAR (en uzun) kökün sınıfı; eşit uzunlukta listede önce gelen.
+
+    Kökler iç içe olabilir: build.ps1'in sanal ortamı depo İÇİNDEDİR (`dist/_venv-win`),
+    site-packages Python kökünün İÇİNDEDİR, Python kökü (teorik olarak) depoyu kapsayabilir.
+    Sabit bir sınama sırası bu durumlardan birinde geniş kökü dar olanın önüne koyar.
+    """
+    secilen: str | None = None
+    en_iyi: tuple[int, int] | None = None
+    for sira, (sinif, kokler) in enumerate(siniflar):
+        for kok in kokler:
+            if _altinda_mi(yol, kok):
+                anahtar = (len(kok.rstrip("\\/")), -sira)
+                if en_iyi is None or anahtar > en_iyi:
+                    en_iyi, secilen = anahtar, sinif
+    return secilen
+
+
+def python_dizinleri(
+    prefix: str, taban_prefix: str, sema: str | None = None
+) -> tuple[list[str], list[str]]:
+    """Derleme yorumlayıcısının (Python kökleri, site-packages dizinleri).
+
+    Sanal ortamda (build.ps1, `dist/_venv-win`) `prefix` sanal ortam, `taban_prefix` temel
+    yorumlayıcıdır. Temel yorumlayıcının site-packages'ı da "site" sayılır: oradan gelen bir
+    dosya (koşucunun ön kurulu paketleri — pipx, colorama …) kökün altında olduğu için
+    sessizce "Python'un kendisi" sayılmasın, hata versin. `sema` yalnız testte verilir
+    (Linux'ta Windows düzeni: "nt"); varsayılan yorumlayıcının kendi şemasıdır.
+    """
+    sema = sema or sysconfig.get_default_scheme()
+    ortak = {"installed_base": taban_prefix, "installed_platbase": taban_prefix}
+    kendi = sysconfig.get_paths(sema, vars={**ortak, "base": prefix, "platbase": prefix})
+    taban = sysconfig.get_paths(
+        sema, vars={**ortak, "base": taban_prefix, "platbase": taban_prefix}
+    )
+    kokler = sorted({taban_prefix, prefix, kendi["stdlib"]}, key=len, reverse=True)
+    siteler = sorted({kendi["purelib"], kendi["platlib"], taban["purelib"], taban["platlib"]})
+    return kokler, siteler
 
 
 def dagitim_haritasi(
@@ -1568,6 +1840,45 @@ class YerelPaket:
     #: MSYS2: pacman'ın %LICENSE% satırları (değerlendirilir); Debian: boş (lisans
     #: makine okunur değildir, kural `YASAK_YEREL` ad listesidir).
     lisans_satirlari: tuple[str, ...] = ()
+    #: MSYS2: paketin pacman `mtree` dosyası (gzip; her dosyanın kurulduğu andaki sha256
+    #: özeti). Yoksa None.
+    mtree: Path | None = None
+    _ozetler: dict[str, str] | None = field(default=None, repr=False, compare=False)
+
+    def ozet(self, goreli: str) -> str | None:
+        """Pacman'ın bu dosya için kaydettiği sha256 (köke göreli yol, büyük/küçük harf
+        duyarsız); kayıt yoksa None."""
+        if self._ozetler is None:
+            self._ozetler = mtree_ozetleri(self.mtree) if self.mtree is not None else {}
+        return self._ozetler.get(goreli.replace("\\", "/").lower())
+
+
+def _mtree_yolu(ham: str) -> str:
+    """mtree yol kaçışlarını (`\\040` gibi sekizli baytlar) çözer."""
+    bayt = re.sub(rb"\\([0-7]{3})", lambda m: bytes([int(m.group(1), 8)]), ham.encode("utf-8"))
+    return bayt.decode("utf-8", "replace")
+
+
+def mtree_ozetleri(yol: Path) -> dict[str, str]:
+    """pacman `mtree` (gzip'li metin) → {köke göreli yol (küçük harf): sha256}.
+
+    Satır biçimi: `./mingw64/etc/fonts/fonts.conf time=… size=… sha256digest=…`. Dizin ve
+    bağlantı satırlarında özet yoktur; onlar sözlüğe girmez. Okunamazsa boş sözlük.
+    """
+    try:
+        with gzip.open(yol, "rt", encoding="utf-8") as akis:
+            metin = akis.read()
+    except (OSError, EOFError, UnicodeDecodeError):
+        return {}
+    ozetler: dict[str, str] = {}
+    for satir in metin.splitlines():
+        if not satir.startswith("./"):
+            continue
+        ham, *alanlar = satir.split(" ")
+        degerler = dict(a.split("=", 1) for a in alanlar if "=" in a)
+        if "sha256digest" in degerler:
+            ozetler[_mtree_yolu(ham[2:]).lower()] = degerler["sha256digest"].lower()
+    return ozetler
 
 
 #: Lisans alanı yalnız GPL görünen ama pakete giren DLL'leri GPL OLMAYAN MSYS2 paketleri:
@@ -1651,11 +1962,20 @@ def msys2_lisans_denetimi(paket: YerelPaket) -> tuple[str | None, str | None]:
 
 
 def msys2_veritabani(kok: Path) -> dict[str, YerelPaket]:
-    """pacman yerel veritabanı → {`mingw64/bin/x.dll` (küçük harf): paket}.
+    """pacman yerel veritabanı → {köke göreli dosya yolu (küçük harf): paket}.
 
     Her paket `var/lib/pacman/local/<ad>-<sürüm>/` altında `desc` (%NAME%,
-    %VERSION%, %BASE%, %LICENSE%) ve `files` (%FILES%, köke göreli) taşır; lisans
-    dosyaları paketin kendi `files` listesindeki `…/share/licenses/…` yollarıdır.
+    %VERSION%, %BASE%, %LICENSE%), `files` (%FILES%, köke göreli) ve `mtree` (dosya
+    özetleri) taşır; lisans dosyaları paketin kendi `files` listesindeki
+    `…/share/licenses/…` yollarıdır.
+
+    Sahiplik YALNIZ %FILES%'teki tam yoldur (dizin satırları hariç) — önek ya da desen
+    kuralı yoktur. İlk sürüm yalnız `.dll` yollarını tutuyordu: PyInstaller'ın WeasyPrint
+    kancası (hooks-contrib `hook-weasyprint`) Windows'ta `libfontconfig-1.dll`'i PATH'te
+    bulup yanındaki `../etc/fonts` ağacını pakete koyar ve bu dosyalar mingw-w64-x86_64-
+    fontconfig'in %FILES% kaydında olduğu hâlde "sahipsiz" sayılıyordu (29.09.2026 CI
+    koşusu, 25 dosya). DLL olmayan dosyada içerik de `mtree` özetiyle doğrulanır
+    (`paketi_denetle`).
     """
     yerel = kok / "var" / "lib" / "pacman" / "local"
     if not yerel.is_dir():
@@ -1683,11 +2003,37 @@ def msys2_veritabani(kok: Path) -> dict[str, YerelPaket]:
                 for d in dosya_listesi
                 if "/share/licenses/" in d and not d.endswith("/") and (kok / d).is_file()
             ],
+            mtree=paket_dizini / "mtree" if (paket_dizini / "mtree").is_file() else None,
         )
         for dosya in dosya_listesi:
-            if dosya.lower().endswith(".dll"):
+            if not dosya.endswith("/"):
                 sonuc[dosya.lower()] = paket
     return sonuc
+
+
+def _dosya_ozeti(yol: str) -> str | None:
+    try:
+        return hashlib.sha256(Path(yol).read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
+def msys2_icerik_sorunu(paket: YerelPaket, goreli: str, kaynak: str) -> str | None:
+    """MSYS2 ağacından gelen DLL DIŞI dosya, paketin kurduğu içerikle aynı mı?
+
+    Yapılandırma dosyaları (ör. `etc/fonts/fonts.conf`) yerelde değiştirilebilir; sahiplik
+    yalnız yol eşleşmesiyle verilmez, pacman'ın `mtree` özeti de tutmalıdır. Özet yoksa
+    (dosya kurulumdan sonra üretilmiş olabilir) sahiplik verilmez.
+    """
+    beklenen = paket.ozet(goreli)
+    if beklenen is None:
+        return f"MSYS2 dosyasının {paket.ad} paketinde özeti yok, içeriği doğrulanamadı: {kaynak}"
+    if _dosya_ozeti(kaynak) != beklenen:
+        return (
+            f"MSYS2 dosyası {paket.ad} paketinin kurduğu içerikten farklı (yerelde "
+            f"değiştirilmiş): {kaynak}"
+        )
+    return None
 
 
 def _pacman_bolumleri(metin: str) -> dict[str, list[str]]:
@@ -1778,9 +2124,12 @@ def paketi_denetle(
     """Kaynak yolları sınıflandırır; listede olmayanı ve yasaklıyı hata sayar.
 
     Sıra önemlidir: PyInstaller ara çıktısı ve MSYS2 DLL dizini depo İÇİNDEDİR
-    (dist/, packaging/windows/dll), site-packages Python kökünün İÇİNDEDİR; önce
-    dar olan sınanır. site-packages'ta olup hiçbir RECORD'da görünmeyen dosya
-    "Python'un kendisi" sayılmaz, hatadır.
+    (dist/, packaging/windows/dll) ve önce sınanır. Depo, Python kökleri ve
+    site-packages ise İÇ İÇE olabilir (build.ps1'in sanal ortamı depo içindedir:
+    `dist/_venv-win`); onlarda dosyayı kapsayan EN DAR kök sınıfı belirler
+    (`_en_dar_sinif`). site-packages'ta olup hiçbir RECORD'da görünmeyen dosya — depo
+    içindeki bir sanal ortamda dursa da — "Python'un kendisi" ya da "proje dosyası"
+    sayılmaz, hatadır.
     """
     sonuc = DenetimSonucu()
     liste = {normal_ad(b.ad): b for b in bilesenler if b.tur == "python"}
@@ -1800,6 +2149,14 @@ def paketi_denetle(
             sonuc.hatalar.append(
                 f"yalnız GPL lisanslı yerel kütüphane pakete girmiş: {ad} ({kaynak}) — "
                 "spec `excludes`'a ekleyin"
+            )
+            continue
+        if UCRT_DLL.match(ad):
+            # Nereden gelirse gelsin (sistem dizini, koşucunun PATH'i): Windows 10/11
+            # uygulama klasöründeki UCRT kopyasını kullanmaz.
+            sonuc.hatalar.append(
+                f"Windows'un Universal C çalışma zamanı dosyası pakete girmiş: {kaynak} — "
+                "Windows 10/11 sistemdekini kullanır; spec `ucrt_suz` süzgeci"
             )
             continue
         if _altinda_mi(yol, calisma_n):
@@ -1823,26 +2180,39 @@ def paketi_denetle(
             else:
                 sonuc.yerel.setdefault(paket.ad, paket).dosyalar.add(ad)
             continue
-        if msys2_n and _altinda_mi(yol, msys2_n):
-            # DLL kapanışı dışından, MSYS2 ağacından doğrudan toplanan dosya
-            # (build.ps1 mingw64\bin'i PATH'e ekler): sahibi yine pacman'dan.
-            goreli_msys2 = os.path.relpath(yol, msys2_n).replace("\\", "/").lower()
-            paket = (msys2 or {}).get(goreli_msys2)
+        if msys2_n and msys2_kok is not None and _altinda_mi(yol, msys2_n):
+            # DLL kapanışı dışından, MSYS2 ağacından doğrudan toplanan dosya: PATH'teki
+            # mingw64\bin'den çözülen DLL ya da hooks-contrib `hook-weasyprint`'in
+            # `libfontconfig-1.dll`'in yanından aldığı `etc/fonts` ağacı. Sahibi pacman'ın
+            # %FILES% kaydındaki TAM yoldur; DLL dışı dosyada içerik `mtree` özetiyle doğrulanır.
+            goreli_msys2 = os.path.relpath(
+                os.path.abspath(kaynak), os.path.abspath(msys2_kok)
+            ).replace("\\", "/")
+            paket = (msys2 or {}).get(goreli_msys2.lower())
             if paket is None:
                 sonuc.hatalar.append(f"MSYS2 sahibi bulunamayan dosya: {kaynak}")
+                continue
+            dll_mi = ad.lower().endswith(".dll")
+            sorun = None if dll_mi else msys2_icerik_sorunu(paket, goreli_msys2, kaynak)
+            if sorun:
+                sonuc.hatalar.append(sorun)
             else:
-                sonuc.yerel.setdefault(paket.ad, paket).dosyalar.add(ad)
+                sonuc.yerel.setdefault(paket.ad, paket).dosyalar.add(ad if dll_mi else goreli_msys2)
             continue
-        if _altinda_mi(yol, repo_n):
-            sonuc.proje += 1
-            continue
-        if any(_altinda_mi(yol, s) for s in siteler):
+        # 29.09.2026 doğrulama turu: depo kuralı site-packages'tan ÖNCE sınanıyordu; depo
+        # içindeki sanal ortamın RECORD'suz dosyası sessizce "proje dosyası" sayılırdı (ve
+        # sahibi olan dağıtım liste denetiminden kaçardı). Eşitlikte katı olan kazanır.
+        sinif = _en_dar_sinif(yol, (("site", siteler), ("python", kokler), ("proje", [repo_n])))
+        if sinif == "site":
             sonuc.hatalar.append(
                 f"site-packages'ta olup hiçbir dağıtımın RECORD'unda bulunmayan dosya: {kaynak}"
             )
             continue
-        if any(_altinda_mi(yol, k) for k in kokler):
+        if sinif == "python":
             sonuc.cpython.add(ad)
+            continue
+        if sinif == "proje":
+            sonuc.proje += 1
             continue
         if sistem_n and _altinda_mi(yol, sistem_n) and _MS_CALISMA_ZAMANI.match(ad):
             sonuc.microsoft.add(ad)
@@ -1923,11 +2293,11 @@ def paket_dizini_denetimi(
     paket_dizini: Path, bilesenler: Sequence[Bilesen], platform: str
 ) -> list[str]:
     """Paketin DİSKTEKİ hâli: LGPL kaynağı var mı, yasak sözlük, Qt'nin yalnız GPL'li
-    modülü ya da bu platformda yersiz pywebview dosyası kalmış mı?
+    modülü, Universal CRT ya da bu platformda yersiz pywebview dosyası kalmış mı?
 
-    TOC dosyaları Analysis anını yansıtır; spec'in sonradan süzdüğü dosyalar (pyphen
-    sözlükleri, `qt_gpl_suz`, `_webview_platform_disi`) orada hâlâ görünür. Bu yüzden
-    bu kurallar paketin kendisinde denetlenir.
+    `toc_kaynaklari` paketin son TOC'larını okur; bu kurallar ikinci sigorta olarak
+    paketin kendisinde de denetlenir (TOC dışından giren ya da derleme sonrası kopyalanan
+    dosya — ör. build.ps1'in adımları — burada da yakalanır).
     """
     hatalar: list[str] = []
     for bilesen in bilesenler:
@@ -1948,16 +2318,29 @@ def paket_dizini_denetimi(
     hatalar += qt_gpl_paket_denetimi(paket_dizini)
     # WebView2 SDK DLL'leri yalnız Windows'ta gerekir (lisans listesi SDK'yı "yalnız
     # Windows" diye bildirir); pywebview'ın Android arşivi hiçbir pakette gerekmez.
+    # Windows'ta `webview/lib/runtimes/win-arm64` ve `win-x86` KALIR: pywebview 5.3.2
+    # `platforms/edgechromium.py` üç dizini de `interop_dll_path` ile PATH'e ekler ve
+    # bulamadığında FileNotFoundError verir (pencere açılmaz).
     yersiz_uzantilar = {".jar"} if platform == "windows" else {".jar", ".dll"}
-    yersiz = sorted(
-        p.relative_to(paket_dizini).as_posix()
-        for p in paket_dizini.rglob("*")
-        if p.is_file() and p.suffix.lower() in yersiz_uzantilar and "webview" in p.parts
-    )
+    yersiz: list[str] = []
+    ucrt: list[str] = []
+    for p in paket_dizini.rglob("*"):
+        if not p.is_file():
+            continue
+        goreli = p.relative_to(paket_dizini).as_posix()
+        if p.suffix.lower() in yersiz_uzantilar and "webview" in p.parts:
+            yersiz.append(goreli)
+        if UCRT_DLL.match(p.name):
+            ucrt.append(goreli)
     if yersiz:
         hatalar.append(
             f"bu platformda gereksiz pywebview dosyaları pakette ({len(yersiz)} dosya, ör. "
-            f"{yersiz[0]}) — spec `_webview_platform_disi` süzgeci"
+            f"{sorted(yersiz)[0]}) — spec `_webview_platform_disi` süzgeci"
+        )
+    if ucrt:
+        hatalar.append(
+            f"Windows'un Universal C çalışma zamanı dosyaları pakette ({len(ucrt)} dosya, ör. "
+            f"{sorted(ucrt)[0]}) — Windows 10/11 sistemdekini kullanır; spec `ucrt_suz` süzgeci"
         )
     return hatalar
 
@@ -1985,8 +2368,7 @@ def paket_komutu(args: argparse.Namespace) -> int:
     )
 
     msys2 = msys2_veritabani(args.msys2_kok) if args.msys2_kok else None
-    yollar = sysconfig.get_paths()
-    python_kokleri = sorted({sys.base_prefix, sys.prefix, yollar["stdlib"]}, key=len, reverse=True)
+    python_kokleri, site_dizinleri = python_dizinleri(sys.prefix, sys.base_prefix)
     sonuc = paketi_denetle(
         kaynaklar=toc_kaynaklari(calisma),
         bilesenler=bilesenler,
@@ -1998,11 +2380,13 @@ def paket_komutu(args: argparse.Namespace) -> int:
         msys2_kok=args.msys2_kok,
         debian=platform == "linux",
         python_kokleri=python_kokleri,
-        site_dizinleri=sorted({yollar["purelib"], yollar["platlib"]}),
+        site_dizinleri=site_dizinleri,
         sistem_dizini=os.environ.get("SystemRoot") if platform == "windows" else None,
     )
 
     sonuc.hatalar += paket_dizini_denetimi(paket_dizini, bilesenler, platform)
+    if platform == "windows":
+        sonuc.hatalar += fontconfig_paket_denetimi(paket_dizini)
 
     yerel_hedef = hedef / YEREL_DIZIN_ADI
     yerel_hedef.mkdir(exist_ok=True)

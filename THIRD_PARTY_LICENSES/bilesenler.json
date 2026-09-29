@@ -236,7 +236,8 @@
       "surum": "26.3",
       "tur": "python",
       "platformlar": [
-        "linux"
+        "linux",
+        "windows"
       ],
       "lisans": "Apache-2.0 OR BSD-2-Clause",
       "dosyalar": [
@@ -966,7 +967,7 @@
       "aciklama": "pywebview ile gelen WebView2 DLL'leri (webview/lib)"
     },
     {
-      "ad": "Microsoft Visual C++ / Universal C çalışma zamanı",
+      "ad": "Microsoft Visual C++ çalışma zamanı",
       "surum": "derleme ortamındaki sürüm",
       "tur": "ikili",
       "platformlar": [

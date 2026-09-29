@@ -192,7 +192,7 @@ Python kitaplıkları:
       Dosyalar : python-openpyxl-LICENCE.rst.txt
   packaging 26.3
       Lisans   : Apache-2.0 OR BSD-2-Clause
-      Platform : yalnız Linux
+      Platform : Windows + Linux
       Kaynak   : https://pypi.org/project/packaging/26.3/
       Dosyalar : python-packaging-LICENSE.APACHE.txt
                  python-packaging-LICENSE.BSD.txt
@@ -499,7 +499,7 @@ Diğer ikili bileşenler:
       Kaynak   : https://www.nuget.org/packages/Microsoft.Web.WebView2/
       Dosyalar : Microsoft-WebView2-SDK-LICENSE.txt
                  Microsoft-WebView2-SDK-NOTICE.txt
-  Microsoft Visual C++ / Universal C çalışma zamanı (sürüm: derleme ortamındaki sürüm)
+  Microsoft Visual C++ çalışma zamanı (sürüm: derleme ortamındaki sürüm)
       Lisans   : LicenseRef-Microsoft-Distributable-Code
       Platform : yalnız Windows
       Kullanım : Python ve eklentilerin C/C++ çalışma zamanı

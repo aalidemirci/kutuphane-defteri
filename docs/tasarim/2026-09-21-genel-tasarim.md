@@ -4980,7 +4980,7 @@ listesi DEĞİŞMEDİ.
      kalan risk olarak kapanır.
   4. **Saha kabulünde çıkacaklar.** Protokol §27 bulgu kaydındaki engelleyici ve önemli
      bulgular kararlı sürümden önce kapanır ya da gerekçeyle ertelenir (protokol sonucu en az
-     "Koşullu kabul"); PR'ın ilk CI Windows koşusunda görülenler (NOTLAR W21-W25).
+     "Koşullu kabul"); PR'ın ilk CI Windows koşusunda görülenler (NOTLAR W21-W26).
   5. **DT-3 (a) — Windows'un taşınabilir sürümünde kesin kapı** (KULLANICI KARARI 29.09.2026;
      aşağıda DT-3, `docs/teknik-borc.md` TB41). `desktop/dagitim.py`'ye Windows ölçütü: program
      klasöründe Inno kaldırıcısı (`unins000.exe`) VAR ve HKLM
@@ -5063,6 +5063,87 @@ YOK, görevli izin listesi DEĞİŞMEDİ, yeni uç yok (dört belge ucuna kapı 
   (ölçüt, seçilmeyen ölçütler, kapının yerleri), CLAUDE.md §2-1.
 - **DT-10 — Kararlı öncesi liste** üç yerde eşitlendi: CLAUDE.md §7 (4) PR'ın ilk CI Windows
   koşusunu da anar; KT-5 başlığı hangi yerin hangi maddeleri taşıdığını söyler.
+
+**F12 ekleri — ilk CI Windows koşusu (29.09.2026, PR #9).** Windows paket işi `lisanslar.py
+paket` denetiminde dört bulgu sınıfıyla durdu; dördü de kaynağında doğrulandı ve kökten
+giderildi. Göç YOK, yeni Python ya da npm bağımlılığı YOK, görevli izin listesi DEĞİŞMEDİ.
+Ayrıntı: `packaging/README.md` "İlk CI Windows koşusunun bulguları" ve "Aynı günün doğrulama
+turu", `packaging/windows/NOTLAR.md` W21-W26.
+
+- **CI-1 — Universal CRT (43 dosya).** PyInstaller 6.11 `ucrtbase.dll` ve `api-ms-win-*.dll`'i
+  `_win_includes`'ta tutar, PATH'te bulduğu ilk kopyayı alır (koşucuda Temurin JDK). UCRT
+  Windows 10/11'in bileşenidir, uygulama klasöründeki kopya kullanılmaz (Microsoft Learn,
+  "Universal CRT deployment"). Spec `lisanslar.ucrt_suz` (Analysis sonrası), `build.ps1`
+  PyInstaller'ı yalın PATH'le koşar, DLL kapanışı UCRT almaz, denetim TOC'ta ve diskte durur,
+  Inno `MinVersion=10.0`. Lisans listesindeki Microsoft bileşeni "Visual C++ çalışma zamanı"dır.
+- **CI-2 — MSYS2 `etc/fonts` (25 dosya).** hooks-contrib `hook-weasyprint`'in topladığı
+  fontconfig yapılandırması mingw-w64-x86_64-fontconfig'in %FILES% kaydındaydı; veritabanı
+  yalnız DLL yollarını tutuyordu. Sahiplik artık %FILES%'teki TAM yoldur (önek ya da desen
+  kuralı yok); DLL dışı dosyada pacman `mtree` sha256 özeti de tutmalıdır.
+- **CI-3 — colorama ve `packaging`.** colorama hiçbir pinin kapanışında değildir: koşucunun
+  varsayılan Python'una (setup-python'ın seçtiği aynı kurulum) imajda pipx kurulur, Django onu
+  koşullu import eder. `build.ps1` yalıtılmış sanal ortamda derler; colorama listeye EKLENMEDİ.
+  `packaging` setuptools'la girer (vendored bağımlılığın kurulu olanını tercih eder, PyInstaller
+  onu her ortama kurar): üretici `KURULUYU_TERCIH_EDEN` kuralıyla iki platformu ayrı çözer,
+  `uret.sh` farkı yalnız `packaging`'in Windows işareti ve Microsoft notudur. Paket denetimi
+  artık Analysis değil SON aşama TOC'larını (COLLECT/PYZ/PKG/EXE) okur.
+- **CI-4 — `pywebview-android.jar`.** pywebview'ın kendi kancası `webview/lib`'i Windows'ta
+  Analysis sırasında toplar; `_webview_platform_disi` Analysis'ten sonra da uygulanır.
+  `runtimes/win-arm64` ve `win-x86` kalır (`edgechromium.py` üçünü de arar).
+- Yerel kanıt: Qt'siz Linux derlemesi (`KD_WITH_QT=0 docker-build.sh`) yeni TOC kuralıyla
+  denetimden geçti (`packaging` qtpy olmadan da pakette, setuptools üzerinden); yeni sahiplik
+  kuralı geliştirme makinesinin gerçek MSYS2 veritabanında 25 `etc/fonts` dosyasını özetiyle
+  fontconfig'e bağladı. Windows'ta düzeltmeli hattın ilk koşusu PR'ın sonraki CI'ındadır.
+
+*Doğrulama turu (aynı gün).* Bağımsız doğrulama dört düzeltmenin kök nedenini ve etkisini
+kaynaktan yeniden doğruladı (UCRT: 88 PE dosyasının içe aktarma tablosu okundu, hiçbiri
+`ucrtbase.dll`'i doğrudan içe aktarmıyor, MSYS2 DLL'leri yalnız `msvcrt.dll` kullanıyor;
+colorama iki platformun `uv` çözümünde de yok; spec süzgeçleri Windows'ta gerekli bir pywebview
+dosyasını çıkarmıyor) ve düzeltmelerin açtığı ya da açık bıraktığı beş noktayı buldu; hepsi
+kökten giderildi, testle kilitlendi:
+
+- **CI-5 — Sanal ortam depo içinde, kapı gevşemişti.** `dist\_venv-win` depo içindedir ve
+  `paketi_denetle` depo kuralını site-packages'tan ÖNCE sınıyordu: sanal ortamın RECORD'suz
+  dosyası hata yerine sessizce "proje dosyası" sayılırdı (sahibi olan dağıtım da liste
+  denetiminden kaçardı). Artık dosyayı kapsayan EN DAR kök sınıfı belirler (`_en_dar_sinif`;
+  eşitlikte katı olan kazanır); dizinler `python_dizinleri` ile hesaplanır ve test Windows
+  düzenini ("nt" şeması, depo içindeki sanal ortam, depo dışındaki temel yorumlayıcı) kurar.
+- **CI-6 — Paket içi fontconfig TOC'a taşındı.** build.ps1 fonts.conf'u lisans denetiminden
+  SONRA eziyordu: `paket-icerigi.txt` pakette olmayan MSYS2 dosyasını fontconfig paketinin
+  dosyası diye yazıyordu; conf.d'deki 25 dosya, projenin fonts.conf'u `<include>` taşımadığı
+  için hiç yüklenmiyordu ("conf.d bilinçli olarak korunur" gerekçesi geçersizdi). spec
+  `lisanslar.fontconfig_yerlestir` MSYS2 `etc/fonts` ağacını ayıklar ve `fonts.paket.conf`'u
+  `etc/fonts/fonts.conf` hedefiyle ekler; eski adım 4b kalktı. Çalışma davranışı değişmez
+  (aynı fonts.conf, conf.d zaten yüklenmiyordu); denetim diskte yalnız o dosyayı kabul eder
+  (`fontconfig_paket_denetimi`), `--pdf-duman` PDF'in DejaVu ile dizildiğini sınar. Düzeltici
+  bunu karar kalemi olarak bırakmıştı; davranış değişmediği için karar gerektirmez — **ANA
+  OTURUM KARARI (29.09.2026): onaylandı.**
+- **CI-7 — Duman testleri koşucunun PATH'iyle koşuyordu.** Dondurulmuş `find_library` PATH'e
+  baktığından paketten eksik bir WeasyPrint DLL'i koşucunun mingw64\bin kopyasıyla gizlenebilirdi.
+  `Invoke-Uygulama` artık Windows'un varsayılan sistem PATH'iyle (`Get-SistemPath`) koşar; yeni
+  `packaging/windows/paket_kapanisi.py` (yalnız standart kitaplık) paketteki her `.exe/.dll/.pyd`'nin
+  içe aktardığı (gecikmeli dahil) her DLL'in pakette ya da Windows 10/11'in bileşeni (API
+  kümeleri, `WINDOWS_SISTEM_DLL`) olduğunu dosyalar üzerinden sınar. Liste 88 gerçek PE
+  dosyasından (yerel CPython 3.12, paketin Windows tekerlekleri, 30 MSYS2 DLL'i) çıkarıldı;
+  `ucrtbase.dll` Windows 10+ bileşeni olarak listededir, Visual C++ çalışma zamanı değildir (pakette
+  olmalı). UCRT kararı böylece dosya düzeyinde kilitlenir (W26).
+- **CI-8 — Windows Python kümesi yalnız kısmen pinliydi.** Mutasyon sondası: proxy_tools,
+  typing_extensions ya da bottle'ın `windows` işareti düşünce, clr_loader `linux`'a çevrilince kapı
+  testleri geçiyordu (derlemede yalnız uyarı olurdu). `BEKLENEN_PYTHON_KUMELERI` iki platformun
+  kümesini `uv` ile bağımsız çözümden sabitler; yedi mutasyonun yedisi de artık yakalanır.
+- **CI-9 — Belgeler.** NOTLAR W21 düzeltmeli koşuda beklenen zararsız çıktıları yazar
+  (`api-ms-win-crt` "Library not found" uyarıları — Windows Server 2025'te PyInstaller'ın
+  bastırması çalışmaz —, UCRT ayıklama satırının görünmeyebilmesi); W25'teki fontconfig lisansı
+  bilgisi yerel veritabanından geldiği için öyle nitelendi; build.ps1 yorumu PyInstaller'ın
+  `sys.base_prefix` adımını anar; `docs/kurulum.md` taşınabilir zip'i "Windows 10/11" diye yazar
+  (MinVersion yalnız kurulum dosyasını korur).
+- Doğrulama sonucu, bulgu olmayanlar: UCRT'nin paketten çıkması Windows 10/11'de programı
+  bozmaz; spec süzgeçleri gerekli bir pywebview dosyasını çıkarmaz; Linux listesi değişmedi.
+  Qt'li Linux derlemesi (`bash packaging/linux/docker-build.sh`, Qt=1) yeni TOC ve en dar kök
+  kuralıyla yerelde uçtan uca geçti: Qt'nin yalnız GPL'li modüllerinden 768 dosya ayıklandı,
+  lisans denetimi 39 Python dağıtımı / 85 sistem kütüphanesi paketi / 296 proje dosyası,
+  duman testleri (`--dagitim-duman` dahil), `.deb`, taşınabilir arşiv ve son veri sızıntısı
+  denetimi tamam. PR'ın CI Linux işinde "Lisans denetimi başarılı" satırı yine izlenir.
 
 ### 14.2 Saha hazırlık hattı (kod dışı — F0 ile başlar)
 

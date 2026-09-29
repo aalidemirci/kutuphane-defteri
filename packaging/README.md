@@ -19,8 +19,8 @@ packaging/
 │   │                            (`--pdf-duman`, `--bagimlilik-duman`)
 │   ├── rthook_kd.py             çalışma-zamanı kancası (DLL/fontconfig/SPA yolu)
 │   ├── fonts.conf.tmpl          Windows fontconfig şablonu (gömülü DejaVu)
-│   └── fonts.paket.conf         paket içi fontconfig — build.ps1 adım 4b bunu
-│                                `_internal/etc/fonts/fonts.conf` üzerine kopyalar
+│   └── fonts.paket.conf         paket içi fontconfig — spec bunu (Windows)
+│                                `_internal/etc/fonts/fonts.conf` adıyla koyar
 ├── fontlar/                     DejaVu Sans 4 kesim + lisans (pakete gömülür)
 ├── ikonlar/                     logo_uret.py + ikon_uret.py + PNG kesimleri + .ico
 ├── depo_sizintisi.py            depoda kişisel veri denetimi (KVKK kapısı)
@@ -46,6 +46,7 @@ packaging/
 └── windows/
     ├── build.ps1                DLL kapanışı + PyInstaller + duman testi + Inno
     ├── dll_kapanisi.py          ntldd/objdump ile WeasyPrint DLL kapanışı
+    ├── paket_kapanisi.py        paketin statik DLL kapanışı (PE içe aktarmaları)
     ├── kutuphane-defteri.iss    Inno Setup (yönetici kurulumu — U4)
     └── NOTLAR.md                DOĞRULANMAMIŞ varsayımlar + ilk koşu çek-listesi
 ```
@@ -214,12 +215,14 @@ dosyaları. Dizin **elle yazılmaz**, `packaging/lisanslar/uret.sh` üretir:
 
 **Derlemede** (`build.ps1`, `build.sh`, PyInstaller'dan hemen sonra)
 `lisanslar.py paket`: dizini ve `LICENSE.txt`'yi paket köküne koyar (Windows'ta
-BOM'lu — Inno `LicenseFile`), PyInstaller'ın TOC dosyalarından pakete giren her
-dosyanın sahibini bulur ve şunlarda derlemeyi DURDURUR: listede olmayan Python
+BOM'lu — Inno `LicenseFile`), PyInstaller'ın SON aşama TOC dosyalarından (COLLECT,
+PYZ, PKG, EXE — spec süzgeçlerinden sonraki hâl; Analysis TOC'u okunmaz) pakete giren
+her dosyanın sahibini bulur ve şunlarda derlemeyi DURDURUR: listede olmayan Python
 dağıtımı; sahibi bilinmeyen dosya; yalnız GPL'li yerel kütüphane (readline,
 gdbm); PyInstaller'ın gömülemeyen derleme kodu (yalnız önyükleyici, `loader/`,
 `rthooks/`, `fake-modules/` girebilir); süzülmemiş pyphen sözlükleri; pakette
-olmayan pystray kaynağı. Paketle gelen sistem kütüphanelerinin lisans ve telif
+olmayan pystray kaynağı; Windows'un Universal CRT'si (`ucrtbase.dll`,
+`api-ms-win-*.dll` — Windows 10/11'in bileşeni, pakete girmez). Paketle gelen sistem kütüphanelerinin lisans ve telif
 dosyaları (Windows'ta MSYS2 paket veritabanından, Linux'ta dpkg +
 `/usr/share/doc/<paket>/copyright`) kaynak kod adresleriyle
 `THIRD_PARTY_LICENSES/yerel-kutuphaneler/` altına, pakette gerçekten bulunan
@@ -243,7 +246,43 @@ diskteki hâlinde dosya düzeyinde sınar, `kap-ici-test.sh` kurulu pakette bir 
 arar. Program bu modüllerin hiçbirini kullanmaz (pencere QtWebEngineWidgets'tır). Qt'nin
 LGPL'li modülleri pakette kalır. Windows tarafı (MSYS2 veritabanı ve SPDX lisans
 değerlendirmesi, BOM'lu lisans sayfası, pip kısıt dosyası) ilk CI koşusunda doğrulanır
-(`packaging/windows/NOTLAR.md` W21-W25).
+(`packaging/windows/NOTLAR.md` W21-W26).
+
+**İlk CI Windows koşusunun bulguları (29.09.2026, PR #9; hepsi giderildi, denetim artık
+yakalar):** (A) PyInstaller 6.11 Universal CRT adlarını `_win_includes` listesinde tutar ve
+python312.dll'in bağımlılığını PATH'te bulduğu ilk kopyadan toplar — koşucunun PATH'indeki
+Temurin JDK'sından `ucrtbase.dll` + 42 `api-ms-win-*.dll` girdi. UCRT Windows 10/11'in
+bileşenidir, uygulama klasöründeki kopya kullanılmaz (Microsoft Learn, "Universal CRT
+deployment"): spec `lisanslar.ucrt_suz` ile ayıklar, `build.ps1` PyInstaller'ı yalın PATH'le
+koşar, Inno `MinVersion=10.0`. (B) hooks-contrib `hook-weasyprint` `libfontconfig-1.dll`'in
+yanındaki MSYS2 `etc/fonts` ağacını pakete koyar; MSYS2 veritabanı yalnız DLL yollarını
+tutuyordu. Artık %FILES%'teki her TAM yol sahiplenilir; DLL dışı dosyada içerik pacman'ın
+`mtree` sha256 özetiyle doğrulanır (önek ya da desen kuralı yok). (C) Koşucunun varsayılan
+Python'unda (setup-python'ın seçtiği aynı kurulum) pipx ve Windows bağımlılığı colorama
+kuruluydu; Django colorama'yı koşullu import ettiği için pakete girdi. `build.ps1` artık
+yalıtılmış sanal ortamda (`dist\_venv-win`) derler; colorama hiçbir pinin kapanışında
+olmadığı için listeye EKLENMEDİ. Aynı koşuda `packaging` Windows paketine girdi ama liste onu
+yalnız Linux'ta biliyordu: setuptools vendored bağımlılıklarının KURULU olanını tercih eder,
+`packaging` PyInstaller'ın bağımlılığı olarak her ortamda kuruludur — üretici bunu
+`KURULUYU_TERCIH_EDEN` kuralıyla (setuptools `core` eki ∩ paket ortamının kapanışı) iki
+platform için ayrı çözer. (D) pywebview'ın kendi kancası Windows'ta `webview/lib`'i Analysis
+sırasında topladığı için spec girdi süzgeci Android arşivini kaçırıyordu: `_webview_platform_disi`
+Analysis'ten sonra da uygulanır.
+
+**Aynı günün doğrulama turu (29.09.2026):** (1) Sanal ortam depo içinde durduğu için
+(`dist\_venv-win`) denetim, depo kuralını site-packages'tan önce sınayıp sanal ortamın
+RECORD'suz dosyasını sessizce "proje dosyası" sayıyordu; artık dosyayı kapsayan EN DAR kök
+sınıfı belirler (`_en_dar_sinif`), dizinler `python_dizinleri` ile hesaplanır. (2) Paket içi
+fontconfig: build.ps1 fonts.conf'u lisans denetiminden SONRA eziyordu, `paket-icerigi.txt`
+pakette olmayan MSYS2 dosyasını anlatıyordu ve conf.d'deki 25 dosya (projenin fonts.conf'u
+`<include>` taşımaz) hiç yüklenmiyordu. Değiştirme artık spec'te (`lisanslar.fontconfig_yerlestir`:
+MSYS2 ağacı ayıklanır, `fonts.paket.conf` `etc/fonts/fonts.conf` adıyla girer); çalışma
+davranışı değişmez, denetim diskte yalnız o dosyayı kabul eder. (3) Duman testleri Windows'un
+varsayılan sistem PATH'iyle koşar ve `windows/paket_kapanisi.py` paketteki her PE dosyasının
+içe aktardığı DLL'in pakette ya da Windows 10/11'de olduğunu dosyalar üzerinden sınar: koşucunun
+PATH'i (mingw64\bin, Python, JDK) eksik bir DLL'i gizleyemez, UCRT kararı dosya düzeyinde
+kilitlenir. (4) Python kümeleri platform platform testte sabittir
+(`BEKLENEN_PYTHON_KUMELERI`): üreticinin bir platform kayması derlemede yalnız uyarı olurdu.
 
 **Yerel kütüphanelerde GPL kuralı:** Windows'ta MSYS2 paketinin `%LICENSE%` alanı SPDX
 olarak değerlendirilir; yalnız GPL görünen paket ancak `MSYS2_GPL_IZINLERI`'nde DLL

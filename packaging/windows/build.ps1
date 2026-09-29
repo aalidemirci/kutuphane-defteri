@@ -54,26 +54,42 @@ $Output     = Join-Path $DistRoot "cikti"
 # Remove-Item'ı kabın yazdığı ağacı siler). Nihai artefaktlar yine dist/cikti'de.
 $PackageDir = Join-Path $DistRoot "paket-win"
 $WorkDir    = Join-Path $DistRoot "_build-win"
+$VenvDir    = Join-Path $DistRoot "_venv-win"
+$VenvPython = Join-Path $VenvDir "Scripts\python.exe"
 $DllDir     = Join-Path $Repo "packaging\windows\dll"
 $AppDir     = Join-Path $PackageDir "kutuphane-defteri"
 $AppExe     = Join-Path $AppDir "kutuphane-defteri.exe"
 
 function Write-Adim([string]$Mesaj) { Write-Host "== $Mesaj" -ForegroundColor Cyan }
 
+# Windows 10/11'in varsayılan sistem PATH'i: programın kullanıcının makinesinde gördüğü.
+function Get-SistemPath {
+    return @(
+        (Join-Path $env:SystemRoot "System32"),
+        $env:SystemRoot,
+        (Join-Path $env:SystemRoot "System32\Wbem"),
+        (Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0")
+    ) -join ";"
+}
+
 # Pencereli (GUI) bir uygulama `&` ile çağrıldığında PowerShell BEKLEMEZ ve
 # $LASTEXITCODE anlamsız olur. Paketlenmiş exe `console=False` ile derlendiği
-# için duman testleri MUTLAKA bu yardımcıdan geçmelidir.
+# için duman testleri MUTLAKA bu yardımcıdan geçmelidir. PATH her çağrıda
+# `Get-SistemPath`'tir (29.09.2026 doğrulama turu): koşucunun PATH'i (mingw64\bin,
+# Python, JDK) paketten eksik bir DLL'i gizlemesin.
 function Invoke-Uygulama([string]$Yol, [string[]]$Argumanlar, [hashtable]$Ortam = @{}) {
+    $tumOrtam = @{ "PATH" = (Get-SistemPath) }
+    foreach ($anahtar in $Ortam.Keys) { $tumOrtam[$anahtar] = $Ortam[$anahtar] }
     $eski = @{}
-    foreach ($anahtar in $Ortam.Keys) {
+    foreach ($anahtar in $tumOrtam.Keys) {
         $eski[$anahtar] = [Environment]::GetEnvironmentVariable($anahtar)
-        [Environment]::SetEnvironmentVariable($anahtar, $Ortam[$anahtar])
+        [Environment]::SetEnvironmentVariable($anahtar, $tumOrtam[$anahtar])
     }
     try {
         $surec = Start-Process -FilePath $Yol -ArgumentList $Argumanlar -Wait -PassThru -NoNewWindow
         return $surec.ExitCode
     } finally {
-        foreach ($anahtar in $Ortam.Keys) {
+        foreach ($anahtar in $tumOrtam.Keys) {
             [Environment]::SetEnvironmentVariable($anahtar, $eski[$anahtar])
         }
     }
@@ -96,22 +112,40 @@ if (-not (Test-Path (Join-Path $Repo "frontend\dist\index.html"))) {
     throw "frontend/dist/index.html yok. Önce arayüzü derleyin: npm run build"
 }
 
-# --- 2. Python bağımlılıkları ----------------------------------------------
+# --- 2. Python bağımlılıkları (yalıtılmış sanal ortam) ---------------------
+# Paket YALNIZ gereksinim dosyalarının kurduğu dağıtımlarla derlenir. Neden sanal ortam:
+# GitHub'ın Windows koşucusu varsayılan Python'una (araç önbelleğindeki 3.12.x —
+# setup-python'ın seçtiği AYNI kurulum) imaj hazırlanırken `pip install pipx` koşar
+# (actions/runner-images `Install-Pipx.ps1`); pipx'in Windows bağımlılığı colorama da
+# oraya kurulur. Django `core/management/color.py` colorama'yı KOŞULLU import ettiği için
+# PyInstaller onu pakete aldı ve lisans denetimi durdu (29.09.2026 CI koşusu). Linux
+# derlemesi temiz bir kapta koşar; Windows'ta eşdeğeri bu sanal ortamdır. Yerel
+# derlemede de kullanıcının kendi kurduğu paketler pakete sızmaz.
 if (-not $SkipDeps) {
+    Write-Adim "yalıtılmış sanal ortam ($VenvDir)"
+    & $PythonExe -m venv --clear $VenvDir
+    if ($LASTEXITCODE -ne 0) { throw "Sanal ortam kurulamadı: $VenvDir" }
+
     Write-Adim "python bağımlılıkları (lisans listesindeki sürümlere kısıtlı)"
     # Geçişli bağımlılıklar pinli değildir; kısıt dosyası onları THIRD_PARTY_LICENSES
     # listesinin sürümlerine bağlar — pakete giren sürüm BENIOKU'dakiyle aynı olur
     # (F12 düzeltme turu). Dosyayı betik yazar: PowerShell 5.1'in `>` yönlendirmesi
     # UTF-16 yazardı, pip okuyamazdı.
     $Kisitlar = Join-Path $DistRoot "kisitlar-windows.txt"
-    & $PythonExe (Join-Path $Repo "packaging\lisanslar\lisanslar.py") kisitlar `
+    & $VenvPython (Join-Path $Repo "packaging\lisanslar\lisanslar.py") kisitlar `
         --platform windows --cikti $Kisitlar
     if ($LASTEXITCODE -ne 0) { throw "Kısıt dosyası üretilemedi." }
-    & $PythonExe -m pip install --disable-pip-version-check -q -c $Kisitlar `
+    & $VenvPython -m pip install --disable-pip-version-check -q -c $Kisitlar `
         -r (Join-Path $Repo "backend\requirements.txt") `
         -r (Join-Path $Repo "packaging\requirements-paketleme.txt")
     if ($LASTEXITCODE -ne 0) { throw "pip install başarısız." }
+} elseif (-not (Test-Path $VenvPython)) {
+    throw "Sanal ortam yok ($VenvDir). -SkipDeps olmadan bir kez koşun."
 }
+# Bundan sonraki her Python adımı (DLL kapanışı, PyInstaller, lisans denetimi) sanal
+# ortamın yorumlayıcısıyla koşar.
+$PythonExe = $VenvPython
+Write-Host "    derleme yorumlayıcısı: $PythonExe"
 
 # --- 3. WeasyPrint DLL kapanışı --------------------------------------------
 Write-Adim "DLL kapanışı ($MingwBin)"
@@ -129,18 +163,39 @@ Remove-Item -Recurse -Force $PackageDir, $WorkDir -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Output | Out-Null
 $env:KD_WITH_QT = if ($WithoutQt) { "0" } else { "1" }
 $env:KD_DLL_DIR = $DllDir
-& $PythonExe -m PyInstaller --noconfirm --clean --log-level WARN `
-    --distpath $PackageDir --workpath $WorkDir `
-    (Join-Path $Repo "packaging\pyinstaller\kutuphane_defteri.spec")
-if ($LASTEXITCODE -ne 0) { throw "PyInstaller başarısız." }
+# Yalın PATH: PyInstaller bir ikilinin bağımlılığını önce ikilinin kendi dizininde, sonra
+# temel yorumlayıcının dizininde (`sys.base_prefix`; vcruntime140*.dll buradan gelir), sonra
+# PATH'te arar ve Microsoft çalışma zamanı adlarını (`_win_includes`) nerede bulursa oradan
+# pakete alır. Koşucunun PATH'i yabancı kopyalarla doludur: 29.09.2026 CI koşusunda
+# Temurin JDK'nın `bin`'indeki Universal CRT (ucrtbase.dll + 42 api-ms-win-*.dll) pakete
+# girdi. PyInstaller yalnız Windows sistem dizinleri, sanal ortam ve MSYS2 mingw64\bin
+# (hooks-contrib `hook-weasyprint` fontconfig'i orada arar) ile koşar. Spec UCRT'yi
+# ayrıca ayıklar (`ucrt_suz`); lisans denetimi sahibi bilinmeyen dosyada durur.
+$EskiPath = $env:PATH
+$env:PATH = @(
+    (Join-Path $env:SystemRoot "System32"),
+    $env:SystemRoot,
+    (Join-Path $VenvDir "Scripts"),
+    $MingwBin
+) -join ";"
+try {
+    & $PythonExe -m PyInstaller --noconfirm --clean --log-level WARN `
+        --distpath $PackageDir --workpath $WorkDir `
+        (Join-Path $Repo "packaging\pyinstaller\kutuphane_defteri.spec")
+    $PyInstallerKodu = $LASTEXITCODE
+} finally {
+    $env:PATH = $EskiPath
+}
+if ($PyInstallerKodu -ne 0) { throw "PyInstaller başarısız." }
 if (-not (Test-Path $AppExe)) { throw "Çalıştırılabilir üretilmedi: $AppExe" }
 
 # Lisans kapısı (F12, TB28): THIRD_PARTY_LICENSES\ ve LICENSE.txt (UTF-8 BOM —
 # Inno LicenseFile) paket köküne kopyalanır; pakete GERÇEKTEN giren her dosyanın
 # sahibi bulunur (Python dağıtımı → lisans listesi; WeasyPrint DLL'leri → MSYS2
 # paket veritabanı ve paketin share\licenses dosyaları). Listede olmayan dağıtım,
-# sahibi bilinmeyen dosya, pystray kaynağının eksikliği (LGPL) ya da süzülmemiş
-# pyphen sözlükleri derlemeyi durdurur. Veri sızıntısı denetiminden ÖNCE koşar.
+# sahibi bilinmeyen dosya, pystray kaynağının eksikliği (LGPL), süzülmemiş pyphen
+# sözlükleri, Universal CRT ya da projenin olmayan paket içi fontconfig yapılandırması
+# derlemeyi durdurur. Veri sızıntısı denetiminden ÖNCE koşar.
 Write-Adim "lisans denetimi (THIRD_PARTY_LICENSES)"
 $Msys2Kok = (Resolve-Path (Join-Path $MingwBin "..\..")).Path
 & $PythonExe (Join-Path $Repo "packaging\lisanslar\lisanslar.py") paket `
@@ -151,27 +206,30 @@ $Msys2Kok = (Resolve-Path (Join-Path $MingwBin "..\..")).Path
     --msys2-kok $Msys2Kok
 if ($LASTEXITCODE -ne 0) { throw "Lisans denetimi başarısız." }
 
+# Statik DLL kapanışı (29.09.2026 doğrulama turu): paketteki her PE dosyasının (exe, dll,
+# pyd) içe aktardığı her DLL (gecikmeli dahil) ya pakette ya da Windows 10/11'in
+# bileşenidir. Dosyalar üzerinden, çalışma anından bağımsız sınanır: koşucunun PATH'indeki
+# kopyalar (mingw64\bin, JDK …) eksik bir DLL'i gizleyemez; Universal CRT'nin (pakette yok)
+# işletim sisteminden geldiği kararı da burada kilitlenir.
+Write-Adim "paketin statik DLL kapanışı"
+& $PythonExe (Join-Path $Repo "packaging\windows\paket_kapanisi.py") $AppDir
+if ($LASTEXITCODE -ne 0) { throw "Paketin DLL kapanışı eksik." }
+
 # Paketleme tanımına yanlışlıkla gerçek veritabanı, medya veya Excel dosyası
 # eklenirse dağıtımı burada durdur.
 Write-Adim "paket kişisel veri sızıntısı denetimi"
 & $PythonExe (Join-Path $Repo "packaging\veri_sizintisi.py") $AppDir
 if ($LASTEXITCODE -ne 0) { throw "Paket kişisel veri denetimi başarısız." }
 
-# --- 4b. Paket içi fontconfig yapılandırması --------------------------------
-# PyInstaller MSYS2'nin etc/fonts/ ağacını pakete gömüyor ve Windows'ta
-# libfontconfig yapılandırmayı DLL'in yanındaki O AĞAÇTAN çözüyor;
-# FONTCONFIG_FILE ortam değişkenini dinlemiyor (FC_DEBUG çıktısıyla kanıtlandı).
-# Gömülen varsayılan Windows font dizinini tarıyor → Türkçe evrak sistem
-# fontuyla diziliyordu. Bu yüzden fontconfig'in baktığı dosyayı biz yazıyoruz.
-$FontsConfHedef = Join-Path $AppDir "_internal\etc\fonts\fonts.conf"
-$FontsConfKaynak = Join-Path $Repo "packaging\pyinstaller\fonts.paket.conf"
-Write-Adim "paket içi fontconfig ($FontsConfHedef)"
-New-Item -ItemType Directory -Force -Path (Split-Path $FontsConfHedef) | Out-Null
-Copy-Item -Force $FontsConfKaynak $FontsConfHedef
-# conf.d bilinçli olarak KORUNUR: içindekiler yalnız çizim tercihleri
-# (hinting/antialias); font DİZİNİ eklemezler.
+# Paket içi fontconfig yapılandırması (`_internal\etc\fonts\fonts.conf` = projenin
+# packaging\pyinstaller\fonts.paket.conf'u) artık spec'te yerleşir (`lisanslar.
+# fontconfig_yerlestir`); derleme sonrası kopyalama adımı (eski 4b) YOKTUR. Lisans denetimi
+# diskte yalnız o dosyayı kabul eder, `--pdf-duman` PDF'in gömülü DejaVu ile dizildiğini sınar.
 
 # --- 5. Duman testleri ------------------------------------------------------
+# Duman testleri kullanıcının makinesindeki gibi Windows'un varsayılan sistem PATH'iyle
+# koşar (`Invoke-Uygulama`): koşucunun PATH'indeki mingw64\bin, Python ve JDK kopyaları
+# paketten eksik bir DLL'i gizlemesin (dondurulmuş `ctypes.util.find_library` PATH'e bakar).
 # pystray kaynağı pakette mi (LGPLv3 — spec `module_collection_mode`)? Lisans
 # denetimi de arar; burada ikinci sigorta: bağımlılık dumanı pystray'i bu
 # dosyalardan import eder.

@@ -94,6 +94,10 @@ DisableProgramGroupPage=yes
 ; ortak (bütün hesaplar) Başlat menüsü ve masaüstüdür. Kullanıcıya "yalnız
 ; benim için" seçeneği SUNULMAZ (PrivilegesRequiredOverridesAllowed yok).
 PrivilegesRequired=admin
+; Program yalnız Windows 10/11'i hedefler. Paket Windows'un Universal C çalışma zamanını
+; (ucrtbase.dll, api-ms-win-*.dll) TAŞIMAZ: Windows 10 ve sonrasında işletim sisteminin
+; bileşenidir (packaging/lisanslar/lisanslar.py UCRT_DLL). Daha eski sürümde kurucu durur.
+MinVersion=10.0
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir={#OutputDir}

@@ -210,7 +210,10 @@ Kütüphaneleri Yönetmeliği (RG 23.11.2024/32731) ile TMY'ye bağlıdır. Meti
     düzenlenmez. `packaging/tests/test_lisans_kapisi.py` listeyi pinlerle ve
     kapanışla eşitler; derlemede `lisanslar.py paket` listede olmayan dağıtımı ya
     da **yalnız GPL'li** bileşeni (PolyForm ile birlikte dağıtılamaz) pakette
-    bulursa derlemeyi durdurur. pystray'in kaynağı pakete `.py` olarak girer
+    bulursa derlemeyi durdurur. Üretici Linux ve Windows kümelerini AYRI çözer
+    (29.09.2026) ve iki küme testte sabittir (`BEKLENEN_PYTHON_KUMELERI`): bir
+    dağıtım girer, çıkar ya da platformu değişirse fark PyPI üstverisiyle
+    doğrulanıp küme bilinçli güncellenir. pystray'in kaynağı pakete `.py` olarak girer
     (spec `module_collection_mode`); `readline` spec'te dışlanır (GPL-3.0).
     **Qt'yi dağıtım etiketi değil DOSYA belirler** (28.09.2026): PySide6_Addons
     "LGPL" görünür ama Qt'nin yalnız GPL'li modüllerini taşır; spec
@@ -775,7 +778,7 @@ Windows paketindeki LGPL sistem kütüphanelerinin (MSYS2) kaynak arşivleri Rel
 Linux paketi) · (3) KB-4 (b) KOŞULLU — saha kabulünde protokol §24.12'de sorun görülürse
 `.deb` `prerm`'i açık programı düzenli kapatır · (4) saha kabulünün engelleyici ve önemli
 bulguları (protokol §27; sonuç en az "Koşullu kabul") ve PR'ın ilk CI Windows koşusunda
-görülenler (NOTLAR W21-W25) · (5) DT-3 (a) Windows'un taşınabilir sürümünde de kesin kapı
+görülenler (NOTLAR W21-W26) · (5) DT-3 (a) Windows'un taşınabilir sürümünde de kesin kapı
 (Inno kaldırıcısı + HKLM `InstallLocation` ölçütü; TB41). **Karar turunun doğrulama ve düzeltme turu (29.09.2026, denetimin
 13 bulgusu, hepsi gerçek — tasarım §14.1 "F12 ekleri — … düzeltme turu" DT-1…DT-10):** Pardus'ta
 taşınabilir sürüm açıkken `.deb` de kuruluysa ileti ve bant `./kaldir.sh` + menüden açmayı
@@ -787,10 +790,18 @@ GPL-3.0 md. 6(d) · Windows'un taşınabilir sürümü için belgeler gerçek da
 sözlük, kılavuz, arşiv notu, protokol 23.1/24.2/24.11 güncel. **KULLANICI KARARI DT-3
 (29.09.2026):** beta, Windows'un taşınabilir sürümünde bugünkü davranışla çıkar (katalog
 varsayılan kapalı; belgeler "Kuralı ekle/güncelle"yi orada kullanmamayı söyler); kesin kapı
-kararlı sürümden önce yapılır (yukarıdaki (5), TB41). **Bekleyen karar yok.**
+kararlı sürümden önce yapılır (yukarıdaki (5), TB41). **Bekleyen karar yok.** **İlk CI Windows
+koşusu (29.09.2026, PR #9; tasarım §14.1 "F12 ekleri — ilk CI Windows koşusu" CI-1…CI-9):**
+lisans kapısı dört sızıntıyı durdurdu ve kökten giderildi — Universal CRT koşucunun PATH'indeki
+bir JDK'dan geliyordu (spec `ucrt_suz`, yalın PATH, Inno `MinVersion=10.0`; UCRT Windows 10/11'in
+bileşenidir), MSYS2 `etc/fonts` sahipliği %FILES% tam yolu + `mtree` özetiyle (fonts.conf spec'te
+yerleşir — ANA OTURUM KARARI CI-6), koşucunun colorama'sı yalıtılmış sanal ortamla dışarıda,
+pywebview Android dosyası süzülür; denetim son aşama TOC'larını okur, en dar kökün sınıfını
+kullanır; Windows ve Linux Python kümeleri testte sabittir; `paket_kapanisi.py` paketin DLL
+kapanışını dosyalar üzerinden sınar, duman testleri Windows'un sistem PATH'iyle koşar (W26).
 
-Sıradaki (ana oturum, kullanıcı onayıyla): PR + CI (Windows lisans kapısının ilk koşusu —
-NOTLAR W21-W25; Linux işinde `--dagitim-duman`'ın ilk gerçek koşusu) → beta etiketi `v2026.10.0-beta.1` (Release + R2) → okulapp.org site adımı (ayrı depo,
+Sıradaki (ana oturum, kullanıcı onayıyla): PR + CI (Windows lisans kapısının ikinci koşusu —
+NOTLAR W21-W26; Linux'ta `--dagitim-duman` ilk koşuda geçti) → beta etiketi `v2026.10.0-beta.1` (Release + R2) → okulapp.org site adımı (ayrı depo,
 `docs/site-icerigi.md`; o güne dek `okulapp.org/kutuphane-defteri/` 404 verir) → saha kabulü
 (kullanıcı, `docs/saha-kabulu.md`): tahta, gerçek okuyucu ve yazıcı, belgelerin yazıcı çıktısı,
 Windows paketinde saklama tetiği ve USB'den geri yükleme, okul ağı ve MEB ağında GitHub erişimi
