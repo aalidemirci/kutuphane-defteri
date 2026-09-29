@@ -11,6 +11,9 @@ media/
 *.sqlite3
 *.db
 *.kdbak
+# Saha kabulünün UYDURMA deneme verisi (scripts/deneme_verisi.py çıktısı; OZET.txt dahil).
+# Uydurma olsa da depoya girmez: veri dosyası biçimidir ve gerçek listeyle karışabilir.
+deneme-verisi/
 # Tek istisna: testlerin SENTETİK (uydurma adlı) e-Okul biçim örnekleri.
 # İSİM İSİM yazılır, joker KULLANILMAZ: `veri/*.xls` deseni o klasöre bırakılan
 # GERÇEK bir e-Okul ihracını da muaf tutar ve KVKK koruması tam orada delinir.

@@ -22,6 +22,7 @@ import {
   ayarVerisi,
   duvarVerisi,
   durumVerisi,
+  katalogVerisi,
   ORNEK_IP,
   ORNEK_IP_2,
   ORNEK_QR,
@@ -54,7 +55,12 @@ vi.mock("../../lib/download", async (importOriginal) => {
   return { ...actual, saveBlob: indirme.saveBlob };
 });
 
-import AgDoktoruPage, { DINLEYICI_UYARISI } from "./AgDoktoruPage";
+import AgDoktoruPage, {
+  DINLEYICI_UYARISI,
+  TASINABILIR_BELGE_METNI,
+  TASINABILIR_SINAMA_METNI,
+} from "./AgDoktoruPage";
+import { TASINABILIR_BILGISI, TASINABILIR_DEB_KURULU_BILGISI } from "./api";
 
 function ekranaBas() {
   return render(
@@ -477,5 +483,124 @@ describe("Ağ Doktoru — masaüstü dışında ve Pardus", () => {
     ekranaBas();
 
     expect(await screen.findByText("Sunucu hatası.")).toBeInTheDocument();
+  });
+});
+
+describe("Ağ Doktoru — Pardus taşınabilir arşivi (KB-2)", () => {
+  /** Masaüstü denetçisinin taşınabilir arşivde verdiği denetim: komut boş, işaretli. */
+  const tasinabilirDuvar = () =>
+    duvarVerisi({
+      platform: "linux",
+      maddeler: [],
+      kural: null,
+      linux: { arac: "ufw", etkin: true, komut: "", tasinabilir: true },
+    });
+
+  it("bilgi bandı durur; aç, yeniden başlat ve güvenlik duvarı komutu yoktur", async () => {
+    kapi.durum.mockResolvedValue(
+      durumVerisi({ platform: "linux", katalog: katalogVerisi({ sunulur: false }) }),
+    );
+    kapi.guvenlikDuvari.mockResolvedValue(tasinabilirDuvar());
+    ekranaBas();
+
+    expect(await screen.findByText(TASINABILIR_BILGISI)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/güvenlik duvarı komutu verilmez. Programı .deb paketiyle kurduktan/),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Güvenlik duvarı komutu")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ağ Kataloğunu aç" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Yeniden başlat" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ağ Kataloğunu kapat" })).not.toBeInTheDocument();
+  });
+
+  it("dinleyici sınaması ve katalog belgeleri sunulmaz (açılmayacak adres ilan edilmez)", async () => {
+    // KB-2 düzeltme turu (29.09.2026): port sınama komutu, afiş, yer imleri, PYS metni ve
+    // bilgi notu yoktur; uçlar da 409 `katalog_sunulmaz` döner.
+    kapi.durum.mockResolvedValue(
+      durumVerisi({ platform: "linux", katalog: katalogVerisi({ sunulur: false }) }),
+    );
+    kapi.guvenlikDuvari.mockResolvedValue(tasinabilirDuvar());
+    ekranaBas();
+
+    expect(await screen.findByText(TASINABILIR_SINAMA_METNI)).toBeInTheDocument();
+    expect(screen.getByText(TASINABILIR_BELGE_METNI)).toBeInTheDocument();
+    expect(screen.queryByText(/Test-NetConnection/)).not.toBeInTheDocument();
+    for (const ad of [
+      "Dinleyiciyi sına",
+      "Afişi bas",
+      "Yer imi dosyalarını üret",
+      "PYS talep metnini kopyala",
+      "Ağ Hizmeti Bilgi Notu'nu bas",
+    ]) {
+      expect(screen.queryByRole("button", { name: ad })).not.toBeInTheDocument();
+    }
+  });
+
+  it(".deb de kuruluysa bant taşınabilir sürümü kaldırıp menüden açmayı söyler", async () => {
+    kapi.durum.mockResolvedValue(
+      durumVerisi({
+        platform: "linux",
+        katalog: katalogVerisi({ sunulur: false, deb_kurulu: true }),
+      }),
+    );
+    kapi.guvenlikDuvari.mockResolvedValue(tasinabilirDuvar());
+    ekranaBas();
+
+    expect(await screen.findByText(TASINABILIR_DEB_KURULU_BILGISI)).toBeInTheDocument();
+    expect(screen.queryByText(TASINABILIR_BILGISI)).not.toBeInTheDocument();
+  });
+
+  it("önceden açık kalmış ayar: son hata görünür, yalnız kapatma sunulur", async () => {
+    const user = userEvent.setup();
+    const ileti = "Ağ Kataloğu açılmadı: taşınabilir sürümde sunulmaz.";
+    kapi.durum.mockResolvedValue(
+      durumVerisi({
+        platform: "linux",
+        katalog: katalogVerisi({
+          durum: "hata",
+          ayar_acik: true,
+          son_hata: ileti,
+          sunulur: false,
+        }),
+      }),
+    );
+    kapi.guvenlikDuvari.mockResolvedValue(tasinabilirDuvar());
+    kapi.eylem.mockResolvedValue(
+      durumVerisi({ platform: "linux", katalog: katalogVerisi({ sunulur: false }) }),
+    );
+    ekranaBas();
+
+    expect(await screen.findByText(ileti)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Yeniden başlat" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ağ Kataloğunu aç" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ağ Kataloğunu kapat" }));
+
+    expect(kapi.eylem).toHaveBeenCalledWith("kapat");
+    expect(await screen.findByText("Ağ Kataloğu kapatıldı.")).toBeInTheDocument();
+    // Kapatıldıktan sonra da "aç" sunulmaz.
+    expect(screen.queryByRole("button", { name: "Ağ Kataloğunu aç" })).not.toBeInTheDocument();
+  });
+
+  it("kurulu pakette (sunulur) Pardus komutu verilir, bant yoktur", async () => {
+    const komut = "sudo ufw allow from 10.20.30.0/24 to any app 'Kutuphane Defteri'";
+    kapi.durum.mockResolvedValue(
+      durumVerisi({ platform: "linux", katalog: katalogVerisi({ sunulur: true }) }),
+    );
+    kapi.guvenlikDuvari.mockResolvedValue(
+      duvarVerisi({
+        platform: "linux",
+        maddeler: [],
+        kural: null,
+        linux: { arac: "ufw", etkin: true, komut },
+      }),
+    );
+    ekranaBas();
+
+    expect(await screen.findByLabelText("Güvenlik duvarı komutu")).toHaveTextContent(komut);
+    expect(screen.queryByText(TASINABILIR_BILGISI)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ağ Kataloğunu aç" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dinleyiciyi sına" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Afişi bas" })).toBeInTheDocument();
+    expect(screen.queryByText(TASINABILIR_BELGE_METNI)).not.toBeInTheDocument();
   });
 });

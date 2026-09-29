@@ -72,6 +72,21 @@ class AdresYok(APIException):
     default_detail = ADRES_YOK_ILETISI
 
 
+KATALOG_SUNULMAZ_ILETISI: Final = (
+    "Program taşınabilir sürümden çalıştığı için Ağ Kataloğu bu bilgisayarda açılmaz; "
+    "afiş, yer imleri, PYS talep metni ve Ağ Hizmeti Bilgi Notu üretilmez. Belgeleri "
+    ".deb paketiyle kurulan programdan üretin."
+)
+
+
+class KatalogSunulmaz(APIException):
+    """KB-2: taşınabilir arşivde katalog belgeleri üretilmez: 409 `katalog_sunulmaz`."""
+
+    status_code = status.HTTP_409_CONFLICT
+    default_code = "katalog_sunulmaz"
+    default_detail = KATALOG_SUNULMAZ_ILETISI
+
+
 class KuralYazilamadi(APIException):
     """UAC reddedildi ya da kural yazılamadı; port değişmedi: 409 `kural_yazilamadi`."""
 
@@ -101,6 +116,18 @@ def kontrol() -> masaustu_kanca.KatalogKontrolu:
     if denetci is None:
         raise MasaustuYok()
     return denetci
+
+
+def belgeler_sunulur_mu() -> None:
+    """KB-2 (28.09.2026 kullanıcı kararı; düzeltme turu 29.09.2026): Pardus'un taşınabilir
+    arşivinde Ağ Kataloğu açılmaz. Afiş, yer imleri, PYS talep metni ve Ağ Hizmeti Bilgi
+    Notu açılmayacak bir katalogu ilan ederdi (afiş `son_afis_ip`'i de yazardı; PYS metni
+    tahta ağından bu kataloğa erişim ister): masaüstü denetçisi `sunulur: false` diyorsa
+    409 `katalog_sunulmaz`. Karar denetçinindir (T16); denetçi yoksa kapı yoktur.
+    """
+    denetci = masaustu_kanca.katalog_kontrolu()
+    if denetci is not None and denetci.durum().get("sunulur", True) is False:
+        raise KatalogSunulmaz()
 
 
 # ------------------------------------------------------------------ adres ve QR

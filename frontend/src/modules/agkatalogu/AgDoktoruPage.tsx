@@ -10,6 +10,13 @@
 // Düğmeler: Kuralı ekle/güncelle (UAC) · Afişi bas · Yer imi dosyalarını üret ·
 // PYS talep metnini kopyala · Ağ Hizmeti Bilgi Notu.
 //
+// Pardus'un taşınabilir arşivinde (KB-2, 28.09.2026 kullanıcı kararı) katalog
+// sunulmaz: bilgi bandı durur, "aç" ve "yeniden başlat" yoktur, güvenlik duvarı
+// kartı komut yerine "kurulu paket gerekir" der. Düzeltme turu (29.09.2026):
+// Dinleyici Sınaması kartı başka bilgisayar komutunu, Belgeler kartı afiş, yer
+// imleri, PYS metni ve bilgi notunu sunmaz (uçlar da 409 `katalog_sunulmaz` döner);
+// bilgisayarda `.deb` de kuruluysa bant "./kaldir.sh ile kaldırıp menüden açın" der.
+//
 // Katalog bağlantısı LAN adresiyle kurulur ve harici tarayıcıda açılır
 // (`target="_blank"`; §4.1: 127.0.0.1 kullanılmaz, çerezler portlar arasında
 // yalıtılmaz). Yönetim portu hiçbir yerde gösterilmez.
@@ -41,6 +48,7 @@ import {
   agProfiliAdi,
   belgeDosyaAdi,
   katalogKapatilabilir,
+  katalogSunulur,
   kuralProfiliAdi,
 } from "./api";
 import type {
@@ -51,11 +59,26 @@ import type {
   KatalogEylemi,
   MaddeDurumu,
 } from "./api";
-import { DurumRozeti, KomutKutusu, MasaustuYokBandi, QrKodu, useAgDurumu } from "./ortak";
+import {
+  DurumRozeti,
+  KomutKutusu,
+  MasaustuYokBandi,
+  QrKodu,
+  TasinabilirBandi,
+  useAgDurumu,
+} from "./ortak";
 
 /** "Dinleyici ayakta" sınamasının yanında HER ZAMAN duran uyarı (tasarım §5.9, birebir). */
 export const DINLEYICI_UYARISI =
   "Güvenlik duvarını ya da VLAN'ı kanıtlamaz. Makinenin kendi IP'sine yapılan bağlantı loopback'ten geçer. Başka bir bilgisayardan deneyin.";
+
+/** KB-2 (düzeltme turu 29.09.2026): taşınabilir arşivde Dinleyici Sınaması kartının metni. */
+export const TASINABILIR_SINAMA_METNI =
+  "Taşınabilir sürümde Ağ Kataloğu açılmadığı için sınanacak dinleyici yoktur; başka bilgisayar için sınama komutu da verilmez.";
+
+/** KB-2 (düzeltme turu 29.09.2026): taşınabilir arşivde Belgeler kartının metni. */
+export const TASINABILIR_BELGE_METNI =
+  "Taşınabilir sürümde Ağ Kataloğu açılmadığı için afiş, yer imleri, PYS talep metni ve Ağ Hizmeti Bilgi Notu üretilmez: açılmayacak bir adresi ilan ederlerdi. Belgeleri .deb paketiyle kurulan programdan üretin.";
 
 const MADDE_IKONU: Record<MaddeDurumu, { ad: string; renk: string }> = {
   gecti: { ad: "check_circle", renk: "text-success" },
@@ -106,6 +129,8 @@ function DurumKarti({
   // Açılamayan (engellendi/hata/bekliyor) ama ayarı açık katalog da kapatılabilir:
   // ayar açık kaldıkça program her açılışta yeniden dener.
   const kapatilabilir = katalog?.durum === "acik" || katalogKapatilabilir(katalog);
+  // KB-2: taşınabilir arşivde "aç" ve "yeniden başlat" yoktur.
+  const sunulur = katalogSunulur(katalog);
   return (
     <Card elevation={1} className="space-y-4 p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -113,6 +138,7 @@ function DurumKarti({
         {katalog && <DurumRozeti durum={katalog.durum} />}
       </div>
       {!durum.masaustu && <MasaustuYokBandi />}
+      {!sunulur && <TasinabilirBandi katalog={katalog} />}
       {katalog && (
         <div className="grid gap-4 md:grid-cols-[1fr_auto]">
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-body-medium">
@@ -196,23 +222,27 @@ function DurumKarti({
             >
               Ağ Kataloğunu kapat
             </Button>
-            <Button
-              variant="outlined"
-              icon="restart_alt"
-              disabled={mesgul}
-              onClick={() => onEylem("yeniden_baslat")}
-            >
-              Yeniden başlat
-            </Button>
+            {sunulur && (
+              <Button
+                variant="outlined"
+                icon="restart_alt"
+                disabled={mesgul}
+                onClick={() => onEylem("yeniden_baslat")}
+              >
+                Yeniden başlat
+              </Button>
+            )}
           </>
         ) : (
-          <Button
-            icon="play_circle"
-            disabled={mesgul || !durum.masaustu}
-            onClick={() => onEylem("ac")}
-          >
-            Ağ Kataloğunu aç
-          </Button>
+          sunulur && (
+            <Button
+              icon="play_circle"
+              disabled={mesgul || !durum.masaustu}
+              onClick={() => onEylem("ac")}
+            >
+              Ağ Kataloğunu aç
+            </Button>
+          )
         )}
         <Button variant="text" icon="refresh" disabled={mesgul} onClick={onYenile}>
           Yenile
@@ -231,6 +261,7 @@ function GuvenlikDuvariKarti({
   platform,
   masaustu,
   mesgul,
+  sunulur,
   onDenetle,
   onKural,
 }: {
@@ -238,15 +269,23 @@ function GuvenlikDuvariKarti({
   platform: AgDurumu["platform"];
   masaustu: boolean;
   mesgul: boolean;
+  /** KB-2: taşınabilir arşivde katalog sunulmaz; güvenlik duvarı komutu verilmez. */
+  sunulur: boolean;
   onDenetle: () => void;
   onKural: () => void;
 }) {
   const linux = (duvar?.platform ?? platform) === "linux";
   const kurallar = duvar?.kurallar?.length ? duvar.kurallar : duvar?.kural ? [duvar.kural] : [];
+  const tasinabilir = !sunulur || duvar?.linux.tasinabilir === true;
   return (
     <Card elevation={1} className="space-y-4 p-6">
       <BolumBasligi ikon="shield">Güvenlik Duvarı</BolumBasligi>
-      {linux ? (
+      {linux && tasinabilir ? (
+        <p className="text-body-medium text-on-surface-variant">
+          Taşınabilir sürümde Ağ Kataloğu açılmadığı için güvenlik duvarı komutu verilmez. Programı
+          .deb paketiyle kurduktan sonra komut burada gösterilir; kuralı BTR açar.
+        </p>
+      ) : linux ? (
         <div className="space-y-3 text-body-medium text-on-surface-variant">
           <p>
             Pardus'ta program güvenlik duvarı kuralı açmaz; paket hazır bir tanım bırakır. Kuralı
@@ -431,6 +470,7 @@ function SinamaKarti({
   ip,
   masaustu,
   mesgul,
+  sunulur,
   onSina,
 }: {
   sinama: DinleyiciSinamasi | null;
@@ -438,9 +478,19 @@ function SinamaKarti({
   ip: string | null;
   masaustu: boolean;
   mesgul: boolean;
+  /** KB-2: taşınabilir arşivde sınanacak dinleyici yoktur; başka bilgisayar komutu verilmez. */
+  sunulur: boolean;
   onSina: () => void;
 }) {
   const komutIp = ip ?? sinama?.sonuclar[0]?.ip ?? "<IP>";
+  if (!sunulur) {
+    return (
+      <Card elevation={1} className="space-y-4 p-6">
+        <BolumBasligi ikon="network_check">Dinleyici Sınaması</BolumBasligi>
+        <p className="text-body-medium text-on-surface-variant">{TASINABILIR_SINAMA_METNI}</p>
+      </Card>
+    );
+  }
   return (
     <Card elevation={1} className="space-y-4 p-6">
       <BolumBasligi ikon="network_check">Dinleyici Sınaması</BolumBasligi>
@@ -495,6 +545,33 @@ function SinamaKarti({
 // ---------------------------------------------------------------------------
 
 function BelgelerKarti({
+  adaylar,
+  masaustu,
+  seciliIp,
+  sunulur,
+  onSec,
+}: {
+  adaylar: IpAdaylari | null;
+  masaustu: boolean;
+  seciliIp: string;
+  /** KB-2: taşınabilir arşivde katalog açılmaz; afiş, yer imleri, PYS metni ve not üretilmez. */
+  sunulur: boolean;
+  onSec: (ip: string) => void;
+}) {
+  if (!sunulur) {
+    return (
+      <Card elevation={1} className="space-y-4 p-6">
+        <BolumBasligi ikon="description">Belgeler</BolumBasligi>
+        <p className="text-body-medium text-on-surface-variant">{TASINABILIR_BELGE_METNI}</p>
+      </Card>
+    );
+  }
+  return (
+    <BelgelerKartiIcerigi adaylar={adaylar} masaustu={masaustu} seciliIp={seciliIp} onSec={onSec} />
+  );
+}
+
+function BelgelerKartiIcerigi({
   adaylar,
   masaustu,
   seciliIp,
@@ -824,6 +901,7 @@ export default function AgDoktoruPage() {
             platform={durum.platform}
             masaustu={masaustu}
             mesgul={mesgul}
+            sunulur={katalogSunulur(katalog)}
             onDenetle={() => void denetle()}
             onKural={() => void kuralGuncelle()}
           />
@@ -834,12 +912,14 @@ export default function AgDoktoruPage() {
             ip={komutIp}
             masaustu={masaustu}
             mesgul={mesgul}
+            sunulur={katalogSunulur(katalog)}
             onSina={() => void sina()}
           />
           <BelgelerKarti
             adaylar={adaylar}
             masaustu={masaustu}
             seciliIp={seciliIp}
+            sunulur={katalogSunulur(katalog)}
             onSec={setSeciliIp}
           />
         </>

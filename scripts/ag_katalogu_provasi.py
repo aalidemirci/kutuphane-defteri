@@ -23,7 +23,7 @@ arar (bu makinede `docker compose run` çıkış kodunu zaman zaman yutar).
 
 Kanıt için katalog uygulaması bir sarmalla sarılır: YENİ görülen istemci adresini
 yalnız BU PROVADA standart çıktıya yazar. Üründe erişim günlüğü YOKTUR (§5.5).
-Veriler uydurmadır (`apps/kutuphane/tests/sentetik_katalog.py`: kamu malı eser
+Veriler uydurmadır (`apps/kutuphane/tests/sentetik_katalog.py`: bilinen eser
 adları, sağlaması tutan uydurma ISBN); kişi kaydı yoktur.
 """
 

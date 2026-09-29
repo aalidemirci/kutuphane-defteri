@@ -22,7 +22,7 @@ satır başına sorgu atan bir gerileme (eşleştirme dizininin ya da bölüm
 bellek tavanını anında aşar.
 
 Sentetik dosya depoya konmaz, çalışma anında üretilir (`sentetik_katalog`):
-kamu malı eser adları + sağlaması geçerli UYDURMA ISBN'ler, kişisel veri yok.
+bilinen eser adları + sağlaması geçerli UYDURMA ISBN'ler, kişisel veri yok.
 """
 
 from __future__ import annotations

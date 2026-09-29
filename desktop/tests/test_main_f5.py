@@ -60,6 +60,7 @@ def test_tepsi_eylemleri_kip_matrisi_hedeflerine_baglanir() -> None:
         tepsi_satiri=lambda: "Ağ Kataloğu: kapalı",
         acik_mi=lambda: False,
         kapatilabilir_mi=lambda: False,
+        sunulur_mu=lambda: True,
         ac=lambda: {},
         kapat=lambda: {},
         adres=lambda: None,
@@ -74,6 +75,8 @@ def test_tepsi_eylemleri_kip_matrisi_hedeflerine_baglanir() -> None:
     assert eylemler.katalog_satiri is kontrol.tepsi_satiri
     # Aç/kapa "kapat"ı ayar açık ama katalog açılamamışken de sunar (F5 düzeltmesi).
     assert eylemler.katalog_kapatilabilir is kontrol.kapatilabilir_mi
+    # KB-2: taşınabilir arşivde "aç" tepside yoktur; karar denetçinindir (T16).
+    assert eylemler.katalog_sunulur is kontrol.sunulur_mu
     assert eylemler.gorevli_kipine_gec is not None and eylemler.kilitle is not None
 
 

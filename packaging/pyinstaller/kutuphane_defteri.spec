@@ -117,13 +117,30 @@ datas += collect_data_files("rest_framework")
 datas += collect_data_files("weasyprint")  # gömülü CSS'ler (html5_ua.css …)
 datas += collect_data_files("pyphen")  # heceleme sözlükleri
 datas += collect_data_files("tinyhtml5")
-datas += collect_data_files("webview")  # Windows: WebView2 köprü DLL'leri
+datas += collect_data_files("webview")  # js/ (her platform) + Windows: WebView2 DLL'leri
 
 # ---------------------------------------------------------------------------
 # Windows DLL kapanışı (ntldd/objdump ile üretilir — elle liste YOK)
 # ---------------------------------------------------------------------------
 binaries: list[tuple[str, str]] = []
 binaries += collect_dynamic_libs("webview")
+
+
+# LİSANS BEYANI (F12 düzeltme turu, 27.09.2026 Qt'li Linux derlemesi): pywebview
+# `webview/lib/` altında Microsoft'un WebView2 SDK DLL'lerini ve bir Android arşivini
+# (`pywebview-android.jar`) taşır. SDK yalnız Windows'ta kullanılır (lisans listesi onu
+# "yalnız Windows" diye bildirir); Android arşivi hiçbir pakette kullanılmaz. Süzgeçsiz
+# `collect_*` ikisini de Linux paketine koyuyordu. Derleme sonrası denetim
+# (`lisanslar.py paket`) bu dosyaları pakette görürse derlemeyi durdurur.
+def _webview_platform_disi(hedef_dizin: str, kaynak: str) -> bool:
+    yol = hedef_dizin.replace("\\", "/")
+    if Path(kaynak).name.casefold() == "pywebview-android.jar":
+        return True
+    return not WINDOWS and (yol == "webview/lib" or yol.startswith("webview/lib/"))
+
+
+datas = [oge for oge in datas if not _webview_platform_disi(oge[1], oge[0])]
+binaries = [oge for oge in binaries if not _webview_platform_disi(oge[1], oge[0])]
 
 if WINDOWS:
     dll_dir = Path(os.environ.get("KD_DLL_DIR", str(REPO / "packaging" / "windows" / "dll")))
@@ -159,7 +176,14 @@ hiddenimports += collect_submodules("pypdf")
 # için segno'yu statik çözümleyici görmez; `segno.helpers` gibi paketin kendi
 # `__init__`'inin import etmediği alt modüller de ancak böyle toplanır.
 hiddenimports += collect_submodules("segno")
-hiddenimports += collect_submodules("webview")
+# LİSANS KAPISI (F12, 27.09.2026 yerel derlemesi): pywebview kendi PyInstaller
+# kancasını (`webview.__pyinstaller.hook-webview`) paketinin İÇİNDE taşır; süzgeçsiz
+# `collect_submodules` onu da toplar, kanca `PyInstaller.utils.hooks`'u import
+# ettiği için PyInstaller'ın derleme kodu (GPL-2.0+, önyükleyici istisnası DIŞINDA)
+# ve altgraph pakete sürüklenirdi. Kanca yalnız derleme anında kullanılır.
+hiddenimports += collect_submodules(
+    "webview", filter=lambda ad: not ad.startswith("webview.__pyinstaller")
+)
 if WINDOWS:
     # pywebview edgechromium arka ucu .NET köprüsünü `import clr` ile açar;
     # pythonnet zinciri eksik paketlenirse pencere HİÇ açılmaz ve ne --autotest
@@ -268,13 +292,30 @@ excludes = [
     # Qt bağlayıcılarından pakete YALNIZ PySide6 girer. İkisi birden kurulu
     # olsaydı qtpy `QT_API` verilmediğinde ilk bulduğunu seçerdi; dahası PyQt
     # GPLv3'tür ve bu ürünün lisansıyla birlikte dağıtılamaz (LİSANS KAPISI —
-    # packaging/tests/test_spec_kapsami.py).
+    # packaging/tests/test_lisans_kapisi.py).
     "PyQt5",
     "PyQt6",
     "PySide2",
+    # LİSANS KAPISI (F12, 27.09.2026 yerel Linux derlemesi): stdlib `readline`
+    # eklentisi Linux'ta GNU readline'a (libreadline.so.8, GPL-3.0) bağlıdır ve
+    # Django `shell`, pdb, cmd ile code'un KOŞULLU import'u yüzünden pakete
+    # giriyordu. Program etkileşimli kabuk açmaz; o import'ların hepsi
+    # `except ImportError` ile korunur. Derleme sonrası denetim
+    # (packaging/lisanslar/lisanslar.py `paket`) GPL'li yerel kütüphaneyi
+    # yakalarsa derlemeyi durdurur.
+    "readline",
 ]
 if not WITH_QT:
     excludes += ["PySide6", "qtpy"]
+
+# ---------------------------------------------------------------------------
+# LGPL kaynağı pakette (F12, TB28): pystray LGPLv3'tür. Modülleri PYZ arşivine
+# bayt kodu olarak değil, `_internal/pystray/` altına KAYNAK DOSYA (.py) olarak
+# konur: kullanıcı kütüphaneyi değiştirip programı onunla çalıştırabilir
+# (LGPLv3 §4) ve kaynak pakettedir (CLAUDE.md §2-10). Derleme sonrası denetim
+# `pystray/__init__.py` dosyasını arar, yoksa derlemeyi durdurur.
+# ---------------------------------------------------------------------------
+module_collection_mode = {"pystray": "py"} if WINDOWS else {}
 
 a = Analysis(  # noqa: F821 — PyInstaller global'i
     [str(ENTRY)],
@@ -287,8 +328,49 @@ a = Analysis(  # noqa: F821 — PyInstaller global'i
     runtime_hooks=[str(RUNTIME_HOOK)],
     excludes=excludes,
     noarchive=False,
+    module_collection_mode=module_collection_mode,
     optimize=0,
 )
+
+# ---------------------------------------------------------------------------
+# pyphen heceleme sözlükleri (LİSANS KAPISI, F12): pyinstaller-hooks-contrib'in
+# `hook-pyphen` kancası pyphen'in BÜTÜN veri dosyalarını toplar. Sözlükler
+# LibreOffice'ten gelir ve tek tek lisanslıdır; bir kısmı yalnız GPL'dir (gl,
+# pt_PT, ro_RO). Evrak Türkçedir, şablonlar `hyphens: auto` kullanmaz ve
+# pyphen'de Türkçe sözlük yoktur — sözlükler hiç kullanılmaz. Dizin BOŞ
+# kalamaz (pyphen import anında listeler), bu yüzden yalnız izinli lisanslı
+# en_US sözlüğü ve bildirimi kalır.
+# ---------------------------------------------------------------------------
+PYPHEN_KALAN = {"hyph_en_US.dic", "README_hyph_en_US.txt"}
+
+
+def _pyphen_sozlugu_atilir(hedef: str) -> bool:
+    yol = hedef.replace("\\", "/")
+    return yol.startswith("pyphen/dictionaries/") and yol.rsplit("/", 1)[-1] not in PYPHEN_KALAN
+
+
+a.datas = [oge for oge in a.datas if not _pyphen_sozlugu_atilir(oge[0])]
+
+# ---------------------------------------------------------------------------
+# Qt'nin yalnız GPL'li modülleri (LİSANS KAPISI, F12 düzeltme turu): PyInstaller'ın
+# PySide6 kancaları QtWebEngine'in Quick/Qml bağımlılığı üzerinden BÜTÜN QML
+# modüllerini ve eklentilerini toplar; aralarında Qt'nin açık kaynak sürümünde yalnız
+# GPL-3.0 ile sunulan modüller vardır (Charts, Data Visualization, Graphs, Quick 3D,
+# Quick Timeline, Virtual Keyboard, Wayland Compositor …). Program bunların hiçbirini
+# kullanmaz (pencere QtWebEngineWidgets'tır, QML yüklemez). Liste ve kural TEK
+# kaynaktadır (`packaging/lisanslar/lisanslar.py::QT_YALNIZ_GPL_MODULLER`): ada göre
+# ayıklanır, sonra ayıklanan kitaplığa bağlanan (DT_NEEDED) her ikili de çıkar.
+# Derleme sonrası denetim aynı kuralı paketin diskteki hâlinde sınar.
+# ---------------------------------------------------------------------------
+if WITH_QT and not WINDOWS:
+    sys.path.insert(0, str(REPO / "packaging" / "lisanslar"))
+    import lisanslar as _lisanslar  # noqa: E402 — yalnız standart kitaplık
+
+    a.binaries, a.datas, _qt_gpl_ayiklanan = _lisanslar.qt_gpl_suz(a.binaries, a.datas)
+    # `yaz` konsolun kodlayamadığı harfi kaçışa çevirir (CI konsolu CP1252 olabilir).
+    _lisanslar.yaz(
+        f"LİSANS: Qt'nin yalnız GPL'li modüllerinden {len(_qt_gpl_ayiklanan)} dosya ayıklandı."
+    )
 
 pyz = PYZ(a.pure)  # noqa: F821 — PyInstaller global'i
 

@@ -1,5 +1,6 @@
 // Ağ Doktoru ve Ayarlar → Ağ Kataloğu'nun ortak parçaları: durum rozeti, QR
-// çizimi, kopyalanabilir komut kutusu, "masaüstü dışında" bilgisi ve durum kancası.
+// çizimi, kopyalanabilir komut kutusu, "masaüstü dışında" ve "taşınabilir sürüm" (KB-2)
+// bilgileri ve durum kancası.
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -7,8 +8,8 @@ import Button from "../../ui/Button";
 import Icon from "../../ui/Icon";
 import { useSnackbar } from "../../ui/SnackbarProvider";
 import { panoyaKopyala } from "../kutuphane/KopruKomutuKarti";
-import { KATALOG_DURUMU_TR, agKataloguApi } from "./api";
-import type { AgDurumu, KatalogDurumAdi } from "./api";
+import { KATALOG_DURUMU_TR, agKataloguApi, tasinabilirBilgisi } from "./api";
+import type { AgDurumu, KatalogDurumAdi, KatalogDurumu } from "./api";
 
 /** Durum ekranının kendiliğinden yenilenme aralığı (ayar değişikliği dinleyiciyi arka planda kurar). */
 export const YENILEME_ARALIGI_MS = 15_000;
@@ -117,6 +118,23 @@ export function MasaustuYokBandi() {
         denetlemek ve dinleyiciyi sınamak yalnız masaüstü programında yapılır. Ayarlar ve belgeler
         burada da hazırlanabilir.
       </span>
+    </div>
+  );
+}
+
+/**
+ * Pardus'un taşınabilir arşivi (KB-2, 28.09.2026 kullanıcı kararı): Ağ Kataloğu
+ * sunulmaz. Ayar önceki bir açılıştan açık kalmışsa ekran ayrıca "Ağ Kataloğunu
+ * kapat"ı sunar; nedeni ve yolları masaüstünün son hata iletisi yazar.
+ */
+export function TasinabilirBandi({ katalog }: { katalog: KatalogDurumu | null }) {
+  return (
+    <div
+      role="status"
+      className="flex items-start gap-2 rounded-shape-md bg-tertiary-container px-4 py-3 text-body-medium text-on-tertiary-container"
+    >
+      <Icon name="info" size="lg" className="mt-0.5 shrink-0" />
+      <span>{tasinabilirBilgisi(katalog)}</span>
     </div>
   );
 }

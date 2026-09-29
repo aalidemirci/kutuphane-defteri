@@ -430,7 +430,10 @@ def test_linux_komutu_kaynak_sinirsiz_olmaz(tmp_path: Path) -> None:
 
 
 def test_linux_port_degisince_ya_da_profil_yokken_port_temelli_komut(tmp_path: Path) -> None:
-    """Taşınabilir arşivde ufw profili yoktur: profil adlı komut "profile not found" verirdi."""
+    """Profil dosyası yoksa profil adlı komut "profile not found" verirdi.
+
+    (Taşınabilir arşivde KB-2'den beri komut hiç verilmez: `tasinabilir_denetimi`.)
+    """
     profil = tmp_path / "kutuphane-defteri"
     profil.write_text("[Kutuphane Defteri]\n", encoding="utf-8")
     ortak: dict[str, Any] = {
@@ -480,6 +483,30 @@ def test_linux_arac_yoksa_bilgi_bos() -> None:
 
     assert denetim.linux["arac"] is None
     assert denetim.linux["komut"] == ""
+
+
+def test_tasinabilir_denetimi_linux_komutunu_kaldirir_windowsa_dokunmaz(tmp_path: Path) -> None:
+    """KB-2 (28.09.2026): taşınabilir arşivde komut önerilmez; araç ve durum bilgi kalır."""
+    linux = gd.linux_durumu(
+        port=9100,
+        bloklar=["192.168.10.0/24"],
+        ufw_conf=tmp_path / "yok.conf",
+        ufw_profili=tmp_path / "yok",
+        which=lambda ad: "/usr/sbin/ufw",
+    )
+    assert linux.linux["komut"]  # port temelli komut vardı
+
+    sonuc = gd.tasinabilir_denetimi(linux)
+
+    assert sonuc.linux["komut"] == ""
+    assert sonuc.linux["tasinabilir"] is True
+    assert sonuc.linux["arac"] == "ufw"
+    assert sonuc.linux["bloklar"] == ["192.168.10.0/24"]
+    assert sonuc.sozluk()["linux"]["komut"] == ""
+    assert linux.linux["komut"]  # özgün denetim değişmedi (yeni nesne)
+
+    windows = gd.degerlendir(_veri(), exe_yolu=EXE, port=PORT)
+    assert gd.tasinabilir_denetimi(windows) is windows
 
 
 def test_platform_secimi() -> None:

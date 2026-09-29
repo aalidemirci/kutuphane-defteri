@@ -98,6 +98,42 @@ export default function HakkindaPage() {
         </div>
       </Card>
 
+      {/* LGPL-3.0 §4(c): çalışırken telif bildirimi gösteren program, LGPL kitaplığın
+          telif bildirimini de gösterir ve GPL/LGPL metinlerine yönlendirir (F12 düzeltme
+          turu). Dosya adları paketin gerçek yerleşimidir (THIRD_PARTY_LICENSES). */}
+      <Card className="p-5 sm:p-6">
+        <div className="flex items-start gap-4">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-shape-md bg-surface-container-high text-on-surface-variant">
+            <Icon name="deployed_code" size="xl" />
+          </span>
+          <div>
+            <h2 className="text-title-large font-semibold text-on-surface">
+              Üçüncü Taraf Bileşenler
+            </h2>
+            <p className="mt-2 text-body-medium text-on-surface-variant">
+              Program açık kaynaklı üçüncü taraf bileşenlerle birlikte dağıtılır; her bileşen kendi
+              lisansıyla kullanılır. Aşağıdaki kitaplıklar GNU Kısıtlı Genel Kamu Lisansı (LGPL-3.0)
+              ile kullanılır:
+            </p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-body-medium text-on-surface-variant">
+              <li>Windows&apos;ta sistem tepsisi: pystray — Copyright © 2016-2022 Moses Palmér.</li>
+              <li>
+                Pardus&apos;ta pencere ve sistem tepsisi: Qt 6 ve PySide6 — Copyright © The Qt
+                Company Ltd. ve katkıda bulunanlar.
+              </li>
+            </ul>
+            <p className="mt-3 text-body-small text-on-surface-variant">
+              Bütün bileşenlerin adları, sürümleri, telif bildirimleri, lisans metinleri ve LGPL
+              kitaplıkların kaynak koduna erişim bilgisi, programın kurulduğu klasördeki{" "}
+              <span className="font-mono">THIRD_PARTY_LICENSES</span> klasöründedir:{" "}
+              <span className="font-mono">BENIOKU.txt</span> (dizin),{" "}
+              <span className="font-mono">LGPL-3.0-metni.txt</span> ve{" "}
+              <span className="font-mono">GPL-3.0-metni.txt</span>.
+            </p>
+          </div>
+        </div>
+      </Card>
+
       {/* Şifreleme yöntemlerinin ADI yalnız burada geçer (docs/sozluk.md §1):
           ayar ekranları "güçlü şifrelemeyle korunur" der, merak eden ya da
           bilişim sorumlusuna bilgi verecek olan ayrıntıyı bu kartta bulur. */}

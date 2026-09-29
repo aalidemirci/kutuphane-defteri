@@ -11,8 +11,14 @@
 #   linux           → python:3.12-bullseye kabında onedir + .deb + .tar.gz
 #   linux-kurulum   → temiz debian:11 VE debian:12 kaplarında kurulum provası
 #   windows         → msys2 + ntldd + PyInstaller + Türkçe PDF duman testi + Inno
-#   yayin           → v* etiketinde SHA256SUMS.txt + GitHub Release + paketlerin
-#                     indir.okulapp.org'a (Cloudflare R2) yüklenmesi
+#   yayin           → v* etiketinde son paketlerde veri sızıntısı denetimi +
+#                     SHA256SUMS.txt + GitHub Release (ön-sürüm eki taşıyan etiket
+#                     "pre-release") + paketlerin indir.okulapp.org'a (Cloudflare
+#                     R2) yüklenmesi (secret yoksa uyarıyla atlanır)
+#
+# Lisanslar (F12, TB28): iki derleme de PyInstaller'dan sonra
+# `packaging/lisanslar/lisanslar.py paket` koşar — THIRD_PARTY_LICENSES pakete
+# girer, listede olmayan bağımlılık ya da yalnız GPL'li bileşen derlemeyi durdurur.
 # =============================================================================
 name: Paketleme
 
@@ -25,6 +31,9 @@ on:
       - "packaging/**"
       - ".github/workflows/paketleme.yml"
       - "VERSION"
+      # Pakete giren lisans dizini ve programın lisansı (Inno LicenseFile, DEP-5).
+      - "THIRD_PARTY_LICENSES/**"
+      - "LICENSE"
       # hiddenimports sigortası: bağımlılığı unutturan değişiklik sınıfı tam da
       # backend/desktop tarafıdır — süzgeç onları dışarıda bırakırsa duman
       # kapıları sürüm etiketine dek hiç ateşlenmez (KS denetim bulgusu).
@@ -237,6 +246,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      # Depo yalnız denetim betiği için alınır (veri_sizintisi.py); ÖNCE alınır,
+      # çünkü checkout çalışma dizinini temizler.
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           name: linux-paketleri
@@ -245,6 +257,11 @@ jobs:
         with:
           name: windows-paketleri
           path: yayin
+      - name: Kişisel veri denetimi (yayımlanacak son paketler)
+        # Derleme işleri paket dizinini ve kendi arşivlerini zaten denetledi; bu
+        # adım Release'e ve indirme alanına GİDECEK dosyaların kendisini, iki
+        # platform için AYNI betikle son kez denetler (F12, `veri_sizintisi` ×2).
+        run: python3 packaging/veri_sizintisi.py yayin/*.deb yayin/*.tar.gz yayin/*.zip
       - name: SHA256SUMS.txt
         working-directory: yayin
         run: |
@@ -266,6 +283,10 @@ jobs:
         run: |
           # Ön-sürüm ekleri packaging/README.md "Sürüm" bölümündeki sırayla
           # (alpha < beta < rc < kesin) — yeni bir ek türü buraya da eklenir.
+          # Notun son cümlesi LGPL kaynağına yönlendirir: program ağdan dağıtıldığı için
+          # LGPL-3.0 bileşenlerinde GPL-3.0 md. 6(d) geçerlidir (nesne kodunun yanında açık
+          # yönlendirme; KB-1 düzeltme turu, 29.09.2026). Qt/PySide6 sürümü değişince adres
+          # de değişir — test_surum_yolu.py sürümü lisans listesiyle eşitler.
           ON_SURUM=""
           NOT_ONEKI=""
           case "${GITHUB_REF_NAME}" in
@@ -278,7 +299,7 @@ jobs:
             --repo "${GITHUB_REPOSITORY}" \
             ${ON_SURUM} \
             --title "Kütüphane Defteri ${GITHUB_REF_NAME}" \
-            --notes "${NOT_ONEKI}Gerçek okul verisiyle kullanmadan önce şifreli yedek alın. Kurulum adımları: docs/kurulum.md — imzasız paketleri SHA256SUMS.txt ile doğrulayın."
+            --notes "${NOT_ONEKI}Gerçek okul verisiyle kullanmadan önce şifreli yedek alın. Kurulum adımları: docs/kurulum.md — imzasız paketleri SHA256SUMS.txt ile doğrulayın. LGPL bileşenlerinin kaynağı: her paketteki THIRD_PARTY_LICENSES/BENIOKU.txt kaynak adreslerini ve yazılı teklifi verir; Linux paketindeki Qt ve PySide6 6.8.3'ün kaynağı https://download.qt.io/archive/qt/6.8/6.8.3/single/ ve https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.8.3-src/ adreslerindedir."
 
       # --- indir.okulapp.org (Cloudflare R2) --------------------------------
       # Neden GitHub Release'den SONRA: MEB ağında GitHub sık sık engellidir ve

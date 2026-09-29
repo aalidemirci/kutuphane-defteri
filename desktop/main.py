@@ -302,6 +302,7 @@ def tepsi_eylemleri(controller: WindowController, kontrol: KatalogKontrol | None
         katalog_satiri=kontrol.tepsi_satiri,
         katalog_acik=kontrol.acik_mi,
         katalog_kapatilabilir=kontrol.kapatilabilir_mi,
+        katalog_sunulur=kontrol.sunulur_mu,
         katalog_ac=_arka_planda("kd-katalog-ac", kontrol.ac),
         katalog_kapat=_arka_planda("kd-katalog-kapat", kontrol.kapat),
         katalog_goster=lambda: _katalogu_tarayicida_ac(kontrol),

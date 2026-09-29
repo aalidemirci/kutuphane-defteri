@@ -32,11 +32,11 @@ Ağ Kataloğu varsayılan olarak kapalıdır; yalnız yönetici kipinde açılı
 
 ## 2. Kurulum (Windows)
 
-1. Kurucuyu **kütüphane masası hesabında** başlatın; UAC penceresine yönetici
-   kimliğinizi girin. Kurucuyu kendi oturumunuzda başlatırsanız otomatik
+1. Kurulum dosyasını **kütüphane masası hesabında** başlatın; UAC penceresine yönetici
+   kimliğinizi girin. Kurulum dosyasını kendi oturumunuzda başlatırsanız otomatik
    başlatma görevi sizin hesabınıza yazılır ve program masa hesabında
    kendiliğinden açılmaz.
-2. Görevler:
+2. Kurulum seçenekleri:
    - **Yerel ağdan katalog taramasına izin ver (güvenlik duvarı kuralı).**
      İlk kurulumda önce programın eski engelleme kuralları silinir
      (`netsh advfirewall firewall delete rule name=all dir=in program="<kurulum
@@ -53,7 +53,7 @@ Ağ Kataloğu varsayılan olarak kapalıdır; yalnız yönetici kipinde açılı
      ve ekleme adımları atlanır: değiştirilmiş port ve eklediğiniz bloklar
      korunur. Kaldırmada kural silinir.
    - **Oturum açılınca başlat.** Görev Zamanlayıcı'ya "Kutuphane Defteri"
-     görevi, kurucuyu başlatan hesabın oturum açılışında tetiklenecek biçimde
+     görevi, kurulum dosyasını başlatan hesabın oturum açılışında tetiklenecek biçimde
      yazılır. İsteğe bağlı alt görev pencereyi açmadan tepside başlatır.
      Kaldırmada görev silinir.
 3. Genel profil de kurala dahildir: okul ağları çoğu zaman "Genel" görünür.
@@ -66,8 +66,8 @@ adres filtreleri) okuyarak beş maddeyi denetler: kural etkin mi; program yolu
 bu program mı; port ayarla aynı mı; kural etkin ağ profilini kapsıyor mu ve
 uzak adres ne; program için gelen engelleme kuralı var mı. Biri tutmazsa ya da
 denetim okunamazsa katalog **hiç dinlemez**. Uzak adres "her yer" ise yalnız
-uyarı verilir. Denetimin yönetici olmayan masa hesabında çalıştığı sahada
-doğrulanacaktır.
+uyarı verilir. Denetimin yönetici olmayan masa hesabında çalıştığı saha kabul
+protokolünde doğrulanır ([`docs/saha-kabulu.md`](saha-kabulu.md) §12.2).
 
 **Kuralı güncelleme.** Ağ Doktoru'ndaki "Kuralı ekle/güncelle" programı UAC ile
 yükseltilmiş bir yardımcı kipte yeniden çalıştırır: kural silinip yeniden
@@ -101,20 +101,31 @@ sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address
 sudo firewall-cmd --reload
 ```
 
-Port programda değiştirildiyse ya da program taşınabilir arşivden kurulduysa
-(tanım dosyaları yalnız `.deb` ile gelir) profil yerine portu açın (`sudo ufw
-allow from <idari-ağ> to any port <port> proto tcp`; firewalld'de zengin kuralda
+Port programda değiştirildiyse profil yerine portu açın (`sudo ufw allow from
+<idari-ağ> to any port <port> proto tcp`; firewalld'de zengin kuralda
 `port port="<port>" protocol="tcp"`). Ağ Doktoru bilgisayardaki aracı ve bu
 bilgisayarın yerel ağı ile Ayarlar'daki tahta ağı bloklarından üretilmiş komutu
-gösterir.
+gösterir. Ağ Kataloğu yalnız `.deb` ile kurulmuş programda açılır: taşınabilir
+arşivden (`.tar.gz`, `kur.sh`) kurulan programda açılamaz ve Ağ Doktoru orada komut
+vermez (§9). Bilgisayarda önce taşınabilir sürüm kurulduysa `.deb`'den önce arşivdeki
+`./kaldir.sh` ile kaldırılır: `kur.sh`'in menü kaydı ve `~/.local/bin` kısayolu
+`.deb`'inkinin önüne geçer, menü ve `kutuphane-defteri` komutu taşınabilir sürümü
+açmayı sürdürür. Açılan sürümü `kutuphane-defteri --dagitim-duman` yazar ("kurulu"
+ya da "tasinabilir").
+
+Paket kaldırılırken bu kurallar silinmez (paket onları açmamıştır): programı
+kaldırmadan önce açtığınız kuralları kaldırın (`sudo ufw delete allow from
+<idari-ağ> to any app 'Kutuphane Defteri'`; firewalld'de aynı zengin kuralla
+`--remove-rich-rule`).
 
 ## 4. Adres ve ağ yapısı
 
-1. **Sabit adres.** Kütüphane bilgisayarına DHCP'de MAC adresine bağlı
-   rezervasyon yapın. Afiş, yer imleri ve PYS talebi bu adresi taşır. Program
-   gün değişiminde adresi denetler ve değiştiyse "afişi yeniden basın, yer
-   imlerini güncelleyin" uyarısı verir. Bilgisayar değişirse rezervasyonu yeni
-   kartın MAC adresine taşıyın.
+1. **Sabit adres.** Kütüphane bilgisayarına DHCP'de, ağ kartının MAC adresine bağlı
+   sabit adres ayırın (DHCP rezervasyonu); kütüphane yöneticisinin belgeleri ve
+   programın kılavuzu bu işi "sabit adres ayırma" diye anar. Afiş, yer imleri ve PYS
+   talebi bu adresi taşır. Program gün değişiminde adresi denetler ve değiştiyse
+   "afişi yeniden basın, yer imlerini güncelleyin" uyarısı verir. Bilgisayar
+   değişirse sabit adres ayırmayı yeni kartın MAC adresine taşıyın.
 2. **Ağ keşfi.** Kütüphane bilgisayarının (`<idari-ağ>`) ve tahtaların
    (`<tahta-ağı>`) aynı bölümde olup olmadığını öğrenin. Aynı bölüm içindeki
    trafik merkezi filtreye uğramaz. Tahtada bir tarayıcıyla
@@ -202,11 +213,19 @@ tanımlanırsa yalnız biri geçerli olur.
 ## 9. Bilinen sınırlar
 
 - Windows oturumu açılmadan ne program ne katalog çalışır.
-- Windows'un taşınabilir paketinde Ağ Kataloğu sunulmaz (kural kurulu
-  programın yoluna bağlıdır). Pardus'un taşınabilir arşivinde katalog açılır;
-  ufw/firewalld tanımı gelmediği için port temelli komut kullanılır (§3).
+- Taşınabilir pakette Ağ Kataloğu sunulmaz — iki platformda da. Pardus'un
+  taşınabilir arşivinde katalog hiç açılmaz (program açmayı reddeder; ufw/firewalld
+  tanımı da yalnız `.deb` ile gelir). Windows'un taşınabilir sürümünde kurulumun
+  güvenlik duvarı kuralı kurulu programın yoluna bağlıdır; denetim varsayılan olarak
+  geçmez ve katalog okul ağına açılmaz. Ağ Doktoru'nun “Kuralı ekle/güncelle”
+  düğmesi (UAC) kuralı taşınabilir sürümün yoluna yazarsa denetim geçer ve katalog
+  açılır; kural aynı adı taşıdığı için aynı bilgisayardaki kurulu programın kuralının
+  yerini alır ve kurulu programın katalogu açılmaz olur. Bu yol önerilmez. Katalog
+  için program kurulur: Windows'ta kurulum dosyasıyla, Pardus'ta `.deb` paketiyle
+  (§2, §3).
 - Katalogda TLS yoktur: kişisel veri taşımadığı için düz HTTP'dir. Tarayıcıların
-  `http://<IP>:<port>` adresini HTTPS'e zorlamadan açtığı sahada
-  doğrulanacaktır.
+  (Chrome, Edge, tahtadaki Chromium ve Firefox ESR) `http://<IP>:<port>` adresini
+  HTTPS'e zorlamadan açtığı saha kabul protokolünde doğrulanır
+  ([`docs/saha-kabulu.md`](saha-kabulu.md) §12.4, §12.5).
 - Ağ Kataloğu açıkken bilgisayarın boşta uykuya geçmesi engellenir; kapak
   kapatma ve elle uyutma engellenmez.

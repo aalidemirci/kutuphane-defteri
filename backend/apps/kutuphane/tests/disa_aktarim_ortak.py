@@ -1,6 +1,6 @@
 """Dışa aktarım ve F10 dökümleri testlerinin ortak kurgusu (toplanmaz: `test_` ile başlamaz).
 
-Bütün veriler UYDURMADIR (CLAUDE.md §2-12): eser adları kamu malı klasiklerden ya da
+Bütün veriler UYDURMADIR (CLAUDE.md §2-12): eser adları bilinen eserlerin künyesinden ya da
 "Örnek …" kalıbından, kişi adları "Deneme …" kalıbından gelir; ISBN'ler sağlaması geçerli
 uydurma numaralardır (`sentetik_katalog.sentetik_isbn`).
 """

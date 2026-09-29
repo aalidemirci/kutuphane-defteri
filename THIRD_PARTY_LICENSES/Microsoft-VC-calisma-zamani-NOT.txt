@@ -1,0 +1,11 @@
+Microsoft Visual C++ ve Universal C çalışma zamanı
+===================================================
+
+Windows paketi, Python'un ve derlenmiş eklentilerin çalışması için Microsoft'un
+yeniden dağıtılabilir C/C++ çalışma zamanı dosyalarını (vcruntime140*.dll,
+msvcp140*.dll; gerekirse ucrtbase.dll ve api-ms-win-crt-*.dll) taşıyabilir. Bu
+dosyalar Microsoft'un Visual Studio lisansındaki "Distributable Code" koşullarıyla
+dağıtılır; değiştirilmez. Python'un Windows sürümünün lisans metni
+(yerel-kutuphaneler/ altındaki python-LICENSE.txt) aynı koşulları anlatır.
+
+Hangi dosyaların pakette bulunduğu paket-icerigi.txt'de yazılıdır.

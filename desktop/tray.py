@@ -19,6 +19,11 @@ görevli kipinde ayar değiştiren komut eski bir menüden de çalışmaz. Göre
 kipinde Çık pencereyi öne getirir ve arayüz yönetici parolasını sorar; çıkış
 `POST app/quit/` ile olur (§4.2-4). Bu koruma kaza önleyicidir.
 
+**Taşınabilir arşiv (KB-2, 28.09.2026).** Pardus'un taşınabilir arşivinde Ağ
+Kataloğu sunulmaz (`desktop/dagitim.py`): durum satırı "Ağ Kataloğu: taşınabilir
+sürümde sunulmaz" der, "Ağ Kataloğunu aç" görünmez ve eski bir menüden de
+çalışmaz; ayar önceki bir açılıştan açık kalmışsa "Ağ Kataloğunu kapat" kalır.
+
 **Windows — pystray (0.19.5).** `Icon.run_detached()` Win32 ileti döngüsünü
 DAEMON OLMAYAN bir iş parçacığında açar (pystray `_win32._run_detached`). Bu
 yüzden çıkışta `icon.stop()` ŞARTTIR: çağrılmazsa pencere kapansa da süreç asılı
@@ -160,6 +165,9 @@ class TrayActions:
     #: Aç/kapa komutu "kapat" mı göstersin? Ayar açık ama katalog açılamadıysa da evet
     #: (verilmezse `katalog_acik`); durum satırının tıklanabilirliği `katalog_acik`'tir.
     katalog_kapatilabilir: Callable[[], bool] | None = None
+    #: KB-2: Ağ Kataloğu bu dağıtımda sunulur mu? Yanlışsa (Pardus taşınabilir arşivi)
+    #: "aç" hiç görünmez ve çalıştırılmaz; "kapat" ayar açıkken kalır. Verilmezse evet.
+    katalog_sunulur: Callable[[], bool] | None = None
     katalog_ac: Callable[[], None] | None = None
     katalog_kapat: Callable[[], None] | None = None
     #: Yönetici kipinde durum satırı: katalogu harici tarayıcıda LAN adresiyle açar.
@@ -220,11 +228,21 @@ def _katalog_kapatilabilir(actions: TrayActions) -> bool:
         return _katalog_acik(actions)
 
 
+def _katalog_sunulur(actions: TrayActions) -> bool:
+    if actions.katalog_sunulur is None:
+        return True
+    try:
+        return bool(actions.katalog_sunulur())
+    except Exception:  # noqa: BLE001 — okunamazsa "aç" sunulmaz (denetçi de reddeder)
+        return False
+
+
 def menu_durumu(actions: TrayActions, *, sutun: str | None = None) -> tuple[MenuOgesi, ...]:
     """Kip matrisine göre menü (§4.4). İlk öğe varsayılan eylemdir (simgeye tıklama)."""
     sutun = sutun or _guncel_sutun(actions)
     izinli = {kod for kod, sutunlar in KIP_MATRISI.items() if sutun in sutunlar}
     acik = _katalog_acik(actions)
+    kapatilabilir = _katalog_kapatilabilir(actions)
     satir = ""
     if actions.katalog_satiri is not None:
         try:
@@ -242,11 +260,13 @@ def menu_durumu(actions: TrayActions, *, sutun: str | None = None) -> tuple[Menu
         ),
         MenuOgesi(
             KOMUT_KATALOG_AC_KAPA,
-            MENU_KATALOG_KAPAT if _katalog_kapatilabilir(actions) else MENU_KATALOG_AC,
+            MENU_KATALOG_KAPAT if kapatilabilir else MENU_KATALOG_AC,
             True,
             KOMUT_KATALOG_AC_KAPA in izinli
             and actions.katalog_ac is not None
-            and actions.katalog_kapat is not None,
+            and actions.katalog_kapat is not None
+            # KB-2: taşınabilir arşivde "aç" yoktur; açık kalmış ayar kapatılabilir.
+            and (kapatilabilir or _katalog_sunulur(actions)),
         ),
         MenuOgesi(
             KOMUT_GOREVLI,
@@ -282,7 +302,11 @@ def komutu_calistir(actions: TrayActions, kod: str) -> bool:
             return False  # bilgi satırı
         actions.katalog_goster()
     elif kod == KOMUT_KATALOG_AC_KAPA:
-        hedef = actions.katalog_kapat if _katalog_kapatilabilir(actions) else actions.katalog_ac
+        kapat = _katalog_kapatilabilir(actions)
+        if not kapat and not _katalog_sunulur(actions):
+            logger.warning("Tepsi: Ağ Kataloğu taşınabilir arşivde sunulmaz; aç reddedildi.")
+            return False
+        hedef = actions.katalog_kapat if kapat else actions.katalog_ac
         if hedef is None:
             return False
         hedef()

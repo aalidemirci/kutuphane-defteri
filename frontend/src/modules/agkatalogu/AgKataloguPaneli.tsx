@@ -12,6 +12,10 @@
 //   bir diyalogdur ve kaydetme gövdesine GİRMEZ.
 // * Dinleme kipi ve IP, tahta ağı blokları, vitrin, konu dizini, kütüphane
 //   saatleri, uyku engelleme: kısmi PUT (gönderilmeyen alana dokunulmaz).
+// * Pardus'un taşınabilir arşivi (KB-2, 28.09.2026 kullanıcı kararı): katalog
+//   sunulmaz (`sunulur: false`). Bilgi bandı durur; "Ağ Kataloğunu aç", "Yeniden
+//   başlat" ve ilk açılış adımları gösterilmez. Ayar önceki bir açılıştan açık
+//   kalmışsa "Ağ Kataloğunu kapat" kalır.
 
 import { useEffect, useId, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
@@ -39,9 +43,10 @@ import {
   agKataloguApi,
   belgeDosyaAdi,
   katalogKapatilabilir,
+  katalogSunulur,
 } from "./api";
 import type { DinlemeKipi, IpAdaylari, KatalogAyari, KatalogAyariGovde } from "./api";
-import { DurumRozeti, KomutKutusu, MasaustuYokBandi, useAgDurumu } from "./ortak";
+import { DurumRozeti, KomutKutusu, MasaustuYokBandi, TasinabilirBandi, useAgDurumu } from "./ortak";
 
 function hataMetni(e: unknown, yedek: string): string {
   return e instanceof ApiError && e.message ? e.message : yedek;
@@ -462,12 +467,15 @@ export default function AgKataloguPaneli() {
 
   const katalog = durum?.katalog ?? null;
   const windows = durum?.platform === "windows";
+  // KB-2: Pardus'un taşınabilir arşivinde katalog sunulmaz; "aç" hiç gösterilmez.
+  const sunulur = katalogSunulur(katalog);
   const acik = katalog ? katalog.durum === "acik" : ayar.acik;
   // Ayar açık ama katalog açılamadıysa (güvenlik duvarı, port, adres) de kapatılabilir.
   const kapatilabilir = acik || (katalog ? katalogKapatilabilir(katalog) : ayar.acik);
   // Kart afiş basılana dek durur: açtıktan sonraki son adım (afiş, yer imleri) ve
   // açılamazsa ikinci adımın yönlendirmesi ekranda kalsın (kart metni ve kılavuz).
-  const ilkAcilis = !ayar.son_afis_ip;
+  // Taşınabilir arşivde adımlar uygulanamaz: yerini bilgi bandı alır.
+  const ilkAcilis = !ayar.son_afis_ip && sunulur;
   const duvar = katalog?.guvenlik_duvari ?? null;
   const ipSecenekleri = (adaylar?.arayuzler ?? []).map((a) => ({
     value: a.ip,
@@ -480,6 +488,7 @@ export default function AgKataloguPaneli() {
   return (
     <div className="space-y-6">
       {!masaustu && durum && <MasaustuYokBandi />}
+      {!sunulur && <TasinabilirBandi katalog={katalog} />}
 
       {ilkAcilis && (
         <IlkAcilisAdimlari
@@ -535,7 +544,7 @@ export default function AgKataloguPaneli() {
               >
                 Ağ Kataloğunu kapat
               </Button>
-              {!acik && (
+              {!acik && sunulur && (
                 <Button
                   variant="outlined"
                   icon="restart_alt"
@@ -547,7 +556,8 @@ export default function AgKataloguPaneli() {
               )}
             </>
           ) : (
-            !ilkAcilis && (
+            !ilkAcilis &&
+            sunulur && (
               <Button
                 icon="play_circle"
                 disabled={mesgul || !masaustu}

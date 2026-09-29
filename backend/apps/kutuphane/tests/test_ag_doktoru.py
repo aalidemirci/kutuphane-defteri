@@ -56,6 +56,8 @@ class SahteDenetci:
         self.cagrilar: list[tuple[str, dict[str, Any]]] = []
         self.durum_adi = "kapali"
         self.kural_sonucu: tuple[bool, str] = (True, "Güvenlik duvarı kuralı güncellendi.")
+        #: KB-2: Pardus taşınabilir arşivinde yanlış (masaüstü `KatalogKontrol.durum`).
+        self.sunulur = True
 
     def _kaydet(self, ad: str, **kw: Any) -> None:
         self.cagrilar.append((ad, kw))
@@ -78,6 +80,8 @@ class SahteDenetci:
             "guvenlik_duvari": None,
             "reddedilen_baglanti": 0,
             "uyku_engelli": acik,
+            "sunulur": self.sunulur,
+            "deb_kurulu": False,
         }
 
     def ac(self) -> dict[str, Any]:
@@ -311,6 +315,86 @@ def test_ayar_ucu_windowsta_portu_degistirmez(windows: None) -> None:
     ayni = istemci.put(uc, {"port": 8765, "vitrin_acik": False}, format="json")
     assert ayni.status_code == 200
     assert ayni.json()["vitrin_acik"] is False
+
+
+# ============================================= KB-2: Pardus taşınabilir arşivi
+
+
+def test_tasinabilir_arsivde_ayar_ucu_katalogu_acik_yazmaz(denetci: SahteDenetci) -> None:
+    """KB-2 (28.09.2026): denetçi `sunulur: false` diyorsa kapalı ayar açığa çevrilmez."""
+    denetci.sunulur = False
+    uc = KOK + "settings/"
+    istemci = APIClient()
+
+    ret = istemci.put(uc, {"acik": True}, format="json")
+    assert ret.status_code == 400
+    assert "taşınabilir sürümde sunulmaz" in ret.json()["fields"]["acik"][0]
+    assert ".deb" in ret.json()["fields"]["acik"][0]
+    assert KatalogAyari.load().acik is False
+
+    # Öbür ayarlar ve kapatma serbesttir.
+    diger = istemci.put(uc, {"acik": False, "kutuphane_saatleri": "08.30-16.30"}, format="json")
+    assert diger.status_code == 200, diger.json()
+    assert diger.json()["kutuphane_saatleri"] == "08.30-16.30"
+
+
+def test_tasinabilir_arsivde_onceden_acik_ayar_kapatilabilir(denetci: SahteDenetci) -> None:
+    ayar_servisi.update_katalog_ayari(sistem_yazimi=True, acik=True)
+    denetci.sunulur = False
+    istemci = APIClient()
+
+    # Aynı değer (formun tamamı) reddedilmez; kapatma yazılır.
+    assert istemci.put(KOK + "settings/", {"acik": True}, format="json").status_code == 200
+    kapat = istemci.put(KOK + "settings/", {"acik": False}, format="json")
+    assert kapat.status_code == 200
+    assert KatalogAyari.load().acik is False
+
+
+def test_kurulu_pakette_ayar_ucu_katalogu_acar(denetci: SahteDenetci) -> None:
+    yanit = APIClient().put(KOK + "settings/", {"acik": True}, format="json")
+
+    assert yanit.status_code == 200
+    assert yanit.json()["acik"] is True
+
+
+def test_tasinabilir_durum_ozetinde_gorunur(denetci: SahteDenetci) -> None:
+    denetci.sunulur = False
+
+    govde = APIClient().get(KOK + "status/").json()
+
+    assert govde["katalog"]["sunulur"] is False
+
+
+def test_tasinabilir_arsivde_katalog_belgeleri_uretilmez(denetci: SahteDenetci) -> None:
+    """KB-2 düzeltme turu (29.09.2026): afiş, yer imleri, PYS metni ve bilgi notu açılmayacak
+    bir katalogu ilan ederdi (afiş `son_afis_ip`'i de yazardı; PYS metni tahta ağından
+    erişim ister). Masaüstü `sunulur: false` diyorsa dört uç 409 `katalog_sunulmaz` döner."""
+    denetci.sunulur = False
+    istemci = APIClient()
+
+    yanitlar = [
+        istemci.post(KOK + "poster/", {}, format="json"),
+        istemci.get(KOK + "info-note/"),
+        istemci.get(KOK + "bookmarks/"),
+        istemci.get(KOK + "pys-text/"),
+    ]
+
+    for yanit in yanitlar:
+        assert yanit.status_code == 409
+        assert yanit.json()["code"] == "katalog_sunulmaz"
+        assert "taşınabilir sürümden çalıştığı için" in yanit.json()["message"]
+        assert ".deb paketiyle kurulan programdan" in yanit.json()["message"]
+    assert KatalogAyari.load().son_afis_ip == ""
+    # Durum, güvenlik duvarı ve aday adresler okunmaya devam eder.
+    assert istemci.get(KOK + "status/").status_code == 200
+    assert istemci.get(KOK + "firewall/").status_code == 200
+
+
+def test_kurulu_pakette_katalog_belgeleri_uretilir(denetci: SahteDenetci) -> None:
+    yanit = APIClient().get(KOK + "pys-text/")
+
+    assert yanit.status_code == 200
+    assert "8765" in yanit.json()["metin"]
 
 
 # ======================================================================== adres

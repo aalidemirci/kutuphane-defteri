@@ -19,6 +19,10 @@
    kutuphane-defteri-<sürüm>-win64-setup.exe      (Inno, yönetici İSTER — U4)
    kutuphane-defteri-<sürüm>-win64-portable.zip   (taşınabilir)
    SHA256SUMS.txt
+
+ Paket kökünde (ikisinde de): LICENSE.txt (PolyForm Noncommercial; kurucunun
+ lisans sayfası) ve THIRD_PARTY_LICENSES\ (üçüncü taraf lisansları, derlemede
+ eklenen paket-icerigi.txt ve yerel-kutuphaneler\ ile — F12, TB28).
 =============================================================================
 #>
 [CmdletBinding()]
@@ -94,8 +98,16 @@ if (-not (Test-Path (Join-Path $Repo "frontend\dist\index.html"))) {
 
 # --- 2. Python bağımlılıkları ----------------------------------------------
 if (-not $SkipDeps) {
-    Write-Adim "python bağımlılıkları"
-    & $PythonExe -m pip install --disable-pip-version-check -q `
+    Write-Adim "python bağımlılıkları (lisans listesindeki sürümlere kısıtlı)"
+    # Geçişli bağımlılıklar pinli değildir; kısıt dosyası onları THIRD_PARTY_LICENSES
+    # listesinin sürümlerine bağlar — pakete giren sürüm BENIOKU'dakiyle aynı olur
+    # (F12 düzeltme turu). Dosyayı betik yazar: PowerShell 5.1'in `>` yönlendirmesi
+    # UTF-16 yazardı, pip okuyamazdı.
+    $Kisitlar = Join-Path $DistRoot "kisitlar-windows.txt"
+    & $PythonExe (Join-Path $Repo "packaging\lisanslar\lisanslar.py") kisitlar `
+        --platform windows --cikti $Kisitlar
+    if ($LASTEXITCODE -ne 0) { throw "Kısıt dosyası üretilemedi." }
+    & $PythonExe -m pip install --disable-pip-version-check -q -c $Kisitlar `
         -r (Join-Path $Repo "backend\requirements.txt") `
         -r (Join-Path $Repo "packaging\requirements-paketleme.txt")
     if ($LASTEXITCODE -ne 0) { throw "pip install başarısız." }
@@ -123,6 +135,22 @@ $env:KD_DLL_DIR = $DllDir
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller başarısız." }
 if (-not (Test-Path $AppExe)) { throw "Çalıştırılabilir üretilmedi: $AppExe" }
 
+# Lisans kapısı (F12, TB28): THIRD_PARTY_LICENSES\ ve LICENSE.txt (UTF-8 BOM —
+# Inno LicenseFile) paket köküne kopyalanır; pakete GERÇEKTEN giren her dosyanın
+# sahibi bulunur (Python dağıtımı → lisans listesi; WeasyPrint DLL'leri → MSYS2
+# paket veritabanı ve paketin share\licenses dosyaları). Listede olmayan dağıtım,
+# sahibi bilinmeyen dosya, pystray kaynağının eksikliği (LGPL) ya da süzülmemiş
+# pyphen sözlükleri derlemeyi durdurur. Veri sızıntısı denetiminden ÖNCE koşar.
+Write-Adim "lisans denetimi (THIRD_PARTY_LICENSES)"
+$Msys2Kok = (Resolve-Path (Join-Path $MingwBin "..\..")).Path
+& $PythonExe (Join-Path $Repo "packaging\lisanslar\lisanslar.py") paket `
+    --paket $AppDir `
+    --calisma (Join-Path $WorkDir "kutuphane_defteri") `
+    --platform windows `
+    --dll-dizini $DllDir `
+    --msys2-kok $Msys2Kok
+if ($LASTEXITCODE -ne 0) { throw "Lisans denetimi başarısız." }
+
 # Paketleme tanımına yanlışlıkla gerçek veritabanı, medya veya Excel dosyası
 # eklenirse dağıtımı burada durdur.
 Write-Adim "paket kişisel veri sızıntısı denetimi"
@@ -144,6 +172,13 @@ Copy-Item -Force $FontsConfKaynak $FontsConfHedef
 # (hinting/antialias); font DİZİNİ eklemezler.
 
 # --- 5. Duman testleri ------------------------------------------------------
+# pystray kaynağı pakette mi (LGPLv3 — spec `module_collection_mode`)? Lisans
+# denetimi de arar; burada ikinci sigorta: bağımlılık dumanı pystray'i bu
+# dosyalardan import eder.
+if (-not (Test-Path (Join-Path $AppDir "_internal\pystray\__init__.py"))) {
+    throw "pystray kaynağı pakette yok (_internal\pystray\__init__.py) — LGPL gereği girmeli."
+}
+
 # ÖNCE bağımlılık kapısı: eksik bir hiddenimport'u burada yakalamak, sonraki
 # testlerin anlaşılmaz hatalarını okumaktan ucuzdur (hiddenimports zinciri).
 Write-Adim "duman testi: --bagimlilik-duman (hiddenimports)"
@@ -173,6 +208,13 @@ Write-Adim "taşınabilir zip"
 $zip = Join-Path $Output "kutuphane-defteri-$Version-win64-portable.zip"
 Remove-Item -Force $zip -ErrorAction SilentlyContinue
 Compress-Archive -Path (Join-Path $AppDir "*") -DestinationPath $zip
+
+# Son arşivde de aynı denetim (Linux'ta .deb + .tar.gz — iki platformda eşit
+# kapsam, F12). Kurulum dosyası (setup.exe) listelenemez: içeriği $AppDir ile
+# .iss [Files] bölümündeki üç sabit depo dosyasıdır (test_veri_sizintisi.py).
+Write-Adim "son arşivde kişisel veri sızıntısı denetimi"
+& $PythonExe (Join-Path $Repo "packaging\veri_sizintisi.py") $zip
+if ($LASTEXITCODE -ne 0) { throw "Taşınabilir arşivde kişisel veri denetimi başarısız." }
 
 # --- 7. Inno Setup kurulum paketi -------------------------------------------
 if (-not $SkipInno) {

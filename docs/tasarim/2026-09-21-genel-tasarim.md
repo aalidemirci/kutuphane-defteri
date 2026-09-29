@@ -598,7 +598,23 @@ Sayaçlar da yalnız bu süzgeçten geçen nüshalardan türer (EK-7).
 - **Ağ kataloğu varsayılan olarak kapalıdır.** İlk kez açılırken Ağ Doktoru adım adım
   yönlendirir.
 - **Taşınabilir pakette** ağ kataloğu sunulmaz: kural program yoluna bağlıdır
-  (GA-5).
+  (GA-5). **KULLANICI KARARI (28.09.2026, §14.1 F12 ekleri karar turu KT-2 — KB-2):**
+  kural İKİ platformda aynıdır — Windows'un taşınabilir sürümünde (`…-portable.zip`)
+  de Pardus'un taşınabilir arşivinde (`…-linux-x64.tar.gz`) de Ağ Kataloğu sunulmaz;
+  katalog kurulu pakette (Windows kurulum dosyası, Pardus `.deb`) açılır. Pardus'un
+  taşınabilir arşivinde katalog hiç AÇILAMAZ (ufw profili ve firewalld servis tanımı da
+  yalnız `.deb` ile gelir). Windows'ta ayrımı güvenlik duvarı denetiminin 2. maddesi
+  yapar (kural kurulu programın yoluna bağlıdır); programda ayrıca bir taşınabilirlik
+  tespiti yoktur — bilinen fark KT-2'de. F5 ekleri 27'deki açık karar böylece kapandı.
+  **Kapı** (KT-2 ve düzeltme turu, 29.09.2026): tespit `desktop/dagitim.py` (çalışan
+  program dosyası dpkg'nin `kutuphane-defteri` listesindeki bir dosyayla AYNI DOSYA değilse
+  taşınabilir), uygulama `desktop/katalog_kontrol.py` (T16: `ac()` ayarı yazmaz, açık kalmış
+  ayarda katalog kalkmaz), ayar ucu (PUT kapalı ayarı açığa çevirmez, 400), Ağ Doktoru'nun
+  dört belge ucu (409 `katalog_sunulmaz`); derlemede `--dagitim-duman`. Windows'ta
+  **varsayılan davranış** aynıdır, ama "Kuralı ekle/güncelle" kuralı taşınabilir sürüme
+  yazarsa katalog açılır ve kurulu programın kuralının yerini alır — Windows için kesin kapı
+  KULLANICI KARARI (29.09.2026) ile kararlı sürümden önce gelir (§14.1 F12 ekleri, düzeltme
+  turu DT-3, KT-5 madde 5; `docs/teknik-borc.md` TB41).
 
 ### 5.3 Veri erişimi
 
@@ -1684,7 +1700,7 @@ ifadeleri ters çevrilir: `settings.py:3-7`, `server.py:8`, `docs/kurulum.md:83-
 | **F9 Sayım** | Anlık görüntü · iki ayrı seçenek: TMY 32/3 durdurması ve "hizmet arası" · iade her zaman açık · kuyruk · iptal · LOST uzlaştırma · **kayıp ve hasar dosyasının kayıttan düşme önerisinin düşülmesi** (TMY 27/1 + 10/1-e, kayıp/hasar tutanağıyla, komisyonsuz — F8 ekleri 34) · teslimdeki nüsha için kurul seçimi · D1, D4, D16, D17, D18 · E10 + **ekinde TMY 34/1 büyüklükleri** (A8; cetvel TKYS'de — F8 ekleri 13) | 32/3 durdurması açıkken edinim, kayıttan düşme, devir ve dosya çözümü kapalı, ödünç açık · hizmet arası açıkken yeni ödünç ve yeni teslim kapalı (F9 ekleri 27) · iki seçenek tutanakta ayrı satırda · iade hiçbir durumda kapanmaz · onayda durumu değişen kalem düşülmez · tutanakta ödünç alan kimliği yok · 32/7 |
 | **F10 Raporlar + dışa aktarım** | İstatistik (kişisiz, eşikli kırılımlar) · 10.000 eşiği (Md. 7) · çok okunanlar (k farklı üye; gün değişimi kapısına eklenir) + E12 · E11 (ciltsiz süreli yayın hariç), E17, E20 · dışa aktarım şeması + gidiş-dönüş · kişi dökümü · "Bakanlık sistemi kullanımda" hatırlatma ayarı · **sayıma "yıl sonu sayımı" işareti** (F9 ekleri K6 KARAR, 25.09.2026 — F10 sözleşmesine devredildi: işaretsiz sayımda E10 eki basılmaz ya da başlığı "Ara sayım — sayılar cetvele aktarılmaz" olur; bir alan + göç) | Gidiş-dönüş aynı kataloğu verir · §5.10-12 · profil yasağı testleri (§3) · ciltsiz süreli yayın E11'e girmez · işaretsiz sayımın eki cetvele aktarılacak sayı basmaz |
 | **F11 Bakım** | Dış yedek hatırlatması · saklama/anonimleştirme (gün değişimi kapısına eklenir; azami gecikme, `pre-anonim` rotasyonu, tetikte eski `pre-migrate` silme, BelgeIzi, kapanmış teslim) · görev devri (E18) · güncelleme (GitHub Release, düğmeyle — T11 v4) | Eski exe yeni DB'yi açmaz · anonimleştirme sonrası yeniden basımda ibare var · açık yükümlülük varken kişi silinmez · temiz makinede geri yükleme provası |
-| **F12 Paketleme + saha kabulü** | Inno (yeni GUID, WebView2, iki mutex, kapatma olayı, güncelleme kipinde kural korunur) · `.deb` (ufw/firewalld) · `veri_sizintisi` ×2 · belgeler (kurulum, ağ kurulumu, yeni bilgisayara taşıma, kılavuz, masa kartı) · okulapp.org alanı (§17) · **ertelenen saha kapıları** | Temiz Windows 11'de uçtan uca: kurulum → sihirbaz → e-Okul → Excel katalog → etiket → dolaşım → ağdan arama → yedek/geri yükleme · Pardus'ta aynı zincir · tahtadan arama (S2'ye bağlı) · gerçek okuyucu |
+| **F12 Paketleme + saha kabulü** | Inno (yeni GUID, WebView2, iki mutex, kapatma olayı, güncelleme kipinde kural korunur) · `.deb` (ufw/firewalld) · `veri_sizintisi` ×2 · belgeler (kurulum, ağ kurulumu, yeni bilgisayara taşıma, kılavuz, masa kartı) · okulapp.org alanı (§17) · **ertelenen saha kapıları** · *27.09.2026 kullanıcı kararları: okulapp.org ayrı adım (depoda yalnız `docs/site-icerigi.md`), saha kabulünü kullanıcı yürütür (`docs/saha-kabulu.md` + deneme verisi üreticisi), ilk sürüm beta; ek olarak `THIRD_PARTY_LICENSES` (TB28) — F12 ekleri* | Temiz Windows 11'de uçtan uca: kurulum → sihirbaz → e-Okul → Excel katalog → etiket → dolaşım → ağdan arama → yedek/geri yükleme · Pardus'ta aynı zincir · tahtadan arama (S2'ye bağlı) · gerçek okuyucu · *kod tarafının kapısı (F12 ekleri BT-5): lisans dizini eksiksiz ve kapı testli · Inno `LicenseFile` ve `.deb` `copyright` · `veri_sizintisi` iki pakette · protokol her ertelenmiş kanıtı kapsar (eşleme testi) · deneme verisi içe aktarıcılarla uyumlu, depoya veri girmez · beta sürüm yolu sınanmış · bağımlılık zinciri değişmedi* |
 
 **Sıralama gerekçesi.** Ağ kataloğu (F5) dolaşımdan önce gelir. Katalog girildiği anda
 ağdan taranabilir ve en büyük belirsizlik erken sahaya çıkar. Dolaşım gelene kadar
@@ -2348,11 +2364,15 @@ kilitlendi (madde 19-30). Kapı yeniden yeşildir.
     `<okul-agi-blogu>` yer tutucusu yazılır; /16'dan geniş blok komuta girmez.
     Tanım dosyası yoksa (taşınabilir arşiv) ya da port değiştiyse port temelli
     komut verilir. Paketteki ufw profil açıklaması, `docs/kurulum.md` §8.5 ve
-    `docs/ag-kurulumu.md` §3 aynı biçime getirildi. **Açık karar:** Pardus'un
-    taşınabilir arşivinde katalog açılır; §5.2'deki "taşınabilir pakette sunulmaz"
+    `docs/ag-kurulumu.md` §3 aynı biçime getirildi. **Açık karar (KAPANDI):** Pardus'un
+    taşınabilir arşivinde katalog açılıyordu; §5.2'deki "taşınabilir pakette sunulmaz"
     gerekçesi (kural program yoluna bağlı, GA-5) Windows'a özgüdür. Belgeler
-    "Windows'un taşınabilir paketinde sunulmaz" diye daraltıldı; Linux taşınabilir
-    arşivde de kapatılması kullanıcı kararıdır.
+    "Windows'un taşınabilir paketinde sunulmaz" diye daraltılmıştı; Linux taşınabilir
+    arşivde de kapatılması kullanıcı kararıydı. **KULLANICI KARARI (28.09.2026, F12
+    ekleri karar turu KT-2 — KB-2):** Pardus'un taşınabilir arşivinde de Ağ Kataloğu
+    AÇILAMAZ — Windows'un taşınabilir paketiyle aynı davranış; yalnız kurulu pakette
+    (`.deb`) açılır (§5.2). Belgeler iki platforma genişletildi; port temelli komut
+    port değiştiğinde kalır.
 28. **Sağlamlık.** `powershell.ps_dizesi` PowerShell'in tek tırnak saydığı beş
     karakterin hepsini ikiler (`'`, U+2018, U+2019, U+201A, U+201B; kural
     `EscapeSingleQuotedStringContent` ile aynı, Windows PowerShell 5.1'de
@@ -4522,6 +4542,528 @@ sözlük çelişkisini kapattı. Göç: yayımlanmamış `0010_saklama_ve_belge_
   `backend/pyproject.toml` yerine kök yapılandırmayla yapılmıştı); aynı yapılandırmayla
   yeniden biçimlendirildi, ikinci koşu baştan sona yeşil.
 
+**F12 ekleri — kullanıcı kararları (27.09.2026) ve kapsam.** F12 KOD tarafıdır; saha kanıtları
+kullanıcının yürüteceği protokole bağlanır. Üç karar BAĞLAYICIDIR: (1) okulapp.org işi AYRI
+adımdır (okulapp.org deposunda dal + PR, kullanıcı birleştirir); bu dal o depoya dokunmadı,
+sitenin metin içeriğini `docs/site-icerigi.md` olarak hazırladı (§17). (2) Saha kabulünü
+kullanıcı kendisi yürütür; bu dal işaretlenebilir protokolü (`docs/saha-kabulu.md`) ve uydurma
+deneme verisi üreticisini (`scripts/deneme_verisi.py`) hazırladı. (3) İlk sürüm bir **beta**dır
+(`v2026.10.0-beta.1`); etiketi ana oturum kullanıcı onayıyla atar, bu dal `VERSION`'ı hazırladı ve
+etiket yolunu sınadı. Göç YOK; yeni Python bağımlılığı YOK; görevli izin listesi DEĞİŞMEDİ.
+
+**F12 ekleri — P kolu: paket ve lisanslar (27.09.2026).**
+
+- **P-1 — `THIRD_PARTY_LICENSES/` (TB28 kapandı).** Depo kökünde, betikle üretilir
+  (`packaging/lisanslar/uret.sh`, Docker'da iki adım, ağ ister): `on_yuz_paketleri.mjs` Vite
+  derlemesini dosya yazmadan koşturup çıktıya GERÇEKTEN giren npm paketlerini toplar (ağaç
+  sarsmayla düşenler girmez); `lisanslar.py uret` backend ve paketleme pinlerinin kapanışını
+  Windows ve Linux için çözer, lisans dosyasını kurulu dağıtımdan, yoksa PyPI tekerleğinden ya da
+  kaynak arşivinden okur. Sonuç: 64 bileşen, 98 lisans dosyası, Türkçe `BENIOKU.txt` (dizin + LGPL
+  kaynak erişimi) ve makine için `bilesenler.json`. PySide6 için LGPL-3.0 seçildi (LGPL-3.0 ve
+  GPL-3.0 metni birlikte); WebView2 SDK lisansı NuGet'ten, Evergreen önyükleyicisi ve VC çalışma
+  zamanı için not dosyaları. *Sapma:* sözleşmedeki "`THIRD_PARTY_LICENSES` + `BAGIMLILIKLAR.md`"
+  (okulzili yolu) yerine tek dizin — insan ve makine biçimi aynı üreticiden.
+- **P-2 — kapı testi** `packaging/tests/test_lisans_kapisi.py` (55 test; var olan GPL-Qt testi
+  `test_spec_kapsami.py`'den buraya taşındı ve genişletildi): her pin aynı sürümle listede,
+  çalışma zamanı kapanışı listede, npm bağımlılıkları listede ya da gerekçeyle dışarıda, yalnız
+  GPL'li bileşen yok, lisans dosyaları eksiksiz, sahipsiz dosya yok, dizin depo sızıntı
+  kapısından geçer. CLAUDE.md §2-10'a "lisans halkası" eklendi.
+- **P-3 — derleme sonrası lisans kapısı** (`lisanslar.py paket`; `build.sh` ve `build.ps1`):
+  pakete giren her dosyanın sahibi PyInstaller TOC ve RECORD kayıtlarından bulunur; sistem
+  kütüphaneleri için Windows'ta MSYS2 pacman veritabanı, Linux'ta dpkg + Debian copyright.
+  Pakete `THIRD_PARTY_LICENSES/paket-icerigi.txt` (paketin gerçekten içerdiği sürümler) ve
+  `yerel-kutuphaneler/` (sistem kütüphanelerinin lisans/telif dosyaları, kaynak adresleriyle)
+  eklenir. Listede olmayan dağıtım, sahibi bilinmeyen dosya, yalnız GPL'li yerel kütüphane,
+  PyInstaller derleme kodu, süzülmemiş pyphen sözlüğü ya da eksik pystray kaynağı derlemeyi
+  DURDURUR.
+- **P-4 — kapının bulduğu üç GPL sızıntısı** (CI paketlerinde de vardı; sürüm yayımlanmadığı
+  için dağıtılmadı): `libreadline.so.8` (GPL-3.0; spec `excludes`), pywebview'ın PyInstaller
+  kancasının sürüklediği PyInstaller derleme kodu (GPL-2.0+) ve altgraph
+  (`collect_submodules('webview')` süzgeci), hook-pyphen'in bütün heceleme sözlükleri (bir kısmı
+  yalnız GPL; yalnız `en_US` kalır). pystray `module_collection_mode="py"` ile `.py` olarak
+  girer (CLAUDE.md §2-10 "kaynağı pakete girer"). Düzeltmeden sonra Qt'li Linux paketi kapıdan
+  geçti (39 Python dağıtımı, 85 Debian paketi); `.deb` 187,9 MB, `.tar.gz` 258,6 MB (TB27
+  ölçümü güncellendi). Qt'siz ve Qt'li tam Linux derlemesi, debian:11/12 kurulum provaları ve
+  yerel ISCC 6 ile Inno derlemesi geçti; Windows paketi yalnız CI'da doğrulanabilir.
+- **P-5 — Inno ve `.deb`.** `LicenseFile=` paket kökündeki UTF-8 BOM'lu `LICENSE.txt`'dir
+  (PolyForm Noncommercial); `LICENSE.txt` ya da `THIRD_PARTY_LICENSES` yoksa kurulum dosyası
+  derlenmez (`#error`; iki dal da yerel ISCC ile sınandı). `THIRD_PARTY_LICENSES\` `{app}`'e
+  kurulur. `.deb`: DEP-5 `/usr/share/doc/kutuphane-defteri/copyright` (`lisanslar.py
+  deb-copyright`) ve `THIRD_PARTY_LICENSES` bağlantısı; `kap-ici-test.sh` denetler (readline
+  yok dahil). F12 satırının Inno kalemleri (AppId değişmez, WebView2, iki mutex, kapatma olayı,
+  güncellemede kural korunur) F0/F5 kodunda ve testlerde doğrulandı; NOTLAR.md §3b "kod tarafı
+  tamam, sahada doğrulanacak"; yeni W21 (Windows lisans denetimi), W22 (pystray kaynak dosyadan),
+  W23 (lisans sayfası Türkçe harfler).
+- **P-6 — `veri_sizintisi` ×2.** *Sapma:* sözleşme Windows'ta tarama olmadığını varsaymıştı;
+  `build.ps1`'de F0'dan beri vardı ve CI'da F4-F11 boyunca yeşildi. Kapsam genişletildi: betik
+  arşivleri de okur (`.zip`, `.tar.gz`, `.deb`/ar — içerik açılmadan); Windows'ta paket dizini +
+  `.zip`, Linux'ta paket dizini + `.deb` + `.tar.gz` (eşit kapsam); yayın işi Release'e ve
+  indirme alanına gidecek son paketleri iki platform için aynı betikle bir kez daha denetler.
+  `setup.exe` içeriğinin sabit kaynak kümesinden geldiği testle bağlandı.
+- **P-7 — beta yolu (karar 3).** `VERSION` = `2026.10.0-beta.1`. `updates.offered()`: KARARLI
+  sürüm kullanan kuruluma ön sürüm önerilmez, indirme ucu da aynı kuralı uygular; beta kullanıcısı
+  sonraki betayı ve kararlı sürümü alır; GitHub'da hiç kararlı sürüm yokken `_latest_prerelease`
+  (F11) en yeni ön sürümü verir. `version_key` iki kopyası değişmedi. `test_surum_yolu.py`
+  `paketleme.yml`'in yayın adımlarını sahte `gh`/`npx` ile gerçekten koşturur: etiket ↔
+  `VERSION` kapısı, `.deb` sürümünde `~` (dosya adında `.`), "pre-release" işareti, R2 secret'ı
+  yokken uyarıyla atlama, varken sürümlü adlarla yükleme, dpkg sıralaması, AppId sabit. *Sapma:*
+  paketleme alanı dışında `apps/okul/services/updates.py` değişti (görev kararlı kullanıcıya beta
+  önerilmemesinin sınanmasını istiyordu). Taşınabilir Linux arşivinin `BENIOKU.txt`'sinde sözlük
+  düzeltmesi ("uygulama parolası" → "yönetici parolası") ve lisans bölümü.
+
+**F12 ekleri — S kolu: saha kabul protokolü, deneme verisi, belgeler (27.09.2026).**
+
+- **S-1 — `docs/saha-kabulu.md` (karar 2).** İşaretlenebilir (`- [ ]`) protokol; her adımda
+  Yap / Gör / Sorun olursa / Kaynak. Zincir: hazırlık (deneme verisi, sürüm indirme + SHA-256 +
+  pre-release denetimi) → temiz Windows 11'de kurulum (UAC'de BTR kimliği, lisans sayfası,
+  güvenlik duvarı kuralı, HKLM, zamanlanmış görev, WebView2, tanılama bayrakları) → sihirbaz →
+  tepsi → e-Okul → Excel katalog → etiket → üyelik → dolaşım → teslim → Ağ Kataloğu (ikinci
+  bilgisayar, tahta) → sayım → ayıklama → raporlar → E1-E20 yazıcı çizelgesi → yedek, USB,
+  temiz bilgisayarda geri yükleme → saklama tetiği → görev devri → güncelleme → kaldırma →
+  taşınabilir sürüm → Pardus kısaltılmış zinciri (§24) → gerçek kullanıma geçiş (§25). §26
+  eşleme tablosu: §14.1 F12 satırı, bütün "F<n> ekleri"ndeki F12'ye ertelenenler, §4.5 / §5.7 /
+  §5.10-15/16 / §4.2-3, NOTLAR W1-W23 ve çek-listesi 1-17, S1-S15, ilgili TB kalemleri, CLAUDE.md
+  §7'nin F0 elle doğrulananları. *Ek (sözleşmede yok):* belge kapısı
+  `backend/apps/kutuphane/tests/test_saha_kabulu_belgesi.py` — yeni bir W, çek-listesi ya da S
+  maddesi ya da bir "F<n> ekleri"ne eklenen F12 satırı protokolde karşılıksız kalamaz; eşlemedeki
+  her adım tanımlıdır; iki sözlük kararı ve herkese açık belgelerde IP ve "yerine geçer" iddiası
+  yokluğu kilitlenir.
+- **S-2 — deneme verisi üreticisi** `scripts/deneme_verisi.py` (yalnız standart kitaplık +
+  openpyxl, program modülü içe aktarmaz, tohumla belirlenimci): e-Okul OOG01001R020 yerleşiminde
+  öğrenci listesi (25 şube bloğu, 9/I ve 9/İ ayrı, dipnotlar), ikinci dönem listesi (ayrılan,
+  gelen, şube değiştiren), OOK01001R1 personel listesi (bir tanınmayan görev), ~2.000 eserlik
+  katalog Excel'i (şablon başlıkları; ISBN-13 / tireli / ISBN-10 / ISBN'siz, ciltli süreli yayın,
+  görsel-işitsel, danışma, ders kitabı, çok nüshalı, eski kayıt no'lu bölünmüş eserler, 11
+  bölüm), önizlemenin bütün kollarını gösteren "Sınama —" dosyası ve `OZET.txt`. T.C. kimlik
+  numarası, telefon ve e-posta üretilmez; çıktı `deneme-verisi/` `.gitignore`'dadır. Uyum
+  `test_deneme_verisi.py` ile (gerçek F1 ve F3 servisleri; tam boy `yavas`). *Sapmalar:* (a)
+  e-Okul listeleri `.xlsx` üretilir — `.XLS` yazmak yeni bağımlılık (xlwt) isterdi; program biçimi
+  içerikten tanır ve e-Okul yerleşimini iki biçimde aynı önişleyiciden geçirir; gerçek `.XLS` kabı
+  depodaki sentetik fixture ile ve protokol §25.4'te gerçek listeyle sınanır. (b) Dijital kaynak
+  Excel'le aktarılamaz (şablonun kaynak türlerinde E-kitap yok, F3) — üretici yazmaz, protokol
+  §7.5 elle ekletir.
+- **S-3 — iki sözlük çelişkisi çözüldü** (sözlük §1'e gerekçeli karar satırı): "kurucu" (ve
+  "yükleyici") kullanıcı metninde YASAK → "kurulum dosyası / kurulum penceresi / kurulum
+  seçenekleri" (Güncelleme ekranı zaten "kurulum dosyası" diyordu; kod yorumları ve `packaging/`
+  serbest); kılavuzun Tepsi bölümü düzeltildi, kılavuz testinin yasak listesine eklendi.
+  "DHCP rezervasyonu" yalnız BTR'ye dönük cümlede ve aynı satırda "sabit adres ayır…" ile;
+  kullanıcı metninde "sabit adres ayırma".
+- **S-4 — belgelerin son gözden geçirmesi:** `docs/kurulum.md` (beta durumu, lisans sayfası ve
+  dosyaları, ön sürüm güncelleme davranışı, önce etiket yolu, `SHA256SUMS-<sürüm>`, kaldırmada
+  görev / HKLM / ufw kuralları), `docs/ag-kurulumu.md`, `README.md` (kurum adı, unvan, kişi adı,
+  IP yok), masa kartı E19 (değişiklik gerekmedi). `docs/site-icerigi.md` (karar 1): kısa ve
+  uzun tanıtım ("okulun kütüphane işlerini yürüttüğü yerel araç"), özellik listesi, dürüst
+  gizlilik özeti, indirme ve doğrulama tablosu, beta metni, `kd-release.json` alanları, SSS.
+  NOTLAR.md §5 (W ve çek-listesi → protokol adımı).
+
+**F12 ekleri — bütünleştirme (27.09.2026).** Kod ve göç değişmedi; bir kapı adımı eklendi (BT-2).
+
+- **BT-1 — iki kolun bağlantıları.** Taşınabilir Linux arşivinin `BENIOKU.txt`'sindeki eski yedek
+  cümlesi ("her açılışta alınır … klasörü USB'ye kopyalayın") programın davranışına çevrildi
+  (her gün yedek, 14 günden eskiler silinir, USB için Ayarlar → Güvenlik → "Şifreli yedeği
+  indir"). Protokol §2.2, §24.1, §24.11 ve `docs/kurulum.md` §3.1, §4.1 lisans dosyalarının son
+  yerleşimine getirildi: Windows'ta `{app}\LICENSE.txt` ve `{app}\THIRD_PARTY_LICENSES\`
+  (`BENIOKU.txt`, `paket-icerigi.txt`, `yerel-kutuphaneler\`); Linux'ta
+  `/opt/kutuphane-defteri/{LICENSE.txt,THIRD_PARTY_LICENSES/}` ve
+  `/usr/share/doc/kutuphane-defteri/{copyright,THIRD_PARTY_LICENSES}`; taşınabilir arşivde
+  `uygulama/…`. README'nin lisans bölümü `THIRD_PARTY_LICENSES/BENIOKU.txt`'ye bağlandı. CLAUDE.md
+  §5 (yeni kapı adımı), §6 (ön sürüm kuralları), §7 (F12 durumu); §17 ve §18 güncellendi. W21-W23'ün
+  protokol eşlemesi (§26.3, NOTLAR §5) doğrulandı.
+- **BT-2 — `scripts/` kapıda.** `gates.sh`'e "scripts: ruff + mypy" adımı: deneme verisi
+  üreticisi ve ağ provasının istemcisi (`ag_katalogu_provasi.py`) hiçbir lint ve tip kapısından
+  geçmiyordu; ikisi de ilk koşuda temizdi.
+- **BT-3 — deneme verisi provası** (depo dışında, uydurma veriyle). Üretici Docker'da varsayılan
+  boyutla koşuldu (6 dosya). Boş bir veritabanında (kap içi geçici dizin) programın GERÇEK API'si
+  üzerinden: parola kurulumu, ders yılı, e-Okul öğrenci önizleme + uygulama, ikinci dönem
+  önizleme + uygulama, personel önizleme + uygulama, katalog önizleme (bölüm kararından önce ve
+  sonra) + uygulama, aynı dosyanın ikinci uygulamasının engeli, Türkçe arama çiftleri ve sorunlu
+  satırlar önizlemesi. **77 denetimin 77'si** `OZET.txt`'nin METNİNDEN okunan sayılarla aynı:
+  750 öğrenci / 25 şube (9/I ve 9/İ ayrı); ikinci dönem 8 yeni, 5 güncellenen, 12 havuza, 733
+  değişmeyen (etkin öğrenci 758 — kimse ayrılmadı, silinmedi); 60 personel (51 öğretmen, 9 diğer;
+  satır 15'te tanınmayan görev uyarısı); katalog 2.044 satır → 2.000 eser, 44 mevcut esere nüsha,
+  3.367 nüsha, 11 bölüm, 32 ders kitabı varsayılanı, 20 ciltli süreli yayın, 12 görsel-işitsel,
+  305 eski kayıt no'lu nüsha, önizleme = uygulama; arama "şiir"/"ŞİİR" 165, "ılık"/"ILIK" 34,
+  "ince"/"İNCE" 65, "ilik"/"İLİK" ve "ınce"/"INCE" 0; sorunlu dosyanın 18 satırı OZET'teki
+  sonuçla (mevcut, şüpheli, aktarılmadı, yazılamadı, uyarılı ve uyarısız yeni, sorulan bölüm
+  "Gezi Rafı"). Veritabanı kapla silindi; depoya veri girmedi.
+- **BT-4 — lisans dizini güncel.** `uret.sh`'in iki adımı Docker'da ağla yeniden koşuldu, çıktı
+  geçici dizine yazıldı: depodaki `THIRD_PARTY_LICENSES/` ile bayt bayt aynı (64 bileşen, 98
+  lisans dosyası; `diff -r` farksız).
+- **BT-5 — kapı.** Tam `bash scripts/gates.sh` iki kez yeşil (27.09.2026); ikincisi son ağaçta
+  baştan sona: depo sızıntısı (919 izlenen dosya) bulgusuz; backend `pytest` 4230 geçti, 3
+  atlandı (kapsam %95,59); masaüstü + paketleme 755 geçti, 2 atlandı; ruff, ruff format, mypy
+  (374 + 59 + 18 + 2 dosya — yeni `scripts/` adımı dahil); ön yüz typecheck, eslint, prettier,
+  vitest 125 dosya / 1376 test (kapsam: satır %95,62, dal %87,54). Kırmızı çıkmadı, kapı için
+  kod düzeltmesi gerekmedi. `KD_YAVAS=1` ile `test_deneme_verisi.py` 16/16 (tam boy uçtan uca
+  aktarım dahil). `makemigrations --check --dry-run`: "No changes detected". Genişletilmiş depo
+  sızıntısı taraması (`git ls-files --cached --others --exclude-standard`, son ağaçta: izlenen
+  919 + izlenmeyen 110 = 1.029 dosya) bulgusuz — kapının kendi adımı yalnız izlenen dosyaları görür;
+  bu dalın yeni dosyaları (`THIRD_PARTY_LICENSES/`, protokol, üretici, testler) commit'e dek
+  izlenmez.
+
+**F12 ekleri — düzeltme turu (28.09.2026).** Denetimin 32 bulgusu (iki çift aynı bulgu: 30
+ayrı kalem) yeniden doğrulandı; hepsi gerçekti, hiçbiri reddedilmedi, hiçbiri tasarım kararını
+değiştirmedi. Göç YOK, yeni Python bağımlılığı YOK, görevli izin listesi DEĞİŞMEDİ. Her kod
+düzeltmesi kilitleyen testle.
+
+- **D-1 — Qt'nin yalnız GPL'li modülleri Linux paketindeydi (yüksek; iki bulgu).** Doğrulama:
+  27.09.2026 Qt'li derlemesinde (`dist/paket-linux`) 22 kitaplık (Charts, Data Visualization,
+  Graphs, Quick 3D ×13, Quick Timeline, Virtual Keyboard, Wayland Compositor), QML modülleri,
+  `platforminputcontexts` ve `qmltooling` eklentileri ve `QtDataVisualization` bağlayıcısı;
+  lisans listesi PySide6_Addons'ı dağıtım düzeyinde "LGPL-3.0-only" diye bildiriyordu ve kapı
+  yeşildi. Liste Qt 6.8'in resmî lisans sayfasından (`doc.qt.io/qt-6.8/licensing.html`, 15
+  modül) alındı; Shader Tools ve Spatial Audio kitaplıkları LGPL'dir. Kök neden: PyInstaller'ın
+  PySide6 kancaları QtWebEngine'in Quick/Qml bağımlılığı üzerinden BÜTÜN QML modüllerini
+  toplar; kapı Qt'yi yalnız dağıtım etiketiyle görüyordu. Düzeltme: TEK kaynak
+  `lisanslar.py::QT_YALNIZ_GPL_MODULLER`; spec `qt_gpl_suz` ile ada göre ve DT_NEEDED
+  kapanışıyla ayıklar (stdlib ELF okuyucu; adında modül adı taşımayan Virtual Keyboard giriş
+  eklentisi ve Quick 3D profil eklentisi kapanışla yakalanır); `lisanslar.py paket` aynı kuralı
+  paketin diskteki hâlinde dosya düzeyinde sınar; `kap-ici-test.sh` kurulu pakette arar (liste
+  eşitliği testli). Qt'nin LGPL modülleri ve QML ağacının geri kalanı (19 MB) pakette kalır:
+  ağacın tamamını çıkarmak pencereyi saha kanıtı olmadan riske atardı (TB27). Yerel Qt'li
+  derleme yeniden koşuldu: 768 dosya ayıklandı, lisans denetimi uyarısız geçti (BT-1).
+  `BENIOKU.txt` ve `packaging/README.md` "Qt'nin tamamı LGPL / GPL'li kütüphane yok" demez.
+- **D-2 — Qt ile gelen üçüncü taraf bildirimleri (orta).** ICU 73.2 Linux paketinde ayrı
+  kitaplıktır (`libicu*.so.73`); lisans metni artık üretici tarafından ICU'nun `release-73-2`
+  etiketinden alınır (`ICU-73-LICENSE.txt`, elle bileşen, yalnız Linux). Qt kitaplıklarına
+  derlenmiş kod ve Qt WebEngine'deki Chromium için `Qt-6.8.3-ucuncu-taraf-NOT.txt` resmî bildirim
+  sayfalarını ve kaynak arşivini gösterir. Tam bildirim METNİNİN pakete girmesi KB-3'tedir.
+- **D-3 — Hakkında ekranı (orta; iki bulgu; LGPLv3 §4(c)).** "Üçüncü Taraf Bileşenler" kartı:
+  pystray (© 2016-2022 Moses Palmér) ve Qt 6 / PySide6 (© The Qt Company Ltd. ve katkıda
+  bulunanlar) LGPL-3.0 ile kullanılır; bütün bileşenlerin bildirimleri ve kaynak erişimi
+  `THIRD_PARTY_LICENSES\BENIOKU.txt`, `LGPL-3.0-metni.txt`, `GPL-3.0-metni.txt`. FE testiyle.
+- **D-4 — ön yüz çıktısı kapıda (orta).** `gates.sh` yeni adımı: `on_yuz_paketleri.mjs`
+  (ön yüz kabı) → `lisanslar.py npm-denetle` (ad + sürüm kümesi listedeki npm kayıtlarıyla
+  birebir); `PAKETLENMEYEN_NPM`'deki zod çalışma anına geçerse çıktıya girer ve kapı kırılır.
+- **D-5 — yerel kütüphanelerde GPL (orta).** MSYS2 `%LICENSE%` satırları SPDX olarak
+  değerlendirilir (eski önekisiz adlar eşlenir, birden çok satır temkinle AND); yalnız GPL
+  görünen paket `MSYS2_GPL_IZINLERI`'nde DLL düzeyinde gerekçeli izinle geçer (gcc-libs:
+  çalışma anı istisnası; gettext-runtime/gettext: libintl, libasprintf; libiconv: libiconv,
+  libcharset); ayrıştırılamayan ifade uyarıdır. Debian'da copyright dosyaları makine okunur
+  biçimde güvenilir olmadığı için kural bilinen yalnız-GPL kitaplıkların AD listesidir
+  (`YASAK_YEREL`: fftw3, gsl, poppler, ghostscript, jbig2dec, x264, x265, postproc, mad, faad,
+  cdio, dvdcss, xvidcore, mpeg2, pci, iw, parted eklendi; kısa adlar `lib` önekiyle). Windows'ta
+  ilk CI koşusunda doğrulanır (NOTLAR W25).
+- **D-6 — kapanış testi ekleri izlemiyordu (düşük).** (ad, ekler) çiftleri; `fonttools[woff]` →
+  brotli, zopfli artık gezilir (testli).
+- **D-7 — sürüm kayması (düşük).** `lisanslar.py kisitlar --platform …` listedeki sürümlerden pip
+  kısıt dosyası yazar; `build.sh` ve `build.ps1` `pip install -c` ile kurar (PowerShell 5.1'in
+  `>` yönlendirmesi UTF-16 yazacağı için dosyayı betik yazar). Yerel Qt'li derlemede sürüm
+  uyarısı kalmadı (fonttools 4.65.0). Windows: NOTLAR W24.
+- **D-8 — WebView2 SDK ve Android arşivi Linux paketindeydi (düşük).** spec
+  `_webview_platform_disi`: `webview/lib/` Linux'ta, `pywebview-android.jar` her platformda
+  süzülür; derleme denetimi bu dosyaları yersiz görürse durur; `kap-ici-test.sh` de arar.
+- **D-9 — DEP-5 (düşük).** Ayrı `Files:` paragrafları: `opt/kutuphane-defteri/kutuphane-defteri`
+  (PyInstaller önyükleyicisi GPL-2.0-or-later WITH Bootloader-exception + gömülü üçüncü taraf bayt
+  kodu) ve `opt/kutuphane-defteri/THIRD_PARTY_LICENSES/*` artık PolyForm'a bağlanmaz.
+- **D-10 — beta kanalı kararlı sürümden sonra (düşük).** P-7'nin sözü ("beta kullanıcısı sonraki
+  betayı ve kararlı sürümü alır") ilk kararlı sürümden sonra tutmuyordu. `latest_release(
+  prereleases=…)`: çalışan sürüm ön sürümse doğrudan sürüm listesi (son 10 yayın) okunur ve en
+  yüksek sürüm önerilir; kararlı kurulumda `releases/latest` (yoksa liste) ve `offered` kuralı
+  aynen (kararlıya ön sürüm önerilmez); iki kanal ayrı önbelleklenir. `_latest_prerelease` →
+  `_highest_listed_release`. `docs/kurulum.md` §3.2 buna göre düzeltildi. Kullanıcı kararı 3 ile
+  uyumludur; bilinen sınır (a) kapandı.
+- **D-11 — `test_surum_yolu.py` VERSION'ı sabite kilitliyordu (düşük).** Yalnız CalVer + ön sürüm
+  eki deseni; ilk beta `2026.10.0-beta.1` bu bölümde kayıtlıdır.
+- **D-12 — tanılama (orta).** `giris.py`: duman kipleri (`--pdf-duman`, `--bagimlilik-duman`)
+  günlük kurulmadan koşar ve penceresiz exe'de stderr `None`'dır — çıktı artık günlük klasöründe
+  `tanilama.log`'a da yazılır (her koşuda baştan; "Hedef PDF", eksik modül/harf, font ve
+  fontconfig tanısı, "Çıkış kodu"). `--pdf-duman` sonrasındaki bayraksız öğeler boşlukla
+  birleştirilir: PowerShell 5.1 `Start-Process -ArgumentList` boşluklu masa hesabı yolunu ikiye
+  bölüyor, yalancı 8 kodu veriyordu. Protokol §2.5 komutu tırnaklar ve tanı dosyasını gösterir.
+- **D-13 — protokol düzeltmeleri** (`docs/saha-kabulu.md`): §13.5 artık İPTAL eder (onay okutulmayan
+  bütün nüshaları kayıttan düşürüp §14.2 ve §15.2'yi — E17 süresi, TB36 — anlamsızlaştırıyordu);
+  onay yeni **§15.5**'te ayrı sayımla ve dökümlerden sonra. §10.6 ve §19.2 saat ön koşulları (BTR
+  kimliği, otomatik saat ve konuk saat eşitlemesi kapalı, geri alma; §19.2 anlık görüntüyle) ve
+  §21.1'de "saat doğru mu"; §21.1-21.2 `*.githubusercontent.com` sınaması. §24 Pardus 21'de
+  zorunlu (24.1-24.3, 24.5), 24.4'e üyelik ve kart, 24.6 etiket kaynağı, 24.10 indirilen yedek
+  `backups/`'a, 24.12 önce Çık + açıkken kurma gözlemi (`docs/kurulum.md` §4.1 bilinen sınır;
+  KB-4). Günlükte aranan metinler gerçek iletilerle ("Paket ortamı uyarısı:",
+  `kutuphane_defteri.tepsi`, "Zorunlu sütun(lar) bulunamadı"; NOTLAR W8 de). 0x2235 → `0x223d`.
+  §8.3 iki bölüm (OZET'e "Bölüm başına nüsha" satırı eklendi; varsayılan veride Sanat 29 +
+  Danışma 32), §10.2 ve §11.1 (20 nüsha) etiketli nüshalarla, §21.3 portu yeniden 8766'ya
+  çevirir. Gözlenemeyen ölçütler: §17.2 Güvenlik kartındaki son indirme cümlesi (Genel Bakış kartı
+  §10.6'da), §17.3'ün 14 gün silmesi "uzun süreli gözlem", §17.4 kronometre yöntemi ve "HDD
+  yoksa TB3 açık kalır", §12.4 yönetim ekranındaki aramayla karşılaştırma, §15.2 ciltsiz süreli
+  yayın yerine sınanabilir ölçüt (süreli yayınlar yalnız ciltli nüshalarıyla, OZET sayısı kadar).
+  KVKK: protokol GitHub'da işaretlenmez (doldurulmuş protokol okulda kalır), §0.2'de ad değil
+  görev; §3.3 ilçe ve müdür adı uydurma; §25.4 il/ilçe/okul yer tutucuyla.
+- **D-14 — eşleme kapısı madde düzeyinde** (`test_saha_kabulu_belgesi.py`): §14.1'de F12 geçen
+  her "F<n> ekleri" MADDESİ (numara, kod ya da "başlığı") §26.2'de aynı kimlikle; "F12" ya da
+  "saha" geçen her TB kalemi §26.6'da; §14.1 F12 satırının kapsam ve kapı kalemleri §26.1'de.
+  S-1'in iddiası artık doğrudur (faz düzeyi yetmiyordu).
+- **D-15 — `veri_sizintisi` (düşük).** `YASAK_UZANTILAR` = `depo_sizintisi.RISKLI_UZANTILAR`
+  (.csv, .db, .xlsm eklendi; eşitlik testli). Yerel Linux paketinde bu uzantıda dosya yok.
+- **D-16 — metin düzeltmeleri.** "yönetici parolası olmadan" → "sistem yöneticisi (sudo) yetkisi
+  gerekmez" (site, kurulum ×2; sözlük Parola satırına not). Özet dosyası: siteden
+  `SHA256SUMS-<sürüm>.txt`, Linux komutu `sha256sum -c … --ignore-missing` (site, README,
+  protokol 1.3). Site gizlilik özeti: program kişi kayıtlarını kendiliğinden silmez, yedekler
+  14 gün / son beş güncellemeyle döner. `docs/kurulum.md` §6.3 ve program içindeki Saklama
+  metinleri değişmedi: Saklama bağlamında kayıtlardan söz ederler, kurulum.md yedeklerin
+  kendiliğinden silinmesini hemen ardından sayar ve ifade F11 metin kilidindedir. `BENIOKU.txt`'de sayısal olmayan sürüm parantezle
+  ("… önyükleyicisi (sürüm: derlemede indirilen güncel sürüm)"). Deneme verisi ve test
+  yorumlarındaki "kamu malı" iddiası düzeltildi (Güntekin, Safa, Adıvar, Karaosmanoğlu,
+  Tanpınar FSEK md. 27'nin 70 yıllık süresi içinde; künye ne kişisel veri ne telif konusudur).
+  Güncelleme denetiminde sertifika doğrulama hatası artık "okul ağında engellenmiş olabilir"
+  demez: `SERTIFIKA_MESAJI` tarih/saat ve ağın güvenli bağlantı denetimini söyler (doğrulama
+  gevşetilmez).
+- **BT-1 — yerel Qt'li Linux derlemesi (28.09.2026, düzeltmelerden sonra).** `uret.sh` ağla
+  yeniden koşuldu (66 bileşen, 100 lisans dosyası: ICU ve Qt notu eklendi, sürümler değişmedi).
+  Qt'li `docker-build.sh`: kısıt dosyasıyla kurulum, 768 dosya ayıklandı, lisans denetimi
+  uyarısız (39 Python dağıtımı, 85 Debian paketi; sürüm farkı uyarısı yok), veri sızıntısı
+  denetimi, `--bagimlilik-duman`, `--pdf-duman` (tanı çıktısında "Hedef PDF" ve "Çıkış kodu")
+  ve `--autotest` geçti; `.deb` 180,1 MB (187,9'dan), `.tar.gz` 247,4 MB (258,6'dan) — TB27.
+  Qt'li `.deb` temiz debian:11 kabında kurulum provasından geçti (`test-kurulum.sh 11`; yeni
+  Qt-GPL ve pywebview `find` denetimleri dahil; ifadenin ihlali yakaladığı sahte ağaçla ayrıca
+  sınandı).
+
+**F12 ekleri — açık kalanlar (27.09.2026; düzeltme turuyla güncellendi 28.09.2026; dört karar
+28.09.2026'da verildi — karar turu aşağıda).**
+
+- **KB-1 — KULLANICI KARARI (28.09.2026): beta için (a) yazılı teklif; kararlı sürümden önce
+  (b) Windows'un MSYS2 kaynak arşivleri Release'e** — LGPL kütüphanelerin tam kaynağına erişim
+  (TB28'in kalanı). pystray'in kaynağı pakettedir. Qt 6.8.3 / PySide6 (yalnız Linux) tam kaynak
+  adresleri (download.qt.io) `BENIOKU.txt`'de; paketle gelen LGPL-2.1'li sistem kütüphanelerinin
+  kaynak paketi adresleri derlemede `yerel-kutuphaneler/`'e yazılır. LGPL-2.1 §6 kaynağın
+  dağıtımla aynı yerden sunulmasını ya da en az üç yıl geçerli yazılı teklif ister. Seçenekler:
+  (a) yazılı teklif (`BENIOKU.txt`'ye üç yıllık teklif cümlesi + iletişim adresi; maliyetsiz,
+  üreticinin metnine eklenir), (b) kaynak arşivlerinin Release'e ve `indir.okulapp.org`'a ayrı
+  "kaynak" paketi olarak konması (Windows MSYS2 kaynakları onlarca MB; Qt kaynağı ~1 GB — ayna),
+  (c) ikisi. Öneri beta için (a), kararlı sürümden önce Windows MSYS2 kaynakları için (b) idi;
+  karar öneriyle aynıdır. İletişim yolu GitHub deposunun Issues sayfasıdır (e-posta, kişi adı,
+  unvan, kurum adı yazılmaz); (b)'nin kaynak paketi Release'e konur (kararda `indir.okulapp.org`
+  anılmadı). Uygulama: KT-1; (b) KT-5 listesinde.
+- **KB-2 — KULLANICI KARARI (28.09.2026): Pardus'un taşınabilir arşivinde Ağ Kataloğu
+  AÇILAMAZ** (F5 ekleri 27'den süren karar) — Windows'un taşınabilir paketiyle aynı davranış;
+  katalog yalnız kurulu pakette (`.deb`) açılır. Protokol §24.11 artık gözlem değil
+  doğrulamadır. Uygulama: KT-2.
+- **KB-3 — KULLANICI KARARI (28.09.2026): beta için (a) adresle kalır; kararlı sürümden önce
+  (b)** (düzeltme turu D-2) — Qt ve Chromium üçüncü taraf bildirimlerinin tam METNİ Linux
+  paketine girsin mi. Bugün ICU'nun lisans metni pakette, öbürleri (Qt kitaplıklarına derlenmiş
+  kod, Qt WebEngine'deki Chromium bileşenleri) resmî sayfaların ve kaynak arşivinin adresiyle
+  verilir. Seçenekler: (a) adresle kalsın (bugünkü hâl); (b) üretici Qt 6.8.3 kaynak
+  arşivindeki `qt_attribution.json` dosyalarından pakete giren modüllerin bildirim metnini
+  üretsin (qtbase + qtwebengine kaynağı indirilir, çıktı tahminen birkaç MB; yalnız Linux
+  paketine konur). Öneri beta için (a), kararlı sürümden önce (b) idi — BSD türü lisanslar
+  bildirimin dağıtımla "birlikte" verilmesini ister; karar öneriyle aynıdır. Uygulama: KT-3;
+  (b) KT-5 listesinde.
+- **KB-4 — KULLANICI KARARI (28.09.2026): beta için (a) belge yeterli; (b) KOŞULLU — saha
+  kabulünde (§24.12) sorun görülürse kararlı sürümden önce** (düzeltme turu D-13) — Pardus
+  paketinde açık programın kapatılması. Windows kurulumu açık programa kapanma isteği gönderir
+  (§4.2); `.deb`'in `prerm`'i hiçbir şey yapmaz — program açıkken kurulum ya da kaldırma
+  dosyaları çalışan programın altında değiştirir. Bugün belgelenmiştir (`docs/kurulum.md` §4.1
+  "önce Çık", protokol §24.12 gözlem). Seçenekler: (a) belge yeterli; (b) `prerm` çalışan
+  kopyaya tek kopya kanalı üzerinden düzenli kapanma isteği gönderip bekler (kök hakla koşar,
+  masa hesabının oturumuna ulaşmak ek iş). Öneri beta için (a); sahada (§24.12) sorun görülürse
+  kararlı sürümden önce (b) idi; karar öneriyle aynıdır. Uygulama: KT-4; (b) KT-5 listesinde
+  (`docs/teknik-borc.md` TB40).
+- **Bilinen sınırlar.** (a) *Beta kanalı:* KAPANDI (düzeltme turu D-10) — beta kullanıcısı ilk
+  kararlı sürümden sonra da sonraki betayı alır; kararlı kullanıcıya beta önerilmemesi sahada
+  ancak kararlı sürümden sonra gözlenir. (b) *Geçişli bağımlılıklar:* KAPANDI (D-7) — paket
+  ortamı listedeki sürümlere kısıtlıdır; kısıt dosyası liste `uret.sh` ile tazelenince
+  kendiliğinden değişir. (c) Qt WebEngine'in Chromium bildirimleri ve Qt'ye derlenmiş öbür
+  kodun bildirimleri pakete metin olarak konmadı, adresle verilir (ICU'nunki pakette) — KB-3
+  (a); kararlı sürümden önce (b), KT-5.
+  (d) setuptools
+  pakete cffi'nin çalışma anında kullanılmayan yardımcısı üzerinden girer (MIT, listede);
+  dışlanması çalışma anı riski taşıdığı için yapılmadı. (e) Windows'ta yerelde doğrulanamayanlar
+  (W21-W25: MSYS2 pacman veritabanı, lisans dosyaları ve SPDX değerlendirmesi CI koşucusunda,
+  pystray'in `py` kipi, BOM'lu lisans sayfası, pip kısıt dosyası) PR'ın ilk CI Windows
+  koşusunda ve sahada görülür. (g) Qt'li Linux paketinin penceresi (Qt WebEngine) düzeltme
+  turundaki ayıklamadan sonra yalnız Pardus'ta gerçek masaüstünde görülür (protokol §24.3,
+  24.5 — Pardus 21 zorunlu). (f)
+  `okulapp.org/kutuphane-defteri` site adımı yayına girene dek 404 verir (protokol §21.1 bunu
+  beklenen diye yazar); site görseli geçici logodan türer (TB4).
+- **Sıradaki (ana oturum, kullanıcı onayıyla):** PR ve CI (Windows lisans kapısının ilk koşusu),
+  beta etiketi `v2026.10.0-beta.1` (Release + R2), okulapp.org site adımı (ayrı depo), saha
+  kabulü (kullanıcı, `docs/saha-kabulu.md`), kararlı sürümden önce yapılacaklar (karar turu
+  KT-5), kararlı sürüm.
+
+**F12 ekleri — karar turu (28.09.2026).** Kullanıcı açık kalan dört kararı (KB-1…KB-4) verdi;
+dördü de önerilen seçenektir. Göç YOK, yeni Python ya da npm bağımlılığı YOK, görevli izin
+listesi DEĞİŞMEDİ.
+
+- **KT-1 — KB-1 (a), KULLANICI KARARI: beta için LGPL kaynağına yazılı teklif.** Teklif
+  üreticinin metnidir (`packaging/lisanslar/lisanslar.py::_yazili_teklif`), `BENIOKU.txt`'de
+  "LGPL BİLEŞENLERİNİN KAYNAK KODU İÇİN YAZILI TEKLİF" başlığıyla LGPL bölümünün ardından
+  durur: programın bu dizinle dağıtılan bir sürümünü edinmiş HERKESE, o sürümün paketine giren
+  LGPL bileşenlerin tam ve karşılık gelen kaynağı (LGPL-2.1 madde 6(c); LGPL-3.0 bileşenleri
+  fiziksel taşıyıcıyla dağıtılırsa GPL-3.0 madde 6(b) — **düzeltme turu DT-7 (29.09.2026):**
+  ilk metin LGPL-3.0 için yalnız 6(b)'yi anıyordu; 6(b) fiziksel ürünle dağıtımı kapsar,
+  program ağdan dağıtıldığı için LGPL-3.0 bileşenlerinde 6(d) geçerlidir: kaynağa aynı
+  yerden ya da nesne kodunun yanındaki açık yönlendirmeyle erişim; teklif metni bunu söyler
+  ve Release notu kaynağa yönlendirir). Kapsam `bilesenler.json`'dan türer — bugün pystray (Windows),
+  PySide6, PySide6-Addons, PySide6-Essentials, shiboken6 ve PySide6 tekerleklerinin taşıdığı Qt
+  kitaplıkları (Linux) — ve paketle gelen LGPL'li sistem kütüphaneleri (`paket-icerigi.txt`,
+  `yerel-kutuphaneler/`); pakete yeni bir LGPL bileşen girerse teklife kendiliğinden girer.
+  Nasıl istenir: GitHub deposunun Issues sayfası (kayıtta sürüm, platform, bileşen; "kayıtlar
+  herkese açıktır: kişisel veri ve okul bilgisi yazmayın"). Kaynak ücretsizdir (ağ sunucusu, ör.
+  Release); fiziksel taşıyıcıda ücret gönderim maliyetini aşmaz. Süre: her sürüm, beta dahil,
+  yayım tarihinden EN AZ ÜÇ YIL ve o sürüm için destek sürdükçe. **E-posta, kişi adı, unvan ve
+  kurum adı yazılmaz**; depo adresi tek sabittir (`DEPO_ADRESI`) ve güncelleme denetiminin
+  varsayılan deposuyla (`updates.py::GITHUB_REPOSITORY`) aynıdır — `.deb` `copyright`'ın
+  `Upstream-Contact`'ı da aynı sabitten gelir ve teklife işaret eder. Kapı testleri
+  (`test_lisans_kapisi.py`, üç yeni): depodaki `BENIOKU.txt` üreticinin `bilesenler.json`'dan
+  ürettiği metinle BİREBİR (elle düzeltme ya da `uret.sh` koşulmadan değişen üretici metni
+  kapıyı kırar); teklifin içeriği (süre, dayanak, ücret, adres, her LGPL bileşen sürümüyle) ve
+  e-posta, telif sahibinin adı, unvan ve kurum sözcüklerinin yokluğu; depo adresinin güncelleme
+  deposu ve `Upstream-Contact` ile eşitliği. `uret.sh` Docker'da ağla yeniden koşuldu (66
+  bileşen, 100 lisans dosyası); öncekiyle farkı YALNIZ `BENIOKU.txt`'deki teklif bölümüdür
+  (öbür 101 dosya bayt bayt aynı). Belgeler: `docs/kurulum.md` (§3.1 ve §4.1'deki lisans
+  cümlesi teklife işaret eder), `packaging/README.md`, CLAUDE.md §2-10 (lisans halkası),
+  protokol §2.2 ve §24.1. *Bilinen sınır:* depo adresi GitHub hesap adını taşır — kararın
+  seçtiği iletişim yolu budur; program (güncelleme denetimi) ve `.github/ISSUE_TEMPLATE` aynı
+  adresi zaten kullanır.
+- **KT-2 — KB-2, KULLANICI KARARI: Pardus'un taşınabilir arşivinde Ağ Kataloğu açılamaz**
+  (Windows'un taşınabilir sürümüyle aynı; yalnız `.deb`). §5.2 ve F5 ekleri 27 karara göre
+  güncellendi; CLAUDE.md §2-1 değişmezlerine eklendi. Belgeler iki platforma genişletildi:
+  `docs/kurulum.md` §3.3, §4.2, §8.1, §8.5; `docs/ag-kurulumu.md` §3 ve §9; kılavuzun Ağ
+  Kataloğu bölümü (FE testi); sözlük (§1 "Kurulumsuz paketler" satırı); protokol §24.11 artık
+  doğrulamadır (§26.2, §26.7). Kodun kendisi (taşınabilir arşivi tanıma ve açmayı reddetme,
+  ekrandaki gerekçe) aynı turun kod kolundadır; belgeler genel ifadeyle "taşınabilir sürümde
+  Ağ Kataloğu sunulmaz; katalog için program kurulur" der, ekran ve ileti metinleri sözlük
+  §4.9'dadır (düzeltme turu).
+  **Ölçüt ve kapı (kod kolunun kaydı; kasıtlı kararlar — kusur sanılmasın):** tespit
+  `desktop/dagitim.py`: çalışan program dosyası (`sys.executable`) dpkg'nin
+  `kutuphane-defteri` listesindeki (`/var/lib/dpkg/info/kutuphane-defteri.list`, çok
+  mimarili `kutuphane-defteri:<mimari>.list` de) bir dosyayla AYNI DOSYA değilse
+  (`os.path.samefile`: `/usr/bin` bağlantısı ve bağlantılı `/opt` da tutar) taşınabilir
+  arşivdir. **Yol öneki** (arşiv `sudo` ile `/opt`'a açılabilir), **ufw/firewalld tanımı**
+  (sistem genelidir; `.deb` kuruluyken ev dizinindeki kopya da kurulu sayılırdı) ve **dosya
+  sahibi** (sudo ile açılan arşiv de köke aittir) ölçüt DEĞİLDİR. Liste okunamazsa `.deb`'in
+  sabit program yolu karşılaştırılır (kurulu paket okuma aksaklığıyla taşınabilir sayılmasın).
+  Paketsiz çalışma (testler, geliştirme, ağ provası) ve `--autotest` kapıdan etkilenmez.
+  Kapı `desktop/katalog_kontrol.py`'dedir (T16): `ac()` ayarı YAZMAZ; açık kalmış ayarda
+  katalog kalkmaz, durum "açılamadı"dır, ağ ve güvenlik duvarı okunmaz, kendiliğinden
+  yeniden denenmez, günlük IP denetimi "afişi yeniden basın" demez; tepsi "aç"ı sunmaz,
+  "kapat" serbesttir; Ağ Doktoru Linux komutu vermez; ayar ucu (PUT) kapalı ayarı açığa
+  çevirmez (400, alan `acik`). Düzeltme turunun eklediği: belge uçları 409, `.deb` de
+  kuruluysa ileti `./kaldir.sh` yolunu söyler (DT-1), derlemede `--dagitim-duman` (DT-6).
+  Windows'ta bu katmanda tespit YOKTUR (`PAKET`).
+  *Bilinen fark:* Windows'ta ayrımın tek dayanağı güvenlik duvarı denetiminin 2. maddesidir —
+  Ağ Doktoru'ndaki "Kuralı ekle/güncelle" UAC onayıyla kuralı taşınabilir programın kendi
+  yoluna yazarsa beş madde tutar ve katalog açılır; kural aynı adı taşıdığı için
+  (`Kutuphane Defteri Katalog`, Inno ile aynı) aynı bilgisayardaki kurulu programın kuralının
+  yerini alır ve kurulu programın katalogu 2. maddeden düşer. Pardus'ta ise taşınabilir
+  arşivde katalog hiç açılmaz. Kararın "Windows'la aynı davranış" ifadesi varsayılan
+  kullanımda doğrudur. **Düzeltme turu DT-3 (29.09.2026):** ilk kayıttaki "belgeler bu yolu
+  önermez" gerekçesi eksikti — yolu belge değil programın kendi ekranı önerir (1. maddenin
+  iletisi düğmeyi gösterir, düğme Windows'ta koşulsuz görünür). Belgeler artık gerçek
+  davranışı yazar ("varsayılan olarak açılmaz; kural taşınabilir sürüme yazılırsa açılır ve
+  kurulu programın kuralının yerini alır; önerilmez"). Windows'ta kesin kapı AÇIK KULLANICI
+  KARARIDIR (DT-3).
+- **KT-3 — KB-3 (a), KULLANICI KARARI:** beta'da Qt ve Chromium bildirimleri adresle kalır
+  (`Qt-6.8.3-ucuncu-taraf-NOT.txt`, bugünkü hâl); kod değişmedi. (b) KT-5'te.
+- **KT-4 — KB-4 (a), KULLANICI KARARI:** beta için belge yeterli (`docs/kurulum.md` §4.1 "önce
+  Çık"); kod değişmedi. Kılavuzun Güncelleme bölümü Pardus için de "kurmadan önce Çık"
+  der (önceden yalnız Windows için; FE testi). Protokol §24.12'deki "program açıkken yeniden
+  kurma" gözlemi artık isteğe bağlı değildir: (b)'nin koşuludur. (b) KT-5'te ve
+  `docs/teknik-borc.md` TB40'ta (yeni kalem; protokol §26.6'da eşlendi).
+- **KT-5 — KARARLI SÜRÜMDEN ÖNCE YAPILACAKLAR** (bu turda YAPILMADI; kararlı sürüm etiketi
+  bunlar kapanmadan atılmaz; 1-3 aynı: `docs/teknik-borc.md` TB28 kalanı ve TB40; 1-4 aynı:
+  CLAUDE.md §7):
+  1. **KB-1 (b) — Windows'un LGPL sistem kütüphanelerinin kaynak arşivleri Release'e.** Windows
+     paketindeki LGPL lisanslı MSYS2 kütüphanelerinin (glib, pango, fribidi, libthai, libdatrie,
+     libiconv, libintl …) kaynak arşivleri, derlemede `yerel-kutuphaneler/`'e yazılan
+     `repo.msys2.org/mingw/sources/…src.tar.zst` adreslerinden alınıp Release'e ayrı bir
+     "kaynak" paketi olarak konur (yayın işi `paketleme.yml`). Kapı: `paket-icerigi.txt`'deki
+     her LGPL MSYS2 paketinin kaynağı arşivde; `BENIOKU.txt`'deki teklif metni kaynağın
+     Release'te de bulunduğunu söyler (üretici, `uret.sh`).
+  2. **KB-3 (b) — Qt ve Chromium bildirimlerinin tam metni.** Üretici Qt 6.8.3 kaynak
+     arşivindeki (qtbase + qtwebengine) `qt_attribution.json` dosyalarından pakete giren
+     modüllerin bildirim METNİNİ üretir; yalnız Linux paketine girer (tahminen birkaç MB);
+     `Qt-6.8.3-ucuncu-taraf-NOT.txt` ona işaret eder; kapı testi.
+  3. **KB-4 (b) — KOŞULLU: `.deb` `prerm` açık programı düzenli kapatır.** Yalnız saha
+     kabulünde protokol §24.12'nin gözleminde (program açıkken yeniden kurma) sorun görülürse:
+     `prerm` çalışan kopyaya tek kopya kanalı üzerinden kapanma isteği gönderip bekler (kök
+     hakla koşar; masa hesabının oturumuna ulaşmak ek iş). Sorun görülmezse TB40 kabul edilmiş
+     kalan risk olarak kapanır.
+  4. **Saha kabulünde çıkacaklar.** Protokol §27 bulgu kaydındaki engelleyici ve önemli
+     bulgular kararlı sürümden önce kapanır ya da gerekçeyle ertelenir (protokol sonucu en az
+     "Koşullu kabul"); PR'ın ilk CI Windows koşusunda görülenler (NOTLAR W21-W25).
+  5. **DT-3 (a) — Windows'un taşınabilir sürümünde kesin kapı** (KULLANICI KARARI 29.09.2026;
+     aşağıda DT-3, `docs/teknik-borc.md` TB41). `desktop/dagitim.py`'ye Windows ölçütü: program
+     klasöründe Inno kaldırıcısı (`unins000.exe`) VAR ve HKLM
+     `…\Uninstall\{6EA9384D-3BC5-4D2F-9025-ADB60E01897C}_is1` `InstallLocation` program
+     klasörüne eşit → kurulu; değilse taşınabilir. Taşınabilirde "Kuralı ekle/güncelle" ve
+     güvenlik duvarı 1. maddesinin önerisi kalkar, `KatalogKontrol` Linux'taki gibi reddeder.
+     Saha kabulünde gerçek kurulumla iki yönde sınanır (kurulu → açılır; zip → açılmaz).
+
+**F12 ekleri — karar turunun doğrulama ve düzeltme turu (29.09.2026).** Karar turunun iki
+kolu (A: KB-2 kodu, B: KB-1 teklifi ve belgeler) denetlendi, denetimin 13 bulgusu kaynağında
+yeniden doğrulandı; 13'ü de gerçek çıktı (3 ile 8; 5, 10 ile 11 aynı konunun yüzleridir).
+Göç YOK, yeni Python ya da npm bağımlılığı
+YOK, görevli izin listesi DEĞİŞMEDİ, yeni uç yok (dört belge ucuna kapı eklendi).
+
+- **DT-1 — `.deb`'e geçişte döngü.** `kur.sh` menü kaydını `~/.local/share/applications/`'a,
+  uçbirim bağlantısını `~/.local/bin/`'e yazar; ikisi `.deb`'inkiyle aynı adı taşır ve XDG ile
+  PATH önceliğinde onu gölgeler. `.deb` sonradan kurulup `./kaldir.sh` koşulmazsa menü
+  taşınabilir sürümü açmayı sürdürür, ileti ise "`.deb` ile kurun" demeyi. Düzeltme:
+  `dagitim.deb_paketi_kurulu()` (listede program adı geçen ve diskte duran dosya; liste
+  okunamazsa sabit yol) — taşınabilir sürüm açıkken `.deb` de kuruluysa son hata ve bant
+  "programdan çıkın, `./kaldir.sh` ile kaldırın, menüden açın" der (`durum()["deb_kurulu"]`);
+  genel ileti ve bant `.deb`'den önce `./kaldir.sh`'i söyler. Belgeler: `docs/kurulum.md` §4.2,
+  `docs/ag-kurulumu.md` §3, kılavuz, arşivin `BENIOKU.txt`'si, sözlük §4.9. Testler:
+  `test_dagitim.py`, `test_katalog_kontrol.py`, FE bant testleri.
+- **DT-2 — Ağ Hizmeti Bilgi Notu yarım cümle.** Taşınabilir denetimde komut boş, araç dolu:
+  şablon "BTR şu komutu çalıştırır:" deyip boş kalıyordu. Şablon `linux.tasinabilir` için
+  "katalog bu bilgisayarda açılmaz; güvenlik duvarı kuralı gerekmez" der, komut cümlesi yalnız
+  komut varken basılır (kurulu pakette komut boşsa da). Ayrıca DT-4'ün kapısı notu hiç
+  üretmez. Testler: `test_ag_belgeleri.py` (iki yeni).
+- **DT-3 — Windows'un taşınabilir sürümü (bulgu 3 ve 8).** Kararın "Windows'la aynı" öncülü
+  yalnız varsayılan kullanımda doğru; programın kendi 1. madde iletisi "Kuralı
+  ekle/güncelle"yi önerir, düğme kuralı taşınabilir exe'ye yazar ve aynı adlı kurulu program
+  kuralını ezer. Kod DEĞİŞMEDİ (Windows davranışı kullanıcı kararı ister); belgeler gerçek
+  davranışa çekildi: sözlük §1 "Kurulumsuz paketler", `docs/kurulum.md` §3.3, §4.2,
+  `docs/ag-kurulumu.md` §9, kılavuz (FE testi), site indirme tablosu, protokol 23.1 ("Kuralı
+  ekle/güncelle"yi kullanmayın) ve §26.7, KT-2 gerekçesi. Seçenekler: (a)
+  Windows'a da kesin kapı — `dagitim.py`'ye Windows ölçütü (programın yanında Inno kaldırıcısı
+  `unins000.exe` VAR ve HKLM `…\Uninstall\{6EA9384D-3BC5-4D2F-9025-ADB60E01897C}_is1`
+  `InstallLocation` program klasörüne eşit → kurulu), taşınabilirde "Kuralı ekle/güncelle" ve
+  1. maddenin önerisi kalkar; (b) fark kabul edilir, bugünkü dürüst metinler kalır.
+  **KULLANICI KARARI (29.09.2026): beta bugünkü davranışla çıkar, kesin kapı (a) kararlı
+  sürümden önce yapılır** — KT-5 madde 5, `docs/teknik-borc.md` TB41. Gerekçe: Windows ölçütü
+  yalnız gerçek kurulumla (Inno kaldırıcısı ve kayıt defteri) sınanabilir; yanlış bir tespit
+  kurulu programda da katalogu kapatırdı. Beta'da varsayılan kapalıdır ve belgeler
+  "Kuralı ekle/güncelle"yi taşınabilir sürümde kullanmamayı söyler.
+- **DT-4 — Ağ Doktoru taşınabilirde port sınama komutu ve katalog belgeleri sunuyordu.**
+  Afiş `son_afis_ip`'i yazıyor, PYS metni tahta ağından erişim istiyordu. Düzeltme: Dinleyici
+  Sınaması ve Belgeler kartları `sunulur: false` iken yalnız gerekçe yazar; `poster/`,
+  `info-note/`, `bookmarks/`, `pys-text/` 409 `katalog_sunulmaz`
+  (`ag_doktoru.belgeler_sunulur_mu`; karar denetçinin, denetçi yoksa kapı yok). Testler:
+  `test_ag_doktoru.py` (iki yeni), `AgDoktoruPage.test.tsx`.
+- **DT-5 — Sözlük, kılavuz ve arşivin notu (bulgu 5, 9, 10).** Sözlük: tepsi satırı "Ağ
+  Kataloğu: taşınabilir sürümde sunulmaz", §4.9'a bantlar, kart metinleri, iki son hata ve ayar
+  ucunun reddi birebir (rozet listesi değişmedi). Kılavuz: "Açılamadı" maddesi taşınabilir
+  arşivde açık kalmış ayarı, Ağ Doktoru kartlarının taşınabilirdeki hâli. `packaging/linux/
+  BENIOKU.txt`: katalog bu arşivde yok, `.deb`'den önce `./kaldir.sh`, yazılı teklif.
+- **DT-6 — Paketli ikilide dağıtım tespiti otomatik kapıda sınanmıyordu.** Yeni teşhis kipi
+  `--dagitim-duman [tür]` (`giris.py`; çıkış kodu 11 = `EXIT_DISTRIBUTION_SMOKE_FAILED`,
+  `desktop/errors.py` ve `docs/kurulum.md` §11 ile ikiz): `build.sh` taşınabilir ağaçtaki
+  ikilide `tasinabilir`, `kap-ici-test.sh` gerçek `dpkg -i`'den sonra `/usr/bin` bağlantısıyla
+  ve `/opt` yoluyla `kurulu` bekler. Protokol 24.2 ve 24.11 de koşar. Sözleşme testi
+  `test_spec_kapsami.py`. Kapının ilk gerçek koşusu PR'ın CI Linux işindedir.
+- **DT-7 — Teklifteki madde atfı.** KT-1'de. Üretici metni (`_yazili_teklif`), kapı testi
+  (`test_lisans_kapisi.py`: 6(b) fiziksel taşıyıcıda, 6(d) ağdan dağıtımda, "yalnız 6(b)"
+  ifadesi yok), `uret.sh` yeniden koşuldu (öncekiyle farkı YALNIZ `BENIOKU.txt`'nin iki
+  paragrafı); Release notu LGPL kaynağına yönlendirir (`paketleme.yml`; Qt/PySide6 sürümü
+  lisans listesiyle `test_surum_yolu.py`'de eşitlenir); site indirme bölümüne aynı
+  yönlendirme. Bu bir lisans metni okumasıdır, hukuki görüş değildir. *Not (doğrulanacak):*
+  LGPL-2.1'in md. 4'ü, kütüphanenin nesne kodu dağıtılırken kaynağın birlikte ya da aynı
+  yerden verilmesini ister (yazılı teklif md. 6(c)'de, kütüphaneyi kullanan eser için
+  geçer). LGPL-2.1 metni bu depoda yoktur (derlemede `yerel-kutuphaneler/`'e girer); madde
+  KB-1 (b) işinde metinden doğrulanır — MSYS2 kaynak arşivlerinin Release'e konması Windows
+  için bunu da karşılar, kararlı öncesi listede kalır.
+- **DT-8 — Protokol 24.11** gerçek davranışa ve protokolün sırasına göre yeniden yazıldı:
+  önce `.deb`'den Çık (ortak veri klasörü ve tek kopya kilidi), tam yolla açma, "aç"
+  düğmesinin yokluğu hata değildir, 24.7'den açık kalan ayarda "Açılamadı" beklenir, sonunda
+  `./kaldir.sh` ve menüden açılan `.deb` programının katalogu açması (A kolunun istediği saha
+  kanıtı). 24.2'ye `--dagitim-duman kurulu`.
+- **DT-9 — Ana referans ve CLAUDE.md** KB-2'nin nasıl uygulandığını kaydeder: §5.2, KT-2
+  (ölçüt, seçilmeyen ölçütler, kapının yerleri), CLAUDE.md §2-1.
+- **DT-10 — Kararlı öncesi liste** üç yerde eşitlendi: CLAUDE.md §7 (4) PR'ın ilk CI Windows
+  koşusunu da anar; KT-5 başlığı hangi yerin hangi maddeleri taşıdığını söyler.
+
 ### 14.2 Saha hazırlık hattı (kod dışı — F0 ile başlar)
 
 | # | İş | Kim |
@@ -4598,6 +5140,11 @@ sözlük çelişkisini kapattı. Göç: yayımlanmamış `0010_saklama_ve_belge_
 
 ## 17. okulapp.org yayını (ortak alan — bağlayıcı kurallar)
 
+*F12 eki (27.09.2026, KULLANICI KARARI 1):* site işi F12 dalının işi DEĞİLDİR; okulapp.org
+deposunda ayrı dal + PR ile yapılır, kullanıcı birleştirir. Sayfaların metin içeriği (tanıtım,
+özellik listesi, gizlilik özeti, indirme ve doğrulama tablosu, beta metni, `kd-release.json`
+alanları) bu depoda `docs/site-icerigi.md`'dedir; o adımda aşağıdaki kurallar aynen geçerlidir.
+
 **İlk ekleme** tek seferlik bir commit'le yapılır (KS öncülü `44de4d2`). Eklenenler:
 
 - `src/content/projects/kutuphane-defteri.md`
@@ -4644,6 +5191,9 @@ yazılmaz.
 | `docs/ag-kurulumu.md` | BTR kılavuzu: güvenlik duvarı, DHCP, proxy istisnası, tahta keşfi, PYS metni, yer imi politikaları, Pardus ufw, yedek yollar (uygun görüşle) |
 | `docs/disa-aktarim.md` | Sürümlü şema |
 | `docs/kurulum.md` | Kurulum (masa hesabı, UAC'de BTR kimliği), yeni bilgisayara taşıma, güncelleme, kaldırma |
+| `docs/saha-kabulu.md` *(F12)* | İşaretlenebilir saha kabul protokolü (Windows 11 uçtan uca + Pardus kısaltılmış zincir) ve "kaynak madde → protokol adımı" eşleme tablosu; uydurma deneme verisi `scripts/deneme_verisi.py` ile üretilir |
+| `docs/site-icerigi.md` *(F12)* | okulapp.org program sayfasının metin içeriği (site adımı ayrı — §17) |
+| `THIRD_PARTY_LICENSES/` *(F12)* | Pakete giren üçüncü taraf bileşenlerin lisans metinleri (`BENIOKU.txt`, `bilesenler.json`); `packaging/lisanslar/uret.sh` ile üretilir, elle düzenlenmez |
 | `docs/teknik-borc.md` | Kalan riskler (şube ve zaman damgası sızıntısı, slowloris, `synchronous` maliyeti) |
 | Uygulama içi kılavuz | Faz faz: geriye dönük giriş (F3/F4), masa ve görevli (F6), yıl akışları ve teslim (F7), ayıklama (F8), sayım günü (F9) |
 | Masa kartı (E19) | Görevli öğrenci için tek sayfa |

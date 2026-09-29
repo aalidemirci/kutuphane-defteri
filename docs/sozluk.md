@@ -110,7 +110,7 @@ iç kavramları (karar, faz, evrak kodları) yüzeye çıkmaz.
 | Kip (U5) | **görevli kipi**, **yönetici kipi**, **kilitli**; eylemler **"Görevli kipine geç"**, **"Kilitle"**; süre alanları **"İşlem yapılmazsa kapanma süresi (dakika)"** · **"En uzun açık kalma süresi (dakika)"** (Kütüphane Politikası → **Yönetici Kipi Süreleri**) | öğrenci modu, admin modu, kiosk, oturum | Görevli kipinden çıkış yönetici parolası ister. Süreler: işlem yapılmazsa 1-15 dk (varsayılan 3), en uzun 5-120 dk (varsayılan 30); ilki ikincisini aşamaz, değişiklik bir sonraki işlemden geçerlidir |
 | Görevli | **görevli** (masadaki öğrenci görevli ya da personel) | asistan, operatör | Md. 23/1-a "kütüphane görevlisi" |
 | Sorumlu kişi | **kütüphane yöneticisi** (kütüphaneci ya da kütüphaneden sorumlu öğretmen) | admin, yetkili, sorumlu (tek başına) | Md. 20'nin terimi. Çoğu okulda kütüphaneci atanmaz (Md. 7/1) |
-| Parola | **yönetici parolası**, **kurtarma anahtarı** | şifre, uygulama parolası, PIN | Parola zorunludur, sihirbazın ilk adımıdır |
+| Parola | **yönetici parolası**, **kurtarma anahtarı** | şifre, uygulama parolası, PIN | Parola zorunludur, sihirbazın ilk adımıdır. **Yönetici parolası yalnız programın parolasıdır**: Windows'un ya da Pardus'un yetkisi için "yönetici yetkisi", "sistem yöneticisi (sudo) yetkisi" denir (F12 düzeltme turu: indirme tablosundaki "yönetici parolası olmadan" programın parolası sanılıyordu) |
 | Kurtarma anahtarı işlemleri | kart adları **Kurtarma Anahtarını Doğrula** ve **Kurtarma Anahtarını Yenile**; eylem **"yenileme"** | anahtarı sıfırla, anahtar değiştir, yeni anahtar üret (tek başına) | Yenileme kayıtların anahtarını değiştirmez, yalnız kurtarma kilidini yeniler; yenilemeden önce alınmış yedekler için eski kâğıt gerekebilir ve metin bunu söyler |
 | Görev devri | **görev devri**; belge **Görev devri notu**; kişiler **"görevi devreden"** / **"görevi devralan"** | devir teslim (tek başına); görev devrinde tek başına "devreden" / "devralan" (bu iki sözcük TMY devrinin — E7 — imza adlarıdır) | "Devir" TMY'de başka anlama gelir: kişiler hep "görevi …" diye anılır. Görev devri parola ve kurtarma anahtarını birlikte yeniler; kayıtların şifreleme anahtarı değişmez ve metin bunu söyler: devirden önceki yedekler eski parola/anahtarla açılır ve eski parola ya da eski anahtar böyle bir yedekle (ya da arşiv dosyasıyla) devirden SONRAKİ yedekleri de açar — **"eski parola kilidi artık açmaz" denmez**; metin masa hesabının parolasının değiştirilmesini ister (F11 düzeltme turu D-5). Açık işler **"notun düzenlendiği gün"**ün sayılarıdır ("devir günü" denmez — D-6). Eski kâğıt "yırtılarak yok edilir" — "imha" denmez |
 | Masa hesabı | **kütüphane masası Windows hesabı** | kiosk hesabı, ortak hesap | Yönetici yetkisi olmayan ayrı hesap (U9) |
@@ -122,6 +122,8 @@ iç kavramları (karar, faz, evrak kodları) yüzeye çıkmaz.
 | Eski program, yeni veri (`SchemaTooNewError`, çıkış kodu 4; F11) | açılış iletisinin başlığı **"Program sürümü eski"**; çözüm **"programı güncelleyin"** | şema, migration, göç, sürüm uyuşmazlığı (kullanıcı metninde) | İki durumda çıkar: daha yeni sürümün açtığı veriyi eski program açmaya çalışınca ve daha yeni sürümle alınmış yedek eski programa geri yüklenince. Program veriyi korumak için açılmaz. İleti "tanımadığı **değişiklikler**" der; tanınmayan değişikliklerin (göçlerin) adları iletide GEÇMEZ, yalnız günlüğe (`logs/uygulama.log`) yazılır ve ipucu günlük dosyasını anar (27.09.2026 ana oturum kararı — §2 iç kimlikler). `docs/kurulum.md` §10.4, §11 |
 | Lisans | **LGPLv3** (yalnız Pardus sürümünün lisans bildiriminde), **PolyForm Noncommercial** | — | Lisans adı teknik ad sayılmaz: bildirim yükümlülüğü gereği açıkça yazılır (`docs/kurulum.md` §4.1, `packaging/linux/BENIOKU.txt`) |
 | Sürüm | **"yayımlanan son sürüm"**, **"kurulum dosyası"**; düğmeler **"Şimdi denetle"** · **"Doğrula ve indir"**; elle denetlemenin bağlantısı **okulapp.org/kutuphane-defteri** (programın sayfası; dosyalar indir.okulapp.org'dan iner) | GitHub sürümü, Release, kurucu; "Denetle" (tek başına, düğme adı olarak) | Güncelleme denetimi yalnız düğmeyle yapılır. Hedef GitHub'dır (27.09.2026 kullanıcı kararı); hizmetin adı ulaşılamama iletisinde (**"GitHub'a ulaşılamadı; okul ağında engellenmiş olabilir. Yeni sürümü indir.okulapp.org'dan elle denetleyebilirsiniz."**), Hakkında'da, kılavuzun Güncelleme bölümünde ve kurulum belgesinde geçer (program dışarı hangi adrese çıktığını söyler); Güncelleme ekranının açıklama metninde geçmez. Program indir.okulapp.org'a ve programın sayfasına istek atmaz: bağlantıyı dış tarayıcı açar. Ekran adları §4.19 |
+| Kurulum ve kaldırma (Windows'un kurulum dosyası; F12) | **kurulum dosyası** (indirilen ve çalıştırılan `…-win64-setup.exe`; çalışırken de: "kurulum dosyasını masa hesabında başlatın"); açılan pencere **kurulum penceresi**; işaretlenen maddeler **kurulum seçenekleri** (adları §4.9); işler **kurulum** · **güncelleme** · **kaldırma** ("program açıkken kurulum başlatılırsa…") | **kurucu**, yükleyici, installer, setup (tek başına); **sihirbaz** (bu anlamda: **Kurulum Sihirbazı** programın ilk açılış ekranıdır, §4.4) | **Karar (27.09.2026, F12 belge gözden geçirmesi):** "kurucu" bu satır eklenmeden önce yalnız Güncelleme ekranı için yasaktı ("Sürüm" satırı), ama kılavuzun Tepsi bölümü, `docs/kurulum.md` ve `docs/ag-kurulumu.md` kullanıyordu. Yasak bütün kullanıcı metnine (kılavuz, kurulum ve ağ belgeleri, README, site içeriği, saha kabul protokolü) genişletildi; gerekçe: sözcük "installer"ın teknik çevirisidir, hedef okur onu "kurulum dosyası" ya da "kurulum" diye tanır ve Güncelleme ekranı zaten "kurulum dosyası" der — aynı nesnenin iki adı olmasın. Kod yorumlarında ve paketleme belgelerinde (`packaging/`, geliştiriciye dönük) "kurucu" serbesttir. Program açıkken kurulum, güncelleme ya da kaldırma başlarsa program kendiliğinden düzenli kapanır; kapanmazsa kurulum penceresi tepsideki simgeden "Çık"ı ister |
+| Kurulumsuz paketler (F12) | **taşınabilir sürüm** (genel ad, iki platformda: kurulum yapılmadan çalıştırılan program; Windows'ta `…-win64-portable.zip`); Pardus'un dosyası **taşınabilir arşiv** (`…-linux-x64.tar.gz`, `kur.sh` ile kullanıcı klasörüne); karşıtı **kurulu program**: "kurulum dosyasıyla kurulan program" (Windows), "`.deb` paketiyle kurulan program" (Pardus) | portable (kullanıcı metninde; dosya adında kalır), USB sürümü | **Ağ Kataloğu taşınabilir sürümde SUNULMAZ — iki platformda da** (KULLANICI KARARI 28.09.2026, tasarım §5.2, §14.1 F12 ekleri karar turu KT-2): Pardus'un taşınabilir arşivinde katalog hiç açılmaz (program açmayı reddeder). Windows'ta kurulumun güvenlik duvarı kuralı kurulu programın yoluna bağlı olduğu için katalog **varsayılan olarak** okul ağına açılmaz; Ağ Doktoru'nun "Kuralı ekle/güncelle" düğmesi kuralı taşınabilir sürümün yoluna yazarsa katalog açılır ve aynı bilgisayardaki kurulu programın kuralının yerini alır. Metinler bu yolu "önerilmez" diye yazar; Windows için "hiç açılmaz" ya da "iki platform birebir aynıdır" demez (bilinen fark, KT-2; Windows'ta kesin kapı ayrı kullanıcı kararıdır — düzeltme turu 29.09.2026). Katalog için program kurulur; Pardus'ta taşınabilir sürüm önce `./kaldir.sh` ile kaldırılır (yoksa `kur.sh`'in menü kaydı ve uçbirim kısayolu `.deb`'inkinin önüne geçer). Metin kuralı yalnız Windows'a daraltmaz (eski metinlerdeki "Windows'un taşınabilir paketinde" daraltması kalktı) ve "Pardus'un taşınabilir arşivinde katalog açılır" demez. Windows'un taşınabilir sürümünde otomatik başlatma da yoktur |
 
 ## 2. İç kodlar yüzeye çıkmaz
 
@@ -494,13 +496,44 @@ denetle"** · **"Dinleyiciyi sına"** · **"Afişi bas"** · **"Yer imi dosyalar
 üret"** · **"PYS talep metnini kopyala"** · **"Ağ Hizmeti Bilgi Notu'nu bas"** ·
 **"Kopyala"** (komut kutuları). Seçici: **"Belgelerde kullanılacak adres"**.
 
+**Pardus'un taşınabilir arşivinde** (KB-2, KULLANICI KARARI 28.09.2026; düzeltme turu
+29.09.2026) Ağ Kataloğu sunulmaz. İki ekranda da bilgi bandı durur: **"Bu taşınabilir
+sürümde Ağ Kataloğu sunulmaz: katalog yalnız .deb paketiyle kurulan programda açılır. Ağ
+Kataloğunu kullanmak için programı .deb paketiyle kurun; taşınabilir sürümü ./kur.sh ile
+kurduysanız önce arşivdeki ./kaldir.sh ile kaldırın, yoksa menü taşınabilir sürümü açmayı
+sürdürür."** Bilgisayarda `.deb` de kuruluysa bant şudur: **"Açık olan program taşınabilir
+sürümdür; bu bilgisayarda .deb paketi de kurulu. Ağ Kataloğu taşınabilir sürümde sunulmaz.
+Programdan çıkın; taşınabilir sürümü ./kur.sh ile kurduysanız arşivdeki ./kaldir.sh ile
+kaldırın, sonra programı menüden açın: katalog .deb paketiyle kurulan programda açılır."**
+"Ağ Kataloğunu aç", "Yeniden başlat" ve ilk açılış adımları görünmez; ayar önceden açık
+kalmışsa "Ağ Kataloğunu kapat" durur. Ağ Doktoru'nun kartları: **Güvenlik Duvarı** —
+"Taşınabilir sürümde Ağ Kataloğu açılmadığı için güvenlik duvarı komutu verilmez. Programı
+.deb paketiyle kurduktan sonra komut burada gösterilir; kuralı BTR açar." · **Dinleyici
+Sınaması** — "Taşınabilir sürümde Ağ Kataloğu açılmadığı için sınanacak dinleyici yoktur;
+başka bilgisayar için sınama komutu da verilmez." · **Belgeler** — "Taşınabilir sürümde Ağ
+Kataloğu açılmadığı için afiş, yer imleri, PYS talep metni ve Ağ Hizmeti Bilgi Notu
+üretilmez: açılmayacak bir adresi ilan ederlerdi. Belgeleri .deb paketiyle kurulan
+programdan üretin." (belge uçlarının 409 iletisi aynı anlamdadır). Ayar önceden açık
+kalmışsa rozet **"Açılamadı"**, son hata: "Ağ Kataloğu açılmadı: taşınabilir sürümde
+sunulmaz, yalnız .deb paketiyle kurulan programda açılır. Ayarda Ağ Kataloğu açık
+görünüyor: kataloğu kullanmak için programı .deb paketiyle kurun (taşınabilir sürümü
+./kur.sh ile kurduysanız önce arşivdeki ./kaldir.sh ile kaldırın); kullanmayacaksanız “Ağ
+Kataloğunu kapat” ile ayarı kapatın." `.deb` de kuruluysa son hata: "Ağ Kataloğu açılmadı:
+açık olan program taşınabilir sürümdür, bu bilgisayarda ise .deb paketi de kurulu.
+Programdan çıkın; taşınabilir sürümü ./kur.sh ile kurduysanız arşivdeki ./kaldir.sh ile
+kaldırın (yoksa menü ve uçbirim onu açmayı sürdürür). Sonra programı menüden açın: katalog
+.deb paketiyle kurulan programda açılır." Ayar ucunun reddi: "Ağ Kataloğu taşınabilir
+sürümde sunulmaz, yalnız .deb paketiyle kurulan programda açılır." Aşağıdaki **Katalog
+durumu** rozet listesi DEĞİŞMEZ (yeni rozet yoktur; taşınabilir arşivde açık kalmış ayar
+"Açılamadı"dır).
+
 | Kavram | Kullanılır | Kullanılmaz | Not |
 |---|---|---|---|
 | Katalog durumu | **Açık** · **Kapalı** · **Güvenlik duvarı izni yok** · **Açılamadı** · **Port bekleniyor** · **Geri yükleme nedeniyle kapalı** | aktif/pasif, online, çalışıyor | Tepsi satırı "Ağ Kataloğu: açık — http://…" biçimindedir |
 | Güvenlik duvarı denetimi | **beş madde**; madde sonuçları **Geçti** · **Geçmedi** · **Uyarı** · **Denetlenemedi** | firewall, kontrol listesi | Windows'ta biri geçmezse katalog okul ağına hiç açılmaz |
 | Öz sınama | **"dinleyici bu arayüzde ayakta"**; yanında her zaman: "Güvenlik duvarını ya da VLAN'ı kanıtlamaz…" | bağlantı testi, ping | Asıl kanıt başka bilgisayardan `Test-NetConnection` |
 | Ağ profili | **Genel** · **Özel** · **Etki alanı** | Public/Private/Domain (kullanıcı metninde) | |
-| DHCP'de sabit adres | **sabit adres**, "DHCP'de sabit adres ayırma" | rezervasyon (kılavuzda; sözcük barkod bağlamında yasaktır) | BTR belgelerinde (`docs/kurulum.md`, `docs/ag-kurulumu.md`) teknik adı yazılabilir. Adresi kütüphane yöneticisi elle değiştirmez (Yönerge 11/6) |
+| DHCP'de sabit adres | **sabit adres**, "DHCP'de sabit adres ayırma" (fiil: "sabit adres ayırır", "sabit adres ayırmayı yeni ağ kartına taşır") | rezervasyon (tek başına; sözcük barkod bağlamında da yasaktır — "boş barkod aralığı") | **Karar (27.09.2026, F12 belge gözden geçirmesi):** kılavuz "sabit adres ayırma", `docs/kurulum.md` "DHCP rezervasyonu" diyordu; taşıma listesinin aynı adımı iki belgede iki adla geçiyordu. Artık her kullanıcı metni "sabit adres ayırma" der; BTR'nin tanıdığı teknik ad **DHCP rezervasyonu** yalnız BTR'ye dönük cümlede, **aynı satırda "sabit adres ayır…" ile birlikte** ve parantez içinde yazılır (`docs/kurulum.md` §8.3, `docs/ag-kurulumu.md` §4; test bunu denetler). Adresi kütüphane yöneticisi elle değiştirmez (Yönerge 11/6) |
 | Adres uyarısı | **"Bu bilgisayarın IP adresi değişti (… → …). Afişi yeniden basın, yer imlerini güncelleyin."** | "IP çakışması", "ağ hatası" | Gün değişimi denetiminden gelir, Ağ Doktoru'nun **Katalog Durumu** kartında görünür; afiş yeni adresle basılınca kalkar |
 | PYS | **PYS talep metni**, talebin konusu **"yerel ağ VLAN düzenlemesi — tek yön"**; kanal **FATİH PYS** | "internet açma", "site açma" | Açılımı yazılmaz: ad kanalın kendi adıdır |
 | Tahta kipi | **tahta kipi** ("büyük düzen"; yer imi adresinde `?tahta=1`) | kiosk, tahta modu, dokunmatik mod | Tahtalar için üretilen yer imleri bu kiple açar; dokunmatik ekranda büyük düzen kendiliğinden de açılır. Klavyesiz gezinme **Kaynak Adları** · **Yazarlar** · **Konular** dizinleriyledir |
@@ -508,7 +541,7 @@ denetle"** · **"Dinleyiciyi sına"** · **"Afişi bas"** · **"Yer imi dosyalar
 | Gün değişimi | **gün değişimi** (denetim açılışta ve program açıkken saatte bir) | zamanlanmış görev, cron, gece işi | Günlük yedek, 14 günden eski yedeklerin silinmesi ve adres denetimi buna bağlıdır; program tepside günlerce açık kalabilir |
 | Programdan çıkış | **Çık** (üst çubuk ve tepsi), onay **"Programdan çıkılsın mı?"**, görevli kipinde **"Programdan çık"** (yönetici parolasıyla) | "Kapat" (programdan çıkmak anlamında), sonlandır, oturumu kapat | "Kapat" salt bilgi diyaloğunu kapatır (§3); pencerenin çarpısı programı kapatmaz, tepsiye gizler. Görevli kipindeki parola kaza önleyicidir, güvenlik sınırı diye sunulmaz |
 
-**Çık, tepsi ve kurucu.** Üst çubukta her durumda **Çık** düğmesi (dar pencerede
+**Çık, tepsi ve kurulum seçenekleri.** Üst çubukta her durumda **Çık** düğmesi (dar pencerede
 yalnız simge; ipucu "Programdan çık"). Onay penceresi **Programdan çıkılsın mı?**
 ("Vazgeç" · "Çık"); görevli kipinde **Programdan çık** ("Yönetici parolası",
 "Vazgeç" · "Çık"); kapanırken **Program kapanıyor** ("Kütüphane Defteri
@@ -516,9 +549,12 @@ kapanıyor…"). **Programı kapatıp yeniden açın** ekranında **"Programdan 
 düğmesi (onay ve parola sormaz). Tepsi menüsü sırasıyla: **Pencereyi aç** · durum
 satırı ("Ağ Kataloğu: açık — http://…", "Ağ Kataloğu: kapalı", "Ağ Kataloğu:
 güvenlik duvarı izni yok", "Ağ Kataloğu: açılamadı", "Ağ Kataloğu: port
-bekleniyor", "Ağ Kataloğu: geri yükleme nedeniyle kapalı") · **Ağ Kataloğunu
+bekleniyor", "Ağ Kataloğu: taşınabilir sürümde sunulmaz" (Pardus'un taşınabilir
+arşivi), "Ağ Kataloğu: geri yükleme nedeniyle kapalı") · **Ağ Kataloğunu
 aç** / **Ağ Kataloğunu kapat** · **Görevli kipine geç** · **Kilitle** · **Çık**.
-Windows kurucusunun görevleri: **Yerel ağdan katalog taramasına izin ver
+Pardus'un taşınabilir arşivinde tepside **Ağ Kataloğunu aç** yoktur; **Ağ
+Kataloğunu kapat** yalnız ayar önceden açık kalmışsa durur.
+Windows kurulum dosyasının seçenekleri (kurulum penceresinde; §1 "Kurulum ve kaldırma"): **Yerel ağdan katalog taramasına izin ver
 (güvenlik duvarı kuralı)** · **Oturum açılınca Kütüphane Defteri'ni başlat** ·
 **Pencereyi açmadan tepside başlat** · **Masaüstü kısayolu oluştur**; Başlat
 menüsünde **Kütüphane Defteri — Yedekten Geri Yükle**.

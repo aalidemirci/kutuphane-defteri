@@ -85,8 +85,18 @@ Kütüphaneleri Yönetmeliği (RG 23.11.2024/32731) ile TMY'ye bağlıdır. Meti
      duvarı denetiminin beş maddesi geçerse dinler; geçmezse `127.0.0.1`'e de
      düşmez (§5.7, §5.10-10). Linux'ta ufw/firewalld durumu bilgi olarak
      okunur, kural açılmaz; Ağ Doktoru'nun önerdiği komut kaynak sınırlıdır
-     (yerel alt ağ + tahta ağı blokları, F5 ekleri 27). `--autotest` katalogu
-     yalnız 127.0.0.1'de kaldırır.
+     (yerel alt ağ + tahta ağı blokları, F5 ekleri 27). **Taşınabilir pakette
+     katalog sunulmaz — iki platformda da** (KULLANICI KARARI 28.09.2026, tasarım
+     §5.2, F12 ekleri karar turu KT-2): Pardus'un taşınabilir arşivinde hiç
+     açılmaz (yalnız `.deb`; kapı: tespit `desktop/dagitim.py` — dpkg listesi +
+     dosya kimliği, yol öneki ölçüt DEĞİL —, uygulama `katalog_kontrol`, ayar ucu
+     PUT 400, Ağ Doktoru belge uçları 409; derlemede `--dagitim-duman`); Windows'ta
+     ayrımı yalnız güvenlik duvarı denetiminin 2. maddesi yapar (kural kurulu
+     programın yoluna bağlı) — "Kuralı ekle/güncelle" kuralı taşınabilir sürüme
+     yazarsa katalog açılır ve kurulu programın kuralını ezer (bilinen fark KT-2;
+     Windows'ta kesin kapı kararlı sürümden önce — KULLANICI KARARI 29.09.2026,
+     düzeltme turu DT-3, TB41).
+     `--autotest` katalogu yalnız 127.0.0.1'de kaldırır.
    - `api/` altındaki her desen katalog portunda 404 döner.
    - Yönetim portu hiçbir ekranda ya da belgede ilan edilmez. Program içindeki
      katalog bağlantıları seçili LAN IP'siyle kurulur ve harici tarayıcıda
@@ -194,6 +204,28 @@ Kütüphaneleri Yönetmeliği (RG 23.11.2024/32731) ile TMY'ye bağlıdır. Meti
     açılmaz (TB27). Duman testi karşılığı `packaging/linux/build.sh` adım 4b'dir:
     paketlenmiş dizinde `QtWebEngineProcess` ve Qt kitaplıkları yoksa derleme
     durur.
+    **Lisans halkası** (F12, TB28): Python ya da npm bağımlılığı eklenince,
+    çıkınca ya da sürümü değişince `bash packaging/lisanslar/uret.sh` koşulur
+    (Docker, ağ ister) ve `THIRD_PARTY_LICENSES/` farkı işlenir; dizin elle
+    düzenlenmez. `packaging/tests/test_lisans_kapisi.py` listeyi pinlerle ve
+    kapanışla eşitler; derlemede `lisanslar.py paket` listede olmayan dağıtımı ya
+    da **yalnız GPL'li** bileşeni (PolyForm ile birlikte dağıtılamaz) pakette
+    bulursa derlemeyi durdurur. pystray'in kaynağı pakete `.py` olarak girer
+    (spec `module_collection_mode`); `readline` spec'te dışlanır (GPL-3.0).
+    **Qt'yi dağıtım etiketi değil DOSYA belirler** (28.09.2026): PySide6_Addons
+    "LGPL" görünür ama Qt'nin yalnız GPL'li modüllerini taşır; spec
+    `lisanslar.qt_gpl_suz` ile ayıklar, liste `QT_YALNIZ_GPL_MODULLER`'dir (Qt
+    sürümü yükselince resmî lisans sayfasıyla yeniden karşılaştırılır). Paket
+    ortamı `lisanslar.py kisitlar` ile listedeki sürümlere bağlıdır; ön yüz
+    çıktısındaki npm paketlerini `gates.sh` listeyle karşılaştırır. **LGPL
+    kaynağı için yazılı teklif** (KB-1, 28.09.2026 kullanıcı kararı) `BENIOKU.txt`'de
+    üreticinin metnidir (`lisanslar.py::_yazili_teklif`; en az üç yıl, istek yolu
+    GitHub deposunun Issues sayfası — e-posta, kişi adı, unvan, kurum adı
+    YAZILMAZ); kapı testi depodaki `BENIOKU.txt`'nin üreticinin çıktısıyla
+    birebir olduğunu sınar: metin değişince `uret.sh` koşulur. Program ağdan
+    dağıtıldığı için LGPL-3.0 bileşenlerinde GPL-3.0 md. **6(d)** geçerlidir (6(b)
+    yalnız fiziksel taşıyıcıda): Release notu (`paketleme.yml`) kaynağa yönlendirir,
+    Qt/PySide6 sürümü değişince not da değişir (`test_surum_yolu.py` eşitler).
 
 11. **Test ve lint yalnız Docker'da.** Host'a Python ya da Node kurulmaz;
     host'ta `pytest` koşulmaz. Kapı: `bash scripts/gates.sh` yeşil olmadan iş
@@ -355,8 +387,8 @@ docker compose run --rm frontend npx vitest run src/lib
 `scripts/gates.sh` sırası: depo sızıntısı (KVKK) → backend `pytest` → `ruff
 check` → `ruff format --check` → `mypy` → **ayrı koşuda** `desktop/` +
 `packaging/` testleri (günlük yapılandırmasını değiştirdikleri için backend
-testleriyle aynı süreçte koşmazlar) → desktop/packaging ruff + mypy → ön yüz
-`typecheck` → `eslint` → `prettier --check` → `vitest` (kapsam eşiği
+testleriyle aynı süreçte koşmazlar) → desktop/packaging ruff + mypy → `scripts/`
+ruff + mypy (F12) → ön yüz `typecheck` → `eslint` → `prettier --check` → ön yüz lisans listesi (Vite çıktısındaki npm paketleri ↔ `THIRD_PARTY_LICENSES`, F12) → `vitest` (kapsam eşiği
 `frontend/vitest.config.ts`). Her adım çıkış koduna ek olarak nöbetçi satırı
 (`KAPI_OK_<ad>`) üretir; bu makinede `docker compose run` çıkış kodunu zaman
 zaman yutar. Kapı GitHub'da da koşar (`.github/workflows/kapilar.yml`, betiği
@@ -378,7 +410,12 @@ açılır, geliştirme konteynerinde değil.
 - **Sürüm:** CalVer, `VERSION` dosyası. `v*` etiketi paketleri üretir, GitHub
   Release'i açar ve paketleri R2'ye (`indir.okulapp.org/kutuphane-defteri/`,
   elle indirme alanı) yükler. Program güncellemeyi GitHub Release'ten denetler;
-  R2'deki bir manifesti okumaz (kullanıcı kararı 27.09.2026).
+  R2'deki bir manifesti okumaz (kullanıcı kararı 27.09.2026). **Ön sürüm**
+  (`-beta.N` gibi ek taşıyan etiket, F12): Release "pre-release" işaretlenir,
+  `.deb` sürümünde `~` kullanılır (dosya adında `.`), R2 secret'ı yoksa yükleme
+  uyarıyla atlanır; kararlı sürüm kullanan kuruluma ön sürüm önerilmez
+  (`updates.offered`; sınayan `packaging/tests/test_surum_yolu.py` ve
+  `test_updates.py`). İlk sürüm bir betadır (kullanıcı kararı 3, 27.09.2026).
 - **Yayın işleri dışa açıktır ve kullanıcı onaylıdır:** etiket, push, R2
   yüklemesi, site commit'i. Otonom oturum bunları kendi başına yapmaz.
 - **okulapp.org ortak yayın alanıdır.** Siteye yazarken
@@ -476,8 +513,10 @@ birleşimiyle; authorizer tam ad kümesiyle (TB31); saatlik damgasız işler
 kaynak sınırlı; açılamayan katalog her yüzeyden kapatılabilir; Inno
 `[Registry]` yerleşimi (WebView2 dalı derlenmiyordu). Sapmalar, kararlar ve
 ölçümler: tasarım §14.1 **"F5 ekleri"**; tahta, Windows paketi ve okul ağı
-kanıtları F12'ye ertelendi. Açık kullanıcı kararları: güncelleme denetiminin
-hedefi (F5 ekleri 15), Pardus taşınabilir arşivinde Ağ Kataloğu (F5 ekleri 27).
+kanıtları F12'ye ertelendi. F5'in iki açık kullanıcı kararı kapandı: güncelleme
+denetiminin hedefi (F5 ekleri 15 — 27.09.2026, GitHub Release, F11) ve Pardus
+taşınabilir arşivinde Ağ Kataloğu (F5 ekleri 27 — 28.09.2026, **açılamaz**; yalnız
+`.deb` — F12 ekleri karar turu KT-2; kapının yerleri §2-1).
 
 **F6 Üyelik + dolaşım — kod tarafı bitti (24.09.2026, dal `f6-dolasim`).**
 `Membership` (öğrenci XOR personel, kişi başına tek aktif üyelik, kart no şifreli
@@ -679,16 +718,84 @@ onaylandı · ANA OTURUM KARARI: eski program iletisinde göç adları yok, yaln
 Gerçek Windows paketinde tetik, USB'den `--geri-yukle` provası, MEB ağında GitHub erişimi ve
 E18'in yazıcı çıktısı F12'ye ertelendi.
 
-Sıradaki: **F12 Paketleme + saha kabulü** — Inno (yeni GUID, WebView2, iki mutex, kapatma
-olayı, `LicenseFile`) · `.deb` (`copyright` dosyası) · `THIRD_PARTY_LICENSES` (TB28: PySide6,
-pystray ve öbür bağımlılıkların lisans metinleri ve LGPL kaynağı) · `veri_sizintisi` ×2 ·
-belgeler · okulapp.org alanı §17 (güncelleme iletisindeki elle denetleme bağlantısı
-`okulapp.org/kutuphane-defteri/` o güne dek 404 verir) · ertelenmiş saha kanıtları: tahta,
-gerçek okuyucu ve yazıcı, belgelerin yazıcı çıktısı (E5-E20), Windows paketinde saklama tetiği
-ve USB'den geri yükleme, okul ağı ve MEB ağında GitHub erişimi. Kod kapısı: temiz Windows 11'de
-ve Pardus'ta uçtan uca zincir (kurulum → sihirbaz → e-Okul → Excel katalog → etiket → dolaşım →
-ağdan arama → yedek/geri yükleme) · tahtadan arama · gerçek okuyucu. Tam tablo: tasarım §14.1.
-Saha hazırlık hattı (S1-S15, kod dışı): §14.2.
+**F12 Paketleme + saha kabulü — kod tarafı bitti (27.09.2026, düzeltme turu ve karar turu
+28.09.2026, dal `f12-paket`); saha kabulü `docs/saha-kabulu.md` ile kullanıcıda, site ayrı adımda, beta etiketi
+ana oturumda.** Göç YOK,
+yeni Python bağımlılığı YOK, görevli izin listesi DEĞİŞMEDİ. **27.09.2026 kullanıcı kararları
+(bağlayıcı):** (1) okulapp.org işi AYRI adımdır (o depoda dal + PR); bu dal yalnız
+`docs/site-icerigi.md`'yi hazırladı · (2) saha kabulünü kullanıcı yürütür: işaretlenebilir
+protokol `docs/saha-kabulu.md` (Windows 11 uçtan uca + Pardus kısaltılmış zincir; §26 "kaynak
+madde → protokol adımı" eşlemesi bütün ertelenmiş saha kanıtlarını kapsar, eksiksizliği
+`test_saha_kabulu_belgesi.py` sınar) + uydurma deneme verisi üreticisi `scripts/deneme_verisi.py`
+(stdlib + openpyxl; e-Okul öğrenci/personel listeleri `.xlsx`, ~2.000 eserlik katalog, sorunlu
+satırlar, `OZET.txt`; çıktı `deneme-verisi/` depoya girmez) · (3) ilk sürüm **beta**:
+`VERSION` = `2026.10.0-beta.1`, etiketi ana oturum kullanıcı onayıyla atar. **Paket ve lisans:**
+`THIRD_PARTY_LICENSES/` betikle üretilir (`packaging/lisanslar/uret.sh`; 66 bileşen — düzeltme turuyla ICU ve Qt notu) ve kapı
+testlidir (`test_lisans_kapisi.py`); derlemede `lisanslar.py paket` pakete gerçekten giren her
+dosyanın sahibini bulur, `paket-icerigi.txt` + `yerel-kutuphaneler/` ekler, yalnız GPL'li
+bileşende durur — bulduğu üç GPL sızıntısı giderildi (readline, PyInstaller derleme kodu,
+pyphen sözlükleri) · Inno `LicenseFile` (UTF-8 BOM'lu `LICENSE.txt`; lisanssız kurulum dosyası
+derlenmez) · `.deb` DEP-5 `copyright` · `veri_sizintisi` arşivleri de okur, iki platformda eşit
+kapsam + yayın işinde son denetim · Inno kalemleri (AppId, WebView2, iki mutex, kapatma olayı,
+güncellemede kural) doğrulandı, NOTLAR §3b ve W21-W23 · `updates.offered()`: kararlı kuruluma ön
+sürüm önerilmez; `test_surum_yolu.py` yayın adımlarını sahte gh/npx ile koşturur · TB28 kapandı
+(kalan: kararlı sürümden önceki iki lisans işi — aşağıda), TB27 ölçüldü (`.deb` 187,9 MB). **Belgeler:** sözlük "kurucu"yu
+kullanıcı metninden çıkarır ("kurulum dosyası"), "DHCP rezervasyonu" yalnız "sabit adres
+ayırma" ile aynı satırda; kurulum.md, ag-kurulumu.md, README gözden geçirildi. `gates.sh`'e
+`scripts/` ruff + mypy adımı. Deneme verisi provası: boş veritabanında gerçek API'yle 77/77
+denetim OZET'le aynı. **Düzeltme turu (28.09.2026, denetimin 32 bulgusu, hepsi gerçek):**
+Qt'nin YALNIZ GPL'li modülleri (Charts, Data Visualization, Graphs, Quick 3D, Quick Timeline,
+Virtual Keyboard, Wayland Compositor …) Linux paketindeydi ve kapı onları dağıtım etiketiyle
+LGPL sayıyordu → spec `lisanslar.qt_gpl_suz` (ad + DT_NEEDED kapanışı), derleme denetimi ve
+`kap-ici-test.sh` dosya düzeyinde; ICU lisans metni + Qt/Chromium bildirim notu; Hakkında'da
+"Üçüncü Taraf Bileşenler" kartı (LGPLv3 §4(c)); `gates.sh` Vite çıktısındaki npm paketlerini
+listeyle karşılaştırır (`npm-denetle`); MSYS2 SPDX lisansı değerlendirilir, Debian'da bilinen
+GPL ad listesi; paket ortamı pip kısıt dosyasıyla listedeki sürümlere bağlı (`kisitlar`);
+WebView2 SDK Linux paketinden çıktı; DEP-5 ayrı paragraflar; beta kullanıcısı kararlı sürümden
+sonra da sonraki betayı alır, sertifika hatası "ağ engeli" denmez; duman kiplerinin tanısı
+`logs/tanilama.log`'a; `veri_sizintisi` = depo kapısının uzantıları; protokol ve belgelerde
+16 düzeltme (sayım onayı §15.5'e, saat ön koşulları, Pardus 21 zorunlu …); eşleme kapısı madde
+düzeyinde. Sapmalar, kararlar ve açık kalanlar: tasarım §14.1 **"F12 ekleri"** (P, S,
+bütünleştirme, düzeltme turu D-1…D-16, açık kalanlar, karar turu KT-1…KT-5, karar turunun
+düzeltme turu DT-1…DT-10). **KB-1…KB-4 kararları (28.09.2026) uygulandı; yeni tek açık karar
+DT-3 (aşağıda):** KULLANICI KARARI KB-1 (a) — beta için LGPL
+kaynağına **yazılı teklif**: `THIRD_PARTY_LICENSES/BENIOKU.txt`'de üreticinin metni
+(`lisanslar.py::_yazili_teklif`; teklifin kapsadığı LGPL bileşenler `bilesenler.json`'dan
+türer; her sürüm, beta dahil, yayımdan itibaren EN AZ ÜÇ YIL; kaynak ücretsiz ağ sunucusundan,
+fiziksel taşıyıcıda en çok gönderim maliyetine; iletişim yolu GitHub deposunun Issues sayfası —
+e-posta, kişi adı, unvan, kurum adı YAZILMAZ; kapı testi: dosya üreticinin çıktısıyla birebir,
+teklif içeriği, depo adresi güncelleme deposuyla aynı) · KB-2 — Pardus'un **taşınabilir
+arşivinde de Ağ Kataloğu açılamaz** (Windows'un taşınabilir sürümüyle aynı; yalnız `.deb` —
+§2-1) · KB-3 (a) — beta'da Qt/Chromium bildirimleri adresle · KB-4 (a) — beta için belge
+yeterli (`docs/kurulum.md` §4.1 "önce Çık"). **Kararlı sürümden önce yapılacaklar** (tasarım
+§14.1 F12 ekleri karar turu KT-5; `docs/teknik-borc.md` TB28 kalanı ve TB40): (1) KB-1 (b)
+Windows paketindeki LGPL sistem kütüphanelerinin (MSYS2) kaynak arşivleri Release'e ayrı
+"kaynak" paketi olarak · (2) KB-3 (b) üretici, Qt 6.8.3 kaynak arşivindeki
+`qt_attribution.json` dosyalarından pakete giren modüllerin bildirim METNİNİ üretir (yalnız
+Linux paketi) · (3) KB-4 (b) KOŞULLU — saha kabulünde protokol §24.12'de sorun görülürse
+`.deb` `prerm`'i açık programı düzenli kapatır · (4) saha kabulünün engelleyici ve önemli
+bulguları (protokol §27; sonuç en az "Koşullu kabul") ve PR'ın ilk CI Windows koşusunda
+görülenler (NOTLAR W21-W25) · (5) DT-3 (a) Windows'un taşınabilir sürümünde de kesin kapı
+(Inno kaldırıcısı + HKLM `InstallLocation` ölçütü; TB41). **Karar turunun doğrulama ve düzeltme turu (29.09.2026, denetimin
+13 bulgusu, hepsi gerçek — tasarım §14.1 "F12 ekleri — … düzeltme turu" DT-1…DT-10):** Pardus'ta
+taşınabilir sürüm açıkken `.deb` de kuruluysa ileti ve bant `./kaldir.sh` + menüden açmayı
+söyler (`kur.sh`'in menü kaydı ve `~/.local/bin` kısayolu `.deb`'inkini gölgeliyordu) ·
+taşınabilir arşivde Ağ Doktoru sınama komutu ve katalog belgelerini sunmaz, dört belge ucu 409
+`katalog_sunulmaz`, bilgi notunda yarım cümle yok · `--dagitim-duman` teşhis kipi (çıkış kodu
+11; `build.sh` taşınabilir, `kap-ici-test.sh` kurulu bekler) · teklif metni ve Release notu
+GPL-3.0 md. 6(d) · Windows'un taşınabilir sürümü için belgeler gerçek davranışı yazar ·
+sözlük, kılavuz, arşiv notu, protokol 23.1/24.2/24.11 güncel. **KULLANICI KARARI DT-3
+(29.09.2026):** beta, Windows'un taşınabilir sürümünde bugünkü davranışla çıkar (katalog
+varsayılan kapalı; belgeler "Kuralı ekle/güncelle"yi orada kullanmamayı söyler); kesin kapı
+kararlı sürümden önce yapılır (yukarıdaki (5), TB41). **Bekleyen karar yok.**
+
+Sıradaki (ana oturum, kullanıcı onayıyla): PR + CI (Windows lisans kapısının ilk koşusu —
+NOTLAR W21-W25; Linux işinde `--dagitim-duman`'ın ilk gerçek koşusu) → beta etiketi `v2026.10.0-beta.1` (Release + R2) → okulapp.org site adımı (ayrı depo,
+`docs/site-icerigi.md`; o güne dek `okulapp.org/kutuphane-defteri/` 404 verir) → saha kabulü
+(kullanıcı, `docs/saha-kabulu.md`): tahta, gerçek okuyucu ve yazıcı, belgelerin yazıcı çıktısı,
+Windows paketinde saklama tetiği ve USB'den geri yükleme, okul ağı ve MEB ağında GitHub erişimi
+→ kararlı öncesi iş listesi (yukarıdaki (1)-(5)) → kararlı sürüm. Saha hazırlık hattı (S1-S15,
+kod dışı): tasarım §14.2.
 
 ---
 
@@ -705,7 +812,13 @@ Saha hazırlık hattı (S1-S15, kod dışı): §14.2.
 | `docs/kurulum.md` | Son kullanıcı ve BTR için kurulum, taşıma, sorun giderme, çıkış kodları |
 | `docs/ag-kurulumu.md` | BTR için ağ kılavuzu (güvenlik duvarı, adres, tahtalar, sınama) |
 | `docs/disa-aktarim.md` | Sürümlü dışa aktarım şeması (F10): sütunlar, geri yükleme kuralları (boş katalog, bütün satırlar), dosyada olmayanlar |
-| `packaging/windows/NOTLAR.md` | Windows paketinde doğrulanmamış varsayımlar |
+| `docs/saha-kabulu.md` | İşaretlenebilir saha kabul protokolü (F12): Windows 11 uçtan uca + Pardus kısaltılmış zincir, belgelerin yazıcı çıktısı çizelgesi, "kaynak madde → protokol adımı" eşleme tablosu (eksiksizliği `test_saha_kabulu_belgesi.py` sınar). Uydurma deneme verisi `scripts/deneme_verisi.py` ile Docker'da üretilir; çıktı `deneme-verisi/` depoya girmez |
+| `docs/site-icerigi.md` | okulapp.org program sayfasının metin içeriği (F12; site işi okulapp.org deposunda ayrı adım — 27.09.2026 kullanıcı kararı) |
+| `THIRD_PARTY_LICENSES/` | Pakete giren üçüncü taraf bileşenlerin lisansları (F12, TB28): `BENIOKU.txt` (Türkçe dizin, LGPL kaynak adresleri), `bilesenler.json`, ICU ve Qt üçüncü taraf notu; `packaging/lisanslar/uret.sh` üretir, elle düzenlenmez |
+| `packaging/lisanslar/` | Lisans üreticisi ve derleme kapısı (`lisanslar.py`: `uret`, `paket`, `kisitlar`, `npm-denetle`, `deb-copyright`; Qt'nin yalnız GPL'li modül listesi `QT_YALNIZ_GPL_MODULLER`), `on_yuz_paketleri.mjs`, `uret.sh` |
+| `packaging/README.md` | Paketleme hattı, bağımlılık ve lisans zincirleri, Qt/pystray LGPL notları |
+| `scripts/deneme_verisi.py` | Saha kabulünün uydurma deneme verisi üreticisi (Docker'da; çıktı `deneme-verisi/` depoya girmez) |
+| `packaging/windows/NOTLAR.md` | Windows paketinde doğrulanmamış varsayımlar; §5 saha protokolü karşılıkları |
 | `README.md` | Kısa tanıtım |
 
 ---

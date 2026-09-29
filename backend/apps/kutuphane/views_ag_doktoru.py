@@ -21,6 +21,10 @@ döner. Katalog denetçisine masaüstü kancası üzerinden gidilir
 
 Öz sınama ve kural güncellemesi POST'tur: ağ bağlantısı kuran ya da UAC açan
 bir işlem adres çubuğundan veya bir önyüklemeden tetiklenmemelidir.
+
+Pardus'un taşınabilir arşivinde (KB-2) dört belge ucu (`poster/`, `info-note/`,
+`bookmarks/`, `pys-text/`) 409 `katalog_sunulmaz` döner: katalog orada açılmaz,
+belgeler açılmayacak bir adresi ilan ederdi (`ag_doktoru.belgeler_sunulur_mu`).
 """
 
 from __future__ import annotations
@@ -109,6 +113,7 @@ class NetworkCatalogPosterView(APIView):
     """Afiş basılınca adres `son_afis_ip` olarak kaydedilir (yan etkili: POST)."""
 
     def post(self, request: Request) -> FileResponse:
+        ag_doktoru.belgeler_sunulur_mu()
         ip = ag_doktoru.yayin_ip(_istenen_ip(request.data))
         return _dosya(
             ag_belgeleri.afis_pdf(ip),
@@ -121,6 +126,7 @@ class NetworkCatalogInfoNoteView(APIView):
     """Adres bulunamazsa not yine basılır; adres satırı elle doldurulacak çizgi olur."""
 
     def get(self, request: Request) -> FileResponse:
+        ag_doktoru.belgeler_sunulur_mu()
         istenen = _istenen_ip(request.query_params)
         try:
             ip: str | None = ag_doktoru.yayin_ip(istenen)
@@ -135,6 +141,7 @@ class NetworkCatalogInfoNoteView(APIView):
 
 class NetworkCatalogBookmarksView(APIView):
     def get(self, request: Request) -> FileResponse:
+        ag_doktoru.belgeler_sunulur_mu()
         ip = ag_doktoru.yayin_ip(_istenen_ip(request.query_params))
         return _dosya(
             ag_belgeleri.yer_imi_zip(ip),
@@ -145,6 +152,7 @@ class NetworkCatalogBookmarksView(APIView):
 
 class NetworkCatalogPysTextView(APIView):
     def get(self, request: Request) -> Response:
+        ag_doktoru.belgeler_sunulur_mu()
         istenen = _istenen_ip(request.query_params)
         try:
             ip: str | None = ag_doktoru.yayin_ip(istenen)

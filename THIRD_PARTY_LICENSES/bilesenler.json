@@ -1,0 +1,996 @@
+{
+  "aciklama": "Kütüphane Defteri ile dağıtılan üçüncü taraf bileşenler. Üretildi: packaging/lisanslar/uret.sh — elle düzenlenmez.",
+  "bilesenler": [
+    {
+      "ad": "Python (CPython)",
+      "surum": "3.12",
+      "tur": "calisma-zamani",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "PSF-2.0",
+      "dosyalar": [
+        "cpython-LICENSE.txt"
+      ],
+      "kaynak": "https://www.python.org/downloads/source/",
+      "aciklama": "Programın çalışma zamanı ve standart kitaplığı"
+    },
+    {
+      "ad": "argon2-cffi",
+      "surum": "23.1.0",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "python-argon2-cffi-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/argon2-cffi/23.1.0/",
+      "aciklama": "Yönetici parolası (Argon2id)"
+    },
+    {
+      "ad": "argon2-cffi-bindings",
+      "surum": "26.1.0",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "python-argon2-cffi-bindings-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/argon2-cffi-bindings/26.1.0/"
+    },
+    {
+      "ad": "asgiref",
+      "surum": "3.12.1",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "BSD-3-Clause",
+      "dosyalar": [
+        "python-asgiref-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/asgiref/3.12.1/"
+    },
+    {
+      "ad": "bottle",
+      "surum": "0.13.4",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "python-bottle-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/bottle/0.13.4/"
+    },
+    {
+      "ad": "brotli",
+      "surum": "1.2.0",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "python-brotli-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/brotli/1.2.0/"
+    },
+    {
+      "ad": "cffi",
+      "surum": "2.1.1",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT-0",
+      "dosyalar": [
+        "python-cffi-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/cffi/2.1.1/"
+    },
+    {
+      "ad": "clr_loader",
+      "surum": "0.2.10",
+      "tur": "python",
+      "platformlar": [
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "python-clr_loader-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/clr_loader/0.2.10/"
+    },
+    {
+      "ad": "cryptography",
+      "surum": "48.0.1",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "Apache-2.0 OR BSD-3-Clause",
+      "dosyalar": [
+        "python-cryptography-LICENSE.APACHE.txt",
+        "python-cryptography-LICENSE.BSD.txt",
+        "python-cryptography-LICENSE.txt"
+      ],
+      "secilen": "Apache-2.0",
+      "kaynak": "https://pypi.org/project/cryptography/48.0.1/",
+      "aciklama": "Alan şifrelemesi, şifreli yedek"
+    },
+    {
+      "ad": "cssselect2",
+      "surum": "0.10.1",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "BSD-3-Clause",
+      "dosyalar": [
+        "python-cssselect2-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/cssselect2/0.10.1/"
+    },
+    {
+      "ad": "Django",
+      "surum": "5.1.15",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "BSD-3-Clause",
+      "dosyalar": [
+        "python-Django-LICENSE.python.txt",
+        "python-Django-LICENSE.txt",
+        "python-Django-django_contrib_admin_static_admin_css_vendor_select2_LICENSE-SELECT2.md.txt",
+        "python-Django-django_contrib_admin_static_admin_img_LICENSE.txt",
+        "python-Django-django_contrib_admin_static_admin_js_vendor_jquery_LICENSE.txt",
+        "python-Django-django_contrib_admin_static_admin_js_vendor_select2_LICENSE.md.txt",
+        "python-Django-django_contrib_admin_static_admin_js_vendor_xregexp_LICENSE.txt",
+        "python-Django-django_contrib_gis_gdal_LICENSE.txt",
+        "python-Django-django_contrib_gis_geos_LICENSE.txt",
+        "python-Django-django_dispatch_license.txt"
+      ],
+      "kaynak": "https://pypi.org/project/Django/5.1.15/",
+      "aciklama": "Uygulama çatısı"
+    },
+    {
+      "ad": "djangorestframework",
+      "surum": "3.15.2",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "BSD-3-Clause",
+      "dosyalar": [
+        "python-djangorestframework-LICENSE.md.txt"
+      ],
+      "kaynak": "https://pypi.org/project/djangorestframework/3.15.2/",
+      "aciklama": "Yönetim API'si"
+    },
+    {
+      "ad": "et_xmlfile",
+      "surum": "2.0.0",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "python-et_xmlfile-LICENCE.python.txt",
+        "python-et_xmlfile-LICENCE.rst.txt"
+      ],
+      "kaynak": "https://pypi.org/project/et_xmlfile/2.0.0/"
+    },
+    {
+      "ad": "fonttools",
+      "surum": "4.65.0",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "python-fonttools-LICENSE.external.txt",
+        "python-fonttools-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/fonttools/4.65.0/",
+      "aciklama": "PDF yazı tipi alt kümeleme"
+    },
+    {
+      "ad": "openpyxl",
+      "surum": "3.1.5",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "python-openpyxl-LICENCE.rst.txt"
+      ],
+      "kaynak": "https://pypi.org/project/openpyxl/3.1.5/",
+      "aciklama": "Excel içe/dışa aktarma"
+    },
+    {
+      "ad": "packaging",
+      "surum": "26.3",
+      "tur": "python",
+      "platformlar": [
+        "linux"
+      ],
+      "lisans": "Apache-2.0 OR BSD-2-Clause",
+      "dosyalar": [
+        "python-packaging-LICENSE.APACHE.txt",
+        "python-packaging-LICENSE.BSD.txt",
+        "python-packaging-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/packaging/26.3/"
+    },
+    {
+      "ad": "pillow",
+      "surum": "12.3.0",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT-CMU",
+      "dosyalar": [
+        "python-pillow-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/pillow/12.3.0/",
+      "aciklama": "Görüntü işleme"
+    },
+    {
+      "ad": "proxy_tools",
+      "surum": "0.1.0",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "python-proxy_tools-LICENSE-uretildi.txt"
+      ],
+      "kaynak": "https://pypi.org/project/proxy_tools/0.1.0/"
+    },
+    {
+      "ad": "pycparser",
+      "surum": "3.0",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "BSD-3-Clause",
+      "dosyalar": [
+        "python-pycparser-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/pycparser/3.0/"
+    },
+    {
+      "ad": "pydyf",
+      "surum": "0.12.1",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "BSD-3-Clause",
+      "dosyalar": [
+        "python-pydyf-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/pydyf/0.12.1/"
+    },
+    {
+      "ad": "pyinstaller",
+      "surum": "6.11.1",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "GPL-2.0-or-later WITH Bootloader-exception AND Apache-2.0",
+      "dosyalar": [
+        "python-pyinstaller-COPYING.txt"
+      ],
+      "kaynak": "https://pypi.org/project/pyinstaller/6.11.1/",
+      "aciklama": "Paketleyici; yalnız önyükleyici, loader ve çalışma anı kancaları pakete girer (derleme kodu girmez)"
+    },
+    {
+      "ad": "pyinstaller-hooks-contrib",
+      "surum": "2026.7",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "Apache-2.0",
+      "dosyalar": [
+        "python-pyinstaller-hooks-contrib-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/pyinstaller-hooks-contrib/2026.7/",
+      "aciklama": "Yalnız çalışma anı kancaları (rthooks, Apache-2.0) pakete girer; standart kancalar (GPL-2.0+) girmez"
+    },
+    {
+      "ad": "pypdf",
+      "surum": "6.14.2",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "BSD-3-Clause",
+      "dosyalar": [
+        "python-pypdf-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/pypdf/6.14.2/",
+      "aciklama": "PDF okuma/birleştirme"
+    },
+    {
+      "ad": "pyphen",
+      "surum": "0.18.1",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "GPL-2.0-or-later OR LGPL-2.1-or-later OR MPL-1.1",
+      "dosyalar": [
+        "python-pyphen-COPYING.GPL.txt",
+        "python-pyphen-COPYING.LGPL.txt",
+        "python-pyphen-COPYING.MPL.txt",
+        "python-pyphen-LICENSE.txt",
+        "python-pyphen-pyphen_dictionaries_README_hyph_en_US.txt"
+      ],
+      "secilen": "MPL-1.1",
+      "kaynak": "https://pypi.org/project/pyphen/0.18.1/",
+      "aciklama": "Heceleme (yalnız en_US sözlüğü paketlenir)"
+    },
+    {
+      "ad": "PySide6",
+      "surum": "6.8.3",
+      "tur": "python",
+      "platformlar": [
+        "linux"
+      ],
+      "lisans": "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only",
+      "dosyalar": [
+        "GPL-3.0-metni.txt",
+        "LGPL-3.0-metni.txt"
+      ],
+      "secilen": "LGPL-3.0-only",
+      "kaynak": "https://pypi.org/project/PySide6/6.8.3/",
+      "aciklama": "Linux penceresi ve tepsisi (Qt 6)"
+    },
+    {
+      "ad": "PySide6-Addons",
+      "surum": "6.8.3",
+      "tur": "python",
+      "platformlar": [
+        "linux"
+      ],
+      "lisans": "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only",
+      "dosyalar": [
+        "GPL-3.0-metni.txt",
+        "LGPL-3.0-metni.txt"
+      ],
+      "secilen": "LGPL-3.0-only",
+      "kaynak": "https://pypi.org/project/PySide6-Addons/6.8.3/",
+      "aciklama": "Qt 6 WebEngine"
+    },
+    {
+      "ad": "PySide6-Essentials",
+      "surum": "6.8.3",
+      "tur": "python",
+      "platformlar": [
+        "linux"
+      ],
+      "lisans": "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only",
+      "dosyalar": [
+        "GPL-3.0-metni.txt",
+        "LGPL-3.0-metni.txt"
+      ],
+      "secilen": "LGPL-3.0-only",
+      "kaynak": "https://pypi.org/project/PySide6-Essentials/6.8.3/",
+      "aciklama": "Qt 6 kitaplıkları"
+    },
+    {
+      "ad": "pystray",
+      "surum": "0.19.5",
+      "tur": "python",
+      "platformlar": [
+        "windows"
+      ],
+      "lisans": "LGPL-3.0-or-later",
+      "dosyalar": [
+        "GPL-3.0-metni.txt",
+        "LGPL-3.0-metni.txt"
+      ],
+      "kaynak": "https://pypi.org/project/pystray/0.19.5/",
+      "aciklama": "Windows sistem tepsisi",
+      "kaynagi_pakette": true
+    },
+    {
+      "ad": "pythonnet",
+      "surum": "3.0.5",
+      "tur": "python",
+      "platformlar": [
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "python-pythonnet-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/pythonnet/3.0.5/",
+      "aciklama": "Windows pencere motoru köprüsü (WebView2)"
+    },
+    {
+      "ad": "pywebview",
+      "surum": "5.3.2",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "BSD-3-Clause",
+      "dosyalar": [
+        "python-pywebview-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/pywebview/5.3.2/",
+      "aciklama": "Program penceresi"
+    },
+    {
+      "ad": "QtPy",
+      "surum": "2.4.3",
+      "tur": "python",
+      "platformlar": [
+        "linux"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "python-QtPy-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/QtPy/2.4.3/",
+      "aciklama": "Qt bağlayıcı katmanı"
+    },
+    {
+      "ad": "segno",
+      "surum": "1.6.1",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "BSD-3-Clause",
+      "dosyalar": [
+        "python-segno-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/segno/1.6.1/",
+      "aciklama": "Etiketteki QR"
+    },
+    {
+      "ad": "setuptools",
+      "surum": "84.0.0",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "python-setuptools-LICENSE.txt",
+        "python-setuptools-setuptools__vendor_autocommand-2.2.2.dist-info_LICENSE.txt",
+        "python-setuptools-setuptools__vendor_backports.tarfile-1.2.0.dist-info_LICENSE.txt",
+        "python-setuptools-setuptools__vendor_importlib_metadata-8.7.1.dist-info_licenses_LICENSE.txt",
+        "python-setuptools-setuptools__vendor_jaraco.text-4.0.0.dist-info_LICENSE.txt",
+        "python-setuptools-setuptools__vendor_jaraco_context-6.1.0.dist-info_licenses_LICENSE.txt",
+        "python-setuptools-setuptools__vendor_jaraco_functools-4.4.0.dist-info_licenses_LICENSE.txt",
+        "python-setuptools-setuptools__vendor_more_itertools-10.8.0.dist-info_licenses_LICENSE.txt",
+        "python-setuptools-setuptools__vendor_packaging-26.0.dist-info_licenses_LICENSE.APACHE.txt",
+        "python-setuptools-setuptools__vendor_packaging-26.0.dist-info_licenses_LICENSE.BSD.txt",
+        "python-setuptools-setuptools__vendor_packaging-26.0.dist-info_licenses_LICENSE.txt",
+        "python-setuptools-setuptools__vendor_platformdirs-4.4.0.dist-info_licenses_LICENSE.txt",
+        "python-setuptools-setuptools__vendor_tomli-2.4.0.dist-info_licenses_LICENSE.txt",
+        "python-setuptools-setuptools__vendor_wheel-0.46.3.dist-info_licenses_LICENSE.txt",
+        "python-setuptools-setuptools__vendor_zipp-3.23.0.dist-info_licenses_LICENSE.txt",
+        "python-setuptools-setuptools_config_NOTICE.txt",
+        "python-setuptools-setuptools_config__validate_pyproject_NOTICE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/setuptools/84.0.0/",
+      "aciklama": "cffi derleme yardımcısı (çalışma anında kullanılmaz)"
+    },
+    {
+      "ad": "shiboken6",
+      "surum": "6.8.3",
+      "tur": "python",
+      "platformlar": [
+        "linux"
+      ],
+      "lisans": "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only",
+      "dosyalar": [
+        "GPL-3.0-metni.txt",
+        "LGPL-3.0-metni.txt"
+      ],
+      "secilen": "LGPL-3.0-only",
+      "kaynak": "https://pypi.org/project/shiboken6/6.8.3/",
+      "aciklama": "Qt 6 Python bağlayıcısı"
+    },
+    {
+      "ad": "six",
+      "surum": "1.17.0",
+      "tur": "python",
+      "platformlar": [
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "python-six-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/six/1.17.0/"
+    },
+    {
+      "ad": "sqlparse",
+      "surum": "0.6.0",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "BSD-3-Clause",
+      "dosyalar": [
+        "python-sqlparse-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/sqlparse/0.6.0/"
+    },
+    {
+      "ad": "tinycss2",
+      "surum": "1.5.1",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "BSD-3-Clause",
+      "dosyalar": [
+        "python-tinycss2-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/tinycss2/1.5.1/"
+    },
+    {
+      "ad": "tinyhtml5",
+      "surum": "2.1.0",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "python-tinyhtml5-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/tinyhtml5/2.1.0/"
+    },
+    {
+      "ad": "typing_extensions",
+      "surum": "4.16.0",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "PSF-2.0",
+      "dosyalar": [
+        "python-typing_extensions-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/typing_extensions/4.16.0/"
+    },
+    {
+      "ad": "tzdata",
+      "surum": "2026.4",
+      "tur": "python",
+      "platformlar": [
+        "windows"
+      ],
+      "lisans": "Apache-2.0",
+      "dosyalar": [
+        "python-tzdata-LICENSE.txt",
+        "python-tzdata-licenses_LICENSE_APACHE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/tzdata/2026.4/",
+      "aciklama": "Windows'ta saat dilimi verisi"
+    },
+    {
+      "ad": "waitress",
+      "surum": "3.0.2",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "ZPL-2.1",
+      "dosyalar": [
+        "python-waitress-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/waitress/3.0.2/",
+      "aciklama": "Yerel sunucular"
+    },
+    {
+      "ad": "weasyprint",
+      "surum": "68.0",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "BSD-3-Clause",
+      "dosyalar": [
+        "python-weasyprint-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/weasyprint/68.0/",
+      "aciklama": "Evrak (PDF) üretimi"
+    },
+    {
+      "ad": "webencodings",
+      "surum": "0.6.1",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "BSD-3-Clause",
+      "dosyalar": [
+        "python-webencodings-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/webencodings/0.6.1/"
+    },
+    {
+      "ad": "whitenoise",
+      "surum": "6.12.0",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "python-whitenoise-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/whitenoise/6.12.0/"
+    },
+    {
+      "ad": "xlrd",
+      "surum": "2.0.1",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "BSD-3-Clause",
+      "dosyalar": [
+        "python-xlrd-LICENSE.txt"
+      ],
+      "kaynak": "https://pypi.org/project/xlrd/2.0.1/",
+      "aciklama": "e-Okul .xls okuma"
+    },
+    {
+      "ad": "zopfli",
+      "surum": "0.4.3",
+      "tur": "python",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "Apache-2.0",
+      "dosyalar": [
+        "python-zopfli-COPYING.txt"
+      ],
+      "kaynak": "https://pypi.org/project/zopfli/0.4.3/"
+    },
+    {
+      "ad": "@tanstack/query-core",
+      "surum": "5.101.4",
+      "tur": "npm",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "npm-tanstack-query-core-LICENSE.txt"
+      ],
+      "kaynak": "https://www.npmjs.com/package/@tanstack/query-core/v/5.101.4"
+    },
+    {
+      "ad": "@tanstack/query-devtools",
+      "surum": "5.101.4",
+      "tur": "npm",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "npm-tanstack-query-devtools-LICENSE.txt"
+      ],
+      "kaynak": "https://www.npmjs.com/package/@tanstack/query-devtools/v/5.101.4"
+    },
+    {
+      "ad": "@tanstack/react-query",
+      "surum": "5.101.4",
+      "tur": "npm",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "npm-tanstack-react-query-LICENSE.txt"
+      ],
+      "kaynak": "https://www.npmjs.com/package/@tanstack/react-query/v/5.101.4"
+    },
+    {
+      "ad": "@tanstack/react-query-devtools",
+      "surum": "5.101.4",
+      "tur": "npm",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "npm-tanstack-react-query-devtools-LICENSE.txt"
+      ],
+      "kaynak": "https://www.npmjs.com/package/@tanstack/react-query-devtools/v/5.101.4"
+    },
+    {
+      "ad": "cookie",
+      "surum": "1.1.1",
+      "tur": "npm",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "npm-cookie-LICENSE.txt"
+      ],
+      "kaynak": "https://www.npmjs.com/package/cookie/v/1.1.1"
+    },
+    {
+      "ad": "material-symbols",
+      "surum": "0.44.12",
+      "tur": "npm",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "Apache-2.0",
+      "dosyalar": [
+        "npm-material-symbols-LICENSE.txt"
+      ],
+      "kaynak": "https://www.npmjs.com/package/material-symbols/v/0.44.12",
+      "aciklama": "Arayüz simgeleri (yazı tipi)"
+    },
+    {
+      "ad": "react",
+      "surum": "18.3.1",
+      "tur": "npm",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "npm-react-LICENSE.txt"
+      ],
+      "kaynak": "https://www.npmjs.com/package/react/v/18.3.1"
+    },
+    {
+      "ad": "react-dom",
+      "surum": "18.3.1",
+      "tur": "npm",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "npm-react-dom-LICENSE.txt"
+      ],
+      "kaynak": "https://www.npmjs.com/package/react-dom/v/18.3.1"
+    },
+    {
+      "ad": "react-router",
+      "surum": "7.18.2",
+      "tur": "npm",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "npm-react-router-LICENSE.md.txt"
+      ],
+      "kaynak": "https://www.npmjs.com/package/react-router/v/7.18.2"
+    },
+    {
+      "ad": "react-router-dom",
+      "surum": "7.18.2",
+      "tur": "npm",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "npm-react-router-dom-LICENSE.md.txt"
+      ],
+      "kaynak": "https://www.npmjs.com/package/react-router-dom/v/7.18.2"
+    },
+    {
+      "ad": "scheduler",
+      "surum": "0.23.2",
+      "tur": "npm",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "npm-scheduler-LICENSE.txt"
+      ],
+      "kaynak": "https://www.npmjs.com/package/scheduler/v/0.23.2"
+    },
+    {
+      "ad": "set-cookie-parser",
+      "surum": "2.7.2",
+      "tur": "npm",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "npm-set-cookie-parser-LICENSE.txt"
+      ],
+      "kaynak": "https://www.npmjs.com/package/set-cookie-parser/v/2.7.2"
+    },
+    {
+      "ad": "tailwindcss",
+      "surum": "3.4.19",
+      "tur": "npm",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "npm-tailwindcss-LICENSE.txt"
+      ],
+      "kaynak": "https://www.npmjs.com/package/tailwindcss/v/3.4.19",
+      "aciklama": "Çıktıdaki üretilmiş CSS (preflight)"
+    },
+    {
+      "ad": "vite",
+      "surum": "6.4.3",
+      "tur": "npm",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "MIT",
+      "dosyalar": [
+        "npm-vite-LICENSE.md.txt"
+      ],
+      "kaynak": "https://www.npmjs.com/package/vite/v/6.4.3",
+      "aciklama": "Derleyicinin çıktıya kattığı çalışma anı yardımcıları"
+    },
+    {
+      "ad": "DejaVu Sans",
+      "surum": "2.37",
+      "tur": "yazi-tipi",
+      "platformlar": [
+        "linux",
+        "windows"
+      ],
+      "lisans": "Bitstream-Vera",
+      "dosyalar": [
+        "DejaVu-LISANS.txt"
+      ],
+      "kaynak": "https://dejavu-fonts.github.io/",
+      "aciklama": "Evrakta gömülü yazı tipi (4 kesim)"
+    },
+    {
+      "ad": "ICU (International Components for Unicode)",
+      "surum": "73.2",
+      "tur": "ikili",
+      "platformlar": [
+        "linux"
+      ],
+      "lisans": "Unicode-DFS-2016 AND ICU AND BSD-3-Clause AND NAIST-2003",
+      "dosyalar": [
+        "ICU-73-LICENSE.txt"
+      ],
+      "kaynak": "https://github.com/unicode-org/icu/releases/tag/release-73-2",
+      "aciklama": "Qt 6 ile gelen Unicode kitaplıkları (libicu*.so.73)"
+    },
+    {
+      "ad": "Microsoft Edge WebView2 Evergreen önyükleyicisi",
+      "surum": "derlemede indirilen güncel sürüm",
+      "tur": "ikili",
+      "platformlar": [
+        "windows"
+      ],
+      "lisans": "LicenseRef-Microsoft-WebView2-Runtime",
+      "dosyalar": [
+        "Microsoft-WebView2-Evergreen-NOT.txt"
+      ],
+      "kaynak": "https://developer.microsoft.com/en-us/microsoft-edge/webview2/",
+      "aciklama": "Yalnız setup.exe: WebView2 yoksa kurar"
+    },
+    {
+      "ad": "Microsoft Edge WebView2 SDK",
+      "surum": "1.0.2045.28",
+      "tur": "ikili",
+      "platformlar": [
+        "windows"
+      ],
+      "lisans": "BSD-3-Clause",
+      "dosyalar": [
+        "Microsoft-WebView2-SDK-LICENSE.txt",
+        "Microsoft-WebView2-SDK-NOTICE.txt"
+      ],
+      "kaynak": "https://www.nuget.org/packages/Microsoft.Web.WebView2/",
+      "aciklama": "pywebview ile gelen WebView2 DLL'leri (webview/lib)"
+    },
+    {
+      "ad": "Microsoft Visual C++ / Universal C çalışma zamanı",
+      "surum": "derleme ortamındaki sürüm",
+      "tur": "ikili",
+      "platformlar": [
+        "windows"
+      ],
+      "lisans": "LicenseRef-Microsoft-Distributable-Code",
+      "dosyalar": [
+        "Microsoft-VC-calisma-zamani-NOT.txt"
+      ],
+      "aciklama": "Python ve eklentilerin C/C++ çalışma zamanı"
+    },
+    {
+      "ad": "Qt 6 içindeki üçüncü taraf kod (Chromium dahil)",
+      "surum": "6.8.3",
+      "tur": "ikili",
+      "platformlar": [
+        "linux"
+      ],
+      "lisans": "LicenseRef-Qt-ucuncu-taraf",
+      "dosyalar": [
+        "Qt-6.8.3-ucuncu-taraf-NOT.txt"
+      ],
+      "kaynak": "https://doc.qt.io/qt-6.8/licenses-used-in-qt.html",
+      "aciklama": "Qt kitaplıklarına derlenmiş bileşenlerin bildirim adresleri"
+    }
+  ]
+}

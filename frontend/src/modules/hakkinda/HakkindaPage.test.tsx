@@ -58,6 +58,29 @@ describe("HakkindaPage", () => {
     expect(screen.getByText(/kişisel veri dışarı çıkmaz/)).toBeInTheDocument();
   });
 
+  it("üçüncü taraf kartı LGPL kitaplıkların telif bildirimini ve lisans dosyalarını verir", () => {
+    // LGPL-3.0 §4(c) (F12 düzeltme turu): çalışırken telif bildirimi gösteren program,
+    // LGPL kitaplığın bildirimini de gösterir ve GPL/LGPL metinlerine yönlendirir.
+    render(<HakkindaPage />);
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Üçüncü Taraf Bileşenler" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/GNU Kısıtlı Genel Kamu Lisansı\s+\(LGPL-3\.0\)/)).toBeInTheDocument();
+    expect(screen.getByText(/pystray — Copyright © 2016-2022 Moses Palmér/)).toBeInTheDocument();
+    expect(screen.getByText(/Qt 6 ve PySide6 — Copyright © The Qt/)).toBeInTheDocument();
+    for (const dosya of [
+      "THIRD_PARTY_LICENSES",
+      "BENIOKU.txt",
+      "LGPL-3.0-metni.txt",
+      "GPL-3.0-metni.txt",
+    ]) {
+      expect(screen.getByText(dosya)).toBeInTheDocument();
+    }
+    // Sözlük: "kurucu" / "yükleyici" kullanıcı metninde geçmez.
+    expect(screen.queryByText(/kurucu|yükleyici/i)).not.toBeInTheDocument();
+  });
+
   it("Ağ Kataloğunun kişisel veri göstermediğini söyler (sözlük: bunu Hakkında söyler)", () => {
     render(<HakkindaPage />);
 

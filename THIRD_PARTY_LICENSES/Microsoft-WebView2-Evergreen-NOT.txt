@@ -1,0 +1,16 @@
+Microsoft Edge WebView2 Evergreen önyükleyicisi (MicrosoftEdgeWebView2Setup.exe)
+================================================================================
+
+Windows kurulum dosyası, bilgisayarda Microsoft Edge WebView2 Çalışma Zamanı
+yoksa onu kurmak için Microsoft'un Evergreen önyükleyicisini içerir. Dosya
+derleme sırasında Microsoft'un sunucusundan olduğu gibi alınır ve değiştirilmez.
+Önyükleyici çalışma zamanını Microsoft'tan indirir; kurulan WebView2 Çalışma
+Zamanı Microsoft'un kendi lisans koşullarına tabidir.
+
+Microsoft, uygulamaların Evergreen önyükleyicisini kendi kurulum dosyalarıyla
+birlikte dağıtmasına izin verir:
+  https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution
+  https://developer.microsoft.com/en-us/microsoft-edge/webview2/
+
+Bu bileşen yalnız Windows kurulum dosyasında (setup.exe) bulunur; taşınabilir
+.zip ve Linux paketlerinde yoktur.

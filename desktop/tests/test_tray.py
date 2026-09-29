@@ -903,3 +903,71 @@ def test_ayar_acik_ama_katalog_acilamadiysa_tepsi_kapat_sunar() -> None:
     assert ("Ağ Kataloğu: kapalı", False) in gorunen
     assert komutu_calistir(eylemler, "katalog_ac_kapa") is True
     assert masa.cagrilar == ["katalog-kapat"]
+
+
+def _tasinabilir(masa: _Masa, *, kapatilabilir: bool) -> TrayActions:
+    """KB-2: Pardus taşınabilir arşivinin tepsi hedefleri (katalog sunulmaz)."""
+    eylemler = masa.eylemler()
+    return TrayActions(
+        **{
+            **eylemler.__dict__,
+            "katalog_satiri": lambda: "Ağ Kataloğu: taşınabilir sürümde sunulmaz",
+            "katalog_kapatilabilir": lambda: kapatilabilir,
+            "katalog_sunulur": lambda: False,
+        }
+    )
+
+
+def test_tasinabilir_arsivde_tepsi_ac_sunmaz_ve_eski_menuden_de_reddeder() -> None:
+    """KB-2 (28.09.2026): "Ağ Kataloğunu aç" görünmez; tıklansa da denetçiye gitmez."""
+    masa = _Masa("yonetici", katalog_acik=False)
+    eylemler = _tasinabilir(masa, kapatilabilir=False)
+
+    gorunen = [(o.metin, o.etkin) for o in menu_durumu(eylemler) if o.gorunur]
+
+    assert gorunen == [
+        ("Pencereyi aç", True),
+        ("Ağ Kataloğu: taşınabilir sürümde sunulmaz", False),
+        ("Görevli kipine geç", True),
+        ("Kilitle", True),
+        ("Çık", True),
+    ]
+    assert komutu_calistir(eylemler, "katalog_ac_kapa") is False
+    assert masa.cagrilar == []
+
+
+def test_tasinabilir_arsivde_acik_kalmis_ayar_tepsiden_kapatilir() -> None:
+    masa = _Masa("yonetici", katalog_acik=False)
+    eylemler = _tasinabilir(masa, kapatilabilir=True)
+
+    gorunen = [(o.metin, o.etkin) for o in menu_durumu(eylemler) if o.gorunur]
+
+    assert ("Ağ Kataloğunu kapat", True) in gorunen
+    assert ("Ağ Kataloğunu aç", True) not in gorunen
+    assert komutu_calistir(eylemler, "katalog_ac_kapa") is True
+    assert masa.cagrilar == ["katalog-kapat"]
+
+
+def test_katalog_sunulur_okunamazsa_ac_sunulmaz() -> None:
+    """Denetçi zaten reddeder; tepsi okunamayan durumda "aç" göstermez (fail-closed)."""
+    masa = _Masa("yonetici", katalog_acik=False)
+
+    def patla() -> bool:
+        raise RuntimeError("okunamadı")
+
+    eylemler = TrayActions(**{**masa.eylemler().__dict__, "katalog_sunulur": patla})
+
+    assert "Ağ Kataloğunu aç" not in [o.metin for o in menu_durumu(eylemler) if o.gorunur]
+    assert komutu_calistir(eylemler, "katalog_ac_kapa") is False
+    assert masa.cagrilar == []
+
+
+def test_katalog_sunulursa_tepsi_davranisi_degismez() -> None:
+    masa = _Masa("yonetici", katalog_acik=False)
+    eylemler = TrayActions(**{**masa.eylemler().__dict__, "katalog_sunulur": lambda: True})
+
+    assert ("Ağ Kataloğunu aç", True) in [
+        (o.metin, o.etkin) for o in menu_durumu(eylemler) if o.gorunur
+    ]
+    assert komutu_calistir(eylemler, "katalog_ac_kapa") is True
+    assert masa.cagrilar == ["katalog-ac"]
