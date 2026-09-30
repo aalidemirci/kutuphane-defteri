@@ -17,7 +17,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { useDebounced } from "../../hooks/useDebounced";
 import { useTabParam } from "../../hooks/useTabParam";
-import { formatNumber } from "../../lib/format";
+import { formatAccessionNo, formatNumber } from "../../lib/format";
 import { emptyPage, geriDusulecekOffset } from "../../lib/pagination";
 import type { Paginated } from "../../lib/pagination";
 import Button from "../../ui/Button";
@@ -346,7 +346,7 @@ function NushalarSekmesi({ bolumler }: { bolumler: Section[] }) {
     { header: "Kaynak adı", cell: (c) => c.work_title },
     { header: "Bölüm", cell: (c) => c.section_name || "—" },
     { header: "Durum", cell: (c) => <OduncDurumu nusha={c} /> },
-    { header: "Kayıt no", align: "right", cell: (c) => formatNumber(c.accession_no) },
+    { header: "Kayıt no", align: "right", cell: (c) => formatAccessionNo(c.accession_no) },
   ];
 
   return (

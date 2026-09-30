@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  formatAccessionNo,
   formatDate,
   formatDateTime,
   formatNumber,
@@ -49,6 +50,20 @@ describe("formatNumber", () => {
 
   it("sıfırı düz '0' olarak gösterir", () => {
     expect(formatNumber(0)).toBe("0");
+  });
+});
+
+// Kayıt no kimliktir, nicelik değil: evraktaki gibi ayraçsız basılır
+// (teslim_belgeleri.py `str(nusha.accession_no)`).
+describe("formatAccessionNo", () => {
+  it("binlik ayraç koymaz", () => {
+    expect(formatAccessionNo(2026000630)).toBe("2026000630");
+    expect(formatAccessionNo(2026000630)).not.toBe(formatNumber(2026000630));
+  });
+
+  it("null/undefined için tire döner", () => {
+    expect(formatAccessionNo(null)).toBe("—");
+    expect(formatAccessionNo(undefined)).toBe("—");
   });
 });
 

@@ -179,6 +179,8 @@ describe("Katalog — nüsha sekmesi", () => {
 
     expect(await screen.findByText("2026-000123")).toBeInTheDocument();
     expect(within(screen.getByRole("table")).getByText("Rafta")).toBeInTheDocument();
+    // Kayıt no kimliktir: binlik ayraçsız ("2.026.000.123" değil).
+    expect(within(screen.getByRole("table")).getByText("2026000123")).toBeInTheDocument();
   });
 
   it("ödünç verilemeyen nüshada gerekçe gösterilir (kişisel veri taşımaz)", async () => {
