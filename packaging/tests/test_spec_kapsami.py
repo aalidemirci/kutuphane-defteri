@@ -24,6 +24,7 @@ import runpy
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -107,6 +108,35 @@ def test_pdf_duman_bayragi_ve_cikis_kodu_sozlesmesi() -> None:
 def test_bagimlilik_duman_bayragi_ve_cikis_kodu_sozlesmesi() -> None:
     assert _GIRIS["IMPORT_SMOKE_FLAG"] == "--bagimlilik-duman"
     assert _GIRIS["EXIT_IMPORT_SMOKE_FAILED"] == _ERRORS["EXIT_IMPORT_SMOKE_FAILED"] == 10
+
+
+def test_dagitim_duman_bayragi_ve_cikis_kodu_sozlesmesi() -> None:
+    """KB-2 düzeltme turu (29.09.2026): build.sh ve kap-ici-test.sh bu bayrağı çağırır."""
+    assert _GIRIS["DISTRIBUTION_SMOKE_FLAG"] == "--dagitim-duman"
+    assert (
+        _GIRIS["EXIT_DISTRIBUTION_SMOKE_FAILED"] == _ERRORS["EXIT_DISTRIBUTION_SMOKE_FAILED"] == 11
+    )
+    derleme = (REPO / "packaging" / "linux" / "build.sh").read_text(encoding="utf-8")
+    kap = (REPO / "packaging" / "linux" / "kap-ici-test.sh").read_text(encoding="utf-8")
+    # Taşınabilir ağaçtaki ikili TAŞINABİLİR, gerçek dpkg kurulumundan sonra /usr/bin
+    # bağlantısıyla açılan ikili KURULU saymalı.
+    assert '"$TAR_AGACI/uygulama/kutuphane-defteri" --dagitim-duman tasinabilir' in derleme
+    assert "\nkutuphane-defteri --dagitim-duman kurulu\n" in kap
+    assert "\n/opt/kutuphane-defteri/kutuphane-defteri --dagitim-duman kurulu\n" in kap
+
+
+def test_dagitim_duman_beklenen_turu_denetler() -> None:
+    """Test süreci paketsizdir (`sys.frozen` yok) → KAYNAK; beklenmeyen tür 11 döner."""
+    fn = _GIRIS["run_distribution_smoke"]
+    assert fn(None) == 0
+    assert fn("kaynak") == 0
+    assert fn("kurulu") == 11
+    assert fn("tasinabilir") == 11
+    assert fn("bilinmeyen") == 11
+    arguman = _GIRIS["_flag_argument"]
+    assert arguman(["--dagitim-duman", "kurulu"], "--dagitim-duman") == "kurulu"
+    assert arguman(["--dagitim-duman"], "--dagitim-duman") is None
+    assert arguman(["--dagitim-duman", "--baska"], "--dagitim-duman") is None
 
 
 def test_bagimlilik_duman_eksik_modulu_yakalar(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -205,10 +235,8 @@ PAKETLEME_IMPORT_ESLEME = {
 #: deseni de bu kümeye bağlıdır.
 LINUX_DUMAN_DISI = {"qtpy", "pyside6"}
 
-#: GPL'li Qt bağlayıcıları (23.09.2026 yayın denetimi). PyQt5/PyQt6 GPLv3,
-#: PySide2/PySide6 LGPLv3'tür; ürün PolyForm Noncommercial lisanslıdır ve
-#: GPLv3 ek kısıtlamayı yasakladığı için GPL'li bağlayıcı pakete GİREMEZ.
-GPL_QT_BAGLAYICILARI = ("PyQt5", "PyQt6", "PyQtWebEngine")
+# Lisans kapısı (GPL'li Qt bağlayıcısı, readline, THIRD_PARTY_LICENSES) F12'de
+# `test_lisans_kapisi.py`'ye taşındı ve orada genişletildi.
 
 _PAKET_SATIRI = re.compile(
     r'^([A-Za-z0-9_.\-]+)==(\S+?)\s*(?:;\s*sys_platform\s*==\s*"([^"]+)")?\s*$'
@@ -268,48 +296,6 @@ def test_masaustu_modulleri_win32_isaretli_paketlerle_senkron() -> None:
     )
 
 
-def _spec_taban_excludes() -> set[str]:
-    """spec'teki koşulsuz `excludes = [...]` atamasının dize öğeleri."""
-    agac = ast.parse(SPEC.read_text(encoding="utf-8"))
-    for dugum in ast.walk(agac):
-        if (
-            isinstance(dugum, ast.Assign)
-            and any(isinstance(h, ast.Name) and h.id == "excludes" for h in dugum.targets)
-            and isinstance(dugum.value, ast.List)
-        ):
-            return {
-                oge.value
-                for oge in dugum.value.elts
-                if isinstance(oge, ast.Constant) and isinstance(oge.value, str)
-            }
-    raise AssertionError("spec'te `excludes = [...]` ataması bulunamadı (desen değişti mi?)")
-
-
-def test_gpl_lisansli_qt_baglayicisi_paketlenmez() -> None:
-    """LİSANS KAPISI: GPLv3'lü PyQt ne kurulur ne de pakete girer (PySide6 LGPLv3'tür).
-
-    PolyForm Noncommercial ticari kullanımı kısıtlar; GPLv3 ise dağıtılan bütüne
-    ek kısıtlama konmasını yasaklar. İkisi bir pakette birlikte dağıtılamaz —
-    bu yüzden Linux penceresi ve tepsisi PySide6'ya taşındı.
-    """
-    paketleme = PAKETLEME_REQUIREMENTS.read_text(encoding="utf-8")
-    pinler = {ad.casefold() for ad in _PIN.findall(paketleme)}
-    yasak = {ad.casefold() for ad in GPL_QT_BAGLAYICILARI}
-    assert not (pinler & yasak), (
-        f"GPLv3 lisanslı Qt bağlayıcısı pinlenmiş: {sorted(pinler & yasak)}. "
-        "Linux bağlayıcısı PySide6'dır (LGPLv3)."
-    )
-
-    spec_metni = SPEC.read_text(encoding="utf-8")
-    assert {"PyQt5", "PyQt6", "PySide2"} <= _spec_taban_excludes(), (
-        "spec'in KOŞULSUZ `excludes` listesi GPL'li Qt bağlayıcılarını dışlamıyor "
-        f"(bulunan: {sorted(_spec_taban_excludes())})"
-    )
-    # Dışlamak tek başına yetmez: Linux zinciri gerçekten PySide6'dan kurulmalı.
-    assert '"PySide6.QtWebEngineWidgets"' in spec_metni
-    assert '"qtpy"' in spec_metni
-
-
 def test_paketleme_platform_isaretleri_bilinen_kumede() -> None:
     """Yalnız win32 ve linux işareti; linux işaretliler bilinen Qt kümesi."""
     platformlar = _paketleme_gereksinimleri()
@@ -359,3 +345,51 @@ def test_pdf_duman_hedef_dosya_ayristirmasi() -> None:
     varsayilan = smoke_target(["--pdf-duman"])
     assert varsayilan == Path(tempfile.gettempdir()) / "kutuphane-defteri-pdf-duman.pdf"
     assert smoke_target(["--pdf-duman", "--autotest"]) == varsayilan
+
+
+def test_pdf_duman_hedefi_bosluklu_yolu_birlestirir() -> None:
+    """PowerShell 5.1 `Start-Process -ArgumentList` öğeleri tırnaklamadan birleştirir:
+    boşluklu masa hesabı yolu iki öğeye bölünür (F12 düzeltme turu, protokol §2.5)."""
+    smoke_target = _GIRIS["_smoke_target"]
+    bolunmus = ["--pdf-duman", r"C:\Users\Kütüphane", r"Masası\Desktop\pdf-duman.pdf"]
+    assert smoke_target(bolunmus) == Path(r"C:\Users\Kütüphane Masası\Desktop\pdf-duman.pdf")
+    assert smoke_target(["--pdf-duman", "a", "b.pdf", "--autotest"]) == Path("a b.pdf")
+
+
+def _tanilama_ortami(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fn: Any) -> Path:
+    """Penceresiz derlemenin koşulu: stderr YOK; veri klasörü geçici dizinde."""
+    monkeypatch.setenv("KD_APP_HOME", str(tmp_path / "kd"))
+    monkeypatch.setitem(fn.__globals__, "_tanilama_yolu", None)
+    monkeypatch.setattr(sys, "stderr", None)
+    return tmp_path / "kd" / "logs" / str(_GIRIS["TANILAMA_DOSYASI"])
+
+
+def test_duman_kipi_stderr_yokken_tani_dosyasina_yazar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """F12 düzeltme turu: duman kipleri günlük kurulmadan koşar ve penceresiz exe'de
+    stderr `None`'dır — tanı çıktısı `logs/tanilama.log`'a da yazılır."""
+    run = _GIRIS["run"]
+    dosya = _tanilama_ortami(monkeypatch, tmp_path, run)
+    monkeypatch.setitem(run.__globals__, "RUNTIME_MODULES", ("json", "kd_olmayan_modul"))
+    assert run(["--bagimlilik-duman"]) == 10
+    metin = dosya.read_text(encoding="utf-8")
+    assert "--bagimlilik-duman" in metin.splitlines()[0]
+    assert "kd_olmayan_modul" in metin and "Çıkış kodu: 10" in metin
+    # Her koşu dosyayı baştan yazar (yalnız son koşu).
+    monkeypatch.setitem(run.__globals__, "RUNTIME_MODULES", ("json",))
+    assert run(["--bagimlilik-duman"]) == 0
+    metin = dosya.read_text(encoding="utf-8")
+    assert "kd_olmayan_modul" not in metin and "Çıkış kodu: 0" in metin
+
+
+def test_pdf_duman_kipi_hedefi_tani_dosyasina_yazar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    run = _GIRIS["run"]
+    dosya = _tanilama_ortami(monkeypatch, tmp_path, run)
+    monkeypatch.setitem(run.__globals__, "run_pdf_smoke", lambda _hedef: 8)
+    assert run(["--pdf-duman", "hedef/Kütüphane", "Masası/pdf.pdf"]) == 8
+    metin = dosya.read_text(encoding="utf-8")
+    assert "Hedef PDF: hedef/Kütüphane Masası/pdf.pdf" in metin
+    assert "Çıkış kodu: 8" in metin

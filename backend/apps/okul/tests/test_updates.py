@@ -79,7 +79,7 @@ def test_pardusta_windows_kurulum_dosyasi_onerilmez(
     da (arayüz atlansa bile) anlaşılır Türkçe ret verir.
     """
     monkeypatch.setattr(updates, "installer_supported", lambda: False)
-    monkeypatch.setattr(updates, "latest_release", lambda *, force=False: _release())
+    monkeypatch.setattr(updates, "latest_release", lambda **_kwargs: _release())
 
     durum = updates.update_status(current_version="2026.9.0")
     assert durum["update_available"] is True
@@ -91,7 +91,7 @@ def test_pardusta_windows_kurulum_dosyasi_onerilmez(
 
 
 def test_windowsta_platform_alani_ve_indirme_acik(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(updates, "latest_release", lambda *, force=False: _release())
+    monkeypatch.setattr(updates, "latest_release", lambda **_kwargs: _release())
 
     durum = updates.update_status(current_version="2026.9.0")
 
@@ -957,3 +957,221 @@ def test_kilitliyken_guncelleme_uclari_kapali(
         assert yanit.status_code == 423, yol
         assert yanit.json()["code"] == "locked"
     assert cagrilar == []
+
+
+# ===========================================================================
+# F12 — beta sürüm yolu (kullanıcı kararı 3, 27.09.2026): kararlı sürüm
+# kullanan okula ön-sürüm ÖNERİLMEZ; beta kullanıcısı sonraki betayı ve
+# kararlı sürümü alır.
+# ===========================================================================
+
+
+def _yalniz_liste(monkeypatch: pytest.MonkeyPatch, etiketler: list[str]) -> None:
+    """`releases/latest` 404 (kararlı yayın yok) → sürüm LİSTESİ yolu."""
+
+    def sahte_read_url(url: str, *, max_bytes: int) -> bytes:
+        if url == updates.LATEST_RELEASE_URL:
+            raise updates.ReleaseNotFoundError("kararlı sürüm yok")
+        return json.dumps([{"tag_name": etiket, "assets": []} for etiket in etiketler]).encode()
+
+    monkeypatch.setattr(updates, "_read_url", sahte_read_url)
+
+
+def test_kararli_kullaniciya_on_surum_onerilmez(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Liste yolu en yüksek sürümü seçer; o bir beta ise kararlı kuruluma ÖNERİLMEZ."""
+    _yalniz_liste(monkeypatch, ["v2026.11.0-beta.1", "v2026.10.0-rc.1"])
+
+    durum = updates.update_status(force=True, current_version="2026.10.0")
+
+    assert durum["latest_version"] == "2026.11.0-beta.1"
+    assert durum["update_available"] is False
+    assert durum["can_download"] is False
+
+
+def test_kararli_kullanici_on_surumu_indirme_ucundan_da_alamaz(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    beta = updates.ReleaseInfo(
+        version="2026.11.0-beta.1",
+        tag_name="v2026.11.0-beta.1",
+        name="Kütüphane Defteri v2026.11.0-beta.1",
+        published_at="",
+        html_url="",
+        installer=_release().installer,
+        checksums=None,
+    )
+    istenen = _indirme_ortami(monkeypatch, tmp_path, beta, {}, calisan="2026.10.0")
+
+    with pytest.raises(updates.UpdateError, match="zaten güncel"):
+        updates.download_latest_installer()
+    assert istenen == []  # ağa hiç gidilmez
+
+
+@pytest.mark.parametrize(
+    ("calisan", "etiketler", "beklenen"),
+    [
+        # İlk beta kullanıcısı bir sonrakini alır (beta.10 > beta.9 dahil).
+        ("2026.10.0-beta.1", ["v2026.10.0-beta.1", "v2026.10.0-beta.2"], "2026.10.0-beta.2"),
+        ("2026.10.0-beta.9", ["v2026.10.0-beta.10"], "2026.10.0-beta.10"),
+        # Beta → rc da ön-sürümdür; beta kullanıcısına önerilir.
+        ("2026.10.0-beta.2", ["v2026.10.0-rc.1"], "2026.10.0-rc.1"),
+        # Alfa dönemindeki geliştirme kurulumu betayı alır.
+        ("2026.9.0-alpha.0", ["v2026.10.0-beta.1"], "2026.10.0-beta.1"),
+    ],
+)
+def test_beta_kullanicisina_sonraki_on_surum_onerilir(
+    monkeypatch: pytest.MonkeyPatch, calisan: str, etiketler: list[str], beklenen: str
+) -> None:
+    _yalniz_liste(monkeypatch, etiketler)
+
+    durum = updates.update_status(force=True, current_version=calisan)
+
+    assert (durum["latest_version"], durum["update_available"]) == (beklenen, True)
+
+
+def test_beta_kullanicisina_kararli_surum_onerilir(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(updates, "latest_release", lambda **_kwargs: _release())
+
+    durum = updates.update_status(current_version="2026.10.0-beta.3")
+
+    assert (durum["latest_version"], durum["update_available"]) == ("2026.10.0", True)
+
+
+def test_on_surum_ve_oneri_kurali() -> None:
+    assert updates.is_prerelease("2026.10.0-beta.1")
+    assert not updates.is_prerelease(" 2026.10.0 ")
+    assert updates.offered("2026.10.0", "2026.10.0-beta.1")
+    assert not updates.offered("2026.10.0-beta.1", "2026.9.0")
+    assert not updates.offered("2026.10.0", "2026.10.0")
+    assert updates.offered("2026.10.1", "2026.10.0")
+
+
+def test_ilk_beta_eski_alfa_verisini_acar_ve_kararlidan_once_gelir() -> None:
+    """VERSION alfa → beta geçişi (F12): iki `version_key` kopyası da betayı alfadan
+    YENİ, kararlıdan ESKİ sayar — alfa verisi betada açılır (damga kapısı), kararlı
+    sürüm betanın güncellemesidir."""
+    from desktop import version as masaustu
+
+    for anahtar in (masaustu.version_key, updates.version_key):
+        assert anahtar("2026.9.0-alpha.0") < anahtar("2026.10.0-beta.1")
+        assert anahtar("2026.10.0-beta.1") < anahtar("2026.10.0-rc.1") < anahtar("2026.10.0")
+
+
+# ===========================================================================
+# F12 düzeltme turu — beta kanalı kararlı sürümden SONRA da çalışır; sertifika
+# hatası "ağ engeli" diye sunulmaz.
+# ===========================================================================
+
+
+def _kararli_ve_liste(monkeypatch: pytest.MonkeyPatch, kararli: str, liste: list[str]) -> list[str]:
+    """`releases/latest` bir kararlı sürüm döndürür, liste ön sürümleri de taşır."""
+    istenen: list[str] = []
+
+    def sahte_read_url(url: str, *, max_bytes: int) -> bytes:
+        istenen.append(url)
+        if url == updates.LATEST_RELEASE_URL:
+            return json.dumps({"tag_name": kararli, "assets": []}).encode()
+        assert url == updates.RELEASE_LIST_URL
+        return json.dumps([{"tag_name": etiket, "assets": []} for etiket in liste]).encode()
+
+    monkeypatch.setattr(updates, "_read_url", sahte_read_url)
+    return istenen
+
+
+@pytest.mark.parametrize(
+    ("calisan", "beklenen"),
+    [
+        # İlk kararlı sürüm (2026.10.0) yayımlandıktan sonraki beta dönemi.
+        ("2026.11.0-beta.1", "2026.11.0-beta.2"),
+        # Kararlıdan önceki beta kullanıcısı kararlıyı da, sonraki betayı da görür:
+        # en yüksek sürüm önerilir.
+        ("2026.10.0-beta.3", "2026.11.0-beta.2"),
+    ],
+)
+def test_beta_kullanicisi_kararli_surumden_sonra_da_sonraki_betayi_alir(
+    monkeypatch: pytest.MonkeyPatch, calisan: str, beklenen: str
+) -> None:
+    istenen = _kararli_ve_liste(
+        monkeypatch, "v2026.10.0", ["v2026.11.0-beta.2", "v2026.10.0", "v2026.11.0-beta.1"]
+    )
+
+    durum = updates.update_status(force=True, current_version=calisan)
+
+    assert (durum["latest_version"], durum["update_available"]) == (beklenen, True)
+    assert istenen == [updates.RELEASE_LIST_URL]  # beta kanalı doğrudan listeyi okur
+
+
+def test_kararli_kullanici_kararli_surumden_sonra_betayi_gormez(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    istenen = _kararli_ve_liste(monkeypatch, "v2026.10.0", ["v2026.11.0-beta.1", "v2026.10.0"])
+
+    durum = updates.update_status(force=True, current_version="2026.10.0")
+
+    assert (durum["latest_version"], durum["update_available"]) == ("2026.10.0", False)
+    assert istenen == [updates.LATEST_RELEASE_URL]  # liste hiç okunmaz
+
+
+def test_kararli_ve_beta_kanali_ayri_onbelleklenir(monkeypatch: pytest.MonkeyPatch) -> None:
+    istenen = _kararli_ve_liste(monkeypatch, "v2026.10.0", ["v2026.11.0-beta.1"])
+
+    assert updates.latest_release().version == "2026.10.0"
+    assert updates.latest_release(prereleases=True).version == "2026.11.0-beta.1"
+    assert updates.latest_release().version == "2026.10.0"
+    assert istenen == [
+        updates.LATEST_RELEASE_URL,
+        updates.RELEASE_LIST_URL,
+        updates.LATEST_RELEASE_URL,
+    ]
+
+
+def test_indirme_ucu_beta_kanalinda_listeden_secer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cagrilar: list[dict[str, Any]] = []
+
+    def sahte_latest(**kwargs: Any) -> updates.ReleaseInfo:
+        cagrilar.append(kwargs)
+        return _release()
+
+    monkeypatch.setattr(updates, "latest_release", sahte_latest)
+    monkeypatch.setattr(updates, "get_app_version", lambda: "2026.10.0")
+    with pytest.raises(updates.UpdateError, match="zaten güncel"):
+        updates.download_latest_installer()
+    monkeypatch.setattr(updates, "get_app_version", lambda: "2026.10.0-beta.1")
+    monkeypatch.setattr(updates, "_expected_digest", lambda _r: "0" * 64)
+    monkeypatch.setattr(updates, "_read_url", lambda *_a, **_k: b"farkli")
+    with pytest.raises(updates.UpdateError, match="SHA-256"):
+        updates.download_latest_installer()
+    assert [c["prereleases"] for c in cagrilar] == [False, True]
+
+
+def test_sertifika_dogrulanamazsa_ag_engeli_denmez(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Saati ileri alınmış deneme bilgisayarı ya da HTTPS'i araya girerek denetleyen okul
+    ağı: sertifika hatası "okul ağında engellenmiş olabilir" diye sunulmaz."""
+    import ssl
+
+    def sertifika_hatasi(*_a: object, **_k: object) -> _SahteYanit:
+        raise URLError(ssl.SSLCertVerificationError(1, "certificate has expired"))
+
+    monkeypatch.setattr(updates, "urlopen", sertifika_hatasi)
+    with pytest.raises(updates.UpdateError) as hata:
+        updates.latest_release(force=True)
+    assert str(hata.value) == updates.SERTIFIKA_MESAJI
+    assert "tarihi ve saati" in updates.SERTIFIKA_MESAJI
+    assert "engellenmiş" not in updates.SERTIFIKA_MESAJI
+
+    def dogrudan(*_a: object, **_k: object) -> _SahteYanit:
+        raise ssl.SSLCertVerificationError(1, "self signed certificate in certificate chain")
+
+    monkeypatch.setattr(updates, "urlopen", dogrudan)
+    with pytest.raises(updates.UpdateError, match="güvenli bağlantı doğrulanamadı"):
+        updates.latest_release(force=True)
+
+    def baglanti_yok(*_a: object, **_k: object) -> _SahteYanit:
+        raise URLError(ConnectionRefusedError(111, "Connection refused"))
+
+    monkeypatch.setattr(updates, "urlopen", baglanti_yok)
+    with pytest.raises(updates.UpdateError) as hata:
+        updates.latest_release(force=True)
+    assert str(hata.value) == updates.ULASILAMADI_MESAJI

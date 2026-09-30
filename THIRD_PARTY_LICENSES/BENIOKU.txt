@@ -1,0 +1,515 @@
+KÜTÜPHANE DEFTERİ — ÜÇÜNCÜ TARAF BİLEŞENLER VE LİSANSLARI
+=========================================================
+
+Kütüphane Defteri'nin kendi kodu PolyForm Noncommercial 1.0.0 lisanslıdır
+(programın kurulduğu klasördeki LICENSE.txt). Program aşağıdaki üçüncü taraf
+bileşenleri kendi lisanslarıyla birlikte dağıtır. Her bileşenin lisans metni
+bu klasörde, tabloda adı geçen dosyadadır. Makine okunur liste: bilesenler.json.
+
+Bu klasör üretilmiştir (packaging/lisanslar/uret.sh); elle düzenlenmez.
+Kurulum paketindeki kopyaya derleme sırasında iki ek girer:
+  paket-icerigi.txt        bu pakette gerçekten bulunan bileşenler ve sürümleri
+  yerel-kutuphaneler/      paketle gelen sistem kütüphanelerinin (Windows'ta
+                           MSYS2, Linux'ta Debian paketleri) lisans ve telif
+                           dosyaları, kaynak kod adresleriyle
+
+LGPL LİSANSLI BİLEŞENLER VE KAYNAK KOD
+--------------------------------------
+* pystray (yalnız Windows, sistem tepsisi) — LGPL-3.0. Kaynak kodu pakete
+  kaynak dosya olarak girer: kurulum klasöründe _internal\pystray\
+  altındadır; kütüphane bu dosyalar değiştirilerek yeniden kullanılabilir.
+  Aynı sürümün kaynak arşivi: https://pypi.org/project/pystray/0.19.5/#files
+* Qt 6 ve PySide6 (yalnız Linux, pencere ve tepsi) — pakete giren Qt
+  modülleri için The Qt Company'nin sunduğu LGPL-3.0 / GPL-2.0 / GPL-3.0
+  seçeneklerinden LGPL-3.0 kullanılır. Qt'nin YALNIZ GPL-3.0 ile sunulan
+  modülleri (Charts, Data Visualization, Graphs, Quick 3D, Quick Timeline,
+  Virtual Keyboard, Wayland Compositor ve öbürleri) pakete girmez: derleme
+  onları ayıklar, lisans denetimi dosya düzeyinde sınar. Kitaplıklar
+  değiştirilmeden, ayrı dosyalar olarak dağıtılır (_internal/PySide6/Qt/lib/)
+  ve çalışma anında bağlanır; aynı ABI'li kendi derlediğiniz sürümle
+  değiştirilebilir. Kullanılan sürümün (6.8.3) tam kaynak kodu:
+    Qt: https://download.qt.io/archive/qt/6.8/6.8.3/single/qt-everywhere-src-6.8.3.tar.xz
+    PySide6/shiboken6: https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.8.3-src/pyside-setup-everywhere-src-6.8.3.tar.xz
+  Qt ile gelen ICU'nun lisans metni ICU-73-LICENSE.txt; Qt kitaplıklarına derlenmiş
+  üçüncü taraf kodun (Qt WebEngine'deki Chromium dahil) bildirimleri için
+  Qt-6.8.3-ucuncu-taraf-NOT.txt.
+* Paketle gelen sistem kütüphanelerinden LGPL lisanslı olanlar (glib, pango,
+  fribidi, libthai, libdatrie …) ve kaynak kod adresleri paketteki
+  yerel-kutuphaneler/ dizininde, her kütüphanenin kendi dosyasındadır.
+
+LGPL BİLEŞENLERİNİN KAYNAK KODU İÇİN YAZILI TEKLİF
+--------------------------------------------------
+Yukarıdaki adreslerden bağımsız olarak Kütüphane Defteri'nin geliştiricisi,
+programın bu dizinle birlikte dağıtılan bir sürümünü edinmiş HERKESE, o
+sürümün paketine giren LGPL lisanslı bileşenlerin tam ve karşılık gelen
+kaynak kodunu vermeyi yazılı olarak teklif eder (LGPL-2.1 madde 6(c);
+LGPL-3.0 bileşenleri fiziksel bir taşıyıcıyla dağıtılırsa GPL-3.0 madde
+6(b)). Teklif şunları kapsar:
+
+  - PySide6 6.8.3 (yalnız Linux paketi)
+  - PySide6-Addons 6.8.3 (yalnız Linux paketi)
+  - PySide6-Essentials 6.8.3 (yalnız Linux paketi)
+  - pystray 0.19.5 (yalnız Windows paketi)
+  - shiboken6 6.8.3 (yalnız Linux paketi)
+  - PySide6 tekerleklerinin taşıdığı Qt 6.8.3 kitaplıkları
+    (yalnız Linux paketi)
+  - paketle gelen LGPL lisanslı sistem kütüphaneleri (Windows'ta MSYS2,
+    Linux'ta Debian paketleri; adları ve sürümleri paketteki
+    paket-icerigi.txt ve yerel-kutuphaneler/ dizinindedir)
+
+Kaynak, istenen program sürümünün paketindeki bileşen sürümleriyle birebir
+verilir. Nasıl istenir: programın GitHub deposundaki Issues (sorun kayıtları)
+sayfasında bir kayıt açın:
+    https://github.com/aalidemirci/kutuphane-defteri/issues
+ya da geliştiriciye e-postayla yazın:
+    aalidemirci@gmail.com
+Kayda ya da iletiye programın sürümünü (Hakkında ekranında yazar), platformu
+(Windows ya da Linux) ve istediğiniz bileşeni yazın. Issues kayıtları herkese
+açıktır: kişisel veri ve okul bilgisi yazmayın. E-postaya da öğrenci, veli ya
+da personel verisi koymayın.
+
+Kaynak ücretsiz verilir: bir ağ sunucusunda (ör. programın GitHub Releases
+sayfasında) indirilebilir olarak sunulur ve adresi kayda ya da e-posta
+yanıtına yazılır. Kaynağın fiziksel bir taşıyıcıyla gönderilmesi istenirse
+alınacak ücret bu gönderimin maliyetini aşmaz.
+
+Program ağ üzerinden (GitHub Releases ve indir.okulapp.org) dağıtılır. Ağdan
+dağıtımda LGPL-3.0 bileşenleri için GPL-3.0 madde 6(d) geçerlidir: kaynağa
+nesne koduyla aynı yerden ya da nesne kodunun yanındaki açık bir
+yönlendirmeyle başka bir sunucudan erişilebilmelidir. Kaynak adresleri
+yukarıdadır; her sürümün Release notu bu dosyaya ve kaynak adreslerine
+yönlendirir.
+
+Bu teklif programın her sürümü (beta sürümleri dahil) için, o sürümün
+yayımlandığı tarihten başlayarak EN AZ ÜÇ YIL ve o sürüm için destek
+verildiği sürece geçerlidir.
+
+Ortak metinler: LGPL-3.0-metni.txt ve GPL-3.0-metni.txt (LGPL-3.0, GPL-3.0
+metnine atıf yaptığı için ikisi birlikte verilir).
+
+Programın simgeleri projenin kendi üretimidir (packaging/ikonlar); arayüz
+simgeleri Material Symbols yazı tipindendir (aşağıdaki tabloda).
+
+BİLEŞENLER
+----------
+
+Çalışma zamanı:
+
+  Python (CPython) 3.12
+      Lisans   : PSF-2.0
+      Platform : Windows + Linux
+      Kullanım : Programın çalışma zamanı ve standart kitaplığı
+      Kaynak   : https://www.python.org/downloads/source/
+      Dosyalar : cpython-LICENSE.txt
+
+Python kitaplıkları:
+
+  argon2-cffi 23.1.0
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kullanım : Yönetici parolası (Argon2id)
+      Kaynak   : https://pypi.org/project/argon2-cffi/23.1.0/
+      Dosyalar : python-argon2-cffi-LICENSE.txt
+  argon2-cffi-bindings 26.1.0
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kaynak   : https://pypi.org/project/argon2-cffi-bindings/26.1.0/
+      Dosyalar : python-argon2-cffi-bindings-LICENSE.txt
+  asgiref 3.12.1
+      Lisans   : BSD-3-Clause
+      Platform : Windows + Linux
+      Kaynak   : https://pypi.org/project/asgiref/3.12.1/
+      Dosyalar : python-asgiref-LICENSE.txt
+  bottle 0.13.4
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kaynak   : https://pypi.org/project/bottle/0.13.4/
+      Dosyalar : python-bottle-LICENSE.txt
+  brotli 1.2.0
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kaynak   : https://pypi.org/project/brotli/1.2.0/
+      Dosyalar : python-brotli-LICENSE.txt
+  cffi 2.1.1
+      Lisans   : MIT-0
+      Platform : Windows + Linux
+      Kaynak   : https://pypi.org/project/cffi/2.1.1/
+      Dosyalar : python-cffi-LICENSE.txt
+  clr_loader 0.2.10
+      Lisans   : MIT
+      Platform : yalnız Windows
+      Kaynak   : https://pypi.org/project/clr_loader/0.2.10/
+      Dosyalar : python-clr_loader-LICENSE.txt
+  cryptography 48.0.1
+      Lisans   : Apache-2.0 OR BSD-3-Clause  (kullanılan: Apache-2.0)
+      Platform : Windows + Linux
+      Kullanım : Alan şifrelemesi, şifreli yedek
+      Kaynak   : https://pypi.org/project/cryptography/48.0.1/
+      Dosyalar : python-cryptography-LICENSE.APACHE.txt
+                 python-cryptography-LICENSE.BSD.txt
+                 python-cryptography-LICENSE.txt
+  cssselect2 0.10.1
+      Lisans   : BSD-3-Clause
+      Platform : Windows + Linux
+      Kaynak   : https://pypi.org/project/cssselect2/0.10.1/
+      Dosyalar : python-cssselect2-LICENSE.txt
+  Django 5.1.15
+      Lisans   : BSD-3-Clause
+      Platform : Windows + Linux
+      Kullanım : Uygulama çatısı
+      Kaynak   : https://pypi.org/project/Django/5.1.15/
+      Dosyalar : python-Django-LICENSE.python.txt
+                 python-Django-LICENSE.txt
+                 python-Django-django_contrib_admin_static_admin_css_vendor_select2_LICENSE-SELECT2.md.txt
+                 python-Django-django_contrib_admin_static_admin_img_LICENSE.txt
+                 python-Django-django_contrib_admin_static_admin_js_vendor_jquery_LICENSE.txt
+                 python-Django-django_contrib_admin_static_admin_js_vendor_select2_LICENSE.md.txt
+                 python-Django-django_contrib_admin_static_admin_js_vendor_xregexp_LICENSE.txt
+                 python-Django-django_contrib_gis_gdal_LICENSE.txt
+                 python-Django-django_contrib_gis_geos_LICENSE.txt
+                 python-Django-django_dispatch_license.txt
+  djangorestframework 3.15.2
+      Lisans   : BSD-3-Clause
+      Platform : Windows + Linux
+      Kullanım : Yönetim API'si
+      Kaynak   : https://pypi.org/project/djangorestframework/3.15.2/
+      Dosyalar : python-djangorestframework-LICENSE.md.txt
+  et_xmlfile 2.0.0
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kaynak   : https://pypi.org/project/et_xmlfile/2.0.0/
+      Dosyalar : python-et_xmlfile-LICENCE.python.txt
+                 python-et_xmlfile-LICENCE.rst.txt
+  fonttools 4.65.0
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kullanım : PDF yazı tipi alt kümeleme
+      Kaynak   : https://pypi.org/project/fonttools/4.65.0/
+      Dosyalar : python-fonttools-LICENSE.external.txt
+                 python-fonttools-LICENSE.txt
+  openpyxl 3.1.5
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kullanım : Excel içe/dışa aktarma
+      Kaynak   : https://pypi.org/project/openpyxl/3.1.5/
+      Dosyalar : python-openpyxl-LICENCE.rst.txt
+  packaging 26.3
+      Lisans   : Apache-2.0 OR BSD-2-Clause
+      Platform : Windows + Linux
+      Kaynak   : https://pypi.org/project/packaging/26.3/
+      Dosyalar : python-packaging-LICENSE.APACHE.txt
+                 python-packaging-LICENSE.BSD.txt
+                 python-packaging-LICENSE.txt
+  pillow 12.3.0
+      Lisans   : MIT-CMU
+      Platform : Windows + Linux
+      Kullanım : Görüntü işleme
+      Kaynak   : https://pypi.org/project/pillow/12.3.0/
+      Dosyalar : python-pillow-LICENSE.txt
+  proxy_tools 0.1.0
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kaynak   : https://pypi.org/project/proxy_tools/0.1.0/
+      Dosyalar : python-proxy_tools-LICENSE-uretildi.txt
+  pycparser 3.0
+      Lisans   : BSD-3-Clause
+      Platform : Windows + Linux
+      Kaynak   : https://pypi.org/project/pycparser/3.0/
+      Dosyalar : python-pycparser-LICENSE.txt
+  pydyf 0.12.1
+      Lisans   : BSD-3-Clause
+      Platform : Windows + Linux
+      Kaynak   : https://pypi.org/project/pydyf/0.12.1/
+      Dosyalar : python-pydyf-LICENSE.txt
+  pyinstaller 6.11.1
+      Lisans   : GPL-2.0-or-later WITH Bootloader-exception AND Apache-2.0
+      Platform : Windows + Linux
+      Kullanım : Paketleyici; yalnız önyükleyici, loader ve çalışma anı kancaları pakete girer (derleme kodu girmez)
+      Kaynak   : https://pypi.org/project/pyinstaller/6.11.1/
+      Dosyalar : python-pyinstaller-COPYING.txt
+  pyinstaller-hooks-contrib 2026.7
+      Lisans   : Apache-2.0
+      Platform : Windows + Linux
+      Kullanım : Yalnız çalışma anı kancaları (rthooks, Apache-2.0) pakete girer; standart kancalar (GPL-2.0+) girmez
+      Kaynak   : https://pypi.org/project/pyinstaller-hooks-contrib/2026.7/
+      Dosyalar : python-pyinstaller-hooks-contrib-LICENSE.txt
+  pypdf 6.14.2
+      Lisans   : BSD-3-Clause
+      Platform : Windows + Linux
+      Kullanım : PDF okuma/birleştirme
+      Kaynak   : https://pypi.org/project/pypdf/6.14.2/
+      Dosyalar : python-pypdf-LICENSE.txt
+  pyphen 0.18.1
+      Lisans   : GPL-2.0-or-later OR LGPL-2.1-or-later OR MPL-1.1  (kullanılan: MPL-1.1)
+      Platform : Windows + Linux
+      Kullanım : Heceleme (yalnız en_US sözlüğü paketlenir)
+      Kaynak   : https://pypi.org/project/pyphen/0.18.1/
+      Dosyalar : python-pyphen-COPYING.GPL.txt
+                 python-pyphen-COPYING.LGPL.txt
+                 python-pyphen-COPYING.MPL.txt
+                 python-pyphen-LICENSE.txt
+                 python-pyphen-pyphen_dictionaries_README_hyph_en_US.txt
+  PySide6 6.8.3
+      Lisans   : LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only  (kullanılan: LGPL-3.0-only)
+      Platform : yalnız Linux
+      Kullanım : Linux penceresi ve tepsisi (Qt 6)
+      Kaynak   : https://pypi.org/project/PySide6/6.8.3/
+      Dosyalar : GPL-3.0-metni.txt
+                 LGPL-3.0-metni.txt
+  PySide6-Addons 6.8.3
+      Lisans   : LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only  (kullanılan: LGPL-3.0-only)
+      Platform : yalnız Linux
+      Kullanım : Qt 6 WebEngine
+      Kaynak   : https://pypi.org/project/PySide6-Addons/6.8.3/
+      Dosyalar : GPL-3.0-metni.txt
+                 LGPL-3.0-metni.txt
+  PySide6-Essentials 6.8.3
+      Lisans   : LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only  (kullanılan: LGPL-3.0-only)
+      Platform : yalnız Linux
+      Kullanım : Qt 6 kitaplıkları
+      Kaynak   : https://pypi.org/project/PySide6-Essentials/6.8.3/
+      Dosyalar : GPL-3.0-metni.txt
+                 LGPL-3.0-metni.txt
+  pystray 0.19.5
+      Lisans   : LGPL-3.0-or-later
+      Platform : yalnız Windows
+      Kullanım : Windows sistem tepsisi
+      Kaynak   : https://pypi.org/project/pystray/0.19.5/
+      Dosyalar : GPL-3.0-metni.txt
+                 LGPL-3.0-metni.txt
+  pythonnet 3.0.5
+      Lisans   : MIT
+      Platform : yalnız Windows
+      Kullanım : Windows pencere motoru köprüsü (WebView2)
+      Kaynak   : https://pypi.org/project/pythonnet/3.0.5/
+      Dosyalar : python-pythonnet-LICENSE.txt
+  pywebview 5.3.2
+      Lisans   : BSD-3-Clause
+      Platform : Windows + Linux
+      Kullanım : Program penceresi
+      Kaynak   : https://pypi.org/project/pywebview/5.3.2/
+      Dosyalar : python-pywebview-LICENSE.txt
+  QtPy 2.4.3
+      Lisans   : MIT
+      Platform : yalnız Linux
+      Kullanım : Qt bağlayıcı katmanı
+      Kaynak   : https://pypi.org/project/QtPy/2.4.3/
+      Dosyalar : python-QtPy-LICENSE.txt
+  segno 1.6.1
+      Lisans   : BSD-3-Clause
+      Platform : Windows + Linux
+      Kullanım : Etiketteki QR
+      Kaynak   : https://pypi.org/project/segno/1.6.1/
+      Dosyalar : python-segno-LICENSE.txt
+  setuptools 84.0.0
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kullanım : cffi derleme yardımcısı (çalışma anında kullanılmaz)
+      Kaynak   : https://pypi.org/project/setuptools/84.0.0/
+      Dosyalar : python-setuptools-LICENSE.txt
+                 python-setuptools-setuptools__vendor_autocommand-2.2.2.dist-info_LICENSE.txt
+                 python-setuptools-setuptools__vendor_backports.tarfile-1.2.0.dist-info_LICENSE.txt
+                 python-setuptools-setuptools__vendor_importlib_metadata-8.7.1.dist-info_licenses_LICENSE.txt
+                 python-setuptools-setuptools__vendor_jaraco.text-4.0.0.dist-info_LICENSE.txt
+                 python-setuptools-setuptools__vendor_jaraco_context-6.1.0.dist-info_licenses_LICENSE.txt
+                 python-setuptools-setuptools__vendor_jaraco_functools-4.4.0.dist-info_licenses_LICENSE.txt
+                 python-setuptools-setuptools__vendor_more_itertools-10.8.0.dist-info_licenses_LICENSE.txt
+                 python-setuptools-setuptools__vendor_packaging-26.0.dist-info_licenses_LICENSE.APACHE.txt
+                 python-setuptools-setuptools__vendor_packaging-26.0.dist-info_licenses_LICENSE.BSD.txt
+                 python-setuptools-setuptools__vendor_packaging-26.0.dist-info_licenses_LICENSE.txt
+                 python-setuptools-setuptools__vendor_platformdirs-4.4.0.dist-info_licenses_LICENSE.txt
+                 python-setuptools-setuptools__vendor_tomli-2.4.0.dist-info_licenses_LICENSE.txt
+                 python-setuptools-setuptools__vendor_wheel-0.46.3.dist-info_licenses_LICENSE.txt
+                 python-setuptools-setuptools__vendor_zipp-3.23.0.dist-info_licenses_LICENSE.txt
+                 python-setuptools-setuptools_config_NOTICE.txt
+                 python-setuptools-setuptools_config__validate_pyproject_NOTICE.txt
+  shiboken6 6.8.3
+      Lisans   : LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only  (kullanılan: LGPL-3.0-only)
+      Platform : yalnız Linux
+      Kullanım : Qt 6 Python bağlayıcısı
+      Kaynak   : https://pypi.org/project/shiboken6/6.8.3/
+      Dosyalar : GPL-3.0-metni.txt
+                 LGPL-3.0-metni.txt
+  six 1.17.0
+      Lisans   : MIT
+      Platform : yalnız Windows
+      Kaynak   : https://pypi.org/project/six/1.17.0/
+      Dosyalar : python-six-LICENSE.txt
+  sqlparse 0.6.0
+      Lisans   : BSD-3-Clause
+      Platform : Windows + Linux
+      Kaynak   : https://pypi.org/project/sqlparse/0.6.0/
+      Dosyalar : python-sqlparse-LICENSE.txt
+  tinycss2 1.5.1
+      Lisans   : BSD-3-Clause
+      Platform : Windows + Linux
+      Kaynak   : https://pypi.org/project/tinycss2/1.5.1/
+      Dosyalar : python-tinycss2-LICENSE.txt
+  tinyhtml5 2.1.0
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kaynak   : https://pypi.org/project/tinyhtml5/2.1.0/
+      Dosyalar : python-tinyhtml5-LICENSE.txt
+  typing_extensions 4.16.0
+      Lisans   : PSF-2.0
+      Platform : Windows + Linux
+      Kaynak   : https://pypi.org/project/typing_extensions/4.16.0/
+      Dosyalar : python-typing_extensions-LICENSE.txt
+  tzdata 2026.4
+      Lisans   : Apache-2.0
+      Platform : yalnız Windows
+      Kullanım : Windows'ta saat dilimi verisi
+      Kaynak   : https://pypi.org/project/tzdata/2026.4/
+      Dosyalar : python-tzdata-LICENSE.txt
+                 python-tzdata-licenses_LICENSE_APACHE.txt
+  waitress 3.0.2
+      Lisans   : ZPL-2.1
+      Platform : Windows + Linux
+      Kullanım : Yerel sunucular
+      Kaynak   : https://pypi.org/project/waitress/3.0.2/
+      Dosyalar : python-waitress-LICENSE.txt
+  weasyprint 68.0
+      Lisans   : BSD-3-Clause
+      Platform : Windows + Linux
+      Kullanım : Evrak (PDF) üretimi
+      Kaynak   : https://pypi.org/project/weasyprint/68.0/
+      Dosyalar : python-weasyprint-LICENSE.txt
+  webencodings 0.6.1
+      Lisans   : BSD-3-Clause
+      Platform : Windows + Linux
+      Kaynak   : https://pypi.org/project/webencodings/0.6.1/
+      Dosyalar : python-webencodings-LICENSE.txt
+  whitenoise 6.12.0
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kaynak   : https://pypi.org/project/whitenoise/6.12.0/
+      Dosyalar : python-whitenoise-LICENSE.txt
+  xlrd 2.0.1
+      Lisans   : BSD-3-Clause
+      Platform : Windows + Linux
+      Kullanım : e-Okul .xls okuma
+      Kaynak   : https://pypi.org/project/xlrd/2.0.1/
+      Dosyalar : python-xlrd-LICENSE.txt
+  zopfli 0.4.3
+      Lisans   : Apache-2.0
+      Platform : Windows + Linux
+      Kaynak   : https://pypi.org/project/zopfli/0.4.3/
+      Dosyalar : python-zopfli-COPYING.txt
+
+Arayüz (npm) kitaplıkları:
+
+  @tanstack/query-core 5.101.4
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kaynak   : https://www.npmjs.com/package/@tanstack/query-core/v/5.101.4
+      Dosyalar : npm-tanstack-query-core-LICENSE.txt
+  @tanstack/query-devtools 5.101.4
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kaynak   : https://www.npmjs.com/package/@tanstack/query-devtools/v/5.101.4
+      Dosyalar : npm-tanstack-query-devtools-LICENSE.txt
+  @tanstack/react-query 5.101.4
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kaynak   : https://www.npmjs.com/package/@tanstack/react-query/v/5.101.4
+      Dosyalar : npm-tanstack-react-query-LICENSE.txt
+  @tanstack/react-query-devtools 5.101.4
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kaynak   : https://www.npmjs.com/package/@tanstack/react-query-devtools/v/5.101.4
+      Dosyalar : npm-tanstack-react-query-devtools-LICENSE.txt
+  cookie 1.1.1
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kaynak   : https://www.npmjs.com/package/cookie/v/1.1.1
+      Dosyalar : npm-cookie-LICENSE.txt
+  material-symbols 0.44.12
+      Lisans   : Apache-2.0
+      Platform : Windows + Linux
+      Kullanım : Arayüz simgeleri (yazı tipi)
+      Kaynak   : https://www.npmjs.com/package/material-symbols/v/0.44.12
+      Dosyalar : npm-material-symbols-LICENSE.txt
+  react 18.3.1
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kaynak   : https://www.npmjs.com/package/react/v/18.3.1
+      Dosyalar : npm-react-LICENSE.txt
+  react-dom 18.3.1
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kaynak   : https://www.npmjs.com/package/react-dom/v/18.3.1
+      Dosyalar : npm-react-dom-LICENSE.txt
+  react-router 7.18.2
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kaynak   : https://www.npmjs.com/package/react-router/v/7.18.2
+      Dosyalar : npm-react-router-LICENSE.md.txt
+  react-router-dom 7.18.2
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kaynak   : https://www.npmjs.com/package/react-router-dom/v/7.18.2
+      Dosyalar : npm-react-router-dom-LICENSE.md.txt
+  scheduler 0.23.2
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kaynak   : https://www.npmjs.com/package/scheduler/v/0.23.2
+      Dosyalar : npm-scheduler-LICENSE.txt
+  set-cookie-parser 2.7.2
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kaynak   : https://www.npmjs.com/package/set-cookie-parser/v/2.7.2
+      Dosyalar : npm-set-cookie-parser-LICENSE.txt
+  tailwindcss 3.4.19
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kullanım : Çıktıdaki üretilmiş CSS (preflight)
+      Kaynak   : https://www.npmjs.com/package/tailwindcss/v/3.4.19
+      Dosyalar : npm-tailwindcss-LICENSE.txt
+  vite 6.4.3
+      Lisans   : MIT
+      Platform : Windows + Linux
+      Kullanım : Derleyicinin çıktıya kattığı çalışma anı yardımcıları
+      Kaynak   : https://www.npmjs.com/package/vite/v/6.4.3
+      Dosyalar : npm-vite-LICENSE.md.txt
+
+Yazı tipleri:
+
+  DejaVu Sans 2.37
+      Lisans   : Bitstream-Vera
+      Platform : Windows + Linux
+      Kullanım : Evrakta gömülü yazı tipi (4 kesim)
+      Kaynak   : https://dejavu-fonts.github.io/
+      Dosyalar : DejaVu-LISANS.txt
+
+Diğer ikili bileşenler:
+
+  ICU (International Components for Unicode) 73.2
+      Lisans   : Unicode-DFS-2016 AND ICU AND BSD-3-Clause AND NAIST-2003
+      Platform : yalnız Linux
+      Kullanım : Qt 6 ile gelen Unicode kitaplıkları (libicu*.so.73)
+      Kaynak   : https://github.com/unicode-org/icu/releases/tag/release-73-2
+      Dosyalar : ICU-73-LICENSE.txt
+  Microsoft Edge WebView2 Evergreen önyükleyicisi (sürüm: derlemede indirilen güncel sürüm)
+      Lisans   : LicenseRef-Microsoft-WebView2-Runtime
+      Platform : yalnız Windows
+      Kullanım : Yalnız setup.exe: WebView2 yoksa kurar
+      Kaynak   : https://developer.microsoft.com/en-us/microsoft-edge/webview2/
+      Dosyalar : Microsoft-WebView2-Evergreen-NOT.txt
+  Microsoft Edge WebView2 SDK 1.0.2045.28
+      Lisans   : BSD-3-Clause
+      Platform : yalnız Windows
+      Kullanım : pywebview ile gelen WebView2 DLL'leri (webview/lib)
+      Kaynak   : https://www.nuget.org/packages/Microsoft.Web.WebView2/
+      Dosyalar : Microsoft-WebView2-SDK-LICENSE.txt
+                 Microsoft-WebView2-SDK-NOTICE.txt
+  Microsoft Visual C++ çalışma zamanı (sürüm: derleme ortamındaki sürüm)
+      Lisans   : LicenseRef-Microsoft-Distributable-Code
+      Platform : yalnız Windows
+      Kullanım : Python ve eklentilerin C/C++ çalışma zamanı
+      Dosyalar : Microsoft-VC-calisma-zamani-NOT.txt
+  Qt 6 içindeki üçüncü taraf kod (Chromium dahil) 6.8.3
+      Lisans   : LicenseRef-Qt-ucuncu-taraf
+      Platform : yalnız Linux
+      Kullanım : Qt kitaplıklarına derlenmiş bileşenlerin bildirim adresleri
+      Kaynak   : https://doc.qt.io/qt-6.8/licenses-used-in-qt.html
+      Dosyalar : Qt-6.8.3-ucuncu-taraf-NOT.txt

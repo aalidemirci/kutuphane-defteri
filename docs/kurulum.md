@@ -4,11 +4,11 @@ Bu kılavuz programı kuracak kişi içindir: kütüphane yöneticisi (kütüpha
 da kütüphaneden sorumlu öğretmen) ile okulun bilişim teknolojileri rehber
 öğretmeni (BTR). "Çıkış kodları" bölümü BTR için ayrılmıştır.
 
-> **Durum:** Program geliştirme aşamasındadır; henüz yayımlanmış sürüm yoktur.
-> Bu belge ilk sürüm için **hedeflenen** kurulum düzenini anlatır (genel
-> tasarım §4-§5). Özellikler fazlarla gelir; belge, sürüm çıkmadan önce
-> programın gerçek davranışıyla adım adım yeniden doğrulanır. Ağ Kataloğunun
-> okul ağında ve tahtalarda çalıştığının saha kanıtı henüz alınmadı (§8).
+> **Durum:** İlk yayımlanan sürüm bir **ön sürümdür (beta)**: gerçek okul verisiyle
+> kullanmadan önce okulda bir deneme kurulumuyla sınanması önerilir. Deneme için
+> adım adım protokol ve uydurma deneme verisi [`docs/saha-kabulu.md`](saha-kabulu.md)'dedir;
+> gerçek öğrenci listesi denemede kullanılmaz. Ağ Kataloğunun okul ağında ve tahtalarda
+> çalıştığının kanıtı o protokolle alınır (§8).
 
 Veri okulda kalır: tek bir yerel veritabanı dosyası, telemetri yok, bulut yok.
 Program **açılışta internete çıkmaz** ve okul dışına kişisel veri göndermez.
@@ -153,7 +153,8 @@ aynı dosyalar GitHub Releases sayfasında da bulunur. `indir.okulapp.org`'un
 kendi dizin sayfası yoktur: dosyaya programın sayfasındaki bağlantıdan gidin.
 
 <!-- Bakım notu (kullanıcıya görünmez): programın sayfası (okulapp.org/kutuphane-defteri)
-tasarım §17'deki ilk site eklemesiyle, F12'de yayına girer; o güne dek bağlantı 404 verir.
+tasarım §17'deki ilk site eklemesiyle yayına girer; 27.09.2026 kullanıcı kararıyla bu iş
+okulapp.org deposunda AYRI bir adımdır (içerik: docs/site-icerigi.md); o güne dek bağlantı 404 verir.
 Elle denetleme bu belgede (§2, §3.2), kılavuzun Güncelleme bölümünde ve Güncelleme
 ekranındaki bağlantıda aynı sayfayı gösterir; dosyalar indir.okulapp.org'dan iner
 (tasarım §14.1 F11 ekleri E-6, K-4). -->
@@ -162,10 +163,10 @@ ekranındaki bağlantıda aynı sayfayı gösterir; dosyalar indir.okulapp.org'd
 | Dosya | Kimin için |
 |---|---|
 | `kutuphane-defteri-<sürüm>-win64-setup.exe` | Windows 10/11 — önerilen kurulum |
-| `kutuphane-defteri-<sürüm>-win64-portable.zip` | Windows — kurulumsuz (Ağ Kataloğu ve otomatik başlatma yok, §3.3) |
+| `kutuphane-defteri-<sürüm>-win64-portable.zip` | Windows 10/11 — kurulumsuz (Ağ Kataloğu sunulmaz, otomatik başlatma yok, §3.3) |
 | `kutuphane-defteri_<sürüm>_amd64.deb` | Pardus ve Debian tabanlılar — önerilen |
-| `kutuphane-defteri-<sürüm>-linux-x64.tar.gz` | Linux — yönetici parolası olmadan |
-| `SHA256SUMS.txt` | İndirilen dosyayı doğrulamak için (§9) |
+| `kutuphane-defteri-<sürüm>-linux-x64.tar.gz` | Linux — kurulum için sistem yöneticisi (sudo) yetkisi gerekmez (Ağ Kataloğu yok, §4.2) |
+| `SHA256SUMS.txt` | İndirilen dosyayı doğrulamak için (§9); `indir.okulapp.org`'da sürümlü adla: `SHA256SUMS-<sürüm>.txt` |
 
 ## 3. Windows kurulumu
 
@@ -181,11 +182,12 @@ Ağ Kataloğu için güvenlik duvarı kuralı kurulum sırasında eklenir.
    kullanıcı adını ve parolasını** girer.
 
    Kurulumu BTR kendi oturumunda başlatmasın: otomatik başlatma görevi
-   kurucuyu başlatan hesaba yazılır; BTR'nin oturumunda başlatılırsa program
+   kurulum dosyasını başlatan hesaba yazılır; BTR'nin oturumunda başlatılırsa program
    masa hesabında kendiliğinden açılmaz.
-4. Kurucu şu seçenekleri sunar:
+4. Kurulum penceresi önce lisans sözleşmesini (PolyForm Noncommercial) gösterir;
+   kabul edilmeden kurulum sürmez. Ardından şu seçenekleri sunar:
    - **Oturum açılınca Kütüphane Defteri'ni başlat:** Görev Zamanlayıcı'ya,
-     kurucuyu başlatan hesabın oturum açılışında tetiklenen bir görev
+     kurulum dosyasını başlatan hesabın oturum açılışında tetiklenen bir görev
      ("Kutuphane Defteri") yazar. Program kilit ekranıyla açılır. Alt seçenek
      **Pencereyi açmadan tepside başlat** pencereyi göstermeden tepsiye iner
      (§5). Kaldırmada görev silinir.
@@ -196,15 +198,22 @@ Ağ Kataloğu için güvenlik duvarı kuralı kurulum sırasında eklenir.
      Port, kayıt defterindeki `HKLM\SOFTWARE\KutuphaneDefteri\KatalogPortu`
      değerinden okunur, yoksa 8765'tir. Kural tek başına bir şey açmaz; Ağ
      Kataloğu program içinden ayrıca açılır (§8).
-5. Bilgisayarda Microsoft Edge WebView2 yoksa kurucu kurar. Gömülü önyükleyici
+5. Bilgisayarda Microsoft Edge WebView2 yoksa kurulum onu da kurar. Gömülü önyükleyici
    internet ister; ağı kısıtlı bilgisayarda WebView2'yi önceden kurun.
+
+Kurulum klasöründe (`C:\Program Files\Kütüphane Defteri`) programın lisansı
+(`LICENSE.txt`) ve pakete giren üçüncü taraf bileşenlerin lisans metinleri de bulunur
+(`THIRD_PARTY_LICENSES\`; dizini, LGPL bileşenlerinin kaynak adresleri ve kaynak kodu için
+yazılı teklif `BENIOKU.txt`'de — istek yolu programın GitHub deposunun Issues sayfası ya da
+geliştiricinin e-posta adresidir).
 
 İmzasız paket olduğu için SmartScreen "tanınmayan uygulama" uyarısı verebilir:
 "Ek bilgi" → "Yine de çalıştır". Önce §9'daki SHA-256 doğrulamasını yapın.
 
-Program açıkken kurulum ya da kaldırma başlatılırsa kurucu programa kapanma
-isteği gönderir ve 30 saniyeye kadar bekler. Program kapanmazsa "tepsideki
-simgeden Çık'ı seçin" iletisi çıkar. Kurucu programı zorla kapatmaz.
+Program açıkken kurulum ya da kaldırma başlatılırsa kurulum programa kapanma
+isteği gönderir ve 30 saniyeye kadar bekler; program düzenli kapanır (görevli
+kipinde de). Program kapanmazsa kurulum penceresi "tepsideki simgeden Çık'ı seçin"
+iletisini gösterir. Program zorla kapatılmaz.
 
 ### 3.2 Güncelleme
 
@@ -215,6 +224,11 @@ geçişinden önce kendiliğinden bir yedek alır.
 
 Yeni sürümü görmek için Ayarlar → Güncelleme → **Şimdi denetle**. Kurulum dosyasını
 indirip masa hesabında çalıştırın (§3.1'deki gibi).
+
+**Ön sürüm (beta).** Adında `-beta.` geçen sürümler ön sürümdür; GitHub'da "Pre-release"
+diye işaretlidir. Ön sürüm kullanan bilgisayar hem sonraki ön sürümü hem kararlı sürümü
+görür (yayımlananların en yenisi önerilir); kararlı sürüm kullanan bilgisayara ön sürüm
+önerilmez.
 
 Program yayımlanan son sürümü yalnız bu düğmeyle ve **GitHub'dan** sorar (açılışta
 internete çıkmaz; kurulum dosyası da GitHub'dan, SHA-256 özetiyle doğrulanarak
@@ -228,13 +242,23 @@ programın sayfasına kendisi istek atmaz; bağlantıyı tarayıcı açar. BTR o
 GitHub'a erişim isterse hedefler ve sınama komutları Ağ Hizmeti Bilgi Notu'nda
 yazılıdır; erişim talebi Yardım Masası Modülü'nden açılır (§8.7'deki yol).
 
+"GitHub ile güvenli bağlantı doğrulanamadı…" iletisi ağ engeli değildir: önce
+bilgisayarın tarih ve saatini denetleyin (yanlış saatte sertifika geçersiz görünür);
+saat doğruysa okul ağı güvenli bağlantıları araya girerek denetliyor olabilir, BTR'ye
+bildirin. Program doğrulamayı gevşetmez.
+
 ### 3.3 Taşınabilir sürüm (kurulum yapmadan)
 
 `...portable.zip` dosyasını bir klasöre açın, `kutuphane-defteri.exe`'yi
 çalıştırın. Veriler yine `%LOCALAPPDATA%\KutuphaneDefteri` altına yazılır; zip'i
-silmek verileri silmez. Windows'un taşınabilir sürümünde **Ağ Kataloğu
-sunulmaz** (güvenlik duvarı kuralı kurulu programın yoluna bağlıdır) ve otomatik
-başlatma yoktur.
+silmek verileri silmez. Taşınabilir sürümde **Ağ Kataloğu sunulmaz** ve otomatik
+başlatma yoktur: kurulumun güvenlik duvarı kuralı kurulu programın yoluna bağlıdır,
+bu yüzden güvenlik duvarı denetimi geçmez ve katalog okul ağına açılmaz. Ağ
+Doktoru'ndaki “Kuralı ekle/güncelle” düğmesi (yönetici izni ister) kuralı taşınabilir
+sürümün kendi yoluna yazarsa katalog açılır; aynı bilgisayarda kurulu program varsa
+kural onunkinin yerini alır ve kurulu programın katalogu açılmaz olur. Bu yol
+önerilmez: Ağ Kataloğu gerekiyorsa programı kurulum dosyasıyla kurun (§3.1).
+Pardus'un taşınabilir arşivinde katalog hiç açılmaz (§4.2).
 
 ## 4. Pardus / Linux kurulumu
 
@@ -253,9 +277,18 @@ olarak görünür; uçbirimden `kutuphane-defteri` ile de açılır.
 
 Linux sürümü, pencereyi çizen kütüphaneleri LGPLv3 lisansıyla birlikte
 dağıtır. Bu dosyalar kurulum klasöründe (`/opt/kutuphane-defteri`) ayrı ayrı
-durur; isteyen kendi sürümüyle değiştirebilir.
+durur; isteyen kendi sürümüyle değiştirebilir. Programın ve üçüncü taraf
+bileşenlerin lisans bildirimleri `/usr/share/doc/kutuphane-defteri/` altındadır
+(`copyright` ve `THIRD_PARTY_LICENSES/BENIOKU.txt`; LGPL bileşenlerinin kaynak
+adresleri ve kaynak kodu için yazılı teklif de oradadır).
 
-### 4.2 Taşınabilir arşiv ile (yönetici parolası olmadan)
+**Güncelleme:** önce programdan **Çık** (tepsiden ya da üst çubuktan), sonra yeni
+`.deb`'i aynı komutla kurun. Windows kurulumunun açık programa gönderdiği kapanma isteği
+Pardus paketinde YOKTUR: program açıkken kurulum yapılırsa dosyalar çalışan programın
+altında değişir. Kaldırmadan (`sudo apt remove kutuphane-defteri`) önce de programdan
+çıkın.
+
+### 4.2 Taşınabilir arşiv ile (sistem yöneticisi yetkisi gerekmez)
 
 ```bash
 tar -xzf kutuphane-defteri-<sürüm>-linux-x64.tar.gz
@@ -264,9 +297,16 @@ cd kutuphane-defteri-<sürüm>
 ```
 
 `kur.sh` programı kullanıcı klasörüne kurar ve menü kaydını ekler. Kaldırmak
-için `./kaldir.sh`. Taşınabilir arşivde Ağ Kataloğu açılır, ama ufw profili ve
-firewalld servis tanımı yalnız `.deb` paketiyle gelir: Ağ Doktoru bu durumda portu
-doğrudan açan komutu verir (§8.5).
+için `./kaldir.sh`. Taşınabilir arşivde **Ağ Kataloğu açılamaz** (Windows'un
+taşınabilir sürümünde de sunulmaz, §3.3); ufw profili ve firewalld servis tanımı da
+yalnız `.deb` paketiyle gelir. Katalog gerekiyorsa programı `.deb` paketiyle kurun
+(§4.1) — **önce** taşınabilir sürümden çıkıp arşivdeki `./kaldir.sh` ile kaldırın.
+Kaldırılmazsa `kur.sh`'in eklediği menü kaydı ve uçbirim kısayolu (`~/.local/bin`)
+`.deb`'inkinin önüne geçer: menü ve `kutuphane-defteri` komutu taşınabilir sürümü
+açmayı sürdürür, katalog açılmaz (program bu durumu tanır ve `./kaldir.sh`'i
+söyler). Hangi sürümün açıldığını uçbirimde `kutuphane-defteri --dagitim-duman`
+yazar ("kurulu" ya da "tasinabilir"). İki sürüm aynı veri klasörünü kullanır
+(`~/.local/share/kutuphane-defteri`); `./kaldir.sh` verilere dokunmaz.
 
 Güncellemede yeni `.deb` dosyasını §4.1'deki komutla kurmanız yeterlidir.
 Program içinden indirme yalnız Windows kurulum dosyası içindir.
@@ -291,7 +331,9 @@ Program içinden indirme yalnız Windows kurulum dosyası içindir.
    Öğrenci Listesi*, personel için *OOK01001R1 — Personel Listesi*. e-Okul
    dosyaları `.XLS` uzantısıyla iner; açıp düzenlemeniz gerekmez. Aktarmadan
    önce **Önizle** hiçbir şey yazmadan etkisini gösterir.
-4. Kitap listesi Excel şablonuyla aktarılır (kılavuzda anlatılır).
+4. Kitap listesi varsa Excel şablonuyla aktarılır; hazır liste yoksa (çoğu okulda
+   böyledir) **önce etiket** yolu izlenir: boş barkod etiketleri basılıp kitaplara
+   yapıştırılır, kitap Hızlı Kayıt'ta okutularak kaydedilir (kılavuzda anlatılır).
 
 **Pencere ve tepsi.** Pencerenin çarpı düğmesi programı kapatmaz, pencereyi
 gizler; program saatin yanındaki simge alanında (tepside) çalışmaya devam
@@ -501,8 +543,8 @@ Bilgisayar değişirse, yeniden kurulursa ya da disk değişirse sırayla:
        yazılmıştır ve port maddesi geçmez: Ağ Doktoru'ndaki **Kuralı
        ekle/güncelle** kuralı ve kayıt defteri değerini ayardaki portla yeniden
        yazar (UAC, §8.2).
-7. [ ] BTR'den **DHCP rezervasyonunun yeni bilgisayarın ağ kartı (MAC)
-       adresine** taşınmasını isteyin. Aksi hâlde bilgisayarın IP adresi
+7. [ ] BTR'den **sabit adres ayırmayı yeni bilgisayarın ağ kartına (MAC
+       adresine)** taşımasını isteyin (§8.3). Aksi hâlde bilgisayarın IP adresi
        değişir ve eski adres çalışmaz.
 8. [ ] IP adresi değiştiyse **katalog afişini** yeniden basın, tahtalardaki ve
        bilgisayarlardaki **yer imlerini** güncelleyin.
@@ -570,7 +612,7 @@ bölümün konusu değildir (bkz. belgenin başındaki iki kapı).
 1. Ayarlar → **Ağ Kataloğu** sekmesini açın. İlk açılışta sekmenin başında
    **Ağ Kataloğunu Açmadan Önce** adımları durur.
 2. **BTR'yle görüşün:** port, güvenlik duvarı kuralı ve bilgisayarın adresinin
-   sabit kalması (DHCP rezervasyonu) konuşulur. Ağ Hizmeti Bilgi Notu'nu basıp
+   sabit kalması (DHCP'de sabit adres ayırma, §8.3) konuşulur. Ağ Hizmeti Bilgi Notu'nu basıp
    BTR'ye ve okul müdürüne imzalatın; not okulda saklanır. İzin değil bilgi
    notudur.
 3. **Güvenlik duvarı:** Windows'ta kurulumda "Yerel ağdan katalog taramasına
@@ -585,8 +627,9 @@ bölümün konusu değildir (bkz. belgenin başındaki iki kapı).
 
 Katalog tepsiden de açılıp kapatılabilir (yalnız yönetici kipinde). Ayar
 kalıcıdır: program yeniden açıldığında katalog da açılır. Windows oturumu
-açılmadan ne program ne katalog çalışır. Windows'un taşınabilir sürümünde Ağ
-Kataloğu sunulmaz (§3.3).
+açılmadan ne program ne katalog çalışır. Ağ Kataloğu kurulu programda sunulur:
+Windows'un taşınabilir sürümünde ve Pardus'un taşınabilir arşivinde sunulmaz
+(§3.3, §4.2).
 
 ### 8.2 Ağ Doktoru ve güvenlik duvarı (Windows)
 
@@ -632,7 +675,8 @@ yerel ağdan gelen bağlantıya izin verilmelidir.
 ### 8.3 Adres ve ağ
 
 - **Adres sabit kalmalıdır.** BTR, DHCP'de bu bilgisayarın ağ kartına (MAC
-  adresine) rezervasyon yapar ya da bunu yetkili birimden ister. Kütüphane
+  adresine) sabit adres ayırır (teknik adı: DHCP rezervasyonu) ya da bunu yetkili
+  birimden ister. Kütüphane
   yöneticisi bilgisayarın adresini elle değiştirmez: IP ve MAC adresi yalnız
   Bakanlıkça yetkilendirilmiş kişilerce değiştirilir (Bilgi ve Sistem
   Güvenliği Yönergesi md. 11/6).
@@ -693,14 +737,16 @@ sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address
 sudo firewall-cmd --reload
 ```
 
-Port 8765'ten farklıysa ya da tanım dosyası yoksa (taşınabilir arşiv) profil yerine
-port açılır (`sudo ufw allow from <blok> to any port <port> proto tcp`; firewalld'de
-zengin kuralda `port port="<port>" protocol="tcp"`).
+Port 8765'ten farklıysa profil yerine port açılır (`sudo ufw allow from <blok> to any
+port <port> proto tcp`; firewalld'de zengin kuralda `port port="<port>" protocol="tcp"`).
+Taşınabilir arşivde Ağ Kataloğu açılamaz ve Ağ Doktoru komut vermez (§4.2); bu
+tanımlar ve komutlar `.deb` ile kurulmuş program içindir (taşınabilir sürüm önce
+`./kaldir.sh` ile kaldırılır).
 
 ### 8.6 Port değişikliği ve uyku
 
 - **Port** Ayarlar → Ağ Kataloğu → **Portu değiştir** ile değişir. Windows'ta
-  güvenlik duvarı kuralı ve kurucunun okuduğu kayıt defteri değeri de yeni
+  güvenlik duvarı kuralı ve kurulumun okuduğu kayıt defteri değeri de yeni
   portla yazılır; UAC onayı verilmezse port değişmez. Port değişince afişi,
   yer imlerini ve Ağ Hizmeti Bilgi Notu'nu yenileyin. Güncellemelerde kural ve
   port korunur (§3.2).
@@ -748,7 +794,9 @@ Linux:
 sha256sum -c SHA256SUMS.txt --ignore-missing
 ```
 
-Çıkan özet `SHA256SUMS.txt` içindeki satırla birebir aynı olmalıdır.
+Çıkan özet `SHA256SUMS.txt` içindeki satırla birebir aynı olmalıdır (dosyaları
+`indir.okulapp.org`'dan indirdiyseniz özet dosyasının adı `SHA256SUMS-<sürüm>.txt`'dir;
+komuttaki adı ona göre yazın).
 
 ## 10. Sık karşılaşılan sorunlar
 
@@ -832,6 +880,7 @@ aşağıdaki kodlardan biriyle çıkar. Kodlar `desktop/errors.py` ile aynıdır
 | 8 | PDF duman testi başarısız (`--pdf-duman`) | §10.5 |
 | 9 | Geri yükleme (`--geri-yukle`) başarısız | parolayı ya da kurtarma anahtarını doğrulayıp yeniden deneyin; `logs/uygulama.log` |
 | 10 | Bağımlılık duman testi başarısız (`--bagimlilik-duman`) | paket eksik üretilmiş; yeniden indirip kurun (§10.5) |
+| 11 | Dağıtım duman testi: program beklenen dağıtım türünü bulmadı (`--dagitim-duman <tür>`; derlemede ve kurulum sınamasında kullanılır) | Pardus'ta `.deb` ile kurulan program kendini "kurulu" saymıyorsa Ağ Kataloğu açılmaz; önce §4.2'deki taşınabilir sürüm kaldırmasını denetleyin, sürüyorsa `logs/tanilama.log` ile bildirin |
 
 `--geri-yukle`, `--autotest` ve `--pdf-duman` çalışan bir kopya bulursa 2
 koduyla çıkar. Bayraksız ikinci açılış ise çalışan kopyanın penceresini öne
@@ -840,9 +889,13 @@ getirir ve 0 koduyla çıkar.
 ## 12. Programı kaldırma
 
 * **Windows (kurulum paketi):** Ayarlar → Uygulamalar → Kütüphane Defteri →
-  Kaldır (yönetici yetkisi ister). Güvenlik duvarı kuralı da silinir.
+  Kaldır (yönetici yetkisi ister; UAC'ye BTR kimliği girilir). Güvenlik duvarı
+  kuralı, oturum açılışındaki zamanlanmış görev ve kayıt defterindeki port değeri de
+  silinir. Program açıksa kaldırma onu önce düzenli kapatır (§3.1).
 * **Windows (taşınabilir):** klasörü silin.
-* **Pardus/Linux (.deb):** `sudo apt remove kutuphane-defteri`
+* **Pardus/Linux (.deb):** önce BTR açtığı güvenlik duvarı kurallarını kaldırır
+  (ör. `sudo ufw delete allow from <yerel-ağ> to any app 'Kutuphane Defteri'`; paket
+  kuralı açmadığı gibi kaldırırken de silmez), sonra `sudo apt remove kutuphane-defteri`.
 * **Linux (taşınabilir):** arşivdeki `./kaldir.sh`
 
 Kaldırma işlemi **verilerinizi silmez**: katalog, üyeler ve yedekler §6'daki

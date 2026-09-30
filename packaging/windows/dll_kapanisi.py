@@ -65,6 +65,12 @@ REQUIRED_SEED_PREFIXES = (
     "libfontconfig-",
 )
 
+# Windows'un Universal C çalışma zamanı (`ucrtbase.dll`, `api-ms-win-*.dll`): Windows
+# 10/11'in bileşenidir, uygulama klasöründeki kopyası kullanılmaz — mingw64/bin'de
+# bulunsa da kopyalanmaz. Desen `packaging/lisanslar/lisanslar.py::UCRT_DLL` ile aynıdır
+# (kapı testi eşitler); gerekçe ve Microsoft kaynağı oradadır.
+UCRT_RE = re.compile(r"^(api-ms-win-[a-z0-9-]+|ucrtbase)\.dll$", re.IGNORECASE)
+
 _OBJDUMP_RE = re.compile(r"DLL Name:\s*(\S+)", re.IGNORECASE)
 _NTLDD_RE = re.compile(r"=>\s*(\S.*?)\s*\(0x", re.IGNORECASE)
 
@@ -102,9 +108,16 @@ def direct_dependencies(dll: Path) -> set[str]:
 
 
 def closure(seeds: Iterable[Path], mingw_bin: Path) -> set[Path]:
-    """Tohumlardan başlayarak mingw64/bin içindeki tüm bağımlılıkları toplar."""
+    """Tohumlardan başlayarak mingw64/bin içindeki tüm bağımlılıkları toplar.
+
+    Aday kümesi YALNIZ mingw64/bin'dir: bir bağımlılık adı PATH'te başka bir dizinde
+    (sistem, koşucunun JDK'sı …) çözülse bile oradan dosya alınmaz. Universal CRT adları
+    mingw64/bin'de bulunsa da alınmaz.
+    """
     # Büyük/küçük harf duyarsız arama (Windows dosya sistemi öyle davranır).
-    available = {path.name.lower(): path for path in mingw_bin.glob("*.dll")}
+    available = {
+        path.name.lower(): path for path in mingw_bin.glob("*.dll") if not UCRT_RE.match(path.name)
+    }
     found: set[Path] = set()
     queue = list(seeds)
     while queue:

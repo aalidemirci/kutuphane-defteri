@@ -12,6 +12,8 @@
 ;     şey yazmaz (veri, günlük ve fontconfig önbelleği %LOCALAPPDATA% altında).
 ;   * WebView2 Runtime yoksa gömülü Evergreen kurucusu sessizce çalıştırılır.
 ;   * Kullanıcı verisi kurulum dizininde DEĞİLDİR; kaldırma veriyi silmez.
+;   * Lisans sayfası LICENSE.txt'dir (PolyForm Noncommercial); üçüncü taraf
+;     lisansları {app}\THIRD_PARTY_LICENSES\ altına kurulur (F12, TB28).
 ;   * Program tepside yaşar (U3): kurucu ve kaldırıcı onu `KutuphaneDefteri.Kapat`
 ;     adlı olayıyla DÜZENLİ kapatır ve iki mutex'in kaybolmasını bekler
 ;     (tasarım §4.2-5; aşağıdaki [Code]). Inno `AppMutex` KULLANILMAZ.
@@ -63,6 +65,20 @@
 #define VarsayilanKatalogPortu "8765"
 #define GorevAdi "Kutuphane Defteri"
 
+; Lisanslar (F12, TB28): build.ps1 PyInstaller çıktısının KÖKÜNE LICENSE.txt'yi
+; (PolyForm Noncommercial, UTF-8 BOM'lu — Inno BOM'suz metni ANSI okur) ve
+; THIRD_PARTY_LICENSES\ dizinini koyar (packaging/lisanslar/lisanslar.py paket).
+; İkisi `{#SourceDir}\*` ile {app}'e kurulur. Biri eksikse kurucu DERLENMEZ:
+; lisanssız kurulum dosyası üretilmez.
+#define LisansDosyasi AddBackslash(SourceDir) + "LICENSE.txt"
+#define UcuncuTarafDizini AddBackslash(SourceDir) + "THIRD_PARTY_LICENSES"
+#if !FileExists(LisansDosyasi) && !FileExists(AddBackslash(SourcePath) + LisansDosyasi)
+  #error "LICENSE.txt paket kökünde yok — önce build.ps1'in lisans adımı koşmalı."
+#endif
+#if !FileExists(UcuncuTarafDizini + "\BENIOKU.txt") && !FileExists(AddBackslash(SourcePath) + UcuncuTarafDizini + "\BENIOKU.txt")
+  #error "THIRD_PARTY_LICENSES paket kökünde yok — önce build.ps1'in lisans adımı koşmalı."
+#endif
+
 [Setup]
 ; AppId ASLA DEĞİŞMEZ — değişirse yükseltmeler yan yana kurulur.
 AppId={{6EA9384D-3BC5-4D2F-9025-ADB60E01897C}
@@ -78,6 +94,10 @@ DisableProgramGroupPage=yes
 ; ortak (bütün hesaplar) Başlat menüsü ve masaüstüdür. Kullanıcıya "yalnız
 ; benim için" seçeneği SUNULMAZ (PrivilegesRequiredOverridesAllowed yok).
 PrivilegesRequired=admin
+; Program yalnız Windows 10/11'i hedefler. Paket Windows'un Universal C çalışma zamanını
+; (ucrtbase.dll, api-ms-win-*.dll) TAŞIMAZ: Windows 10 ve sonrasında işletim sisteminin
+; bileşenidir (packaging/lisanslar/lisanslar.py UCRT_DLL). Daha eski sürümde kurucu durur.
+MinVersion=10.0
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir={#OutputDir}
@@ -88,6 +108,9 @@ WizardStyle=modern
 SetupIconFile={#AppIconSource}
 UninstallDisplayIcon={app}\{#AppExeName}
 UninstallDisplayName={#AppName}
+; Kurulum sihirbazının lisans sayfası: programın kendi lisansı. Üçüncü taraf
+; lisansları {app}\THIRD_PARTY_LICENSES\ altına kurulur (BENIOKU.txt).
+LicenseFile={#LisansDosyasi}
 ; `AppMutex` bilerek YOK (tasarım §2.3, §4.2-5, denetim GA-15): Inno onu hem
 ; kurucuda hem kaldırıcıda denetler; kaldırıcı kapatma olayını gönderecek aşamaya
 ; gelmeden "programı kapatın" iletisinde beklerdi. Program çalışırken yükseltme

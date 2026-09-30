@@ -5,6 +5,17 @@ Bu arşiv, yönetici (root) yetkisi gerektirmeden kurulabilen sürümdür.
 Yönetici yetkiniz varsa .deb paketini tercih edin (menü kaydı ve bağımlılık
 kurulumu otomatik yapılır).
 
+AĞ KATALOĞU BU ARŞİVDE SUNULMAZ. Okul ağındaki bilgisayarların ve etkileşimli
+tahtaların kataloğu tarayabildiği Ağ Kataloğu yalnız .deb paketiyle kurulan
+programda açılır. Katalog gerekiyorsa önce bu sürümden çıkıp ./kaldir.sh ile
+kaldırın, sonra .deb paketini kurun. Kaldırmazsanız ./kur.sh'in eklediği menü
+kaydı ve uçbirim kısayolu .deb'inkinin önüne geçer: menü ve kutuphane-defteri
+komutu bu taşınabilir sürümü açmayı sürdürür. Verileriniz iki sürümde aynı
+klasördedir; ./kaldir.sh verilere dokunmaz. Hangi sürümün açıldığını şu komut
+yazar ("kurulu" ya da "tasinabilir"):
+
+    kutuphane-defteri --dagitim-duman
+
 KURULUM
 -------
     ./kur.sh
@@ -29,8 +40,11 @@ VERİLERİNİZ NEREDE?
     ~/.local/share/kutuphane-defteri/backups   günlük otomatik yedekler
     ~/.local/state/kutuphane-defteri/logs      günlükler
 
-Yedekler her açılışta alınır ve 14 gün saklanır. Bilgisayar arızasına karşı
-bu klasörü düzenli olarak bir USB belleğe kopyalayın.
+Program her gün bir yedek alır (açılışta ve açık kaldığı sürece gün
+değişince) ve 14 günden eski yedekleri siler. Bu yedekler bilgisayarın
+kendisindedir: disk bozulursa onlar da gider. Ayda bir Ayarlar → Güvenlik'teki
+"Şifreli yedeği indir" düğmesiyle yedek alıp USB belleğe kopyalayın ve USB'yi
+bilgisayardan ayrı saklayın.
 
 YEDEKTEN GERİ YÜKLEME
 ---------------------
@@ -39,10 +53,9 @@ uçbirimden:
 
     kutuphane-defteri --geri-yukle
 
-Yedekler listelenir ve seçtiğiniz yedek veritabanının yerine konur. Uygulama
-parolası kuruluyken alınan şifreli yedekler için parolanız ya da kurtarma
-anahtarınız sorulur. Mevcut (bozuk) dosya silinmez; 'db-onceki-*' adıyla
-veri klasöründe saklanır.
+Yedekler listelenir ve seçtiğiniz yedek veritabanının yerine konur. Yedekler
+şifrelidir; yönetici parolanız ya da kurtarma anahtarınız sorulur. Mevcut
+(bozuk) dosya silinmez; 'db-onceki-*' adıyla veri klasöründe saklanır.
 
 GEREKLİ SİSTEM PAKETLERİ
 ------------------------
@@ -69,6 +82,13 @@ taşınabilir sürümde gerekir.
 
 Pencereyi çizen kütüphaneler programla birlikte, LGPLv3 lisansıyla dağıtılır;
 kurulum klasöründe ayrı dosyalar hâlinde durur ve değiştirilebilir.
+
+LİSANSLAR
+---------
+Programın lisansı: uygulama/LICENSE.txt (PolyForm Noncommercial 1.0.0).
+Programla dağıtılan üçüncü taraf bileşenler, lisans metinleri, LGPL
+bileşenlerinin kaynak kod adresleri ve kaynak kodu için yazılı teklif:
+uygulama/THIRD_PARTY_LICENSES/BENIOKU.txt
 
 PDF ÜRETİMİ ÇALIŞIYOR MU?
 -------------------------

@@ -12,6 +12,17 @@ KARAR SIRASI (`_dinle`)
    açılana dek kapalı kalır (§5.3-5).
 2. Ayar okunur (`KatalogAyari` — port ve IP'nin tek kaynağı). Kapalıysa
    dinlenmez.
+2b. Dağıtım (KB-2, 28.09.2026 kullanıcı kararı): Pardus'un taşınabilir
+   arşivinde Ağ Kataloğu SUNULMAZ (`desktop/dagitim.py`). Ayar önceki bir
+   açılıştan açık kalmışsa katalog kalkmaz; durum "açılamadı", son hata nedenini
+   ve iki çıkış yolunu (.deb ile kurmak ya da ayarı kapatmak) yazar. Ağ ve
+   güvenlik duvarı hiç okunmaz, kendiliğinden yeniden denenmez. `ac()` ayarı
+   YAZMADAN reddeder; tepsi "aç"ı sunmaz, "kapat"ı ayar açıkken sunar. Ağ
+   Doktoru'nun Linux komutu verilmez (`guvenlik_duvari.tasinabilir_denetimi`).
+   Bilgisayarda `.deb` de kuruluysa (`dagitim.deb_paketi_kurulu`) ileti ".deb ile
+   kurun" demez, taşınabilir sürümü `./kaldir.sh` ile kaldırıp programı menüden
+   açmayı söyler: `kur.sh`'in menü kaydı ve uçbirim bağlantısı `.deb`'inkini gölgeler
+   (KB-2 düzeltme turu, 29.09.2026). Windows'ta ve kaynak ağaçta kapı yoktur.
 3. Dinleme adresi: "tüm arayüzler" ya da "yalnız seçili IP". Seçili IP bu
    bilgisayarda yoksa ve bilgisayarın TEK aday adresi varsa katalog o adreste
    açılır ve kullanıcı uyarılır (§5.2 "IP değişirse dinleyici yeni IP'de yeniden
@@ -67,7 +78,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any, Final, Protocol
 
-from desktop import ag, guvenlik_duvari
+from desktop import ag, dagitim, guvenlik_duvari
 
 # Sınıfta `guvenlik_duvari` adlı bir yöntem de var: sınıf gövdesindeki ek açıklamalar
 # modül adını değil yöntemi görür. Tür doğrudan içe aktarılır.
@@ -109,6 +120,29 @@ _DOKTOR_UYARISI: Final = (
     "Bu sınama güvenlik duvarını ya da VLAN'ı kanıtlamaz: makinenin kendi IP'sine "
     "yapılan bağlantı loopback'ten geçer. Başka bir bilgisayardan deneyin."
 )
+
+#: KB-2 (28.09.2026): Pardus'un taşınabilir arşivinde Ağ Kataloğu açılmaz.
+TASINABILIR_ILETISI: Final = (
+    "Ağ Kataloğu açılmadı: taşınabilir sürümde sunulmaz, yalnız .deb paketiyle kurulan "
+    "programda açılır."
+)
+#: Ayar önceki bir açılıştan açık kalmışsa (her açılışta durumda görünür).
+TASINABILIR_AYAR_ACIK_ILETISI: Final = (
+    TASINABILIR_ILETISI
+    + " Ayarda Ağ Kataloğu açık görünüyor: kataloğu kullanmak için programı .deb paketiyle "
+    "kurun (taşınabilir sürümü ./kur.sh ile kurduysanız önce arşivdeki ./kaldir.sh ile "
+    "kaldırın); kullanmayacaksanız “Ağ Kataloğunu kapat” ile ayarı kapatın."
+)
+#: KB-2 düzeltme turu (29.09.2026): taşınabilir sürüm açık, bilgisayarda `.deb` de kurulu.
+#: `kur.sh`'in menü kaydı ve `~/.local/bin` bağlantısı `.deb`'inkini gölgeler; "programı
+#: .deb paketiyle kurun" demek kullanıcıyı döngüye sokardı (`dagitim.deb_paketi_kurulu`).
+TASINABILIR_DEB_KURULU_ILETISI: Final = (
+    "Ağ Kataloğu açılmadı: açık olan program taşınabilir sürümdür, bu bilgisayarda ise .deb "
+    "paketi de kurulu. Programdan çıkın; taşınabilir sürümü ./kur.sh ile kurduysanız "
+    "arşivdeki ./kaldir.sh ile kaldırın (yoksa menü ve uçbirim onu açmayı sürdürür). Sonra "
+    "programı menüden açın: katalog .deb paketiyle kurulan programda açılır."
+)
+TASINABILIR_TEPSI_SATIRI: Final = "Ağ Kataloğu: taşınabilir sürümde sunulmaz"
 
 
 @dataclass(frozen=True)
@@ -227,6 +261,8 @@ class KatalogKontrol:
         bakim_kapisi: BakimKapisi | None = None,
         platform: str = sys.platform,
         exe_yolu: str | None = None,
+        dagitim_turu: str | None = None,
+        deb_kurulu: bool | None = None,
         yeniden_deneme_araligi_sn: float = YENIDEN_DENEME_ARALIGI_SN,
         yeniden_deneme_suresi_sn: float = YENIDEN_DENEME_SURESI_SN,
         gecici_deneme_araligi_sn: float = GECICI_DENEME_ARALIGI_SN,
@@ -239,6 +275,21 @@ class KatalogKontrol:
         self._ag = ag_saglayici
         self._platform = platform
         self._exe = exe_yolu or sys.executable
+        #: KB-2: dağıtım türü açılışta bir kez belirlenir (süreç ömrünce değişmez).
+        self._dagitim = (
+            dagitim_turu
+            if dagitim_turu is not None
+            else dagitim.dagitim_turu(platform=platform, exe_yolu=self._exe)
+        )
+        self._sunulur = dagitim.katalog_sunulur(self._dagitim)
+        #: Taşınabilir sürüm açıkken `.deb` de kurulu mu? İletinin önerdiği yolu seçer.
+        self._deb_kurulu = (
+            False
+            if self._sunulur
+            else deb_kurulu
+            if deb_kurulu is not None
+            else dagitim.deb_paketi_kurulu()
+        )
         self._duvar = duvar_denetleyici or self._varsayilan_duvar
         self._kurucu = sunucu_kurucu
         self._oz_sinama = oz_sinama
@@ -337,7 +388,21 @@ class KatalogKontrol:
                 "guvenlik_duvari": d.denetim.sozluk() if d.denetim is not None else None,
                 "reddedilen_baglanti": sunucu.reddedilen_baglanti if sunucu is not None else 0,
                 "uyku_engelli": self._uyku_gerekli_kilitsiz(),
+                # KB-2: yanlışsa (Pardus taşınabilir arşivi) ekranlar "aç"ı sunmaz.
+                "sunulur": self._sunulur,
+                # Taşınabilir sürüm açıkken `.deb` de kurulu mu (bant "kaldir.sh" yolunu yazar).
+                "deb_kurulu": self._deb_kurulu,
             }
+
+    def _tasinabilir_iletisi(self, *, ayar_acik: bool) -> str:
+        """KB-2: taşınabilir sürümde katalogun neden açılmadığı ve önerilen yol."""
+        if self._deb_kurulu:
+            return TASINABILIR_DEB_KURULU_ILETISI
+        return TASINABILIR_AYAR_ACIK_ILETISI if ayar_acik else TASINABILIR_ILETISI
+
+    def sunulur_mu(self) -> bool:
+        """Ağ Kataloğu bu dağıtımda sunulur mu? (KB-2; tepsi "aç"ı buna göre gösterir)"""
+        return self._sunulur
 
     def acik_mi(self) -> bool:
         with self._kilit:
@@ -348,8 +413,9 @@ class KatalogKontrol:
 
         Açıkken ve ayar açık olduğu hâlde açılamadığında (güvenlik duvarı izni
         yok, açılamadı, port bekleniyor) evet: ayar açık kaldıkça program her
-        açılışta yeniden dener, kullanıcı vazgeçebilmelidir. Kapalıyken ve geri
-        yüklemede hayır.
+        açılışta yeniden dener, kullanıcı vazgeçebilmelidir. Taşınabilir arşivde
+        (KB-2) ayar önceden açık kalmışsa da evet ("açılamadı"). Kapalıyken ve
+        geri yüklemede hayır.
         """
         with self._kilit:
             d = self._d
@@ -369,6 +435,8 @@ class KatalogKontrol:
         durum = d["durum"]
         if durum == ACIK and d["adres"]:
             return f"Ağ Kataloğu: açık — {d['adres']}"
+        if not self._sunulur and durum != BAKIM:
+            return TASINABILIR_TEPSI_SATIRI
         return {
             KAPALI: "Ağ Kataloğu: kapalı",
             ACIK: "Ağ Kataloğu: açık",
@@ -389,8 +457,18 @@ class KatalogKontrol:
         self._uygula()
 
     def ac(self) -> dict[str, Any]:
-        """Ayarı açık yapar ve katalogu kaldırır."""
+        """Ayarı açık yapar ve katalogu kaldırır.
+
+        Taşınabilir arşivde (KB-2) ayar YAZILMAZ ve katalog kalkmaz: neden
+        `son_hata`'dadır. Ayar önceden açıksa durum değişmez.
+        """
         with self._islem:
+            if not self._sunulur:
+                ayar = self._ayari_tazele()
+                logger.warning("Ağ Kataloğu açılmadı: taşınabilir arşivde sunulmaz (KB-2).")
+                with self._kilit:
+                    self._d.son_hata = self._tasinabilir_iletisi(ayar_acik=ayar.acik)
+                return self.durum()
             if self._ayar_yazdi(acik=True):
                 self._uygula()
         return self.durum()
@@ -453,7 +531,13 @@ class KatalogKontrol:
         self._uygula()
 
     def ip_denetle(self) -> bool:
-        """Gün değişimi işi: IP değişti mi? Seçili IP kayboldıysa katalog yeniden kurulur."""
+        """Gün değişimi işi: IP değişti mi? Seçili IP kayboldıysa katalog yeniden kurulur.
+
+        Taşınabilir arşivde (KB-2) iş yapılmaz: katalog sunulmadığı için "afişi
+        yeniden basın" uyarısı yanıltırdı.
+        """
+        if not self._sunulur:
+            return True
         ayar = self._ayari_tazele()
         durum = self._ag_oku()
         with self._kilit:
@@ -530,9 +614,15 @@ class KatalogKontrol:
     # ------------------------------------------------------ Ağ Doktoru sorguları
 
     def guvenlik_duvari(self) -> dict[str, Any]:
-        """Beş maddeyi yeniden okur (Ağ Doktoru "Yenile")."""
+        """Beş maddeyi yeniden okur (Ağ Doktoru "Yenile").
+
+        Taşınabilir arşivde (KB-2) Linux komutu verilmez: katalog orada açılmaz,
+        BTR'ye çalıştırılacak bir kural önermek yanıltırdı.
+        """
         ayar = self._ayari_tazele()
         denetim = self._duvar(port=ayar.port, exe_yolu=self._exe)
+        if not self._sunulur:
+            denetim = guvenlik_duvari.tasinabilir_denetimi(denetim)
         with self._kilit:
             self._d.denetim = denetim
         return denetim.sozluk()
@@ -673,6 +763,14 @@ class KatalogKontrol:
         ayar = self._ayari_tazele()
         self._uygulanan = _dinleme_ozeti(ayar)
         if not ayar.acik:
+            return
+        if not self._sunulur:
+            # KB-2: ayar önceki bir açılıştan açık kalmış. Katalog kalkmaz; ağ ve
+            # güvenlik duvarı okunmaz, geçici hata sayılmaz (yeniden denenmez).
+            logger.warning(
+                "Ağ Kataloğu ayarı açık ama taşınabilir arşivde katalog sunulmaz (KB-2)."
+            )
+            self._durum_yaz(HATA, son_hata=self._tasinabilir_iletisi(ayar_acik=True))
             return
         durum = self._ag_oku()
         uyarilar = durum.uyarilar(

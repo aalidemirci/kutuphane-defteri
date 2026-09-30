@@ -23,6 +23,33 @@ describe("HakkindaPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("geliştirici kartı: kardeş programlarla aynı biçimde ad ve e-posta (unvan ve kurum yok)", () => {
+    // 29.09.2026 kullanıcı kararı (tasarım §14.1 F12 ekleri İA-1): iletişim, kardeş
+    // programların Hakkında sayfasındaki biçimde verilir — ad + e-posta; unvan ve kurum adı
+    // herkese açık tanıtımda geçmez.
+    render(<HakkindaPage />);
+
+    expect(screen.getByRole("heading", { level: 2, name: "Geliştirici" })).toBeInTheDocument();
+    expect(screen.getByText("Ahmet Ali DEMİRCİ")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /aalidemirci@gmail\.com/ })).toHaveAttribute(
+      "href",
+      "mailto:aalidemirci@gmail.com",
+    );
+    expect(
+      screen.getByText(/talep, öneri, hata bildirimi ve şikâyetlerinizi bu e-posta adresine/),
+    ).toBeInTheDocument();
+    // KVKK: destek iletisine kişi verisi girmez; okulun kayıtları için başvuru okula yapılır.
+    expect(screen.getByText(/İletinize öğrenci, veli ya da personel bilgisi/)).toHaveTextContent(
+      "başvurular okul müdürlüğüne yapılır",
+    );
+    const kart = screen.getByRole("heading", { level: 2, name: "Geliştirici" }).parentElement;
+    const kartMetni = kart?.textContent ?? "";
+    expect(kartMetni).toContain("Ahmet Ali DEMİRCİ");
+    for (const unvanYaDaKurum of [/öğretmen/i, /müdür yardımcısı/i, /lisesi/i, /ortaokulu/i]) {
+      expect(kartMetni).not.toMatch(unvanYaDaKurum);
+    }
+  });
+
   it("konum notu: yerel araçtır, Bakanlık otomasyon sistemindeki kaydın yerine geçmez", () => {
     render(<HakkindaPage />);
 
@@ -56,6 +83,29 @@ describe("HakkindaPage", () => {
     expect(screen.getByText(/ISBN sorgusu/)).toBeInTheDocument();
     expect(screen.getByText(/varsayılan olarak kapalıdır/)).toBeInTheDocument();
     expect(screen.getByText(/kişisel veri dışarı çıkmaz/)).toBeInTheDocument();
+  });
+
+  it("üçüncü taraf kartı LGPL kitaplıkların telif bildirimini ve lisans dosyalarını verir", () => {
+    // LGPL-3.0 §4(c) (F12 düzeltme turu): çalışırken telif bildirimi gösteren program,
+    // LGPL kitaplığın bildirimini de gösterir ve GPL/LGPL metinlerine yönlendirir.
+    render(<HakkindaPage />);
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Üçüncü Taraf Bileşenler" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/GNU Kısıtlı Genel Kamu Lisansı\s+\(LGPL-3\.0\)/)).toBeInTheDocument();
+    expect(screen.getByText(/pystray — Copyright © 2016-2022 Moses Palmér/)).toBeInTheDocument();
+    expect(screen.getByText(/Qt 6 ve PySide6 — Copyright © The Qt/)).toBeInTheDocument();
+    for (const dosya of [
+      "THIRD_PARTY_LICENSES",
+      "BENIOKU.txt",
+      "LGPL-3.0-metni.txt",
+      "GPL-3.0-metni.txt",
+    ]) {
+      expect(screen.getByText(dosya)).toBeInTheDocument();
+    }
+    // Sözlük: "kurucu" / "yükleyici" kullanıcı metninde geçmez.
+    expect(screen.queryByText(/kurucu|yükleyici/i)).not.toBeInTheDocument();
   });
 
   it("Ağ Kataloğunun kişisel veri göstermediğini söyler (sözlük: bunu Hakkında söyler)", () => {

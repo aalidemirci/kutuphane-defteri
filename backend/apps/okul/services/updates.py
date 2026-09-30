@@ -1,6 +1,7 @@
 """GitHub Release tabanlı uygulama güncelleme denetimi ve güvenli kurucu indirme.
 
-Yalnız sabit proje deposunun ``latest release`` kaydı okunur. Windows kurucusu,
+Yalnız sabit proje deposunun sürüm kayıtları okunur (kararlı kurulumda ``releases/latest``,
+ön sürüm kurulumunda ya da hiç kararlı sürüm yokken son 10 yayının listesi). Windows kurucusu,
 GitHub'ın ``sha256:...`` varlık özetiyle; eski Release kayıtlarında bu alan yoksa
 aynı Release'teki ``SHA256SUMS.txt`` ile doğrulanmadan kullanıcıya verilmez.
 
@@ -23,6 +24,7 @@ import hashlib
 import json
 import os
 import re
+import ssl
 import sys
 import threading
 import time
@@ -50,8 +52,18 @@ ULASILAMADI_MESAJI = (
     f"{INDIRME_ALANI}'dan elle denetleyebilirsiniz."
 )
 
+#: Sertifika doğrulanamadığında (F12 düzeltme turu): bu hata ağ engeli değildir; en sık
+#: nedeni yanlış tarih/saat (sahada saat ileri alınmış deneme bilgisayarı) ya da güvenli
+#: bağlantıları araya girerek denetleyen bir okul ağıdır. Program doğrulamayı GEVŞETMEZ.
+SERTIFIKA_MESAJI = (
+    "GitHub ile güvenli bağlantı doğrulanamadı. Bilgisayarın tarihi ve saati yanlışsa "
+    "düzeltip yeniden deneyin; doğruysa okul ağı güvenli bağlantıları denetliyor olabilir. "
+    f"Yeni sürümü {INDIRME_ALANI}'dan elle denetleyebilirsiniz."
+)
+
 _cache_lock = threading.Lock()
-_cached_release: tuple[float, ReleaseInfo] | None = None
+#: (zaman, ön sürüm kanalı mı, sürüm) — kararlı ve ön sürüm kanalı ayrı sorgulanır.
+_cached_release: tuple[float, bool, ReleaseInfo] | None = None
 
 
 class UpdateError(RuntimeError):
@@ -124,6 +136,27 @@ def version_key(value: str) -> tuple[tuple[int, ...], int, tuple[tuple[int, int 
     return (tuple(numbers[:4]), 0 if pre else 1, _pre_key(pre))
 
 
+def is_prerelease(value: str) -> bool:
+    """Sürüm ön-sürüm eki taşıyor mu (`2026.10.0-beta.1` → True, `2026.10.0` → False)?"""
+    return bool(value.strip().partition("-")[2])
+
+
+def offered(latest: str, current: str) -> bool:
+    """`latest` bu kuruluma ÖNERİLİR mi?
+
+    Daha yeni olmalı; ayrıca KARARLI sürüm kullanan okula ön-sürüm (beta/rc)
+    önerilmez (F12 kullanıcı kararı 3, 27.09.2026). `releases/latest` ucu
+    ön-sürümleri zaten döndürmez; bu kural liste yolunun (`_highest_listed_release`
+    — GitHub'da hiç kararlı sürüm yokken) ve indirme ucunun da aynı sözü tutmasını
+    sağlar. Beta kullanıcısı hem sonraki betayı hem kararlı sürümü alır: çalışan
+    sürüm ön sürümse `latest_release(prereleases=True)` doğrudan listeyi okur (ilk
+    kararlı sürüm yayımlandıktan sonra da — F12 düzeltme turu).
+    """
+    if version_key(latest) <= version_key(current):
+        return False
+    return not is_prerelease(latest) or is_prerelease(current)
+
+
 def update_directory() -> Path:
     """Kurucular için masaüstü uygulamasıyla aynı kullanıcı önbelleğini çözer."""
     override = os.environ.get("KD_APP_HOME")
@@ -174,7 +207,13 @@ def _read_url(url: str, *, max_bytes: int) -> bytes:
                 f"{INDIRME_ALANI}'dan elle denetleyin."
             ) from exc
         raise UpdateError(f"GitHub güncelleme sunucusu HTTP {exc.code} hatası verdi.") from exc
-    except (URLError, TimeoutError, OSError) as exc:
+    except URLError as exc:
+        if isinstance(exc.reason, ssl.SSLCertVerificationError):
+            raise UpdateError(SERTIFIKA_MESAJI) from exc
+        raise UpdateError(ULASILAMADI_MESAJI) from exc
+    except ssl.SSLCertVerificationError as exc:
+        raise UpdateError(SERTIFIKA_MESAJI) from exc
+    except (TimeoutError, OSError) as exc:
         raise UpdateError(ULASILAMADI_MESAJI) from exc
 
 
@@ -242,13 +281,14 @@ def _decode_payload(raw: bytes) -> Any:
         ) from exc
 
 
-def _latest_prerelease() -> ReleaseInfo:
-    """Kararlı sürüm yokken sürüm LİSTESİNDEN en yükseğini seçer.
+def _highest_listed_release() -> ReleaseInfo:
+    """Sürüm LİSTESİNDEN (son 10 yayın, taslaklar hariç) en yüksek sürümü seçer.
 
     F9 yayın işi `-dev/-beta/-rc` etiketlerini `--prerelease` yayımlar; GitHub'ın
-    `releases/latest` ucu ön-sürümleri DÖNDÜRMEZ — beta dönemi boyunca güncelleme
-    denetimi bu yedek yol olmadan ölü kalırdı. Kararlı sürüm çıktığı anda
-    `releases/latest` yeniden devreye girer ve bu yol hiç koşmaz.
+    `releases/latest` ucu ön-sürümleri DÖNDÜRMEZ. İki yerde koşar: (1) çalışan sürüm
+    ön sürümse (beta kanalı — kararlı sürüm yayımlandıktan sonra da sonraki beta
+    ancak buradan görülür) ve (2) kararlı kurulumda GitHub'da hiç kararlı sürüm
+    yokken (404). Kararlı kuruluma ön sürüm önerilmemesini `offered` sağlar.
     """
     payload = _decode_payload(_read_url(RELEASE_LIST_URL, max_bytes=4 * 1024 * 1024))
     if not isinstance(payload, list):
@@ -266,21 +306,36 @@ def _latest_prerelease() -> ReleaseInfo:
     return max(releases, key=lambda release: version_key(release.version))
 
 
-def latest_release(*, force: bool = False) -> ReleaseInfo:
+def latest_release(*, force: bool = False, prereleases: bool = False) -> ReleaseInfo:
+    """Yayımlanan son sürüm (15 dk önbellekli).
+
+    `prereleases=False` (kararlı kurulum): `releases/latest`, yoksa liste. `True`
+    (çalışan sürüm ön sürüm — beta kanalı): doğrudan liste, en yüksek sürüm; böylece
+    ilk kararlı sürümden sonra da sonraki beta bulunur. İki kanal ayrı önbelleklenir.
+    """
     global _cached_release
 
     now = time.monotonic()
     with _cache_lock:
-        if not force and _cached_release and now - _cached_release[0] < CACHE_SECONDS:
-            return _cached_release[1]
+        onbellek = _cached_release
+        if (
+            not force
+            and onbellek is not None
+            and onbellek[1] == prereleases
+            and now - onbellek[0] < CACHE_SECONDS
+        ):
+            return onbellek[2]
 
-    try:
-        raw = _read_url(LATEST_RELEASE_URL, max_bytes=2 * 1024 * 1024)
-        release = _parse_release(_decode_payload(raw))
-    except ReleaseNotFoundError:
-        release = _latest_prerelease()
+    if prereleases:
+        release = _highest_listed_release()
+    else:
+        try:
+            raw = _read_url(LATEST_RELEASE_URL, max_bytes=2 * 1024 * 1024)
+            release = _parse_release(_decode_payload(raw))
+        except ReleaseNotFoundError:
+            release = _highest_listed_release()
     with _cache_lock:
-        _cached_release = (now, release)
+        _cached_release = (now, prereleases, release)
     return release
 
 
@@ -296,8 +351,8 @@ def installer_supported() -> bool:
 
 def update_status(*, force: bool = False, current_version: str | None = None) -> dict[str, Any]:
     current = current_version or get_app_version()
-    release = latest_release(force=force)
-    available = version_key(release.version) > version_key(current)
+    release = latest_release(force=force, prereleases=is_prerelease(current))
+    available = offered(release.version, current)
     downloadable = installer_supported() and release.installer is not None
     return {
         "current_version": current,
@@ -342,9 +397,9 @@ def download_latest_installer(*, force: bool = False) -> Path:
             "Uygulama içi indirme yalnız Windows'ta çalışır. Pardus/Linux için yeni "
             "paketi (.deb ya da .tar.gz) sürüm sayfasından indirip kurun."
         )
-    release = latest_release(force=force)
     current = get_app_version()
-    if version_key(release.version) <= version_key(current):
+    release = latest_release(force=force, prereleases=is_prerelease(current))
+    if not offered(release.version, current):
         raise UpdateError("Uygulama zaten güncel; indirilecek daha yeni bir sürüm yok.")
     installer = release.installer
     if installer is None:

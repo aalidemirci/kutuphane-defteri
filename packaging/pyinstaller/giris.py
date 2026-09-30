@@ -4,7 +4,8 @@ Normal çalışmada tek işi vardır: `desktop.main.run()`'a devretmek. Kabuğun
 kendisi `desktop/` altındadır ve bu dosyaya bağımlı DEĞİLDİR — depodan
 `python -m desktop.main` ile çalıştırmak da aynı sonucu verir.
 
-Ek olarak paketlenmiş sürümde **iki teşhis kipi** sunar:
+Ek olarak paketlenmiş sürümde **üç teşhis kipi** sunar (üçüncüsü,
+`--dagitim-duman`, aşağıda `run_distribution_smoke` belgesinde):
 
     kutuphane-defteri --bagimlilik-duman
 
@@ -62,11 +63,13 @@ if str(_REPO_ROOT) not in sys.path:
 
 PDF_SMOKE_FLAG = "--pdf-duman"
 IMPORT_SMOKE_FLAG = "--bagimlilik-duman"
+DISTRIBUTION_SMOKE_FLAG = "--dagitim-duman"
 
 # `desktop/errors.py` 0-7 arasını kullanıyor; teşhis kipi 8'den devam eder
 # (9 = --geri-yukle). Kodlar `desktop/errors.py` ile İKİZDİR.
 EXIT_PDF_SMOKE_FAILED = 8
 EXIT_IMPORT_SMOKE_FAILED = 10
+EXIT_DISTRIBUTION_SMOKE_FAILED = 11
 
 #: Paketin İÇİNDE çalışma anında bulunması ZORUNLU üçüncü taraf modüller.
 #:
@@ -154,20 +157,52 @@ class SmokeTemplateMissing(Exception):
     """Evrak şablon ağacı pakette bulunamadı (spec `Tree` yolu bozuk olabilir)."""
 
 
+#: Duman kiplerinin tanı çıktısının AYRICA yazıldığı dosya (günlük klasöründe). F12
+#: düzeltme turu: penceresiz Windows derlemesinde `sys.stderr` `None`'dır ve duman
+#: kipleri günlük kurulmadan koşar — dosya olmadan eksik harf, font adı, fontconfig
+#: tanısı ve `KD_RTHOOK_UYARI` hiçbir yere düşmezdi; sahada elde yalnız çıkış kodu
+#: kalırdı (saha protokolü §2.5). Her koşu dosyayı baştan yazar (yalnız son koşu).
+TANILAMA_DOSYASI = "tanilama.log"
+_tanilama_yolu: Path | None = None
+
+
+def _tanilama_ac(kip: str) -> None:
+    """Tanı dosyasını açar; açılamazsa (salt okunur profil vb.) sessizce vazgeçer."""
+    global _tanilama_yolu
+    _tanilama_yolu = None
+    try:
+        from datetime import datetime
+
+        from desktop.paths import resolve_app_paths
+
+        klasor = resolve_app_paths().logs
+        klasor.mkdir(parents=True, exist_ok=True)
+        yol = klasor / TANILAMA_DOSYASI
+        yol.write_text(f"{datetime.now():%d.%m.%Y %H:%M:%S} {kip}\n", encoding="utf-8")
+    except Exception:  # noqa: BLE001 — tanı dosyası yoksa yalnız stderr kalır
+        return
+    _tanilama_yolu = yol
+
+
 def _write(message: str) -> None:
-    """Teşhis çıktısı — konsol yoksa (Windows penceresiz derleme) sessiz geçer.
+    """Teşhis çıktısı: stderr'e (varsa) ve açıksa tanı dosyasına.
 
     `print()` bilinçli olarak kullanılmaz: paketlenmiş penceresiz derlemede
     `sys.stdout` `None`'dır ve `print` orada `AttributeError` üretir.
     """
     stream = sys.stderr
-    if stream is None:
-        return
-    try:
-        stream.write(message + "\n")
-        stream.flush()
-    except (OSError, ValueError):
-        return
+    if stream is not None:
+        try:
+            stream.write(message + "\n")
+            stream.flush()
+        except (OSError, ValueError):
+            pass
+    if _tanilama_yolu is not None:
+        try:
+            with _tanilama_yolu.open("a", encoding="utf-8") as dosya:
+                dosya.write(message + "\n")
+        except OSError:
+            return
 
 
 def _templates_dir() -> Path:
@@ -345,12 +380,65 @@ def run_import_smoke(platform: str = sys.platform) -> int:
     return 0
 
 
+def run_distribution_smoke(beklenen: str | None) -> int:
+    """`--dagitim-duman [tür]`: programın kendini hangi dağıtımdan çalışıyor saydığı.
+
+    KB-2 (28.09.2026 kullanıcı kararı): Pardus'un taşınabilir arşivinde Ağ Kataloğu
+    açılmaz; ayrımı `desktop/dagitim.py` gerçek paketli ikilinin `sys.frozen` ve
+    `sys.executable` değerleriyle yapar. Birim testleri ölçütü sınar ama üretim girdisini
+    göremez: bootloader'ın verdiği yol biçimi değişirse her `.deb` kurulumunda katalog
+    sessizce "taşınabilir sürümde sunulmaz" olurdu. Bu kip onu derlemede yakalar:
+    `build.sh` taşınabilir ağaçtaki ikilide `tasinabilir`, `kap-ici-test.sh` gerçek
+    `dpkg -i`'den sonra `/usr/bin` bağlantısıyla `kurulu` bekler (KB-2 düzeltme turu,
+    29.09.2026). Tür verilmezse yalnız yazar ve 0 döner (sahada BTR için tanı).
+    Veritabanına ve veri dizinine dokunmaz.
+    """
+    from desktop import dagitim
+
+    tur = dagitim.dagitim_turu()
+    _write(f"Dağıtım türü: {tur}")
+    _write(
+        "Ağ Kataloğu bu dağıtımda sunulur: "
+        + ("evet" if dagitim.katalog_sunulur(tur) else "hayır (taşınabilir sürüm)")
+    )
+    if beklenen is None:
+        return 0
+    bilinen = (dagitim.KURULU, dagitim.TASINABILIR, dagitim.KAYNAK, dagitim.PAKET)
+    if beklenen not in bilinen:
+        _write(f"HATA: bilinmeyen dağıtım türü: {beklenen} (bilinenler: {', '.join(bilinen)})")
+        return EXIT_DISTRIBUTION_SMOKE_FAILED
+    if tur != beklenen:
+        _write(f"HATA: beklenen dağıtım türü {beklenen}, bulunan {tur}.")
+        return EXIT_DISTRIBUTION_SMOKE_FAILED
+    _write("Dağıtım duman testi başarılı.")
+    return 0
+
+
+def _flag_argument(argv: Sequence[str], flag: str) -> str | None:
+    """Bayraktan hemen sonraki, `-` ile başlamayan öğe (yoksa None)."""
+    args = list(argv)
+    index = args.index(flag)
+    if index + 1 < len(args) and not args[index + 1].startswith("-"):
+        return args[index + 1]
+    return None
+
+
 def _smoke_target(argv: Sequence[str]) -> Path:
-    """`--pdf-duman` sonrasında dosya yolu verildiyse onu, yoksa geçici dosyayı seçer."""
+    """`--pdf-duman` sonrasında dosya yolu verildiyse onu, yoksa geçici dosyayı seçer.
+
+    Yol, bayraktan sonraki ve `-` ile başlamayan BÜTÜN öğelerin boşlukla birleşimidir:
+    PowerShell 5.1'in `Start-Process -ArgumentList` dizisi öğeleri tırnaklamadan
+    birleştirir; "C:\\Users\\Kütüphane Masası\\…" yolu iki öğeye bölünür ve ilk öğe
+    (`C:\\Users\\Kütüphane`) yazılamadığı için yalancı 8 kodu dönerdi (F12 düzeltme turu).
+    """
     index = list(argv).index(PDF_SMOKE_FLAG)
-    rest = list(argv)[index + 1 :]
-    if rest and not rest[0].startswith("-"):
-        return Path(rest[0])
+    parcalar: list[str] = []
+    for oge in list(argv)[index + 1 :]:
+        if oge.startswith("-"):
+            break
+        parcalar.append(oge)
+    if parcalar:
+        return Path(" ".join(parcalar))
     return Path(tempfile.gettempdir()) / "kutuphane-defteri-pdf-duman.pdf"
 
 
@@ -358,31 +446,54 @@ def run(argv: Sequence[str] | None = None) -> int:
     """Argümanlara göre teşhis kipini veya normal açılışı çalıştırır."""
     args = list(sys.argv[1:] if argv is None else argv)
     if IMPORT_SMOKE_FLAG in args:
+        _tanilama_ac(IMPORT_SMOKE_FLAG)
         try:
-            return run_import_smoke()
+            kod = run_import_smoke()
         except Exception as error:  # noqa: BLE001 — teşhis kipi: her hata rapor edilir
             _write(f"HATA: bağımlılık duman testi çöktü: {error!r}")
-            return EXIT_IMPORT_SMOKE_FAILED
+            kod = EXIT_IMPORT_SMOKE_FAILED
+        _write(f"Çıkış kodu: {kod}")
+        return kod
 
     if PDF_SMOKE_FLAG in args:
-        # Tepside çalışan kopya varken duman testi aynı veri dizinine dokunmasın
-        # (tasarım §4.2-1: bayraklı kipler çalışan kopya bulursa 2 koduyla çıkar).
-        from desktop.errors import EXIT_ALREADY_RUNNING
-        from desktop.lock import is_instance_running
-        from desktop.paths import resolve_app_paths
+        _tanilama_ac(PDF_SMOKE_FLAG)
+        kod = _run_pdf_smoke_mode(args)
+        _write(f"Çıkış kodu: {kod}")
+        return kod
 
-        if is_instance_running(resolve_app_paths().lock_path):
-            _write("HATA: program tepside çalışıyor; tepsiden Çık'ı seçip yeniden deneyin.")
-            return EXIT_ALREADY_RUNNING
+    if DISTRIBUTION_SMOKE_FLAG in args:
+        _tanilama_ac(DISTRIBUTION_SMOKE_FLAG)
         try:
-            return run_pdf_smoke(_smoke_target(args))
+            kod = run_distribution_smoke(_flag_argument(args, DISTRIBUTION_SMOKE_FLAG))
         except Exception as error:  # noqa: BLE001 — teşhis kipi: her hata rapor edilir
-            _write(f"HATA: PDF duman testi çöktü: {error!r}")
-            return EXIT_PDF_SMOKE_FAILED
+            _write(f"HATA: dağıtım duman testi çöktü: {error!r}")
+            kod = EXIT_DISTRIBUTION_SMOKE_FAILED
+        _write(f"Çıkış kodu: {kod}")
+        return kod
 
     from desktop.main import run as run_shell
 
     return run_shell(args)
+
+
+def _run_pdf_smoke_mode(args: Sequence[str]) -> int:
+    """`--pdf-duman` kipi: çalışan kopya denetimi + PDF duman testi."""
+    # Tepside çalışan kopya varken duman testi aynı veri dizinine dokunmasın
+    # (tasarım §4.2-1: bayraklı kipler çalışan kopya bulursa 2 koduyla çıkar).
+    from desktop.errors import EXIT_ALREADY_RUNNING
+    from desktop.lock import is_instance_running
+    from desktop.paths import resolve_app_paths
+
+    if is_instance_running(resolve_app_paths().lock_path):
+        _write("HATA: program tepside çalışıyor; tepsiden Çık'ı seçip yeniden deneyin.")
+        return EXIT_ALREADY_RUNNING
+    hedef = _smoke_target(args)
+    _write(f"Hedef PDF: {hedef}")
+    try:
+        return run_pdf_smoke(hedef)
+    except Exception as error:  # noqa: BLE001 — teşhis kipi: her hata rapor edilir
+        _write(f"HATA: PDF duman testi çöktü: {error!r}")
+        return EXIT_PDF_SMOKE_FAILED
 
 
 def main() -> None:

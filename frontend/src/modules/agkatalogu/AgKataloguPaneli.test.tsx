@@ -48,6 +48,7 @@ vi.mock("../../lib/download", async (importOriginal) => {
 });
 
 import AgKataloguPaneli, { bloklariAyir } from "./AgKataloguPaneli";
+import { TASINABILIR_BILGISI, TASINABILIR_DEB_KURULU_BILGISI } from "./api";
 
 function ekranaBas() {
   return render(
@@ -262,6 +263,76 @@ describe("Ağ Kataloğu — aç/kapa", () => {
     expect(await screen.findByText(/masaüstü penceresi dışında çalışıyor/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ağ Kataloğunu aç" })).toBeDisabled();
     expect(kapi.arayuzler).not.toHaveBeenCalled();
+  });
+});
+
+describe("Ağ Kataloğu — Pardus taşınabilir arşivi (KB-2)", () => {
+  it("katalog sunulmaz: bilgi bandı durur, ilk açılış adımları ve aç düğmesi yoktur", async () => {
+    kapi.durum.mockResolvedValue(
+      durumVerisi({ platform: "linux", katalog: katalogVerisi({ sunulur: false }) }),
+    );
+    ekranaBas();
+
+    expect(await screen.findByText(TASINABILIR_BILGISI)).toBeInTheDocument();
+    expect(screen.queryByText("Ağ Kataloğunu Açmadan Önce")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ağ Kataloğunu aç" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Yeniden başlat" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ağ Kataloğunu kapat" })).not.toBeInTheDocument();
+    // Diğer ayarlar (saatler, tahta blokları) yine kaydedilebilir.
+    expect(screen.getByRole("button", { name: "Kaydet" })).toBeInTheDocument();
+  });
+
+  it("önceden açık kalmış ayar: son hata görünür, yalnız kapatma sunulur", async () => {
+    const user = userEvent.setup();
+    const ileti = "Ağ Kataloğu açılmadı: taşınabilir sürümde sunulmaz.";
+    kapi.ayar.mockResolvedValue(ayarVerisi({ acik: true }));
+    kapi.durum.mockResolvedValue(
+      durumVerisi({
+        platform: "linux",
+        katalog: katalogVerisi({ durum: "hata", ayar_acik: true, son_hata: ileti, sunulur: false }),
+      }),
+    );
+    kapi.eylem.mockResolvedValue(
+      durumVerisi({ platform: "linux", katalog: katalogVerisi({ sunulur: false }) }),
+    );
+    ekranaBas();
+
+    expect(await screen.findByText(ileti)).toBeInTheDocument();
+    expect(screen.getByText(TASINABILIR_BILGISI)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Yeniden başlat" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ağ Kataloğunu kapat" }));
+
+    expect(kapi.eylem).toHaveBeenCalledWith("kapat");
+    expect(await screen.findByText("Ağ Kataloğu kapatıldı.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ağ Kataloğunu aç" })).not.toBeInTheDocument();
+  });
+
+  it("kurulu pakette (sunulur) bant yoktur ve aç düğmesi durur", async () => {
+    kapi.durum.mockResolvedValue(
+      durumVerisi({ platform: "linux", katalog: katalogVerisi({ sunulur: true }) }),
+    );
+    ekranaBas();
+
+    expect(await screen.findByRole("button", { name: "Ağ Kataloğunu aç" })).toBeInTheDocument();
+    expect(screen.queryByText(TASINABILIR_BILGISI)).not.toBeInTheDocument();
+  });
+
+  it("bant kaldir.sh yolunu yazar; .deb de kuruluysa 'programı kurun' demez (döngü yok)", async () => {
+    // KB-2 düzeltme turu (29.09.2026): kur.sh'in menü kaydı .deb'inkini gölgeler.
+    expect(TASINABILIR_BILGISI).toContain("./kaldir.sh");
+    kapi.durum.mockResolvedValue(
+      durumVerisi({
+        platform: "linux",
+        katalog: katalogVerisi({ sunulur: false, deb_kurulu: true }),
+      }),
+    );
+    ekranaBas();
+
+    expect(await screen.findByText(TASINABILIR_DEB_KURULU_BILGISI)).toBeInTheDocument();
+    expect(screen.queryByText(TASINABILIR_BILGISI)).not.toBeInTheDocument();
+    expect(TASINABILIR_DEB_KURULU_BILGISI).toContain("./kaldir.sh");
+    expect(TASINABILIR_DEB_KURULU_BILGISI).toContain("menüden açın");
+    expect(TASINABILIR_DEB_KURULU_BILGISI).not.toContain("paketiyle kurun");
   });
 });
 

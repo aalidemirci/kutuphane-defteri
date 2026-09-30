@@ -87,8 +87,8 @@ tuzağı). Sayfa bütçesi: en uzun gerçekçi veride en çok iki sayfa
       <p class="para">Beş denetimden biri tutmazsa program katalogu okul ağına açmaz.</p>
     {% else %}
       <p class="para">Pardus'ta program güvenlik duvarı kuralı açmaz; paket yalnız hazır bir tanım bırakır.
-      {% if linux.arac %}Bu bilgisayardaki güvenlik duvarı: {{ linux.arac }} ({{ linux.etkin_metni }}). Kuralı açmak için BTR şu komutu çalıştırır:{% else %}Bu bilgisayarda ufw ya da firewalld bulunamadı.{% endif %}</p>
-      {% if linux.komut %}<div class="komut">{{ linux.komut }}</div>{% endif %}
+      {% if linux.arac %}Bu bilgisayardaki güvenlik duvarı: {{ linux.arac }} ({{ linux.etkin_metni }}).{% if linux.tasinabilir %} Program taşınabilir arşivden çalıştığı için Ağ Kataloğu bu bilgisayarda açılmaz; güvenlik duvarı kuralı gerekmez.{% elif linux.komut %} Kuralı açmak için BTR şu komutu çalıştırır:{% endif %}{% elif linux.tasinabilir %}Program taşınabilir arşivden çalıştığı için Ağ Kataloğu bu bilgisayarda açılmaz; güvenlik duvarı kuralı gerekmez.{% else %}Bu bilgisayarda ufw ya da firewalld bulunamadı.{% endif %}</p>
+      {% if linux.komut and not linux.tasinabilir %}<div class="komut">{{ linux.komut }}</div>{% endif %}
     {% endif %}
     {% if tahta_bloklari %}<p class="para">Kurala eklenen tahta ağı blokları: {{ tahta_bloklari|join:", " }}.</p>{% endif %}
   </div>

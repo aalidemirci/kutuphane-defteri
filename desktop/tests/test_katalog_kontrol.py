@@ -23,7 +23,7 @@ from typing import Any
 
 import pytest
 
-from desktop import ag
+from desktop import ag, dagitim
 from desktop import guvenlik_duvari as gd
 from desktop import katalog_kontrol as kk
 from desktop.katalog_server import (
@@ -297,6 +297,8 @@ def test_durum_yonetim_portunu_ve_kisisel_veriyi_icermez(
         "guvenlik_duvari",
         "reddedilen_baglanti",
         "uyku_engelli",
+        "sunulur",
+        "deb_kurulu",
     }
     kontrol.kapanis()
 
@@ -1065,3 +1067,247 @@ def test_tahta_agindaki_bilgisayar_ogrenci_erisimli_ag_uyarisi_alir(
     assert any("öğrenci erişimli ağda" in u for u in adaylar["uyarilar"])
     assert [a["tahta_agi"] for a in adaylar["arayuzler"]] == [False, True]
     kontrol.kapanis()
+
+
+# ------------------------------------------- KB-2: Pardus taşınabilir arşivi
+
+
+def test_linux_tasinabilir_arsivde_ac_reddedilir_ayar_yazilmaz(
+    katalog: CatalogApp, kurulan: list[KatalogServer]
+) -> None:
+    """KB-2 (28.09.2026): taşınabilir arşivde Ağ Kataloğu açılmaz; ayar AÇIK yazılmaz."""
+    port = find_free_port()
+    ayar = _Ayar(acik=False, port=port)
+    kontrol = _kontrol(ayar, katalog, kurulan, platform="linux", dagitim_turu=dagitim.TASINABILIR)
+
+    kontrol.acilista_baslat()
+    durum = kontrol.ac()
+
+    assert ayar.yazilan == []  # KatalogAyari.acik yazılmadı
+    assert durum["durum"] == kk.KAPALI
+    assert durum["sunulur"] is False
+    assert durum["son_hata"] == kk.TASINABILIR_ILETISI
+    assert ".deb" in durum["son_hata"]
+    assert kurulan == []
+    assert not _baglanilabilir(port)
+    assert kontrol.sunulur_mu() is False
+    assert kontrol.kapatilabilir_mi() is False  # tepside ne "aç" ne "kapat"
+    assert kontrol.tepsi_satiri() == "Ağ Kataloğu: taşınabilir sürümde sunulmaz"
+    assert kontrol.uyku_gerekli() is False
+
+
+def test_tasinabilir_arsivde_onceden_acik_ayar_katalogu_kaldirmaz(
+    katalog: CatalogApp, kurulan: list[KatalogServer]
+) -> None:
+    """Ayar önceki bir açılışta (karar öncesi sürümde) açılmışsa katalog KALKMAZ; ileti dürüst."""
+    port = find_free_port()
+    ayar = _Ayar(acik=True, port=port, son_afis_ip="192.168.99.9")
+    ag_okunan: list[int] = []
+    duvar_okunan: list[int] = []
+
+    def ag_say() -> ag.AgDurumu:
+        ag_okunan.append(1)
+        return _ag(AFIS_IP)
+
+    def duvar_say(*, port: int, exe_yolu: str) -> gd.GuvenlikDuvariDenetimi:
+        duvar_okunan.append(port)
+        return gd.GuvenlikDuvariDenetimi(platform="linux")
+
+    def kurucu(*args: Any, **kwargs: Any) -> KatalogServer:
+        sunucu = KatalogServer(*args, **kwargs)
+        kurulan.append(sunucu)
+        return sunucu
+
+    kontrol = kk.KatalogKontrol(
+        ayar_okuyucu=ayar.oku,
+        ayar_yazici=ayar.yaz,
+        yukleyici=lambda: katalog,
+        ag_saglayici=ag_say,
+        duvar_denetleyici=duvar_say,
+        sunucu_kurucu=kurucu,
+        bakim_kapisi=_Kapi(),
+        platform="linux",
+        dagitim_turu=dagitim.TASINABILIR,
+    )
+
+    kontrol.acilista_baslat()
+
+    durum = kontrol.durum()
+    assert durum["durum"] == kk.HATA  # "Açılamadı": ayar açık ama katalog kalkmadı
+    assert durum["ayar_acik"] is True
+    assert durum["son_hata"] == kk.TASINABILIR_AYAR_ACIK_ILETISI
+    assert "“Ağ Kataloğunu kapat”" in durum["son_hata"]
+    assert durum["adres"] is None
+    assert kurulan == []
+    assert not _baglanilabilir(port)
+    assert ag_okunan == [] and duvar_okunan == []  # ağ ve güvenlik duvarı hiç okunmadı
+    assert kontrol.tepsi_satiri() == "Ağ Kataloğu: taşınabilir sürümde sunulmaz"
+    assert kontrol.kapatilabilir_mi() is True  # kullanıcı ayardan vazgeçebilir
+    assert kontrol.uyku_gerekli() is False
+
+    # Saatlik tik geçici hata saymaz: yeniden denemez. Günlük IP denetimi "afişi
+    # yeniden basın" demez (katalog sunulmuyor).
+    kontrol.saatlik_denetle()
+    assert kontrol.ip_denetle() is True
+    assert kurulan == []
+    assert ag_okunan == []
+    assert not any("IP adresi değişti" in u for u in kontrol.durum()["uyarilar"])
+
+    # "Aç" yeniden denense de ayar yazılmaz, ileti ayarın açık olduğunu söyler.
+    assert kontrol.ac()["son_hata"] == kk.TASINABILIR_AYAR_ACIK_ILETISI
+    assert ayar.yazilan == []
+
+    # "Kapat" serbesttir: ayar kapanır, durum temizlenir.
+    durum = kontrol.kapat()
+    assert ayar.yazilan == [{"acik": False}]
+    assert durum["durum"] == kk.KAPALI
+    assert durum["son_hata"] is None
+    assert kontrol.kapatilabilir_mi() is False
+    assert kontrol.tepsi_satiri() == "Ağ Kataloğu: taşınabilir sürümde sunulmaz"
+
+
+@pytest.mark.parametrize("ayar_acik", [False, True])
+def test_tasinabilir_surum_acikken_deb_kuruluysa_ileti_kaldir_sh_der(
+    ayar_acik: bool, katalog: CatalogApp, kurulan: list[KatalogServer]
+) -> None:
+    """KB-2 düzeltme turu (29.09.2026): `.deb` sonradan kurulduysa `kur.sh`'in menü kaydı ve
+    `~/.local/bin` bağlantısı onu gölgeler; "programı .deb paketiyle kurun" demek kullanıcıyı
+    döngüye sokardı. İleti taşınabilir sürümü kaldırıp programı menüden açmayı söyler."""
+    port = find_free_port()
+    ayar = _Ayar(acik=ayar_acik, port=port)
+    kontrol = _kontrol(
+        ayar,
+        katalog,
+        kurulan,
+        platform="linux",
+        dagitim_turu=dagitim.TASINABILIR,
+        deb_kurulu=True,
+    )
+
+    kontrol.acilista_baslat()
+    if ayar_acik:
+        assert kontrol.durum()["durum"] == kk.HATA
+        assert kontrol.durum()["son_hata"] == kk.TASINABILIR_DEB_KURULU_ILETISI
+    durum = kontrol.ac()
+
+    assert ayar.yazilan == []
+    assert durum["deb_kurulu"] is True and durum["sunulur"] is False
+    assert durum["son_hata"] == kk.TASINABILIR_DEB_KURULU_ILETISI
+    assert "./kaldir.sh" in durum["son_hata"] and "menüden" in durum["son_hata"]
+    assert "paketiyle kurun" not in durum["son_hata"]
+    assert kurulan == [] and not _baglanilabilir(port)
+
+
+def test_deb_kurulu_bilgisi_yalniz_tasinabilir_surumde_tasinir(
+    katalog: CatalogApp, kurulan: list[KatalogServer]
+) -> None:
+    """Kurulu pakette ve Windows'ta `deb_kurulu` hep yanlıştır (bant yalnız taşınabilirde)."""
+    for tur, platform in ((dagitim.KURULU, "linux"), (dagitim.PAKET, "win32")):
+        kontrol = _kontrol(
+            _Ayar(acik=False, port=find_free_port()),
+            katalog,
+            kurulan,
+            platform=platform,
+            dagitim_turu=tur,
+            deb_kurulu=True,
+        )
+        assert kontrol.durum()["deb_kurulu"] is False
+
+
+def test_linux_deb_kurulu_pakette_katalog_acilir(
+    katalog: CatalogApp, kurulan: list[KatalogServer]
+) -> None:
+    port = find_free_port()
+    ayar = _Ayar(acik=False, port=port)
+    kontrol = _kontrol(ayar, katalog, kurulan, platform="linux", dagitim_turu=dagitim.KURULU)
+
+    durum = kontrol.ac()
+
+    assert ayar.yazilan == [{"acik": True}]
+    assert durum["durum"] == kk.ACIK, durum
+    assert durum["sunulur"] is True
+    assert kontrol.sunulur_mu() is True
+    assert IMZA in _govde(port)
+    assert kontrol.tepsi_satiri().startswith("Ağ Kataloğu: açık — ")
+    kontrol.kapanis()
+
+
+def test_kaynak_agacta_varsayilan_dagitim_kapidan_etkilenmez(
+    katalog: CatalogApp, kurulan: list[KatalogServer]
+) -> None:
+    """Docker'daki testler, geliştirme ortamı ve ağ kataloğu provası paketsizdir."""
+    port = find_free_port()
+    kontrol = _kontrol(_Ayar(acik=True, port=port), katalog, kurulan, platform="linux")
+
+    kontrol.acilista_baslat()
+
+    assert kontrol.durum()["durum"] == kk.ACIK
+    assert kontrol.sunulur_mu() is True
+    kontrol.kapanis()
+
+
+@pytest.mark.parametrize("tur", [dagitim.PAKET, dagitim.KAYNAK])
+def test_windows_davranisi_degismedi(
+    tur: str, katalog: CatalogApp, kurulan: list[KatalogServer]
+) -> None:
+    """Windows'ta taşınabilir paketi yine güvenlik duvarının 2. maddesi durdurur (GA-5)."""
+    port = find_free_port()
+    engelli = _kontrol(
+        _Ayar(acik=True, port=port),
+        katalog,
+        kurulan,
+        dagitim_turu=tur,
+        duvar_verisi=lambda p: {
+            "kurallar": [_kural(p, program=r"C:\Program Files\Kütüphane Defteri\başka.exe")],
+            "ag_profilleri": ["Public"],
+        },
+    )
+    engelli.acilista_baslat()
+    assert engelli.durum()["durum"] == kk.ENGELLENDI
+    assert engelli.durum()["sunulur"] is True
+    assert "taşınabilir paketten çalışıyorsa" in engelli.durum()["son_hata"]
+    assert engelli.tepsi_satiri() == "Ağ Kataloğu: güvenlik duvarı izni yok"
+    assert kurulan == []
+
+    kontrol = _kontrol(_Ayar(acik=True, port=port), katalog, kurulan, dagitim_turu=tur)
+    kontrol.acilista_baslat()
+    assert kontrol.durum()["durum"] == kk.ACIK
+    kontrol.kapanis()
+
+
+def test_tasinabilir_arsivde_ag_doktoru_linux_komutu_vermez(
+    katalog: CatalogApp, tmp_path: Path
+) -> None:
+    """KB-2: port temelli ya da profil adlı komut taşınabilir arşivde önerilmez."""
+    conf = tmp_path / "ufw.conf"
+    conf.write_text("ENABLED=yes\n", encoding="utf-8")
+
+    def duvar(*, port: int, exe_yolu: str) -> gd.GuvenlikDuvariDenetimi:
+        return gd.linux_durumu(
+            port=port,
+            bloklar=["10.20.30.0/24"],
+            ufw_conf=conf,
+            ufw_profili=tmp_path / "profil-yok",
+            which=lambda ad: "/usr/sbin/ufw" if ad == "ufw" else None,
+        )
+
+    def kur(tur: str) -> kk.KatalogKontrol:
+        return kk.KatalogKontrol(
+            ayar_okuyucu=lambda: kk.yapilandirma(),
+            ayar_yazici=None,
+            yukleyici=lambda: katalog,
+            ag_saglayici=lambda: _ag(AFIS_IP),
+            duvar_denetleyici=duvar,
+            platform="linux",
+            dagitim_turu=tur,
+        )
+
+    tasinabilir = kur(dagitim.TASINABILIR).guvenlik_duvari()
+    kurulu = kur(dagitim.KURULU).guvenlik_duvari()
+
+    assert tasinabilir["linux"]["komut"] == ""
+    assert tasinabilir["linux"]["tasinabilir"] is True
+    assert tasinabilir["linux"]["arac"] == "ufw"  # durum bilgi olarak kalır
+    assert tasinabilir["linux"]["etkin"] is True
+    assert "sudo ufw allow from 10.20.30.0/24" in kurulu["linux"]["komut"]
+    assert "tasinabilir" not in kurulu["linux"]

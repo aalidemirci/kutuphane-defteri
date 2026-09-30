@@ -2,7 +2,7 @@
 
 Gerçek ağa ÇIKILMAZ; yanıtlar taklit edilir. Gövdeler §8.5'teki ölçümün
 biçimini taşır (alan numaraları, ölçülen Türkçe kusurlar). Kitap künyeleri
-kamu malı ya da uydurmadır.
+bilinen eserlerin künyesi ya da uydurmadır.
 """
 
 from __future__ import annotations

@@ -132,6 +132,8 @@ export interface GuvenlikDuvari {
     komut?: string;
     bloklar?: string[];
     tanim_var?: boolean;
+    /** Taşınabilir arşiv (KB-2): katalog açılmadığı için komut verilmez. */
+    tasinabilir?: boolean;
   };
 }
 
@@ -151,6 +153,18 @@ export interface KatalogDurumu {
   guvenlik_duvari: GuvenlikDuvari | null;
   reddedilen_baglanti: number;
   uyku_engelli: boolean;
+  /**
+   * Ağ Kataloğu bu dağıtımda sunulur mu? Yalnız Pardus'un taşınabilir arşivinde
+   * `false` (KB-2, 28.09.2026 kullanıcı kararı): katalog yalnız .deb paketiyle
+   * kurulan programda açılır. Alan yoksa sunulur sayılır.
+   */
+  sunulur?: boolean;
+  /**
+   * Taşınabilir sürüm açıkken bilgisayarda `.deb` paketi de kurulu mu (KB-2 düzeltme turu,
+   * 29.09.2026)? `kur.sh`'in menü kaydı ve uçbirim kısayolu `.deb`'inkini gölgeler; bant
+   * "programı kurun" değil "taşınabilir sürümü ./kaldir.sh ile kaldırın" der.
+   */
+  deb_kurulu?: boolean;
 }
 
 export type Platform = "windows" | "linux" | "diger";
@@ -243,6 +257,30 @@ export function kuralProfiliAdi(profil: string | null | undefined): string {
  */
 export function katalogKapatilabilir(katalog: KatalogDurumu | null | undefined): boolean {
   return Boolean(katalog?.ayar_acik) && katalog?.durum !== "kapali" && katalog?.durum !== "bakim";
+}
+
+/**
+ * Ağ Kataloğu bu dağıtımda sunulur mu (KB-2)? Durum bilinmiyorsa ya da alan
+ * yoksa evet: kapı masaüstü denetçisindedir, ekran yalnız "aç"ı gizler.
+ */
+export function katalogSunulur(katalog: KatalogDurumu | null | undefined): boolean {
+  return katalog?.sunulur !== false;
+}
+
+/** Taşınabilir arşivde (KB-2) Ağ Kataloğu ekranlarının bilgi metni. */
+export const TASINABILIR_BILGISI =
+  "Bu taşınabilir sürümde Ağ Kataloğu sunulmaz: katalog yalnız .deb paketiyle kurulan programda açılır. Ağ Kataloğunu kullanmak için programı .deb paketiyle kurun; taşınabilir sürümü ./kur.sh ile kurduysanız önce arşivdeki ./kaldir.sh ile kaldırın, yoksa menü taşınabilir sürümü açmayı sürdürür.";
+
+/**
+ * Taşınabilir sürüm açık, bilgisayarda `.deb` de kurulu (KB-2 düzeltme turu, 29.09.2026):
+ * `kur.sh`'in menü kaydı ve uçbirim kısayolu `.deb`'inkini gölgeler.
+ */
+export const TASINABILIR_DEB_KURULU_BILGISI =
+  "Açık olan program taşınabilir sürümdür; bu bilgisayarda .deb paketi de kurulu. Ağ Kataloğu taşınabilir sürümde sunulmaz. Programdan çıkın; taşınabilir sürümü ./kur.sh ile kurduysanız arşivdeki ./kaldir.sh ile kaldırın, sonra programı menüden açın: katalog .deb paketiyle kurulan programda açılır.";
+
+/** Bantta hangi metin (KB-2): `.deb` de kuruluysa "kaldır ve menüden aç" yolu. */
+export function tasinabilirBilgisi(katalog: KatalogDurumu | null | undefined): string {
+  return katalog?.deb_kurulu === true ? TASINABILIR_DEB_KURULU_BILGISI : TASINABILIR_BILGISI;
 }
 
 /** Günlük sayaçların arayüzdeki adları (backend `katalog.sayac.OLAYLAR`). */

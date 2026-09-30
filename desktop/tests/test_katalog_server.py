@@ -1043,6 +1043,9 @@ class _SahteKontrol:
     def kapatilabilir_mi(self) -> bool:
         return False
 
+    def sunulur_mu(self) -> bool:
+        return True
+
     def saatlik_denetle(self) -> bool:
         return True
 

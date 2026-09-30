@@ -73,15 +73,12 @@ MUAF_DOSYALAR: dict[str, str] = {
         "meşru olarak adıyla anar (§1 Köken, §2-14 kalıp listesinin kendisi)"
     ),
     "AGENTS.md": "CLAUDE.md'ye işaret eden brifing girişi; aynı köken gerekçesi",
-    "packaging/ikonlar/logo_uret.py": (
-        "geçici logo — teknik borç TB4 (docs/teknik-borc.md): kardeş projenin "
-        "çizimini üretir; logo değişince muafiyet silinir"
-    ),
 }
 
 #: Teknik borca bağlı muafiyetler: borç kapanınca (dosyada kalıntı kalmayınca)
 #: muafiyet de silinmelidir; `test_teknik_borc_muafiyeti_hala_gerekli` hatırlatır.
-TEKNIK_BORC_MUAFIYETLERI = ("packaging/ikonlar/logo_uret.py",)
+#: Bugün boştur: geçici logonun muafiyeti (TB4) logo değişince kalktı (29.09.2026).
+TEKNIK_BORC_MUAFIYETLERI: tuple[str, ...] = ()
 
 _TR_KATLAMA = str.maketrans({"İ": "i", "I": "i", "ı": "i", "̇": None})
 

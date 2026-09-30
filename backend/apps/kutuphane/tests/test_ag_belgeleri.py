@@ -399,6 +399,43 @@ def test_pardusta_komut_basilir(okul: SchoolConfig) -> None:
     assert "sudo ufw allow from 192.168.10.0/24 to any app 'Kutuphane Defteri'" in metin
 
 
+class _LinuxDenetcisi(BelgeDenetcisi):
+    """Linux denetimi; `linux` alanı verilen sözlükle değiştirilir."""
+
+    def __init__(self, linux: dict[str, Any]) -> None:
+        super().__init__(platform="linux")
+        self.linux = linux
+
+    def guvenlik_duvari(self) -> dict[str, Any]:
+        return {**super().guvenlik_duvari(), "linux": self.linux}
+
+
+def test_tasinabilir_arsivde_bilgi_notu_yarim_cumle_basmaz(okul: SchoolConfig) -> None:
+    """KB-2 düzeltme turu (29.09.2026): taşınabilir denetimde komut boştur; not "BTR şu
+    komutu çalıştırır:" deyip boş bırakmaz, katalogun açılmadığını söyler."""
+    masaustu_kanca.kaydet(
+        katalog=_LinuxDenetcisi({"arac": "ufw", "etkin": True, "komut": "", "tasinabilir": True})
+    )
+
+    metin = _tek_bosluk(_metin(ag_belgeleri.bilgi_notu_pdf(ADAY_1)))
+
+    assert "şu komutu çalıştırır" not in metin
+    assert "sudo ufw" not in metin
+    assert (
+        "Program taşınabilir arşivden çalıştığı için Ağ Kataloğu bu bilgisayarda açılmaz" in metin
+    )
+    assert "güvenlik duvarı: ufw (etkin)" in metin
+
+
+def test_linuxta_komut_yoksa_komut_cumlesi_basilmaz(okul: SchoolConfig) -> None:
+    masaustu_kanca.kaydet(katalog=_LinuxDenetcisi({"arac": "ufw", "etkin": None, "komut": ""}))
+
+    metin = _tek_bosluk(_metin(ag_belgeleri.bilgi_notu_pdf(ADAY_1)))
+
+    assert "şu komutu çalıştırır" not in metin
+    assert "güvenlik duvarı: ufw (durumu okunamadı)" in metin
+
+
 def test_bilgi_notu_masaustu_ve_adres_yokken_de_basilir(okul: SchoolConfig) -> None:
     yanit = APIClient().get(KOK + "info-note/")
 

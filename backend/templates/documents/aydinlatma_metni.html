@@ -29,27 +29,45 @@ KVKK 4/2-d ve 7/1 alıntıları docs/mevzuat/6698-kvkk.md ile BİREBİRDİR (tes
 yanıltıcı bilgi yok). Görevlinin gördüğü: ad + kalan hak; bir kitabın kartı
 okutulan üyede olduğu masa iletisinden anlaşılır ("Bu kitap zaten bu üyede").
 
+OKUMA ÖDÜLÜ İÇ ÇIKTISI (E20; 29.09.2026 kullanıcı kararı — tasarım §14.1 F12 ekleri
+İA-3): programda ödünç kaydından ADLI sıralamanın çıktığı tek yer. Tebliğ md. 5/1-b
+(amaç ayrıca aydınlatılır) ve 5/1-g (belirli amaç) gereği üç yerde yazılır: amaç
+(Uygulama Kılavuzu 7'deki ÖNERİ; bağlayıcı değil, karar okulun; ölçüt dönemde ödünç
+alınıp iade edilmiş FARKLI eser; sayı, okul no ve kitap adı basılmaz —
+selectors_okuma_odulu), hukuki sebep (aynı 5/2-ç; Yönetmelik md. 8/1-c "Okuma
+kültürünü oluşturmaya yönelik etkinlikler düzenler." — docs/mevzuat'tan test sınar)
+ve kimler görür (yalnız yönetici kipi, "İç kullanım"; ağa, panoya, yıl sonu raporuna
+ve velilerle paylaşılan çıktılara girmez — CLAUDE.md §2-5). Kılavuz cümlesi burada
+ALINTILANMAZ ("okuyan" kalıbı programın kendi metninde yoktur — sözlük §1).
+
 Kanun alıntıları (“…” içindekiler ve md. 11 bentleri) docs/mevzuat/6698-kvkk.md
 metniyle BİREBİRDİR — test_dolasim_belgeleri.py sınar. Konum dili: program
 Bakanlık otomasyon sisteminin yerine geçmez, "yerel araç"tır (CLAUDE.md §2-13).
 text-transform YOK. Sayfa bütçesi: en uzun okul adı ve başvuru adresiyle en çok
-iki sayfa.{% endcomment %}
+iki sayfa. Bölümler sayfa sınırında bölünebilir (başlık içeriğinden, madde ve
+tablo satırı kendi içinde ayrılmaz): bölünmez bölüm sayfa sonunda boşluk bırakıp
+imzayı üçüncü sayfaya itiyordu. Başvuru tablosunda uzun değer satır içinde
+kırılır (`overflow-wrap: anywhere` — boşluksuz e-posta sayfadan taşıyordu) ve etiket
+sütunu %27'dir; §8 okul adını yinelemez (veri sorumlusu §1'dedir).{% endcomment %}
 {% block extra_style %}
 <style>
   @page { margin: 1.2cm 1.6cm 1.3cm 1.6cm; }
   body { font-size: 8.8pt; }
-  .doc-title { margin: 7pt 0 1pt; }
+  .doc-title { margin: 5pt 0 1pt; }
   .doc-subtitle { margin-bottom: 4pt; }
-  .section { margin-top: 4pt; }
-  .section-title { font-size: 8.8pt; }
-  .para { margin: 2pt 0; font-size: 8.6pt; line-height: 1.32; }
-  .kisa { margin: 1.5pt 0 0 13pt; padding: 0; font-size: 8.5pt; line-height: 1.3; }
-  .kisa li { margin-bottom: 1pt; }
-  .bentler { margin: 2pt 0 0 0; padding: 0; list-style: none; font-size: 8.4pt; line-height: 1.3; }
+  .section { margin-top: 3.5pt; break-inside: auto; page-break-inside: auto; }
+  .section-title { font-size: 8.8pt; break-after: avoid; page-break-after: avoid; }
+  .kisa li, .bentler li, .info tr { break-inside: avoid; page-break-inside: avoid; }
+  .info td { font-size: 8.6pt; padding: 3pt 7pt; overflow-wrap: anywhere; }
+  .info td.label { width: 27%; }
+  .para { margin: 2pt 0; font-size: 8.5pt; line-height: 1.28; }
+  .kisa { margin: 1.5pt 0 0 13pt; padding: 0; font-size: 8.4pt; line-height: 1.27; }
+  .kisa li { margin-bottom: 0.5pt; }
+  .bentler { margin: 2pt 0 0 0; padding: 0; list-style: none; font-size: 8.4pt; line-height: 1.27; }
   .bentler li { margin: 0 0 1pt 0; padding-left: 13pt; text-indent: -13pt; }
   .alinti { font-style: italic; }
-  .signature { margin-top: 10pt; }
-  .signature .date { margin-bottom: 14pt; }
+  .signature { margin-top: 8pt; }
+  .signature .date { margin-bottom: 13pt; }
 </style>
 {% endblock %}
 {% block content %}
@@ -82,13 +100,14 @@ iki sayfa.{% endcomment %}
       <li>İadesi geciken kaynaklar için kişiye özel hatırlatma yapılması.</li>
       <li>Okuldan ayrılan kişinin ödünç aldığı kaynağın kütüphaneye iadesinin sağlanması.</li>
       <li>Kişisel veri içermeyen sayısal istatistik (ör. toplam ödünç sayısı) hazırlanması.</li>
+      <li>Okul isterse, Uygulama Kılavuzu'nun 7. bölümündeki okuma ödülü önerisi için adayların belirlenmesi: okuma ödülü iç çıktısı öğrencileri seçilen dönemde ödünç alıp iade ettikleri farklı eserlerin sayısına göre adı ve sınıfıyla sıralar; sayı, okul numarası ve kitap adları basılmaz. Öneri bağlayıcı değildir, ödüle okul karar verir.</li>
     </ul>
     <p class="para">Ödünç kaydı yalnız bir kaynağın kimde olduğunu ve ne zaman döneceğini gösterir. Bu kayıttan kişi bazında konu dağılımı çıkarılmaz, kayıt not ya da başarı değerlendirmesinde kullanılmaz, öğrenci bazında ödünç sayısı öğretmenlere ya da e-Okul'a aktarılmaz.</p>
   </div>
 
   <div class="section">
     <div class="section-title">4. HUKUKİ SEBEP VE TOPLAMA YÖNTEMİ</div>
-    <p class="para">Kişisel verileriniz 6698 sayılı Kanun md. 5/2-ç'deki <span class="alinti">“{{ kvkk_5_2_c }}”</span> şartına dayanılarak işlenir. Yükümlülük Okul Kütüphaneleri Yönetmeliği'nden doğar: ödünç verme işlemlerinin yönetilmesi ve iadenin takibi (md. 8/1-f), ödünç verme servisi ve üyelik (md. 16 ve 17), ödünç alma süresi, iadesi yapılmayan kitapların takibi ve okuldan ayrılışta iadenin sağlanması (md. 18), kullanıcı kartı (md. 20) ve ödünç verme işlemi (md. 23). Yönetmelik bu işlerin Bakanlık otomasyon sistemi üzerinden yürütülmesini öngörür; Kütüphane Defteri o sistemin yerine geçmez, okulun bu işleri yürüttüğü yerel araçtır.</p>
+    <p class="para">Kişisel verileriniz 6698 sayılı Kanun md. 5/2-ç'deki <span class="alinti">“{{ kvkk_5_2_c }}”</span> şartına dayanılarak işlenir. Yükümlülük Okul Kütüphaneleri Yönetmeliği'nden doğar: ödünç verme işlemlerinin yönetilmesi ve iadenin takibi (md. 8/1-f), ödünç verme servisi ve üyelik (md. 16 ve 17), ödünç alma süresi, iadesi yapılmayan kitapların takibi ve okuldan ayrılışta iadenin sağlanması (md. 18), kullanıcı kartı (md. 20) ve ödünç verme işlemi (md. 23); okuma ödülü iç çıktısında okuma kültürünü oluşturmaya yönelik etkinlikler (md. 8/1-c). Yönetmelik bu işlerin Bakanlık otomasyon sistemi üzerinden yürütülmesini öngörür; Kütüphane Defteri o sistemin yerine geçmez, okulun bu işleri yürüttüğü yerel araçtır.</p>
     <p class="para">Öğrenci ve personel bilgileri e-Okul'dan alınan listelerin programa aktarılmasıyla ya da kütüphane yöneticisinin elle girmesiyle; ödünç ve iade bilgileri kütüphane masasında üye kartının ve kitabın kütüphane etiketinin okutulmasıyla, kısmen otomatik yolla elde edilir.</p>
   </div>
 
@@ -98,6 +117,7 @@ iki sayfa.{% endcomment %}
       <li>Veriler okulun kütüphane bilgisayarında durur. Ad, soyad, okul numarası, kart numarası ve gerekçe açıklamaları şifrelidir; sınıf ve şube, üye türü, verilen kaynak ve ödünç tarihleri arama ve sayım için şifresiz tutulur ve bilgisayara erişimin sınırlanmasıyla korunur. Program kişisel veriyi internete, buluta ya da başka bir kuruma göndermez; yurt içinde ya da yurt dışında üçüncü kişilere aktarım yapılmaz.</li>
       <li>Kütüphane yöneticisi (kütüphaneci ya da kütüphaneden sorumlu öğretmen) ve okul müdürlüğünce yönetici parolası verilen personel kayıtların tamamını görür.</li>
       <li>Kütüphane masasında görevli olarak çalışan öğrenci ve personel, okutulan kartın sahibinin yalnız adını ve kalan ödünç hakkını görür; sınıfı, ödünç geçmişini ve gecikme bilgisini görmez, okuttuğu kitabın o üyede olup olmadığını görür.</li>
+      <li>Okuma ödülü iç çıktısı yalnız yönetici kipinde basılır; “İç kullanım” ibarelidir ve okul içinde ödül kararı için kullanılır: asılmaz, çoğaltılmaz; Ağ Kataloğuna, panoya, yıl sonu raporuna ve velilerle paylaşılan çıktılara girmez.</li>
       <li>Okul ağındaki Ağ Kataloğu kişisel veri göstermez; yalnız kaynakların künyesini ve durumunu gösterir.</li>
       <li>İade hatırlatma pusulası kişiye özeldir; kütüphane yöneticisi ya da sınıf rehber öğretmeni eliyle verilir.</li>
       <li>Bakanlık otomasyon sistemi okulda kullanıma girdiğinde kayıtlar, Yönetmelik gereği bu işlerin yürütüleceği o sisteme okul müdürlüğünce aktarılabilir.</li>
@@ -130,7 +150,7 @@ iki sayfa.{% endcomment %}
 
   <div class="section">
     <div class="section-title">8. BAŞVURU</div>
-    <p class="para">Kanun md. 13/1: <span class="alinti">“{{ kvkk_13_1 }}”</span> Başvurunuzu yazılı olarak {{ okul }} Müdürlüğüne iletebilirsiniz. Md. 13/2: <span class="alinti">“{{ kvkk_13_2 }}”</span></p>
+    <p class="para">Kanun md. 13/1: <span class="alinti">“{{ kvkk_13_1 }}”</span> Başvurunuzu yazılı olarak okul müdürlüğüne iletebilirsiniz. Md. 13/2: <span class="alinti">“{{ kvkk_13_2 }}”</span></p>
     <table class="info">
       <tr><td class="label">Başvuru adresi</td><td>{% if basvuru_adresi %}{{ basvuru_adresi }}{% else %}……………………………………………………………………{% endif %}</td></tr>
       <tr><td class="label">E-posta ya da telefon</td><td>{% if iletisim %}{{ iletisim }}{% else %}……………………………………{% endif %}</td></tr>

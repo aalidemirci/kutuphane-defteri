@@ -105,9 +105,31 @@ kapi "packaging: mypy" packaging_mypy backend \
   "mypy packaging --config-file backend/pyproject.toml" \
   -w /repo -e MYPYPATH=/repo/backend
 
+# Yardımcı betikler (scripts/*.py — F12): ağ provasının istemcisi ve saha kabulünün
+# uydurma deneme verisi üreticisi. Paket dışıdırlar ama kapıdan geçmeyen Python kodu
+# depoda kalmasın; testleri backend pytest'tedir (test_deneme_verisi.py). Üç denetim
+# tek kapta: betik sayısı az, kap açılışı adımın asıl maliyeti.
+kapi "scripts: ruff + mypy" scripts_lint backend \
+  "ruff check scripts --config backend/pyproject.toml && ruff format --check scripts --config backend/pyproject.toml && mypy scripts --config-file backend/pyproject.toml" \
+  -w /repo -e MYPYPATH=/repo/backend
+
 kapi "frontend: typecheck" fe_typecheck frontend "npm run typecheck"
 kapi "frontend: eslint" fe_eslint frontend "npx eslint src"
 kapi "frontend: prettier --check" fe_prettier frontend "npx prettier --check src"
+
+# Ön yüz lisans listesi (F12 düzeltme turu, TB28): Vite çıktısına GERÇEKTEN giren npm
+# paketleri THIRD_PARTY_LICENSES'taki npm kayıtlarıyla ad ve sürümde aynı olmalı. Depo
+# testi (`test_lisans_kapisi.py`) yalnız package.json'daki doğrudan bağımlılıkları görür;
+# bir sürüm yükseltmesiyle çıktıya giren GEÇİŞLİ paket ya da tipten çalışma anına geçen
+# bir paket (`PAKETLENMEYEN_NPM`) ancak burada yakalanır. Ara çıktı dist/ altındadır
+# (.gitignore). Liste bayatsa: `bash packaging/lisanslar/uret.sh`.
+echo "== ön yüz lisans listesi: Vite çıktısındaki npm paketleri =="
+mkdir -p dist/lisans
+docker compose run --rm -T frontend node --input-type=module \
+  < packaging/lisanslar/on_yuz_paketleri.mjs > dist/lisans/on-yuz-kapi.json
+kapi "ön yüz lisans listesi" npm_lisans backend \
+  "python packaging/lisanslar/lisanslar.py npm-denetle --on-yuz /repo/dist/lisans/on-yuz-kapi.json" \
+  -w /repo
 
 echo "== frontend: vitest =="
 # Vitest adımının kanıtı nöbetçiden güçlü: JSON raporu vitest'in KENDİ başarı

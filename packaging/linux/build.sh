@@ -14,11 +14,14 @@
 # Adımlar:
 #   1. Sistem bağımlılıkları (yalnız DERLEME için; pakete girmez)
 #   2. Python bağımlılıkları
-#   3. PyInstaller onedir
+#   3. PyInstaller onedir + lisans denetimi (THIRD_PARTY_LICENSES pakete) +
+#      paket dizininde veri sızıntısı denetimi
 #   4. Duman testleri: `--bagimlilik-duman` (hiddenimports) + `--autotest` (çıkış 0)
 #      + `--pdf-duman` (evrak şablonu + Türkçe PDF)
-#   5. .deb sargısı (dpkg-deb; ufw profili + firewalld servis tanımı dahil)
-#   6. Taşınabilir .tar.gz (+ kur.sh)
+#   5. .deb sargısı (dpkg-deb; ufw profili + firewalld servis tanımı + DEP-5
+#      copyright dahil)
+#   6. Taşınabilir .tar.gz (+ kur.sh; arşivdeki ikili `--dagitim-duman tasinabilir`)
+#      + son arşivlerde veri sızıntısı denetimi
 #   7. SHA256SUMS.txt
 #
 # Ortam değişkenleri:
@@ -98,8 +101,13 @@ fi
 
 # --- 2. Python bağımlılıkları ------------------------------------------------
 if [ "${KD_SKIP_PIP:-0}" != "1" ]; then
-    bilgi "python bağımlılıkları"
-    pip install --no-cache-dir -q -r "$DEPO/backend/requirements.txt"
+    bilgi "python bağımlılıkları (lisans listesindeki sürümlere kısıtlı)"
+    # Geçişli bağımlılıklar pinli değildir; kısıt dosyası onları THIRD_PARTY_LICENSES
+    # listesinin sürümlerine bağlar — pakete giren sürüm BENIOKU'dakiyle aynı olur
+    # (F12 düzeltme turu). Yalnız standart kitaplıkla üretilir.
+    KISITLAR="$GECICI_PAKETLEME/kisitlar.txt"
+    python "$DEPO/packaging/lisanslar/lisanslar.py" kisitlar --platform linux --cikti "$KISITLAR"
+    pip install --no-cache-dir -q -c "$KISITLAR" -r "$DEPO/backend/requirements.txt"
     PAKETLEME_GEREKSINIM="$DEPO/packaging/requirements-paketleme.txt"
     if [ "$QT_ILE" = "0" ]; then
         # Qt satırlarını atla (PySide6 indirmesi ~400 MB, doğrulama
@@ -110,7 +118,7 @@ if [ "${KD_SKIP_PIP:-0}" != "1" ]; then
         grep -v -E '^(QtPy|PySide6)' \
             "$DEPO/packaging/requirements-paketleme.txt" > "$PAKETLEME_GEREKSINIM"
     fi
-    pip install --no-cache-dir -q -r "$PAKETLEME_GEREKSINIM"
+    pip install --no-cache-dir -q -c "$KISITLAR" -r "$PAKETLEME_GEREKSINIM"
 fi
 
 # --- 3. Ön koşul: derlenmiş arayüz ------------------------------------------
@@ -119,6 +127,17 @@ if [ ! -f "$DEPO/frontend/dist/index.html" ]; then
     echo "      docker compose run --rm frontend npm run build" >&2
     exit 1
 fi
+# Vite `public/`i `dist/`e AYNEN kopyalar: farklı bir dosya, dist'in eski bir derleme
+# olduğunu gösterir (29.09.2026: logo değişti, yerel dist eski logoyu taşıyordu; CI her
+# seferinde derler). Eski dist pakete girmez.
+while IFS= read -r -d '' kaynak; do
+    goreli="${kaynak#"$DEPO/frontend/public/"}"
+    if ! cmp -s "$kaynak" "$DEPO/frontend/dist/$goreli"; then
+        echo "HATA: frontend/dist eski: '$goreli' public/ ile aynı değil. Arayüzü yeniden derleyin:" >&2
+        echo "      docker compose run --rm frontend npm run build" >&2
+        exit 1
+    fi
+done < <(find "$DEPO/frontend/public" -type f -print0)
 
 # --- 4. PyInstaller ----------------------------------------------------------
 bilgi "PyInstaller onedir (Qt: $QT_ILE)"
@@ -132,6 +151,18 @@ KD_WITH_QT="$QT_ILE" pyinstaller \
 
 UYGULAMA="$PAKET_KOKU/kutuphane-defteri/kutuphane-defteri"
 [ -x "$UYGULAMA" ] || { echo "HATA: çalıştırılabilir üretilmedi: $UYGULAMA" >&2; exit 1; }
+
+# Lisans kapısı (F12, TB28): THIRD_PARTY_LICENSES/ ve LICENSE.txt paket köküne
+# kopyalanır; pakete GERÇEKTEN giren her dosyanın sahibi bulunur (Python
+# dağıtımı → lisans listesi, sistem kütüphanesi → dpkg + /usr/share/doc
+# copyright). Listede olmayan dağıtım, sahibi bilinmeyen dosya ya da yalnız
+# GPL'li yerel kütüphane derlemeyi durdurur. Veri sızıntısı denetiminden ÖNCE
+# koşar: eklediği dosyalar da o denetimden geçer.
+bilgi "lisans denetimi (THIRD_PARTY_LICENSES)"
+python "$DEPO/packaging/lisanslar/lisanslar.py" paket \
+    --paket "$PAKET_KOKU/kutuphane-defteri" \
+    --calisma "$CALISMA/kutuphane_defteri" \
+    --platform linux
 
 bilgi "paket kişisel veri sızıntısı denetimi"
 python "$DEPO/packaging/veri_sizintisi.py" "$PAKET_KOKU/kutuphane-defteri"
@@ -173,6 +204,14 @@ mkdir -p "$DEB_AGACI/opt" "$DEB_AGACI/usr/bin" "$DEB_AGACI/usr/share/application
 cp -a "$PAKET_KOKU/kutuphane-defteri" "$DEB_AGACI/opt/kutuphane-defteri"
 ln -sf /opt/kutuphane-defteri/kutuphane-defteri "$DEB_AGACI/usr/bin/kutuphane-defteri"
 cp "$DEPO/packaging/linux/kutuphane-defteri.desktop" "$DEB_AGACI/usr/share/applications/"
+# Debian telif dosyası (DEP-5) ve üçüncü taraf lisansları (F12, TB28): lisans
+# dizini programın yanındadır (/opt/…/THIRD_PARTY_LICENSES); belge dizininden
+# bağlanır.
+DOC_DIZINI="$DEB_AGACI/usr/share/doc/kutuphane-defteri"
+mkdir -p "$DOC_DIZINI"
+python "$DEPO/packaging/lisanslar/lisanslar.py" deb-copyright "$DOC_DIZINI/copyright"
+chmod 0644 "$DOC_DIZINI/copyright"
+ln -sf /opt/kutuphane-defteri/THIRD_PARTY_LICENSES "$DOC_DIZINI/THIRD_PARTY_LICENSES"
 # Ağ Kataloğu (tasarım §5.7): ufw uygulama profili ve firewalld servis tanımı
 # bırakılır, kural AÇILMAZ; komutu Ağ Doktoru gösterir.
 mkdir -p "$DEB_AGACI/etc/ufw/applications.d" "$DEB_AGACI/usr/lib/firewalld/services"
@@ -215,7 +254,21 @@ cp "$DEPO/packaging/linux/BENIOKU.txt" "$TAR_AGACI/BENIOKU.txt"
 cp "$DEPO/packaging/linux/kutuphane-defteri.desktop" "$TAR_AGACI/"
 mkdir -p "$TAR_AGACI/ikonlar"
 cp "$DEPO/packaging/ikonlar/kutuphane-defteri-"*.png "$TAR_AGACI/ikonlar/"
+
+# KB-2 (28.09.2026): taşınabilir arşivde Ağ Kataloğu açılmaz; ayrımı paketli ikilinin
+# kendisi yapar (`desktop/dagitim.py`). Arşivdeki ikili kendini TAŞINABİLİR saymalı;
+# karşılığı (gerçek dpkg kurulumundan sonra KURULU) `kap-ici-test.sh`'tedir.
+bilgi "duman testi: --dagitim-duman (taşınabilir arşiv)"
+"$TAR_AGACI/uygulama/kutuphane-defteri" --dagitim-duman tasinabilir
+
 tar -czf "$CIKTI/$TAR_ADI" -C "$TAR_KOKU" "kutuphane-defteri-${SURUM}"
+
+# --- 7b. Son arşivlerde veri sızıntısı denetimi ------------------------------
+# Paket dizini adım 4'te denetlendi; arşive SONRADAN girenler (/usr/share/doc,
+# kur.sh, ikonlar) ancak burada görünür. Windows'taki karşılığı build.ps1'in
+# taşınabilir .zip denetimidir (iki platformda eşit kapsam — F12).
+bilgi "son arşivlerde kişisel veri sızıntısı denetimi"
+python "$DEPO/packaging/veri_sizintisi.py" "$CIKTI/$DEB_ADI" "$CIKTI/$TAR_ADI"
 
 # --- 8. Sağlama toplamları ---------------------------------------------------
 bilgi "SHA256SUMS.txt"

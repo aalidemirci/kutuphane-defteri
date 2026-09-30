@@ -53,16 +53,6 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   yeniden ölçülecek; yavaşlık çıkarsa `synchronous` gevşetilmez, yazma
   işlemleri toplanır.
 
-- **TB4 — Logo geçici: kelebek çizimi (F0 kopyası):** `packaging/ikonlar/
-  logo_uret.py` kardeş projenin koltuk-karesi kelebeğini üretiyor; açıklaması
-  da o projenin salon krokisini anlatıyor. Kütüphaneye özgü bir çizim
-  gelene kadar ikon ve logo bu yer tutucudur. Değiştirmek için
-  `kutuphane-defteri-logo.png` yeniden üretilip `ikon_uret.py` koşulur
-  (sözleşme hazır). Aynı dosyadaki "kelebek" sözcüğü kimlik kalıntısı
-  taramasına (tasarım §2.3) takılır; logo değişince kendiliğinden kapanır.
-  okulapp.org'daki proje görseli (`public/kutuphane-defteri.png`) de aynı
-  logodan türeyecek (tasarım §17).
-
 - **TB5 — Linux derleme tabanı Debian 11 destek dışı (kardeş projeden devralındı;
   A6):** `.deb` Pardus 21 uyumu için `python:3.12-bullseye` kabında derlenir;
   Debian 11 LTS 31.08.2026'da bitti. Güvenlik deposu tarihli arşive
@@ -310,18 +300,80 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   (Debian bullseye) Mesa 20.3.5 taşıdığı için PySide6 **6.9.1 ve üstü açılmaz**
   (`libQt6WebEngineCore` `gbm_bo_get_fd_for_plane` sembolünü ister); sürüm `6.8.3`'e
   sabitlendi. Bedeli: Pardus 21 desteklendiği sürece Qt ve Chromium güvenlik yamaları
-  alınamaz. İkinci bedel boyuttur: PySide6 kurulumu ~645 MB (PyQt5 ~150 MB idi), `.deb`
-  İlk CI derlemesinde ölçüldü (23.09.2026): `.deb` 188 MB (sıkıştırılmış), kurulu boyut daha büyük. Azaltma seçenekleri (henüz uygulanmadı): dil dosyalarının
-  Türkçe ve İngilizceyle sınırlanması, gereksiz Qt eklentilerinin dışlanması. İlk CI
-  derlemesinde gerçek boyut ölçülecek. **Karar kullanıcıdadır:** Pardus 21 desteği
-  bırakılırsa tavan kalkar (TB5 ile aynı karar).
+  alınamaz. İkinci bedel boyuttur: PySide6 kurulumu ~645 MB (PyQt5 ~150 MB idi).
+  *Ölçüm (F12 eki, 27.09.2026 — F11 PR'ının CI paket koşusu):* `.deb` **189 MB**,
+  taşınabilir `.tar.gz` **261 MB** (ikisi de sıkıştırılmış; kurulu boyut daha büyük);
+  karşılaştırma için Windows (Qt'siz, WebView2) `setup.exe` 46 MB, `.zip` 60 MB. Qt'siz
+  Linux doğrulama derlemesi (`KD_WITH_QT=0`, yerel) `.deb` 53 MB'dir: farkın ~136 MB'ı Qt
+  kitaplıklarıdır (çoğu WebEngine). F12'de boyutu düşüren değişiklikler lisans kaynaklıdır
+  (GPL'li `readline`, PyInstaller derleme kodu ve pyphen sözlükleri çıktı): Qt'li yerel
+  derlemede (27.09.2026) `.deb` 187,9 MB, `.tar.gz` 258,6 MB — etkisi ~1-2 MB. *F12 düzeltme
+  turu (28.09.2026):* Qt'nin yalnız GPL'li modülleri (Charts, Data Visualization, Graphs,
+  Quick 3D, Quick Timeline, Virtual Keyboard, Wayland Compositor; 22 kitaplık, QML modülleri
+  ve eklentileri — 768 dosya, açık hâlde ~29 MB) lisans gereği ayıklandı; WebView2 SDK DLL'leri
+  de Linux paketinden çıktı. Yeniden ölçüm (yerel Qt'li derleme): `.deb` 180,1 MB (187,9'dan), `.tar.gz` 247,4 MB (258,6'dan). Kalan QML ağacı
+  (LGPL modüller, 19 MB) pencere Widgets tabanlı olduğu için büyük olasılıkla gereksizdir ama
+  çıkarılması Pardus'ta pencere kanıtı ister; uygulanmadı. Azaltma seçenekleri (henüz
+  uygulanmadı): QML ağacının dışlanması (saha kanıtıyla), Qt çevirilerinin Türkçe ve
+  İngilizceyle sınırlanması, kullanılmayan Qt eklentilerinin ve `qtwebengine_devtools`
+  kaynaklarının dışlanması. **Karar kullanıcıdadır:** Pardus 21 desteği bırakılırsa
+  tavan kalkar (TB5 ile aynı karar).
 
-- **TB28 — Üçüncü taraf lisans metinleri pakete girmedi (F12 iş kalemi):** PySide6
-  (LGPLv3) ve pystray (LGPLv3) lisans metni **ve** pystray kaynağı, material-symbols
-  (Apache-2.0) LICENSE + NOTICE, DejaVu dışındaki Python ve ön yüz bağımlılıklarının
-  lisansları pakete konmalıdır (`THIRD_PARTY_LICENSES/` + `BAGIMLILIKLAR.md`). `.deb`
-  için `/usr/share/doc/kutuphane-defteri/copyright`, Inno için `LicenseFile=` eksiktir.
-  Bugün ihlal yoktur (henüz sürüm yayımlanmadı); **ilk sürümden önce kapanmalıdır**.
+- **TB28 — Üçüncü taraf lisans metinleri pakete girmedi — KAPANDI (F12, 27.09.2026);
+  kararlar verildi (28.09.2026); kalan: KARARLI SÜRÜMDEN ÖNCE iki lisans işi.** Depo kökündeki `THIRD_PARTY_LICENSES/`
+  (`BENIOKU.txt`, `bilesenler.json`, 66 bileşenin (düzeltme turuyla) lisans metinleri: Python kapanışı iki
+  platform için, Vite çıktısına giren npm paketleri, Python çalışma zamanı, DejaVu,
+  WebView2 SDK ve önyükleyicisi) betikle üretilir (`packaging/lisanslar/uret.sh`) ve
+  kapı testiyle sınanır (`packaging/tests/test_lisans_kapisi.py`: her pin aynı sürümle,
+  çalışma zamanı kapanışı, npm bağımlılıkları, yalnız GPL'li bileşen yok). Derlemede
+  `lisanslar.py paket` paketin GERÇEKTEN içerdiği her dosyanın sahibini bulur,
+  sistem kütüphanelerinin lisans/telif dosyalarını (MSYS2, Debian) pakete koyar ve
+  listede olmayan dağıtımda ya da GPL'li bileşende derlemeyi durdurur. pystray'in
+  kaynağı pakete `.py` olarak girer. Inno `LicenseFile=`, `.deb`
+  `/usr/share/doc/kutuphane-defteri/copyright` (DEP-5) eklendi. material-symbols'ün
+  NOTICE dosyası yoktur (paket yalnız Apache-2.0 LICENSE taşır). Yerel derlemede
+  bulunup giderilen üç GPL sızıntısı: `libreadline.so.8`, PyInstaller'ın derleme kodu
+  (pywebview'ın kancası üzerinden), GPL'li pyphen sözlükleri (`packaging/README.md`
+  "Lisanslar"). *Düzeltme turu (28.09.2026 — tasarım §14.1 F12 ekleri D-1…D-9):* kapı Qt'yi
+  dağıtım etiketiyle LGPL sayıyordu, Linux paketi Qt'nin yalnız GPL'li modüllerini taşıyordu —
+  spec ayıklar, derleme ve kurulum provası dosya düzeyinde (ad + DT_NEEDED) denetler; Qt ile
+  gelen ICU'nun lisans metni ve Qt/Chromium bildirim notu dizine eklendi (66 bileşen); Hakkında
+  ekranı LGPL kitaplıkların telif bildirimini ve lisans dosyalarını gösterir (LGPLv3 §4(c));
+  MSYS2 paketlerinin SPDX lisansı değerlendirilir, Debian'da bilinen yalnız-GPL ad listesi;
+  ön yüz çıktısı `gates.sh`'te listeyle karşılaştırılır; paket ortamı pip kısıt dosyasıyla
+  listedeki sürümlere bağlıdır; DEP-5 çalıştırılabilir dosyayı ve lisans dizinini ayrı
+  paragrafla verir. **Kalan (iki KARAR — 28.09.2026'da verildi):** Qt ve Chromium
+  bildirimlerinin tam METNİ pakete girsin mi (bugün adresle; tasarım F12 ekleri KB-3) ve LGPL
+  kütüphanelerin tam kaynağına erişim (KB-1). pystray'inki pakettedir. Qt 6.8.3/PySide6
+  (Linux) için tam sürüm kaynak
+  adresleri (download.qt.io) `BENIOKU.txt`'de, paketle gelen LGPL-2.1'li sistem
+  kütüphanelerinin (Windows'ta MSYS2: glib, pango, fribidi, libiconv, libintl,
+  libthai, libdatrie; Linux'ta Debian: glib, pango, fribidi, libthai, libdatrie,
+  libmount/libblkid) kaynak paketi adresleri derlemede `yerel-kutuphaneler/`'e
+  yazılır. GPLv3 §6(d) üçüncü taraf sunucuya izin verir ama erişilebilirliği
+  dağıtana yükler; LGPL-2.1 §6 ise kaynağın "aynı yerden" sunulmasını ya da en az
+  üç yıl geçerli yazılı teklif ister. Seçenekler: (a) yazılı teklif (`BENIOKU.txt`'ye
+  üç yıllık teklif cümlesi + iletişim adresi — maliyetsiz), (b) bu kaynak
+  arşivlerinin Release'e ve `indir.okulapp.org`'a ayrı "kaynak" paketi olarak
+  konması (Windows için MSYS2 kaynakları tahminen onlarca MB; Qt kaynağı ~1 GB — ayna), (c) ikisi.
+  **KULLANICI KARARI (28.09.2026, tasarım §14.1 F12 ekleri karar turu KT-1, KT-3):** beta için
+  KB-1 (a) — `BENIOKU.txt`'de üreticinin metni olarak **yazılı teklif** (uygulandı: her sürüm,
+  beta dahil, yayımdan itibaren en az üç yıl; iletişim yolu GitHub deposunun Issues sayfası
+  ve — 29.09.2026 kullanıcı kararıyla, tasarım F12 ekleri İA-2 — geliştiricinin e-posta
+  adresi; kişi adı, unvan ve kurum adı yok; kaynak ücretsiz ağ sunucusundan, fiziksel
+  taşıyıcıda en çok gönderim maliyetine; kapı testli) ve KB-3 (a) — Qt/Chromium bildirimleri
+  beta'da adresle (bugünkü hâl). **Düzeltme turu (29.09.2026, tasarım F12 ekleri DT-7):**
+  teklif metni LGPL-3.0 bileşenleri için yalnız GPLv3 §6(b)'yi anıyordu; 6(b) fiziksel
+  taşıyıcıyla dağıtımı kapsar, program ağdan dağıtıldığı için §6(d) geçerlidir — metin bunu
+  söyler ve Release notu (`paketleme.yml`) nesne kodunun yanında kaynağa yönlendirir; site
+  indirme bölümüne de aynı yönlendirme konur (`docs/site-icerigi.md` §5). **Kalan — KARARLI
+  SÜRÜMDEN ÖNCE yapılır (bu turda yapılmadı):** (1) KB-1 (b): Windows paketindeki LGPL'li MSYS2 kütüphanelerinin kaynak
+  arşivleri Release'e ayrı bir "kaynak" paketi olarak konur (derlemede `yerel-kutuphaneler/`'e
+  yazılan `repo.msys2.org/mingw/sources/…` adreslerinden; kapı: `paket-icerigi.txt`'deki her
+  LGPL MSYS2 paketinin kaynağı arşivde; teklif metni kaynağın Release'te olduğunu söyler).
+  (2) KB-3 (b): üretici Qt 6.8.3 kaynak arşivindeki `qt_attribution.json` dosyalarından pakete
+  giren modüllerin bildirim METNİNİ üretir (yalnız Linux paketi, tahminen birkaç MB; kapı
+  testli). İkisi kapanınca TB28 "Kapanan"a taşınır.
 
 - **TB29 — İki hazır etiket tabakasının ölçüsü doğrulanmadı (F4, tasarım §7.2; 24.09.2026):**
   48,5 × 25,4 mm 44'lü tabakanın kenar boşlukları yayımlanmış bir kaynaktan
@@ -489,7 +541,74 @@ kapanınca silinmez, "Kapanan" bölümüne tarihle taşınır.
   ve `BelgeIzi` arşivdeki asılla eşleşmeyi sürdürür, metinler sınırı dürüstçe yazar. Kod
   değişmedi.
 
+- **TB40 — Pardus paketi açık programı kapatmaz (F12 düzeltme turu D-13; tasarım §4.2, §14.1
+  F12 ekleri KB-4; 28.09.2026):** Windows kurulumu açık programa kapanma isteği gönderir ve
+  program düzenli kapanır (§4.2); `.deb`'in `prerm`'i hiçbir şey yapmaz — program açıkken
+  kurulum, güncelleme ya da kaldırma dosyaları çalışan programın altında değiştirir (veritabanı
+  `~/.local/share/kutuphane-defteri` altındadır, pakete girmez; risk yarım kalan bir yazma ve
+  çalışan programın bozulan dosyalarla sürmesidir). **Azaltma (uygulandı):** `docs/kurulum.md`
+  §4.1 "önce **Çık**", kılavuzun Güncelleme bölümü ve protokol §24.12. **KULLANICI KARARI
+  (28.09.2026, karar turu KT-4):** beta için belge yeterlidir — seçenek (a). **Kalan —
+  KOŞULLU, KARARLI SÜRÜMDEN ÖNCE:** saha kabulünde protokol §24.12'nin gözleminde (program
+  AÇIKKEN yeniden kurma) sorun görülürse (b) yapılır: `prerm` çalışan kopyaya tek kopya kanalı
+  üzerinden düzenli kapanma isteği gönderip bekler (kök hakla koşar; masa hesabının oturumuna
+  ulaşmak ek iştir). Sorun görülmezse bu kalem kabul edilmiş kalan risk olarak kapanır.
+
+- **TB41 — Windows'un taşınabilir sürümünde Ağ Kataloğu kesin kapıyla kapalı değil (F12
+  düzeltme turu DT-3; tasarım §5.2, §14.1 F12 ekleri KT-5 madde 5; 29.09.2026):** Pardus'un
+  taşınabilir arşivinde katalog `desktop/dagitim.py` ölçütüyle hiçbir yoldan açılmaz (KB-2).
+  Windows'ta ayrımı yalnız güvenlik duvarı denetiminin 2. maddesi yapar: varsayılan olarak
+  açılmaz, ama Ağ Doktoru'nun "Kuralı ekle/güncelle" düğmesi UAC onayıyla kuralı taşınabilir
+  programa yazarsa katalog açılır ve aynı bilgisayardaki kurulu programın aynı adlı kuralını
+  ezer. **Azaltma (uygulandı):** belgeler (sözlük, `docs/kurulum.md` §3.3, `docs/ag-kurulumu.md`
+  §9, kılavuz, protokol 23.1) bu düğmenin taşınabilir sürümde kullanılmamasını söyler.
+  **KULLANICI KARARI (29.09.2026):** beta bu hâlle çıkar; **kararlı sürümden önce** Windows
+  ölçütü eklenir (Inno kaldırıcısı `unins000.exe` + HKLM `…_is1` `InstallLocation` eşitliği →
+  kurulu) ve saha kabulünde gerçek kurulumla iki yönde sınanır. Beta'ya konmadı, çünkü ölçüt
+  yalnız gerçek kurulumla sınanabilir ve yanlış bir tespit kurulu programda da katalogu
+  kapatırdı.
+
+- **TB42 — Windows tepsisindeki simge elle çizilmiş 16 px kesimi kullanmıyor (tasarım §14.1
+  F12 ekleri L-1 "Sınır" ve LD-3; 29.09.2026):** pystray 0.19.5 Win32'de tek bir PIL
+  görüntüsü alır, onu kendisi Pillow'un varsayılan boyutlarıyla geçici bir `.ico`'ya yazar
+  ve `LoadImage(…, 0, 0, LR_DEFAULTSIZE | LR_LOADFROMFILE)` ile yükler (`_win32.py::
+  _assert_icon_handle`, kaynaktan doğrulandı). `tray.py` ona `.ico`'nun en büyük karesini
+  (256) verir; %100 ölçekte yüklenen 32 px kare 256'nın küçültmesidir ve kabuk onu 16'ya
+  indirir: tepsideki simge bulanıktır, etiket ve raf kahverengi lekeye döner. Program
+  günlerce tepside açık kaldığı için (T9) en sürekli görünen 16 px yüzey budur. Başlık
+  çubuğu, görev çubuğu, Başlat ve Gezgin `.ico`'nun kendi karelerini (elle çizilmiş
+  16/24/32) kullanır; Linux tepsisi ve penceresi hicolor temasından doğru boyutu alır.
+  **Durum:** beta bu hâliyle çıkar (uygulayıcı turu: "beta'da yapılmadı"). **ANA OTURUM
+  KARARI (30.09.2026): kararlı sürümden önce (a) yapılır** (tasarım F12 ekleri KT-5 madde 6;
+  aynı işte 48 px kesim de elle çizilir — ana çizimden küçültülen 48'de etiket
+  kahverengi-gri kalıyor). Seçenekler: (a) `PystrayTray`'de
+  `pystray.Icon`'un Win32 alt sınıfında `_assert_icon_handle` ezilir ve depodaki `.ico`
+  doğrudan `LoadImage(path, IMAGE_ICON, GetSystemMetrics(SM_CXSMICON),
+  GetSystemMetrics(SM_CYSMICON), LR_LOADFROMFILE)` ile yüklenir — elle çizilmiş 16 ve %150'de
+  24 kullanılır; pystray sürümü sabit olduğu için iç yöntem de sabittir, ama gerçek Windows'ta
+  (DPI farkındalığı dahil) sınanmadan pakete girmez; NOTLAR W13'e saha satırı eklenir; ya da
+  (b) kabul edilmiş kalan risk olarak kalır. Gözlem noktası: protokol 3.1 (tepsi simgesi).
+
 ## Kapanan
+
+- **TB4 — Logo geçiciydi: kardeş projenin kelebek çizimi (F0 kopyası)** *(kapandı:
+  29.09.2026 — KULLANICI KARARI, tasarım §14.1 F12 ekleri L-1)*. Açıkken:
+  `packaging/ikonlar/logo_uret.py` kardeş projenin koltuk-karesi kelebeğini üretiyor,
+  açıklaması o projenin salon krokisini anlatıyordu; ikon ve logo yer tutucuydu, dosya
+  kimlik kalıntısı taramasından muaftı. Kapanış: kullanıcı üç taslaktan A'yı ("Raf ve
+  etiket": lacivert karo, rafta kitap sırtları, barkodlu safran sırt etiketi, yaslanan
+  kitap) seçti. `logo_uret.py` ana çizimi (1024) ve 16/24/32 px'in elle çizilmiş piksel
+  kesimlerini yazar; `ikon_uret.py` 48 ve üstünü ana çizimden türetir, `.ico`'ya her
+  boyutu kendi karesiyle koyar (16/24/32 elle çizilmiş) ve dosyayı yeniden açıp denetler.
+  Kenar boşluğu bütün boyutlarda tek kuraldır (⌈boyut/32⌉ px, 16 boşluksuz): elle
+  çizilmiş kesimler ile ana çizim Windows'un ölçek adımlarında yan yana geçer, eski
+  düzende 32 → 48 geçişinde karo küçülüyordu. Kimlik taramasındaki muafiyet kalktı
+  (`TEKNIK_BORC_MUAFIYETLERI` boş). Kanıt: `packaging/tests/test_ikonlar.py` (`.ico`
+  boyutları ve kareleri, kesimlerin üreticiyle eşitliği, kenar boşluğu, piksel sondası,
+  simgenin göründüğü yüzeyler), `test_kimlik_kalintisi.py`. okulapp.org'daki proje görseli
+  (`public/kutuphane-defteri.png`) depodaki ana çizimden ikon üreticisiyle türer
+  (`ikon_uret.py --site`; site adımı, `docs/site-icerigi.md` §7). Kalan ayrıntı açık kalem
+  olarak ayrıca izlenir: Windows tepsisi elle çizilmiş 16'yı kullanmıyor — **TB42**.
 
 - **TB16 — Ayrılmış kişi kayıtları F11'e kadar süresiz duruyordu (F1 eki 7, §6.4)**
   *(kapandı: 27.09.2026 — F11, KULLANICI KARARI 2)*. Açıkken: ayrılış hiçbir kaydı

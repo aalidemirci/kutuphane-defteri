@@ -1376,7 +1376,9 @@ describe("KilavuzPage — bölüm içerikleri", () => {
     expect(metin).toContain("bir güvenlik sınırı değildir");
     expect(metin).toContain("“Programı kapatıp yeniden açın” ekranındaki “Programdan çık”");
     expect(metin).toContain("Masaüstünde tepsi yoksa");
-    expect(metin).toContain("kurucu programı kendisi düzenli kapatır");
+    // Kurulum dosyası kapatma olayını gönderir (docs/sozluk.md §1 "Kurulum ve kaldırma").
+    expect(metin).toContain("program kendiliğinden düzenli kapanır");
+    expect(metin).toContain("kurulum penceresi tepsideki simgeden “Çık”ı seçmenizi ister");
   });
 
   it("tepsi menüsü: adlar tepsideki metinle birebir, kipe göre değişir", () => {
@@ -1498,6 +1500,9 @@ describe("KilavuzPage — sözlük ve kalıntı denetimi", () => {
       // "yapay zekâ" düzeltme işaretiyle yazılır; "AI" kısaltması kullanılmaz.
       /yapay zeka/i,
       /\bAI\b/,
+      // Kurulum ve kaldırma (docs/sozluk.md §1, F12): "kurucu" değil "kurulum dosyası".
+      /kurucu/i,
+      /yükleyici/i,
       // Etiket sözlüğünün "kullanılmaz" sütunu (docs/sozluk.md §1, F4).
       /rezervasyon/i,
       /sticker/i,
@@ -1607,13 +1612,37 @@ describe("KilavuzPage — F5 düzeltmeleri", () => {
     expect(ag).toContain("geri yüklenen yedekte Ağ Kataloğu açıksa");
   });
 
-  it("taşınabilir sürüm cümlesi yalnız Windows içindir; Pardus komutu kaynak sınırlıdır", () => {
+  it("taşınabilir sürümde Ağ Kataloğu iki platformda da sunulmaz; Pardus komutu kaynak sınırlıdır", () => {
+    // KULLANICI KARARI 28.09.2026 (tasarım §5.2, F12 ekleri karar turu KT-2 — KB-2): Pardus'un
+    // taşınabilir arşivi de Windows'un taşınabilir sürümü gibi; katalog için program kurulur.
     renderPage();
     const metin = bolumMetni("ag-katalogu");
 
-    expect(metin).toContain("Windows'ta kurulum yapılmadan çalıştırılan (taşınabilir) sürümde");
-    expect(metin).toContain("Pardus'un taşınabilir arşivinde katalog açılır");
+    expect(metin).toContain(
+      "Kurulum yapılmadan çalıştırılan (taşınabilir) sürümde Ağ Kataloğu sunulmaz; bu iki platformda da böyledir.",
+    );
+    expect(metin).toContain("Pardus'un taşınabilir arşivinde katalog hiç açılmaz");
+    expect(metin).toContain("Windows'ta kurulum dosyasıyla, Pardus'ta .deb paketiyle");
+    expect(metin).not.toContain("taşınabilir arşivinde katalog açılır");
     expect(metin).toContain("yalnız bu bilgisayarın yerel ağına ve Ayarlar'daki tahta ağı");
+  });
+
+  it("KB-2 düzeltme turu: Windows'ta gerçek davranış, Pardus'ta kaldir.sh ve ekranların hâli", () => {
+    // Windows'un taşınabilir sürümünde katalog yalnız varsayılan olarak açılmaz: “Kuralı
+    // ekle/güncelle” kuralı taşınabilir sürüme yazarsa açılır (tasarım KT-2 bilinen fark).
+    renderPage();
+    const metin = bolumMetni("ag-katalogu");
+
+    expect(metin).toContain("katalog varsayılan olarak okul ağına açılmaz");
+    expect(metin).toContain("kurulu programın kuralının yerini alır. Bu yol önerilmez.");
+    expect(metin).not.toContain("kurulu programın yoluna bağlıdır, katalog okul ağına açılmaz");
+    // .deb'e geçişte kur.sh'in menü kaydı ve uçbirim kısayolu .deb'inkini gölgeler.
+    expect(metin).toContain("kurmadan önce arşivdeki ./kaldir.sh ile kaldırın");
+    expect(metin).toContain("Açılamadı: katalog başlatılamadı");
+    expect(metin).toContain("Pardus'un taşınabilir arşivinde ayar daha önce açılmışsa da bu rozet");
+    expect(metin).toContain(
+      "Belgeler kartında afiş, yer imleri, PYS talep metni ve bilgi notu yoktur",
+    );
   });
 
   it("birden çok izin kuralı, öğrenci erişimli ağ ve kapatma yolu anlatılır", () => {
@@ -3497,6 +3526,10 @@ describe("KilavuzPage — Raporlar ve Çok Okunanlar (F10)", () => {
     expect(metin).toContain(
       "program not ya da başarı bilgisi tutmaz ve bu ilişkilendirmeyi yapmaz",
     );
+    // 29.09.2026 kullanıcı kararı: aydınlatma metni (E13) bu çıktıyı ayrıca anlatır.
+    expect(metin).toContain(
+      "Kütüphane aydınlatma metni bu çıktıyı ölçütüyle, dayanağıyla ve kimlerin gördüğüyle",
+    );
   });
 
   it("Dökümler bölümü Raporlar sekmesine ve dışa aktarımın geri yükleme bağlantısına gönderir", () => {
@@ -3712,6 +3745,13 @@ describe("KilavuzPage — F11 bakım", () => {
     expect(bolum).toContain(ULASILAMADI_METNI.replace(/\s+/g, " "));
     expect(bolum).toContain("“Şimdi denetle”");
     expect(bolum).toContain("Program o adrese kendisi istek atmaz");
+  });
+
+  it("Pardus'ta güncellemeden önce Çık yazılır (KB-4 (a), 28.09.2026: beta için belge yeterli)", () => {
+    renderPage();
+    const bolum = bolumMetni("guncelleme");
+    expect(bolum).toContain("kurmadan önce programdan “Çık” ile çıkın");
+    expect(bolum).toContain("Pardus paketi açık programı kendiliğinden kapatmaz");
   });
 });
 

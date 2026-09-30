@@ -27,16 +27,21 @@ geldiği için AYRIŞTIRILMAZ (GA-5). Maddeler:
 Denetim çalışmazsa (PowerShell yok, zaman aşımı, yetki) sonuç "bilinmiyor"dur
 ve katalog DİNLEMEZ (fail-closed). Taşınabilir pakette kural kurulum
 dizinindeki programa yazıldığı için 2. madde tutmaz: taşınabilir pakette Ağ
-Kataloğu sunulmaz (§5.2, GA-5). Denetimin yönetici olmayan hesapta çalıştığı
-sahada doğrulanır (§5.10-15, F12).
+Kataloğu sunulmaz (§5.2, GA-5). Bu ayrımın Windows'taki TEK dayanağı budur
+(programda ayrıca bir "taşınabilir mi" tespiti yoktur): Ağ Doktoru'ndaki
+“Kuralı ekle/güncelle” UAC onayıyla kuralı taşınabilir programın kendi yoluna
+yazarsa beş madde tutar ve katalog açılır. Denetimin yönetici olmayan hesapta
+çalıştığı sahada doğrulanır (§5.10-15, F12).
 
 **Linux (Pardus).** Program kural açmaz. ufw ya da firewalld'nin durumu
 okunur ve Ağ Doktoru'na çalıştırılacak komut verilir; paket ufw uygulama
 profilini ve firewalld servis tanımını bırakır (`packaging/linux/`). Komut
 KAYNAK SINIRLIDIR (`linux_komutu`): Windows kuralındaki `LocalSubnet` + tahta
 ağı blokları kapsamının karşılığı olarak her blok için ayrı satır; tanım
-dosyası yoksa (taşınabilir arşiv) ya da port değiştiyse port temelli. Denetim
-dinlemeyi engellemez.
+dosyası yoksa ya da port değiştiyse port temelli. Denetim dinlemeyi
+engellemez. Taşınabilir arşivde (KB-2, 28.09.2026) Ağ Kataloğu hiç açılmaz
+(`desktop/dagitim.py`, `katalog_kontrol`); orada komut verilmez
+(`tasinabilir_denetimi`).
 
 **Kural yazma** yönetici yetkisi ister. Program kendini UAC ile yükseltilmiş
 olarak `--guvenlik-duvari-kurali` kipinde yeniden çalıştırır (`kural_guncelle_uac`);
@@ -56,7 +61,7 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Final
 
@@ -557,7 +562,8 @@ def linux_komutu(arac: str, *, port: int, bloklar: Sequence[str], tanim_var: boo
     Kapsamsız `ufw allow <profil>` ya da `--add-service` katalogu her kaynağa
     (MEB WAN'ındaki başka kurumlar dahil) açardı; Windows kuralı gibi yalnız
     yerel alt ağ ve BTR'nin doğruladığı tahta ağı blokları açılır. Paketin
-    tanımı yoksa (taşınabilir arşiv) ya da port değiştiyse port temelli yazılır.
+    tanımı yoksa ya da port değiştiyse port temelli yazılır. Taşınabilir arşivde
+    komut hiç verilmez (`tasinabilir_denetimi`, KB-2).
     """
     kaynaklar = list(bloklar) or [KAYNAK_YER_TUTUCU]
     if arac == "ufw":
@@ -632,6 +638,18 @@ def linux_durumu(
         platform="linux",
         linux={"arac": None, "etkin": None, "komut": "", "bloklar": kaynaklar, "tanim_var": False},
     )
+
+
+def tasinabilir_denetimi(denetim: GuvenlikDuvariDenetimi) -> GuvenlikDuvariDenetimi:
+    """KB-2 (28.09.2026): taşınabilir arşivde Ağ Kataloğu açılmaz, komut ÖNERİLMEZ.
+
+    ufw/firewalld'nin durumu bilgi olarak kalır; `komut` boşalır ve
+    `tasinabilir` işareti Ağ Doktoru'na "kurulu paket gerekir" dedirtir.
+    Windows denetimi değişmez (orada ayrımı 2. madde yapar).
+    """
+    if denetim.windows_mu:
+        return denetim
+    return replace(denetim, linux={**denetim.linux, "komut": "", "tasinabilir": True})
 
 
 def _firewalld_etkin() -> bool | None:

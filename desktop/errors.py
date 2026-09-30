@@ -23,6 +23,9 @@ EXIT_RESTORE_FAILED = 9
 # Paket teşhis kipi (`--bagimlilik-duman`): üçüncü taraf modüllerden biri
 # pakete girmemiş (hiddenimports borcu).
 EXIT_IMPORT_SMOKE_FAILED = 10
+# Paket teşhis kipi (`--dagitim-duman <tür>`): program beklenen dağıtım türünü
+# (kurulu `.deb` / taşınabilir arşiv) bulmadı — KB-2 kapısının dayanağı.
+EXIT_DISTRIBUTION_SMOKE_FAILED = 11
 
 
 class StartupError(Exception):

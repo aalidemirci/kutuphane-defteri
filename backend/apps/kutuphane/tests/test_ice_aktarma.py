@@ -4,7 +4,7 @@ Kapının altı maddesi burada sabitlenir: önizleme ile uygulama aynı sonucu v
 aynı dosyanın ikinci uygulaması engellenir · `shelf_location` kaybolmaz · satır
 başına 50 nüsha sınırı · ders kitabı → danışma varsayılanı · bölüm eşleştirme.
 
-Bütün veriler uydurmadır (CLAUDE.md §2-12): eser adları kamu malı klasiklerden,
+Bütün veriler uydurmadır (CLAUDE.md §2-12): eser adları bilinen eserlerin künyesinden,
 ISBN'ler sağlaması geçerli ama uydurma numaralardan gelir.
 """
 

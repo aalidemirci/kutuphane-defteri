@@ -17,7 +17,9 @@
   ve 5): veri sorumlusu, amaçlar, hukuki sebep ve yöntem, kimlerin gördüğü
   (masadaki öğrenci görevliler DAHİL), aktarım, saklama (F11: tasarım §6.4 kapsamı
   aynen — süreler Kütüphane Politikası'ndan; TB16 kapandı), md. 11 hakları ve md. 13 başvuru
-  yolu. Okul alanları `SchoolConfig`'ten (Okul Bilgileri ekranında düzenlenir);
+  yolu. Okuma ödülü iç çıktısı (E20) amaçta, hukuki sebepte (Yönetmelik md. 8/1-c) ve
+  "kimler görür"de ayrıca yazılır (29.09.2026 kullanıcı kararı; Tebliğ md. 5/1-b, g).
+  Okul alanları `SchoolConfig`'ten (Okul Bilgileri ekranında düzenlenir);
   başvuru adresi ve e-posta basım isteğiyle gelir, saklanmaz. Kanun
   alıntıları `docs/mevzuat/6698-kvkk.md` metniyle BİREBİRDİR (test).
 - **Masa kartı** (E19, KVKK md. 12/1): görevli öğrenci için tek sayfa kullanım ve

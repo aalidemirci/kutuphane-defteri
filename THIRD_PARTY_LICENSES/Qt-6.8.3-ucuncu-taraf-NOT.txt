@@ -1,0 +1,25 @@
+Qt 6.8.3 kitaplıklarının içerdiği üçüncü taraf bileşenler (yalnız Linux paketi)
+==============================================================================
+
+Linux paketindeki Qt 6 kitaplıkları PySide6 6.8.3 tekerleklerinden değiştirilmeden
+alınır (_internal/PySide6/Qt/). The Qt Company bu kitaplıkları Qt'nin kaynak
+ağacına gömülü üçüncü taraf kodla derler:
+
+* ICU (International Components for Unicode) 73.2 ayrı kitaplık dosyalarıdır
+  (libicudata, libicui18n ve libicuuc .so.73); lisans metni bu klasördeki
+  ICU-73-LICENSE.txt dosyasındadır.
+* Qt WebEngine, Chromium'u ve onun üçüncü taraf bileşenlerini içerir
+  (libQt6WebEngineCore, QtWebEngineProcess ve resources/ altındaki .pak dosyaları).
+* Qt Core, Qt Gui ve öbür modüller kendi kaynak ağaçlarındaki üçüncü taraf
+  bileşenleri içerebilir.
+
+Bu bileşenlerin tam listesi, telif bildirimleri ve lisans metinleri Qt'nin
+belgelerinde ve kaynak arşivinde (her bileşenin qt_attribution.json dosyası)
+yayımlanır:
+  https://doc.qt.io/qt-6.8/licenses-used-in-qt.html
+  https://doc.qt.io/qt-6.8/qtwebengine-licensing.html
+  https://download.qt.io/archive/qt/6.8/6.8.3/single/qt-everywhere-src-6.8.3.tar.xz
+
+Qt'nin yalnız GPL-3.0 ile sunulan modülleri (Charts, Data Visualization, Graphs,
+Quick 3D, Quick Timeline, Virtual Keyboard, Wayland Compositor ve öbürleri) pakete
+GİRMEZ: derleme onları ayıklar ve lisans denetimi dosya düzeyinde sınar.

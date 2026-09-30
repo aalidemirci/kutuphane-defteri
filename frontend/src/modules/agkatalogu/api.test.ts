@@ -9,7 +9,11 @@ import {
   agProfiliAdi,
   belgeDosyaAdi,
   katalogKapatilabilir,
+  katalogSunulur,
   kuralProfiliAdi,
+  TASINABILIR_BILGISI,
+  TASINABILIR_DEB_KURULU_BILGISI,
+  tasinabilirBilgisi,
 } from "./api";
 import { katalogVerisi } from "../../test/agKataloguVerileri";
 
@@ -159,5 +163,25 @@ describe("yardımcılar", () => {
     expect(katalogKapatilabilir(katalogVerisi({ durum: "kapali", ayar_acik: true }))).toBe(false);
     expect(katalogKapatilabilir(katalogVerisi({ durum: "bakim", ayar_acik: true }))).toBe(false);
     expect(katalogKapatilabilir(null)).toBe(false);
+  });
+
+  it("KB-2: yalnız açıkça sunulmaz denen durumda katalog sunulmaz", () => {
+    expect(katalogSunulur(katalogVerisi({ sunulur: false }))).toBe(false);
+    expect(katalogSunulur(katalogVerisi({ sunulur: true }))).toBe(true);
+    // Alan yoksa (eski masaüstü) ya da durum bilinmiyorsa kapı ekranda değil denetçidedir.
+    expect(katalogSunulur(katalogVerisi())).toBe(true);
+    expect(katalogSunulur(null)).toBe(true);
+    // Taşınabilir arşivde açık kalmış ayar kapatılabilir ("açılamadı").
+    expect(
+      katalogKapatilabilir(katalogVerisi({ durum: "hata", ayar_acik: true, sunulur: false })),
+    ).toBe(true);
+  });
+
+  it("KB-2 düzeltme turu: .deb de kuruluysa bant kaldir.sh ve menü yolunu seçer", () => {
+    expect(tasinabilirBilgisi(katalogVerisi({ sunulur: false }))).toBe(TASINABILIR_BILGISI);
+    expect(tasinabilirBilgisi(katalogVerisi({ sunulur: false, deb_kurulu: true }))).toBe(
+      TASINABILIR_DEB_KURULU_BILGISI,
+    );
+    expect(tasinabilirBilgisi(null)).toBe(TASINABILIR_BILGISI);
   });
 });

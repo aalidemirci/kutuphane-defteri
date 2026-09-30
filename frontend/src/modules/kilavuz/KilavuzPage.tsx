@@ -56,8 +56,9 @@
 //
 // F5 iki bölüm yazar: "Tepsi, Çıkış ve Gün Değişimi" (yedek bölümünün ardında —
 // pencerenin çarpısı gizler, Çık görevli kipinde yönetici parolası ister ve
-// tepsiden seçilince onay sormaz, tepsi menüsü kipe göre değişir, kurucu programı
-// kendisi kapatır, oturum açılınca başlatma, program günlerce açık kalsa da gün
+// tepsiden seçilince onay sormaz, tepsi menüsü kipe göre değişir, kurulum sırasında
+// program kendiliğinden kapanır (F12: kullanıcı metninde "kurucu" değil "kurulum
+// dosyası/penceresi" — sözlük §1 "Kurulum ve kaldırma"), oturum açılınca başlatma, program günlerce açık kalsa da gün
 // değişince yedek alınır ve adres denetlenir, Ağ Kataloğu açıkken yalnız boşta
 // uyku engellenir) ve "Ağ Kataloğu". İkincisinin sırası kullanıcının sorusunun
 // sırasıdır: ne olduğu → neyi gösterip neyi ASLA göstermediği (kişisel veri yok,
@@ -3828,7 +3829,8 @@ export default function KilavuzPage() {
           kararına yardım eder. Sıra, dönem içinde ödünç alınıp iade edilmiş farklı eser sayısına
           göredir: aynı eserin yeniden alınması bir kez sayılır. Eşit olanlar aynı sıradadır ve
           sınırdaki eşitlerin hepsi girer. Yalnız okuldaki öğrenciler sıralanır. Çıktıda sayı ve
-          okul no yoktur. Ödünç kaydı okunan kitabı göstermez.
+          okul no yoktur. Ödünç kaydı okunan kitabı göstermez. Kütüphane aydınlatma metni bu çıktıyı
+          ölçütüyle, dayanağıyla ve kimlerin gördüğüyle birlikte ayrıca anlatır.
         </p>
         <p>
           Sekmede “Dönem” (istatistikteki seçicinin aynısı), “Sınıf” (bütün sınıflar ya da bir sınıf
@@ -4600,8 +4602,9 @@ export default function KilavuzPage() {
           sürüm varsa Windows&apos;ta “Doğrula ve indir” kurulum dosyasını yine GitHub&apos;dan,
           bütünlüğünü doğrulayarak indirir; programı tepsideki simgeden “Çık” ile kapatıp dosyayı
           çalıştırın (kurulum yönetici onayı ister, kimliği BTR girer). Pardus&apos;ta yeni paket
-          indirme sayfasından alınıp kurulur. Program her sürüm geçişinden önce kendiliğinden bir
-          yedek alır; verileriniz kurulum klasörünün dışında durduğu için korunur.
+          indirme sayfasından alınıp kurulur; kurmadan önce programdan “Çık” ile çıkın, çünkü Pardus
+          paketi açık programı kendiliğinden kapatmaz. Program her sürüm geçişinden önce
+          kendiliğinden bir yedek alır; verileriniz kurulum klasörünün dışında durduğu için korunur.
         </p>
         <p>
           Okul ağında GitHub engellenmiş olabilir. O zaman ekranda şu ileti çıkar: “GitHub&apos;a
@@ -4658,9 +4661,9 @@ export default function KilavuzPage() {
             programdan çıkmanın yolu üst çubuktaki “Çık” düğmesidir.
           </li>
           <li>
-            Program açıkken kurulum, güncelleme ya da kaldırma başlatılırsa kurucu programı kendisi
-            düzenli kapatır. Program yarım dakika içinde kapanmazsa kurucu tepsideki simgeden “Çık”ı
-            seçmenizi ister; programı zorla kapatmaz.
+            Program açıkken kurulum, güncelleme ya da kaldırma başlatılırsa program kendiliğinden
+            düzenli kapanır. Yarım dakika içinde kapanmazsa kurulum penceresi tepsideki simgeden
+            “Çık”ı seçmenizi ister; program zorla kapatılmaz.
           </li>
         </ul>
 
@@ -4880,10 +4883,17 @@ export default function KilavuzPage() {
           ağına hiç açılmaz; durum “Güvenlik duvarı izni yok” olur ve Ağ Doktoru düzeltme adımını
           gösterir. Açma kalıcıdır: program yeniden açıldığında katalog da açılır. Yönetici kipinde
           tepsi menüsündeki “Ağ Kataloğunu aç” ve “Ağ Kataloğunu kapat” komutları da aynı işi görür.
-          Windows&apos;ta kurulum yapılmadan çalıştırılan (taşınabilir) sürümde Ağ Kataloğu
-          sunulmaz: güvenlik duvarı kuralı kurulu programın yoluna bağlıdır. Pardus&apos;un
-          taşınabilir arşivinde katalog açılır; paket tanımı gelmediği için Ağ Doktoru portu
-          doğrudan açan komutu verir.
+          Kurulum yapılmadan çalıştırılan (taşınabilir) sürümde Ağ Kataloğu sunulmaz; bu iki
+          platformda da böyledir. Pardus&apos;un taşınabilir arşivinde katalog hiç açılmaz.
+          Windows&apos;un taşınabilir sürümünde güvenlik duvarı kuralı kurulu programın yoluna
+          bağlıdır, katalog varsayılan olarak okul ağına açılmaz; Ağ Doktoru&apos;ndaki “Kuralı
+          ekle/güncelle” kuralı taşınabilir sürümün yoluna yazarsa katalog açılır ve aynı
+          bilgisayardaki kurulu programın kuralının yerini alır. Bu yol önerilmez. Ağ Kataloğu için
+          programı kurun: Windows&apos;ta kurulum dosyasıyla, Pardus&apos;ta <Kod>.deb</Kod>{" "}
+          paketiyle. Pardus&apos;ta taşınabilir sürümü <Kod>./kur.sh</Kod> ile kurduysanız{" "}
+          <Kod>.deb</Kod>&apos;i kurmadan önce arşivdeki <Kod>./kaldir.sh</Kod> ile kaldırın: yoksa
+          menü ve uçbirim taşınabilir sürümü açmayı sürdürür, katalog açılmaz. Verileriniz iki
+          sürümde aynı klasördedir; kaldırma onlara dokunmaz.
         </p>
 
         <AltBaslik>Ağ Doktoru</AltBaslik>
@@ -4926,6 +4936,13 @@ export default function KilavuzPage() {
             taşıyacağı “Belgelerde kullanılacak adres” seçicisinden seçilir.
           </li>
         </ul>
+        <p>
+          Pardus&apos;un taşınabilir arşivinde iki ekranda da “Bu taşınabilir sürümde Ağ Kataloğu
+          sunulmaz” bandı durur; “Ağ Kataloğunu aç”, “Yeniden başlat” ve ilk açılış adımları
+          görünmez. Güvenlik Duvarı kartı komut vermez; Dinleyici Sınaması kartında sınama ve başka
+          bilgisayar için komut, Belgeler kartında afiş, yer imleri, PYS talep metni ve bilgi notu
+          yoktur: açılmayacak bir adresi ilan ederlerdi.
+        </p>
         <p>Durum rozetinin anlamları:</p>
         <ul className="list-disc space-y-1 pl-5">
           <li>
@@ -4942,7 +4959,11 @@ export default function KilavuzPage() {
           </li>
           <li>
             <strong>Açılamadı:</strong> katalog başlatılamadı ya da seçili adres bu bilgisayarda
-            artık yok; “Son hata” nedenini yazar.
+            artık yok; “Son hata” nedenini yazar. Pardus&apos;un taşınabilir arşivinde ayar daha
+            önce açılmışsa da bu rozet görünür: katalog orada açılmaz; programı <Kod>.deb</Kod>{" "}
+            paketiyle kurun ya da “Ağ Kataloğunu kapat” ile ayarı kapatın. Bilgisayarda{" "}
+            <Kod>.deb</Kod> de kuruluysa açık olan program taşınabilir sürümdür: ondan çıkın,{" "}
+            <Kod>./kaldir.sh</Kod> ile kaldırın ve programı menüden açın.
           </li>
           <li>
             <strong>Port bekleniyor:</strong> port başka bir program tarafından kullanılıyor;

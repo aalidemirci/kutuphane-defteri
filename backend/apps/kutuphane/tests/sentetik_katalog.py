@@ -5,9 +5,9 @@ KONMAZ: burada çalışma anında üretilir. İki gerekçe: ikili dosyalar depoy
 şişirir ve `packaging/depo_sizintisi.py`'nin denetlediği "veri biçimi" taramasını
 gereksiz yere meşgul eder (CLAUDE.md §2-12).
 
-**Veriler uydurmadır ve kişisel veri taşımaz:** eser adları kamu malı klasik
-eserlerden, yazarlar çoktan ölmüş kişilerden alınmıştır (kitap künyesi kişisel
-veri değildir — `tests/ortak.py` ile aynı kural). ISBN numaraları UYDURMADIR:
+**Veriler uydurmadır ve kişisel veri taşımaz:** eser adları bilinen eserlerin
+künyesidir (kitap künyesi ne kişisel veri ne telif konusudur — `tests/ortak.py` ile
+aynı kural; eserlerin metni yer almaz). ISBN numaraları UYDURMADIR:
 sağlama hanesi doğru hesaplanır ki program numarayı "bozuk" diye işaretlemesin,
 ama gerçek bir kitaba ait değildir.
 """
@@ -23,7 +23,7 @@ from openpyxl import Workbook
 from apps.kutuphane import isbn as isbn_module
 from apps.kutuphane.import_schema import CATALOG_SHEET, COLUMNS
 
-#: Kamu malı eser adları (sentetik satırların künye çekirdeği).
+#: Bilinen eser adları (sentetik satırların künye çekirdeği).
 KLASIKLER: tuple[tuple[str, str, str], ...] = (
     ("Kürk Mantolu Madonna", "Sabahattin Ali", "Türk edebiyatı, roman"),
     ("Çalıkuşu", "Reşat Nuri Güntekin", "Türk edebiyatı, roman"),

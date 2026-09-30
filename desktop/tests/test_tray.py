@@ -98,7 +98,9 @@ def test_tepsi_simgesi_gercek_ikondan_yuklenir() -> None:
     goruntu = load_icon_image(app_icon_path(root=REPO_ROOT))
 
     assert goruntu.mode == "RGBA"
-    assert goruntu.size[0] >= 32
+    # Pillow `.ico`'nun en büyük karesini açar (ana çizimden 256 px); kesimlerin
+    # tutarlılığı packaging/tests/test_ikonlar.py'dedir.
+    assert goruntu.size == (256, 256)
 
 
 def test_ikon_bozuksa_duz_renk_yedek(tmp_path: Path) -> None:
@@ -263,6 +265,9 @@ class _SahteQt:
         self.sira: list[str] = []
         self.tepsiler: list[Any] = []
         self.zamanlayicilar: list[Any] = []
+        #: `QIcon.fromTheme` bu adla çağrılınca dolu simge döner (kurulu hicolor teması).
+        self.tema_simgesi: str | None = None
+        self.simge_atanamaz = False
         disari = self
 
         class QApplication:
@@ -280,6 +285,11 @@ class _SahteQt:
             def setQuitOnLastWindowClosed(self, deger: bool) -> None:
                 self.son_pencere_kapaninca_cik = deger
 
+            def setWindowIcon(self, simge: Any) -> None:
+                if disari.simge_atanamaz:
+                    raise RuntimeError("simge atanamadı")
+                self.pencere_simgesi = simge
+
         if uygulama_var:
             QApplication._ornek = QApplication.__new__(QApplication)
             QApplication._ornek.son_pencere_kapaninca_cik = True
@@ -290,7 +300,7 @@ class _SahteQt:
 
             @staticmethod
             def fromTheme(ad: str) -> Any:
-                return QIcon(None)
+                return QIcon(f"tema:{ad}" if ad == disari.tema_simgesi else None)
 
             def isNull(self) -> bool:
                 return self.kaynak is None
@@ -459,6 +469,48 @@ def test_qt_tepsi_yoksa_kurulmaz_ama_uygulama_hazirdir(
     assert qt.tepsiler == []
     assert qt.QApplication.instance() is not None
     assert any("küçültülecek" in k.getMessage() for k in kd_gunlugu)
+    tepsi.stop()
+
+
+@pytest.mark.parametrize("tepsi_var", [True, False])
+def test_qt_uygulamasi_pencere_simgesini_tasir(tepsi_var: bool) -> None:
+    """pywebview'a `icon=` verilmez: pencere simgesi `QApplication.windowIcon()`'dır.
+
+    Atanmazsa X11'de `_NET_WM_ICON` yazılmaz ve XFCE görev listesi genel simge
+    gösterir (tasarım §14.1 F12 ekleri L-1). Tepsisiz masaüstünde de atanır.
+    """
+    qt = _SahteQt(tepsi_var=tepsi_var)
+    tepsi = _qt_tepsi(qt, _Sayac())
+
+    tepsi.start()
+
+    simge = qt.QApplication.instance().pencere_simgesi
+    assert simge.kaynak.veri.startswith(b"\x89PNG")  # tema yok: .ico Pillow ile PNG'ye
+    tepsi.stop()
+
+
+def test_qt_pencere_simgesi_once_tema_simgesidir() -> None:
+    """Kurulu hicolor teması elle çizilmiş 16/24/32'yi de verir; varsa o seçilir."""
+    qt = _SahteQt(uygulama_var=True)
+    qt.tema_simgesi = "kutuphane-defteri"
+    tepsi = _qt_tepsi(qt, _Sayac())
+
+    tepsi.start()
+
+    assert qt.QApplication.instance().pencere_simgesi.kaynak == "tema:kutuphane-defteri"
+    assert qt.tepsiler[0].icon.kaynak == "tema:kutuphane-defteri"
+    tepsi.stop()
+
+
+def test_qt_pencere_simgesi_atanamazsa_program_surer(
+    kd_gunlugu: list[logging.LogRecord],
+) -> None:
+    qt = _SahteQt()
+    qt.simge_atanamaz = True
+    tepsi = _qt_tepsi(qt, _Sayac())
+
+    assert tepsi.start() is True
+    assert any("Pencere simgesi atanamadı" in k.getMessage() for k in kd_gunlugu)
     tepsi.stop()
 
 
@@ -903,3 +955,71 @@ def test_ayar_acik_ama_katalog_acilamadiysa_tepsi_kapat_sunar() -> None:
     assert ("Ağ Kataloğu: kapalı", False) in gorunen
     assert komutu_calistir(eylemler, "katalog_ac_kapa") is True
     assert masa.cagrilar == ["katalog-kapat"]
+
+
+def _tasinabilir(masa: _Masa, *, kapatilabilir: bool) -> TrayActions:
+    """KB-2: Pardus taşınabilir arşivinin tepsi hedefleri (katalog sunulmaz)."""
+    eylemler = masa.eylemler()
+    return TrayActions(
+        **{
+            **eylemler.__dict__,
+            "katalog_satiri": lambda: "Ağ Kataloğu: taşınabilir sürümde sunulmaz",
+            "katalog_kapatilabilir": lambda: kapatilabilir,
+            "katalog_sunulur": lambda: False,
+        }
+    )
+
+
+def test_tasinabilir_arsivde_tepsi_ac_sunmaz_ve_eski_menuden_de_reddeder() -> None:
+    """KB-2 (28.09.2026): "Ağ Kataloğunu aç" görünmez; tıklansa da denetçiye gitmez."""
+    masa = _Masa("yonetici", katalog_acik=False)
+    eylemler = _tasinabilir(masa, kapatilabilir=False)
+
+    gorunen = [(o.metin, o.etkin) for o in menu_durumu(eylemler) if o.gorunur]
+
+    assert gorunen == [
+        ("Pencereyi aç", True),
+        ("Ağ Kataloğu: taşınabilir sürümde sunulmaz", False),
+        ("Görevli kipine geç", True),
+        ("Kilitle", True),
+        ("Çık", True),
+    ]
+    assert komutu_calistir(eylemler, "katalog_ac_kapa") is False
+    assert masa.cagrilar == []
+
+
+def test_tasinabilir_arsivde_acik_kalmis_ayar_tepsiden_kapatilir() -> None:
+    masa = _Masa("yonetici", katalog_acik=False)
+    eylemler = _tasinabilir(masa, kapatilabilir=True)
+
+    gorunen = [(o.metin, o.etkin) for o in menu_durumu(eylemler) if o.gorunur]
+
+    assert ("Ağ Kataloğunu kapat", True) in gorunen
+    assert ("Ağ Kataloğunu aç", True) not in gorunen
+    assert komutu_calistir(eylemler, "katalog_ac_kapa") is True
+    assert masa.cagrilar == ["katalog-kapat"]
+
+
+def test_katalog_sunulur_okunamazsa_ac_sunulmaz() -> None:
+    """Denetçi zaten reddeder; tepsi okunamayan durumda "aç" göstermez (fail-closed)."""
+    masa = _Masa("yonetici", katalog_acik=False)
+
+    def patla() -> bool:
+        raise RuntimeError("okunamadı")
+
+    eylemler = TrayActions(**{**masa.eylemler().__dict__, "katalog_sunulur": patla})
+
+    assert "Ağ Kataloğunu aç" not in [o.metin for o in menu_durumu(eylemler) if o.gorunur]
+    assert komutu_calistir(eylemler, "katalog_ac_kapa") is False
+    assert masa.cagrilar == []
+
+
+def test_katalog_sunulursa_tepsi_davranisi_degismez() -> None:
+    masa = _Masa("yonetici", katalog_acik=False)
+    eylemler = TrayActions(**{**masa.eylemler().__dict__, "katalog_sunulur": lambda: True})
+
+    assert ("Ağ Kataloğunu aç", True) in [
+        (o.metin, o.etkin) for o in menu_durumu(eylemler) if o.gorunur
+    ]
+    assert komutu_calistir(eylemler, "katalog_ac_kapa") is True
+    assert masa.cagrilar == ["katalog-ac"]
