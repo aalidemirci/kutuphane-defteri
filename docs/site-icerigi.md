@@ -9,7 +9,8 @@ buradan alır.
 
 - **Ortak yayın alanı:** `../okulapp.org/CLAUDE.md` → "Ortak çalışma düzeni" bağlayıcıdır.
   Bu programın alanı: `src/data/kd-release.json`, `src/pages/kutuphane-defteri/**`,
-  `src/layouts/KDLayout.astro`, `public/kutuphane-defteri.png`. İşe `git fetch` ve güncel
+  `src/layouts/KDLayout.astro`, `public/kutuphane-defteri.png`, `public/kutuphane-defteri/**`
+  (ekran görüntüleri, §8). İşe `git fetch` ve güncel
   `origin/main` ile başlanır; canlıya yalnız `main` push'u gider (Workers Builds "Version
   command" `npx wrangler versions upload` kalır, `deploy` yapılmaz). Commit başlığı
   "Kütüphane Defteri: …". İlk eklemenin ortak dosyaları (palet tipi, `global.css` palet
@@ -269,9 +270,72 @@ yeniden üretilir.
 
 ## 8. Ekran görüntüleri
 
-Yalnız uydurma veriyle alınır: `scripts/deneme_verisi.py` ile üretilen deneme verisi ve okul
-adı "Örnek Anadolu Lisesi" (`docs/saha-kabulu.md` §1.2). Önerilen kareler: Genel Bakış ·
-Katalog (Türkçe arama) · Dolaşım Masası (görevli kipi) · Etiketler (basım kuyruğu) · Ağ
-Kataloğu sayfası (tahta kipi) · Sayım. Adres çubuğunda okul ağının gerçek adresi görünmez
-(görüntü `127.0.0.1` ile alınır ya da adres örtülür); kişi adı, okul adı, IP ve bilgisayar
-adı taşıyan hiçbir kare yayımlanmaz.
+Yalnız uydurma veriyle alınır (CLAUDE.md §2-12): `scripts/deneme_verisi.py` ile üretilen
+deneme verisi ve okul adı "Örnek Anadolu Lisesi" (`docs/saha-kabulu.md` §1.2). Tek komutla,
+yalnız Docker'da üretilir (ayrıntı `scripts/ekran_goruntuleri/BENIOKU.md`):
+
+    bash scripts/ekran_goruntuleri/ekran_goruntuleri.sh
+
+Çıktı `dist/ekran-goruntuleri/webp/`'dedir (1280×800 WebP, kardeş sayfalarla aynı ölçü);
+seçilen kareler sitede `public/kutuphane-defteri/` altına kopyalanır.
+
+**Kural:** **gerçek** kişi adı, **gerçek** okul adı, okul ağının gerçek IP'si ve bilgisayar
+adı taşıyan hiçbir kare yayımlanmaz. Adres çubuğu, yönetim portu, kart numarası ve kimlik
+numarası görünmez. Uydurma veri ad taşır — Dolaşım Masası üyenin adını, Ağ Kataloğu okulun
+adını basar —; sayfa bunu karelerin üstündeki notla söyler (Kelebek Sınav emsali). Alt
+metinlerde kişi adı yazılmaz.
+
+**Not (karelerin üstünde):**
+
+> Görüntülerdeki okul adı, üye adı, barkodlar ve katalog kayıtları **örnektir**; tanıtım için
+> üretilmiş kurgu verilerdir. Programın kendisi verilerinizi yalnız okulun bilgisayarında
+> tutar.
+
+**Seçilen kareler** (sitedeki sırayla; bölüm başlığı "Ekranlar — Programdan görünümler"):
+
+1. `ekran-genel-bakis.webp` — **Genel Bakış**
+   - *Alt metin:* Genel Bakış ekranı: iade tarihi geçmiş ödünç sayısı, sayımın durumu,
+     dönemin ve ayın çok okunanları ile şifreli yedeği USB belleğe alma hatırlatması.
+   - *Açıklama:* Günün işleri tek bakışta: iade tarihi geçmiş ödünçler, sayımın durumu, çok
+     okunanlar ve şifreli yedeği USB belleğe alma hatırlatması. Çok okunanlar farklı üye
+     sayısına göre sıralanır; sayı gösterilmez.
+2. `ekran-dolasim-masasi.webp` — **Dolaşım Masası**
+   - *Alt metin:* Dolaşım Masası ekranı: okutulan üye kartıyla açılan üye bilgisi, kalan
+     ödünç hakkı, açık ödünçler ve “Ödünç verildi” bildirimi.
+   - *Açıklama:* Önce üye kartı, sonra kitabın kütüphane etiketi okutulur; kalan ödünç hakkı
+     ve açık ödünçler aynı ekranda görünür. Ödünç süresi on beş gündür. Kart okutmadan
+     okutulan kitabın iadesi alınır. Öğrenci görevliler aynı masada, yalnız masa işlerinin
+     açık olduğu görevli kipinde çalışır.
+3. `ekran-katalog.webp` — **Katalog**
+   - *Alt metin:* Katalog ekranı: “roman” araması, bölüm, kaynak türü ve sıralama
+     seçimleri, Türkçe sıralı eser listesi ile nüsha ve raftaki nüsha sayıları.
+   - *Açıklama:* Arama kaynak adı, yazar, konu ve ISBN üzerinde çalışır. Büyük-küçük harf ve
+     düzeltme işareti aramayı etkilemez, “ı” ile “i” ayrı harf sayılır; liste Türkçe
+     alfabeye göre sıralanır. Her eserin nüsha sayısı ve raftaki nüshası yanında görünür.
+4. `ekran-etiketler.webp` — **Etiketler**
+   - *Alt metin:* Etiketler ekranı: sırt ve barkod etiketi bekleyen nüsha sayıları, etiket
+     içeriği, basım sırası ve süzgeçler, basım kuyruğundaki nüshalar.
+   - *Açıklama:* Sırt ve barkod etiketleri yer numarası sırasıyla basılabilir; raf raf
+     yapıştırmak kolaylaşır. PDF'i almak “basıldı” saymaz: tabaka denetlenip işaretlenince
+     nüshalar kuyruktan çıkar ve bu işaret geri alınabilir. Yapıştırılan etiket okutularak
+     doğrulanır.
+5. `ekran-ag-katalogu-vitrin.webp` — **Ağ Kataloğu** (tahta kipinde ana sayfa)
+   - *Alt metin:* Ağ Kataloğu'nun tahtalar için büyük düzeni: katalog araması, kaynak adı,
+     yazar ve konu dizinleri, yeni gelenler ve çok okunanlar.
+   - *Açıklama:* Açılırsa okul ağındaki bilgisayarlar ve etkileşimli tahtalar kataloğu
+     tarayıcıdan, salt okur olarak tarar; tahtalarda büyük düzen ve dizinlerle klavyesiz
+     gezinme vardır. Üye, ödünç kaydı ve iade tarihi bu sayfalarda yer almaz. Varsayılan
+     olarak kapalıdır.
+6. `ekran-raporlar.webp` — **Raporlar**
+   - *Alt metin:* Raporlar ekranı, İstatistik sekmesi: koleksiyon sayıları ile kaynak
+     türüne, nüsha durumuna ve bölüme göre dağılım.
+   - *Açıklama:* İstatistik kişisizdir: üye bazında bilgi, adlı sıralama ve konuya göre
+     ödünç dağılımı yoktur; ödünç kaydı okunan kitabı göstermez. Çok okunanlar, katalog
+     dökümleri ve verinin belgelenmiş biçimde dışa aktarımı da buradadır.
+
+İlk öneriden farklar (30.09.2026): Dolaşım Masası yönetici kipinde alındı (görevli kipi
+açıklamada anılır); Sayım yerine Raporlar kondu. Betiğin ürettiği iki kare siteye konmadı:
+`ekran-eser-ayrintisi.webp` (ön yüz on haneli kayıt no'yu binlik ayraçlı, üç noktalı
+basıyor; düzelince eklenebilir) ve `ekran-ag-katalogu.webp` (tahta kipinde arama; vitrin aynı yüzeyi
+daha çok özellikle gösterir). Arayüz metni ya da düzeni değişince betik yeniden koşulur;
+kareler ve bu metinler birlikte güncellenir.
