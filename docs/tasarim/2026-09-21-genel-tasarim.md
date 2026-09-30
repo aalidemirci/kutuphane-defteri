@@ -5346,6 +5346,82 @@ YOK, görevli izin listesi DEĞİŞMEDİ.
   "e-posta … YAZILMAZ" cümleleri ile §7'ye logo/İA-3 cümlesi (ajan brifingini ana oturum
   kullanıcı onayıyla düzeltir).
 
+**F12 ekleri — R2'ye sonradan yükleme (30.09.2026).** `v2026.10.0-beta.1` Release'i
+yayımlandı; depoda Cloudflare secret'ları tanımlı olmadığı için R2 adımı tasarlandığı gibi
+uyarıyla atlandı. Kullanıcı isteğiyle (30.09.2026) DD'nin emsali uyarlandı. Göç YOK, yeni
+bağımlılık YOK, program kodu değişmedi.
+
+- **Tek yükleme yeri:** `packaging/r2-yukle.sh` (kova `okulapp-indirme`, önek
+  `kutuphane-defteri`, kovadaki adlar ve içerik türleri yalnız burada). `paketleme.yml`
+  yayın işindeki satır içi döngü kaldırıldı; adım betiği çağırır.
+- **`.github/workflows/r2-yukle.yml`** (yalnız `workflow_dispatch`, girdi `etiket`, izin
+  `contents: read`): var olan Release'in dosyalarını `gh release download` ile indirir ve
+  aynı betikle yükler; paketler yeniden üretilmez. Bu işte kimlik **zorunludur**
+  (`R2_KIMLIK_ZORUNLU=1`): secret yoksa iş kırmızı biter. Yayın işinde eski davranış
+  sürer (uyarıyla atlanır).
+- **DD'den sapma:** betik yüklemeden önce `SHA256SUMS.txt`'yi `sha256sum --check` ile
+  doğrular; özet tutmazsa, özette olmayan ya da türü bilinmeyen dosya varsa HİÇBİR dosya
+  yüklenmez (DD türü bilinmeyeni uyarıyla atlar); özet en son yüklenir; sürüm argümanı
+  CalVer biçiminde denetlenir (başında `v` kalırsa özet `SHA256SUMS-v….txt` adını alırdı).
+  wrangler tek parçada en çok 300 MiB yükler (Cloudflare: "up to 315 MB"); sınırı aşan
+  paket varken de hiçbir dosya yüklenmez. Bugünkü en büyük paket Linux arşividir (~236
+  MiB, sınırın %79'u): Qt büyürse yükleme çok parçalı S3 yoluna taşınmalıdır (bugün yok).
+- **İzin metni düzeltildi:** token R2 **Admin Read & Write** ister; *Object Read & Write*
+  wrangler'ın REST çağrısında 403 (kod 10000) alır — DD hattında 28.09.2026'da yaşandı.
+  `paketleme.yml` yorumu ve `packaging/README.md` (yeni "R2 secret'ları" — `gh secret set`
+  değer yazılmadan — ve "R2 adımı atlandıysa ya da kırıldıysa" bölümleri) düzeltildi.
+  `docs/kesif/` o günün kanıtıdır, değiştirilmedi.
+- **Test:** `packaging/tests/test_surum_yolu.py` iki iş akışını betiğin gerçek kopyası ve
+  sahte `gh`/`npx` ile koşturur: aynı Release için iki yolun aynı kova yollarını ve
+  içerik türlerini üretmesi, beta `.deb`'inin `.`li adı, `SHA256SUMS-<sürüm>.txt`, özetin
+  en son yüklenmesi, secret yokken yayın işinde uyarı / `r2-yukle.yml`'de hata, beş
+  denetim hatasında ve 300 MiB'ı aşan pakette hiçbir dosyanın yüklenmemesi (sınırın
+  kendisi geçer), etiket ve sürüm biçimi, iş akışının
+  yalnız elle ve salt okur izinle koşması, izin metni.
+- **Denetim sırası (düzeltme turu, 30.09.2026):** betik kimliği İLK denetler. Kimlik
+  yokken yayın işi, satır içi eski adım gibi hiçbir girdiye bakmadan uyarıyla sürer; sürüm
+  biçimi ve dizin yalnız yükleme yolunda denetlenir (önceki sırada secret'sız yayın işi
+  tanınmayan bir ekte — `paketleme.yml`'nin ön sürüm saydığı `-dev` gibi — atlamak yerine
+  kırılıyordu). Testle sabit.
+- **Secret'lar:** `CLOUDFLARE_API_TOKEN` ve `CLOUDFLARE_ACCOUNT_ID` depoya 30.09.2026
+  18:25Z'de eklendi (Release 18:02Z'de, secret'sız çıkmıştı; `gh secret list` yalnız
+  adları ve tarihleri gösterir, token'ın izni oradan doğrulanamaz). İlk koşu 403 (kod
+  10000) verirse token Object düzeyindedir; `packaging/README.md` "R2 secret'ları"
+  bölümündeki yolla Admin Read & Write token'la değiştirilir.
+- **Açık (yayın işi, kullanıcı onaylı — ana oturum):** dal `main`'e birleştikten sonra
+  `r2-yukle.yml`'nin `v2026.10.0-beta.1` için koşturulması (elle tetiklenen iş akışı
+  Actions'ta yalnız varsayılan dalda görünür) ve beş indirme adresinin 200 + boyut
+  denetimi. okulapp.org'daki `kd-release.json` o denetim geçene dek `"available": false`
+  kalır (aşağıda "site ekran görüntüleri").
+
+**F12 ekleri — site ekran görüntüleri ve ilk ekleme (30.09.2026).** Kullanıcı isteğiyle
+("siteye de gerekli eklemeleri yap. ekran görüntüleri de ekle"). Göç YOK, yeni bağımlılık
+YOK, program kodu değişmedi.
+
+- **Üretim:** `bash scripts/ekran_goruntuleri/ekran_goruntuleri.sh` — yalnız Docker'da,
+  uydurma veriyle (`scripts/deneme_verisi.py` + programın gerçek içe aktarıcıları,
+  sabit tohum); program gerçek masaüstü yolundan kalkar (oturum belirteci, 127.0.0.1),
+  görüntüleri geçici bir Playwright kabı alır (depo bağımlılığı DEĞİL; `BENIOKU.md`).
+  1280×800 WebP; Genel Bakış'ta alt kenar kart arasındaki boşluğa alınır (16:10 korunur).
+- **Sitede altı kare** (`okulapp.org/public/kutuphane-defteri/`): Genel Bakış · Dolaşım
+  Masası · Katalog · Etiketler · Ağ Kataloğu (tahta kipinde ana sayfa) · Raporlar; metinleri
+  `docs/site-icerigi.md` §8. Görünen adlar uydurmadır (bir üye adı, "Örnek Anadolu
+  Lisesi"); sayfa bunu bir notla söyler (KS emsali). §8'in "kişi adı, okul adı … taşıyan
+  kare yayımlanmaz" cümlesi CLAUDE.md §2-12 ("Ekran görüntüleri yalnız uydurma veriyle
+  alınır") ile hizalanarak **gerçek** ad diye netleştirildi.
+- **Siteye konmayan iki kare:** Eser Ayrıntısı (on haneli kayıt no ön yüzde binlik ayraçlı,
+  üç noktalı basılıyor; evrak ayraçsız basar; ayrı iş) ve Ağ Kataloğu arama sayfası (vitrin aynı
+  yüzeyi daha çok özellikle gösterir).
+- **Alan:** sitenin CLAUDE.md alan tablosunda KD satırına `public/kutuphane-defteri/**`
+  eklendi (ilk eklemenin tek seferlik dokunuşu, §17).
+- **Sürüm kartı:** `kd-release.json` gerçek Release'ten dolduruldu (sürüm, tarih, beş boyut;
+  SHA-256 satırları Release `digest` değerleriyle aynı). `"available"` R2 yüklemesi ve beş
+  adresin denetimi geçene dek **false** kalır (sayfa "hazırlanıyor" der, İndir düğmesi
+  basılmaz; önce birleşse bile canlıda kırık bağlantı çıkmaz); rozet o güne dek
+  "Hazırlanıyor". Sıra: bu deponun R2 dalı `main`'e → `r2-yukle.yml` → beş adreste 200 ve
+  boyut → `available: true` + rozet "Beta 2026.10.0" → site dalı güncel `origin/main`
+  üzerine birleşir.
+
 ### 14.2 Saha hazırlık hattı (kod dışı — F0 ile başlar)
 
 | # | İş | Kim |
@@ -5434,14 +5510,17 @@ alanları) bu depoda `docs/site-icerigi.md`'dedir; o adımda aşağıdaki kurall
 - `src/layouts/KDLayout.astro`
 - `src/pages/kutuphane-defteri/{index,kilavuz,gizlilik}.astro`
 - `public/kutuphane-defteri.png`
+- `public/kutuphane-defteri/**` — ekran görüntüleri (30.09.2026; üretimi
+  `scripts/ekran_goruntuleri/`, metinleri `docs/site-icerigi.md` §8)
 - `BaseLayout.astro` palet tipine `'kd'`
 - `global.css` içinde üç palet bloğu
 - sitenin CLAUDE.md alan sahipliği tablosuna satır, kardeş depo listesi ve commit öneki
   "Kütüphane Defteri: …"
 
 **Paketler** sitede değil R2'dedir: `indir.okulapp.org/kutuphane-defteri/` (elle indirme
-alanı; `paketleme.yml`'in yayın adımı yükler, secret'lar tanımlı değilse elle yükleme
-adımı yazılıdır — EK-6). *27.09.2026 kullanıcı kararı (T11 v4):* program güncellemeyi
+alanı; `paketleme.yml`'in yayın adımı `packaging/r2-yukle.sh` ile yükler; secret'lar
+tanımlı değilken çıkan sürüm sonradan `r2-yukle.yml` ile, paketler yeniden üretilmeden
+yüklenir — EK-6, F12 ekleri 30.09.2026). *27.09.2026 kullanıcı kararı (T11 v4):* program güncellemeyi
 GitHub Release'ten denetler, R2'de bir manifest OKUMAZ; önceki "uygulamanın okuduğu
 manifest" satırı kaldırıldı. GitHub'a ulaşılamazsa program bu alanı yalnız iletide anar.
 

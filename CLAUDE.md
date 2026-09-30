@@ -425,7 +425,9 @@ açılır, geliştirme konteynerinde değil.
   `../okulapp.org/CLAUDE.md` → "Ortak çalışma düzeni" BAĞLAYICIDIR: yalnız
   kendi alanına yaz (bu projenin alanı: `src/data/kd-release.json`,
   `src/pages/kutuphane-defteri/**`, `src/layouts/KDLayout.astro`,
-  `public/kutuphane-defteri.png`) · işe `git fetch` + güncel `origin/main`
+  `public/kutuphane-defteri.png`, `public/kutuphane-defteri/**` — ekran
+  görüntüleri; yalnız uydurma veriyle `scripts/ekran_goruntuleri/` üretir,
+  metinleri `docs/site-icerigi.md` §8) · işe `git fetch` + güncel `origin/main`
   ile başla, eski tabandan açılmış dal güncellenmeden birleştirilmez ·
   production yalnız `main` push'uyla değişir (Workers Builds "Version
   command" `npx wrangler versions upload` kalır, `deploy` yapılmaz) · commit
@@ -841,6 +843,8 @@ kod dışı): tasarım §14.2.
 | `packaging/lisanslar/` | Lisans üreticisi ve derleme kapısı (`lisanslar.py`: `uret`, `paket`, `kisitlar`, `npm-denetle`, `deb-copyright`; Qt'nin yalnız GPL'li modül listesi `QT_YALNIZ_GPL_MODULLER`), `on_yuz_paketleri.mjs`, `uret.sh` |
 | `packaging/README.md` | Paketleme hattı, bağımlılık ve lisans zincirleri, Qt/pystray LGPL notları |
 | `scripts/deneme_verisi.py` | Saha kabulünün uydurma deneme verisi üreticisi (Docker'da; çıktı `deneme-verisi/` depoya girmez) |
+| `scripts/ekran_goruntuleri/` | Site ekran görüntülerinin tek komutluk üreticisi (`ekran_goruntuleri.sh`): programı Docker'da uydurma veriyle kaldırır, geçici bir Playwright kabıyla çeker, WebP'ye çevirir; depo bağımlılığı eklemez |
+| `packaging/r2-yukle.sh` + `.github/workflows/r2-yukle.yml` | R2'ye (`indir.okulapp.org/kutuphane-defteri/`) yüklemenin tek betiği; iş akışı var olan bir Release'i sonradan yükler (Actions → "R2'ye yükle", etiket = `v<VERSION>`); token izni **R2 Admin Read & Write** |
 | `packaging/windows/NOTLAR.md` | Windows paketinde doğrulanmamış varsayımlar; §5 saha protokolü karşılıkları |
 | `README.md` | Kısa tanıtım |
 

@@ -14,7 +14,8 @@
 #   yayin           → v* etiketinde son paketlerde veri sızıntısı denetimi +
 #                     SHA256SUMS.txt + GitHub Release (ön-sürüm eki taşıyan etiket
 #                     "pre-release") + paketlerin indir.okulapp.org'a (Cloudflare
-#                     R2) yüklenmesi (secret yoksa uyarıyla atlanır)
+#                     R2) yüklenmesi — packaging/r2-yukle.sh; secret yoksa
+#                     uyarıyla atlanır, sonradan r2-yukle.yml ile yüklenir
 #
 # Lisanslar (F12, TB28): iki derleme de PyInstaller'dan sonra
 # `packaging/lisanslar/lisanslar.py paket` koşar — THIRD_PARTY_LICENSES pakete
@@ -307,10 +308,18 @@ jobs:
       # yüklemesi kırılırsa sürüm elde kalsın diye sıra bu; adım kırmızı olur ve
       # eksik dosya görünür kalır (sessiz düşme yok).
       #
+      # Yükleme mantığı TEK yerdedir: packaging/r2-yukle.sh (kova, önek, adlar,
+      # içerik türleri, yüklemeden önce SHA256SUMS denetimi). Aynı betiği
+      # r2-yukle.yml de çağırır: bu adım atlandıysa ya da kırıldıysa paketler
+      # yeniden üretilmeden Actions → "R2'ye yükle" → etiket = v<VERSION>.
+      #
       # Kimlik yoksa iş DURMAZ, uyarıyla atlanır: depoyu çatallayan ya da
       # secret'ları olmayan bir ortamda sürüm çıkarmak yine mümkün olmalı.
-      # Gereken secret'lar: CLOUDFLARE_API_TOKEN (R2 Object Read & Write) +
-      # CLOUDFLARE_ACCOUNT_ID.
+      # Gereken depo secret'ları: CLOUDFLARE_API_TOKEN (R2 **Admin Read & Write**;
+      # Object Read & Write YETMEZ — wrangler REST API kullanır ve Cloudflare
+      # object-düzeyi token'ı REST'te reddeder: 403, kod 10000, bkz.
+      # developers.cloudflare.com/r2/platform/troubleshooting) + CLOUDFLARE_ACCOUNT_ID.
+      # Ekleme adımları: packaging/README.md "R2 secret'ları".
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
@@ -318,28 +327,4 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          R2_KOVA: okulapp-indirme
-          R2_ONEK: kutuphane-defteri
-        working-directory: yayin
-        run: |
-          if [ -z "${CLOUDFLARE_API_TOKEN}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID}" ]; then
-            echo "::warning::CLOUDFLARE_API_TOKEN/ACCOUNT_ID tanımsız — R2 yüklemesi atlandı; paketler yalnız GitHub Release'te."
-            exit 0
-          fi
-          SURUM="${GITHUB_REF_NAME#v}"
-          for dosya in *; do
-            # SHA256SUMS SÜRÜMLÜ adla yüklenir: kovada eski sürümlerin paketleri
-            # durmaya devam eder, sabit ad her yayında onların özetini silerdi.
-            case "${dosya}" in
-              SHA256SUMS.txt) hedef="SHA256SUMS-${SURUM}.txt"; tip="text/plain; charset=utf-8" ;;
-              *.exe)          hedef="${dosya}"; tip="application/vnd.microsoft.portable-executable" ;;
-              *.zip)          hedef="${dosya}"; tip="application/zip" ;;
-              *.deb)          hedef="${dosya}"; tip="application/vnd.debian.binary-package" ;;
-              *.tar.gz)       hedef="${dosya}"; tip="application/gzip" ;;
-              *)              echo "::warning::Türü bilinmeyen dosya R2'ye yüklenmedi: ${dosya}"; continue ;;
-            esac
-            echo "→ ${R2_ONEK}/${hedef}"
-            npx --yes wrangler@4 r2 object put "${R2_KOVA}/${R2_ONEK}/${hedef}" \
-              --file="${dosya}" --content-type="${tip}" --remote
-          done
-          echo "::notice::Paketler indir.okulapp.org/${R2_ONEK}/ altına yüklendi. Sıradaki elle iş: okulapp.org deposunda src/data/kd-release.json (sürüm, tarih ve boyutlar) güncellenmeli."
+        run: bash packaging/r2-yukle.sh yayin "${GITHUB_REF_NAME#v}"
