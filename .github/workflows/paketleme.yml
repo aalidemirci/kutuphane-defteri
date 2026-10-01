@@ -27,19 +27,14 @@ on:
   push:
     tags:
       - "v*"
+  # Her PR'da, YOL SÜZGECİ OLMADAN koşar (01.10.2026). "Linux paketi" ve "Windows
+  # paketi" main'in ZORUNLU kontrolleridir: süzgeç iş akışını başlatmazsa kontrol
+  # hiç raporlanmaz ve PR birleşemez (yalnız frontend/ değiştiren PR böyle takıldı;
+  # süzgeçte frontend/ yoktu, oysa arayüz pakete girer). Süzgecin yerine iş
+  # düzeyinde "atla" koşulu da KONMAZ: atlanan iş zorunlu kontrolde başarılı
+  # sayılır, paket derlenmeden birleştirme açılırdı. Bedel: belge ya da betik
+  # değiştiren PR da paketleri derler. Sınayan: packaging/tests/test_paketleme_tetigi.py.
   pull_request:
-    paths:
-      - "packaging/**"
-      - ".github/workflows/paketleme.yml"
-      - "VERSION"
-      # Pakete giren lisans dizini ve programın lisansı (Inno LicenseFile, DEP-5).
-      - "THIRD_PARTY_LICENSES/**"
-      - "LICENSE"
-      # hiddenimports sigortası: bağımlılığı unutturan değişiklik sınıfı tam da
-      # backend/desktop tarafıdır — süzgeç onları dışarıda bırakırsa duman
-      # kapıları sürüm etiketine dek hiç ateşlenmez (KS denetim bulgusu).
-      - "backend/**"
-      - "desktop/**"
   workflow_dispatch:
 
 permissions:

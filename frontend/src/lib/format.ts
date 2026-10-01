@@ -17,6 +17,16 @@ export function formatNumber(value: number | null | undefined): string {
   return nf.format(value);
 }
 
+/**
+ * Kayıt no (`Copy.accession_no`) → ayraçsız düz sayı (2026000123). Kayıt no bir
+ * NİCELİK değil KİMLİKtir (sözlük: "barkodun sayı hâli"): `formatNumber`'ın binlik
+ * noktası onu "2.026.000.123" yapar, evrak ise ayraçsız basar. null → "—".
+ */
+export function formatAccessionNo(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  return String(value);
+}
+
 const pf = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" });
 
 /**

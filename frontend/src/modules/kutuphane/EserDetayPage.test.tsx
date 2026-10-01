@@ -97,6 +97,8 @@ describe("Eser Ayrıntısı — künye", () => {
     expect(screen.getByText("Deneme Yayınları")).toBeInTheDocument();
     expect(screen.getByText("811 YIL")).toBeInTheDocument();
     expect(await screen.findByText("2026-000123")).toBeInTheDocument();
+    // Kayıt no kimliktir: binlik ayraçsız ("2.026.000.123" değil).
+    expect(screen.getByRole("cell", { name: "2026000123" })).toBeInTheDocument();
     // İki basım işareti ayrı sütundur: barkod ve sırt etiketi ayrı basılır (F4).
     for (const baslik of ["Barkod etiketi", "Sırt etiketi", "Etiket doğrulaması"]) {
       expect(screen.getByRole("columnheader", { name: baslik })).toBeInTheDocument();
@@ -220,6 +222,7 @@ describe("Eser Ayrıntısı — nüsha düzenleme", () => {
     // Salt okunur alanlar bilgi satırıdır, giriş alanı DEĞİL.
     expect(within(diyalog).queryByLabelText("Barkod")).not.toBeInTheDocument();
     expect(within(diyalog).getByText("2026-000123")).toBeInTheDocument();
+    expect(within(diyalog).getByText("2026000123")).toBeInTheDocument();
 
     await user.click(within(diyalog).getByLabelText("Danışma kaynağı (ödünç verilmez)"));
     await user.click(within(diyalog).getByRole("button", { name: "Kaydet" }));

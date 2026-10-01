@@ -19,7 +19,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useFormErrors } from "../../hooks/useFormErrors";
-import { formatDate, formatNumber } from "../../lib/format";
+import { formatAccessionNo, formatDate, formatNumber } from "../../lib/format";
 import { emptyPage, geriDusulecekOffset } from "../../lib/pagination";
 import type { Paginated } from "../../lib/pagination";
 import Button from "../../ui/Button";
@@ -277,7 +277,7 @@ function NushalarBolumu({
 
   const sutunlar: Column<Copy>[] = [
     { header: "Barkod", cell: (c) => c.barcode_display },
-    { header: "Kayıt no", align: "right", cell: (c) => formatNumber(c.accession_no) },
+    { header: "Kayıt no", align: "right", cell: (c) => formatAccessionNo(c.accession_no) },
     { header: "Bölüm", cell: (c) => c.section_name || "—" },
     { header: "Durum", cell: (c) => <OduncDurumu nusha={c} /> },
     // İki basım işareti vardır (F4): barkod etiketi ve sırt etiketi ayrı basılır;
@@ -690,7 +690,7 @@ function NushaDuzenlemeFormu({
 
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
           <Satir etiket="Barkod" deger={nusha.barcode_display} />
-          <Satir etiket="Kayıt no" deger={formatNumber(nusha.accession_no)} />
+          <Satir etiket="Kayıt no" deger={formatAccessionNo(nusha.accession_no)} />
           <Satir etiket="Barkod etiketi" deger={formatDate(nusha.label_printed_at)} />
           <Satir etiket="Sırt etiketi" deger={formatDate(nusha.spine_label_printed_at)} />
           <Satir etiket="Etiket doğrulaması" deger={formatDate(nusha.label_verified_at)} />
