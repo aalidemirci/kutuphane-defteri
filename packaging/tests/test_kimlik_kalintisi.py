@@ -55,6 +55,11 @@ KALIPLAR: tuple[re.Pattern[str], ...] = tuple(
 #: (`.pytest_cache`, `.mypy_cache`, `.ruff_cache`).
 ATLANAN_DIZIN_ADLARI = frozenset({".git", "node_modules", "__pycache__"})
 
+#: Her derinlikte atlanan dosya adları. Git worktree'sinde ve alt modülde `.git`
+#: dizin değil DOSYADIR: yalnız `gitdir: <yol>` işaretçisi taşır, depo içeriği
+#: değildir (01.10.2026: worktree'de taranınca kapsam testi kırıldı).
+ATLANAN_DOSYA_ADLARI = frozenset({".git"})
+
 #: Depo köküne göre atlanan yollar: kapsam dışı ya da depo içeriği olmayanlar.
 ATLANAN_YOLLAR: dict[str, str] = {
     "docs": "köken ve karar belgeleri kardeş projeleri adıyla anlatır (tasarım §2.3: kapsam dışı)",
@@ -105,7 +110,11 @@ def taranan_dosyalar(kok: Path) -> Iterator[str]:
         altlar[:] = sorted(ad for ad in altlar if not _dizin_atlanir(onek + ad, ad))
         for ad in sorted(dosyalar):
             goreli = onek + ad
-            if goreli in ATLANAN_YOLLAR or (kok / goreli).is_symlink():
+            if (
+                ad in ATLANAN_DOSYA_ADLARI
+                or goreli in ATLANAN_YOLLAR
+                or (kok / goreli).is_symlink()
+            ):
                 continue
             yield goreli
 
@@ -264,6 +273,9 @@ def test_tarama_atlananlari_ve_muaflari_gecer_gerisini_yakalar(tmp_path: Path) -
         "backend/data/not.txt",
         "dist/cikti/BENIOKU.txt",
         ".claude/settings.local.json",
+        # Worktree ve alt modülün `.git` İŞARETÇİ DOSYASI (dizin değil).
+        ".git",
+        "alt/modul/.git",
     ):
         _yaz(tmp_path, goreli, kalinti)
     # İkili dosya (NUL baytı) metin olarak taranmaz.
