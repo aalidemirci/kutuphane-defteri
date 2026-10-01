@@ -1,0 +1,71 @@
+# =============================================================================
+# .github/workflows/r2-yukle.yml — var olan Release'i indir.okulapp.org'a yükle
+# =============================================================================
+# paketleme.yml'in `yayin` işi R2'ye Release'in hemen ardından kendisi yükler.
+# Bu iş yalnız o adım ATLANDIĞINDA ya da kırıldığında kullanılır — ör. Cloudflare
+# secret'ları Release'ten sonra eklendiyse (v2026.10.0-beta.1 böyle çıktı).
+# Paketler yeniden üretilmez: Release'teki dosyalar indirilir ve AYNI betikle
+# (packaging/r2-yukle.sh) yüklenir; betik yüklemeden önce SHA256SUMS.txt'yi
+# doğrular. Emsal DD hattındaki aynı adlı iş akışıdır.
+#
+# Elle: Actions → "R2'ye yükle" → Run workflow → etiket = v<VERSION>.
+# Secret'lar ve izinleri: packaging/README.md "R2 secret'ları". Burada kimlik
+# ZORUNLUDUR (R2_KIMLIK_ZORUNLU=1): yoksa iş kırmızı biter, hiçbir şey yüklemeden
+# yeşil bitmez. Yayın işleri dışa açıktır ve kullanıcı onaylıdır (CLAUDE.md §6).
+# =============================================================================
+name: R2'ye yükle
+
+on:
+  workflow_dispatch:
+    inputs:
+      etiket:
+        description: "Yüklenecek Release etiketi (ör. v2026.10.0-beta.1)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Aynı etiket için iki yükleme üst üste binmesin (ikincisi sırasını bekler).
+concurrency:
+  group: r2-yukle-${{ inputs.etiket }}
+  cancel-in-progress: false
+
+jobs:
+  yukle:
+    name: Release dosyalarını R2'ye yükle
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: packaging/r2-yukle.sh
+          sparse-checkout-cone-mode: false
+      - name: Etiket denetimi
+        # Sürümün geri kalanını betik denetler; burada yalnız `v` öneki: `v`siz
+        # girilen etiket Release'i bulamaz ve hata iletisi bunu söylemez.
+        env:
+          ETIKET: ${{ inputs.etiket }}
+        run: |
+          case "${ETIKET}" in
+            v2*) ;;
+            *)
+              echo "::error::Etiket 'v' ile başlamalı (ör. v2026.10.0-beta.1): '${ETIKET}'"
+              exit 1
+              ;;
+          esac
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - name: Release dosyalarını indir
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ETIKET: ${{ inputs.etiket }}
+        run: gh release download "${ETIKET}" --repo "${GITHUB_REPOSITORY}" --dir yayin
+      - name: İndirme alanına yükle (R2)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ETIKET: ${{ inputs.etiket }}
+          R2_KIMLIK_ZORUNLU: "1"
+        run: bash packaging/r2-yukle.sh yayin "${ETIKET#v}"

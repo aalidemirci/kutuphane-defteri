@@ -127,9 +127,10 @@ kaynağı `2026.10.0.0`). Etiketi (`v2026.10.0-beta.1`) F12 birleşince ana otur
 **kullanıcı onayıyla** atar. Güncelleme denetimi kararlı sürüm kullanan okula
 ön-sürüm ÖNERMEZ; beta kullanıcısı sonraki betayı ve kararlı sürümü alır
 (`updates.offered`). Yayın adımlarının kendisi (etiket ↔ VERSION kapısı, `~` →
-`.`, pre-release işareti, R2'nin secret'sız atlanması) sahte `gh`/`npx` ile
-`packaging/tests/test_surum_yolu.py`'de koşturulur — `yayin` işi yalnız etikette
-koştuğu için PR kapıları onu başka türlü görmez.
+`.`, pre-release işareti, R2'nin secret'sız atlanması ve `r2-yukle.sh` ile
+yüklenmesi) ve sonradan yükleme işi (`r2-yukle.yml`) sahte `gh`/`npx` ile
+`packaging/tests/test_surum_yolu.py`'de koşturulur — `yayin` işi yalnız etikette,
+`r2-yukle.yml` yalnız elle koştuğu için PR kapıları onları başka türlü görmez.
 
 ## apt komutları ayna tutarsızlığına karşı sarmalı
 
@@ -146,18 +147,95 @@ sabitlenir.
 yayımlanacak son paketleri `veri_sizintisi.py` ile bir kez daha denetler,
 `SHA256SUMS.txt` üretir, GitHub Release'i açar ve paketleri **Cloudflare R2**
 kovasına (`okulapp-indirme/kutuphane-defteri/`) yükler — okullar siteden
-indirir, MEB ağında GitHub sık sık engellidir. Kovadaki `SHA256SUMS` dosyası
-SÜRÜMLÜ adla yazılır (`SHA256SUMS-<sürüm>.txt`).
+indirir, MEB ağında GitHub sık sık engellidir. Paketler kovaya Release'teki
+adlarıyla gider (beta `.deb`'inin adında `~` değil `.` vardır); kovadaki
+`SHA256SUMS` dosyası SÜRÜMLÜ adla yazılır (`SHA256SUMS-<sürüm>.txt`), çünkü
+kovada eski sürümlerin paketleri de durur.
 
-R2 adımı iki secret ister — `CLOUDFLARE_API_TOKEN` (R2 *Object Read & Write*
-izni) ve `CLOUDFLARE_ACCOUNT_ID`. Tanımlı değilse adım uyarı basıp ATLANIR;
+Yükleme mantığı **tek yerdedir**: `packaging/r2-yukle.sh` (kova, önek, adlar,
+içerik türleri). Yayın işi de, var olan Release'i sonradan yükleyen
+`r2-yukle.yml` de bu betiği çağırır. Betik yüklemeden önce `SHA256SUMS.txt`'yi
+doğrular: özet tutmazsa, özette olmayan ya da türü bilinmeyen bir dosya varsa
+HİÇBİR dosya yüklenmez ve adım kırmızı olur. Özet en son yüklenir (kovada özet
+görünüyorsa paketleri de oradadır). Davranışı sahte `gh`/`npx` ile
+`packaging/tests/test_surum_yolu.py` sınar.
+
+**Boyut sınırı.** wrangler `r2 object put` tek parçada en çok 300 MiB yükler
+(Cloudflare "Upload objects": "up to 315 MB"). Sınırı aşan bir paket varken betik
+yine HİÇBİR dosya yüklemez. `v2026.10.0-beta.1`'in en büyüğü Linux arşiviydi
+(247.424.211 bayt, ~236 MiB). Paket sınırı aşarsa yükleme çok parçalı S3 yoluna
+(rclone ya da `aws s3`, R2 S3 erişim anahtarlarıyla) taşınmalıdır; bu bugün
+betikte yoktur.
+
+### R2 secret'ları
+
+R2 adımı iki depo secret'ı ister:
+
+| Secret | İçerik |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | R2 API token'ı, izni **Admin Read & Write** |
+| `CLOUDFLARE_ACCOUNT_ID` | Kovanın bulunduğu Cloudflare hesabının kimliği |
+
+*Object Read & Write* YETMEZ: wrangler `r2 object put` Cloudflare REST API'siyle
+çalışır ve object-düzeyi token REST'te 403 (kod 10000 "Authentication error")
+ile reddedilir. DD hattında 28.09.2026'da tam böyle kırıldı ve Admin Read &
+Write token'la uçtan uca yeşil doğrulandı; KS belgeleri de aynı gün düzeltildi
+(Cloudflare: developers.cloudflare.com/r2/platform/troubleshooting). Kova
+(`okulapp-indirme`) kardeş programlarla ortaktır, önek ayrımı kovanın içindedir:
+DD'nin kullandığı token ve hesap kimliği burada da geçerlidir.
+
+Tanımlı değilse yayın işindeki adım, sürüme ve dizine bakmadan uyarı basıp ATLANIR
+(secret'ı olmayan bir çatalda da sürüm çıkabilmeli; betik kimliği ilk denetler);
 yeşil koşu o durumda "paketler indirme alanında" demek DEĞİLDİR.
+
+Eklemek hesap sahibinin işidir. Değer komut satırına, betiğe, belgeye ya da
+sohbete **yazılmaz**: `gh` değeri kendisi sorar, kabuk geçmişine düşmez.
+
+```bash
+gh secret set CLOUDFLARE_ACCOUNT_ID --repo aalidemirci/kutuphane-defteri
+gh secret set CLOUDFLARE_API_TOKEN  --repo aalidemirci/kutuphane-defteri
+gh secret list --repo aalidemirci/kutuphane-defteri   # yalnız adlar ve tarihler görünür
+```
+
+GitHub secret'ları geri okunamaz: DD deposundaki değer oradan kopyalanamaz,
+token'ın saklandığı yerden alınır. Elde yoksa Cloudflare panelinde R2 → API
+token'larını yönet → **yeni** token (izin Admin Read & Write; secret'a yazılan,
+oluşturulunca bir kez gösterilen *Token value*'dur, S3 erişim anahtarları
+değil). Var olan token'ı yeniden üretmek ("roll") DD'nin kopyasını geçersiz
+kılar. Hesap kimliği panelde R2 genel bakış sayfasında görünür.
+
+### R2 adımı atlandıysa ya da kırıldıysa
+
+Paketleri yeniden üretmeye gerek yok: Actions → **R2'ye yükle** → "Run
+workflow" → **etiket** = `v<VERSION>` (ör. `v2026.10.0-beta.1`). İş
+(`.github/workflows/r2-yukle.yml`) var olan Release'in dosyalarını
+`gh release download` ile indirir ve aynı betikle yükler. Burada kimlik
+**zorunludur**: secret yoksa iş kırmızı biter, hiçbir şey yüklemeden yeşil
+bitmez. Komut satırından:
+
+```bash
+gh workflow run r2-yukle.yml --repo aalidemirci/kutuphane-defteri -f etiket=v<VERSION>
+```
+
+Elle tetiklenen iş akışı GitHub'da yalnız varsayılan dalda (`main`) bulunduğunda
+görünür. İlk beta (`v2026.10.0-beta.1`) secret'lar tanımlanmadan çıktı; R2'ye bu
+yolla yüklenir. Yüklemeden sonra beş dosya için
+`curl -sI https://indir.okulapp.org/kutuphane-defteri/<ad>` → 200 ve
+`Content-Length` Release'teki boyutla aynı olmalıdır (özet dosyasının adı
+`SHA256SUMS-<sürüm>.txt`).
+
+### Yüklemeden sonra: site
 
 Yükleme sonrası elle kalan iş, `okulapp.org` deposundaki
 `src/data/kd-release.json` dosyasını güncellemektir (tasarım §17 — ortak yayın
 alanı kuralları). Program güncellemeyi GitHub Release'ten denetler; R2'deki
 paketler elle indirme içindir ve program oraya istek atmaz, bu yüzden bir
 `manifest.json` üretilmez (tasarım §2.2 T11 v4, 27.09.2026 kullanıcı kararı).
+
+Sitedeki İndir düğmeleri `kd-release.json` `"available": true` iken basılır. Bu
+bayrak, beş adres 200 dönüp `Content-Length` Release'teki boyutla tutmadan `true`
+yapılmaz: site dalı R2'den önce birleşirse canlıda kırık İndir düğmesi çıkardı
+(30.09.2026: sürüm verisi dolduruldu, bayrak R2 yüklemesine dek `false`).
 
 Etiket, push ve R2 yüklemesi dışa açık işlerdir; **kullanıcı onaylı adımlardır**
 (tasarım §14.1).
